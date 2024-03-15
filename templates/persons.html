@@ -1,0 +1,25 @@
+<!-- templates/persons.html -->
+<!DOCTYPE html>
+{% include 'header.html' %}
+
+<html>
+<head>
+    <title>Persons</title>
+</head>
+<body>
+    <h1>List of Persons</h1>
+    <a href="/">Back</a>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Age</th>
+        </tr>
+        {% for person, age in persons.items() %}
+        <tr>
+            <td><a href="/home?person={{ person }}">{{ person }}</a></td>
+            <td>{{ age }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

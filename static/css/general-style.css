@@ -1,0 +1,131 @@
+body,h1,h2,h3,h4,p {
+    font-family: "PT Sans", Helvetica, Arial, sans-serif;
+}
+body {
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    padding: 0;
+}
+.outer-div {
+    padding: 10px 20px;
+}
+
+.header-top {
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+}
+
+.header-bottom {
+    background-color: #0071B3;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: top;
+}
+
+.logo {
+    width: 120px;
+}
+
+.menu {
+    display: flex;
+    gap: 0; /* Adjust the gap as needed */
+}
+
+.menu-item {
+    flex: 1;
+    width: 200%;
+    color: white;
+    background-color: #0071B3;
+    border: none;
+    outline: inherit;
+    font-size: 1.5em;
+    align-items: center;
+    display:flex;
+    padding: 10px 15px;
+    height: 50px; /* Adjust the height as needed */
+}
+.menu-item:visited {
+    color: white; /* or specify the color you want for visited links */
+}
+
+.menu-item:hover {
+    background-color: #005599;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    text-align: left;
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+@media (min-width: 768px) {
+    .hero-section .hero-section__image-mask {
+        height: 300px;
+        overflow: hidden;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+    }
+}
+
+section {
+    display: block;
+}
+
+img {
+    vertical-align: middle;
+    border: 0;
+    height: auto;
+    max-width: 100%;
+}
+
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+img {
+    overflow-clip-margin: content-box;
+    overflow: clip;
+}
+
+div {
+    display: block;
+}
+
+.hero-section .hero-section__heading {
+    background: #00539b;
+    color: white;
+    font-size: 1.8em;
+    margin: 0 -15px;
+    padding: 10px 15px;
+}
+@media (min-width: 768px) {
+    .hero-section .hero-section__heading {
+        background: #00539b;
+        color: white;
+        font-size: 2em;
+        margin: 0 -15px;
+        padding: 10px 15px;
+    }
+}
+
+h1 {
+    display: block;
+    font-size: 2em;
+    margin-block-start: 0.67em;
+    margin-block-end: 0.67em;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
+    font-weight: bold;
+}

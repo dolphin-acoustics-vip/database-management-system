@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+{% include 'header.html' %}
+
+<head>
+    <title>Add New Encounter</title>
+    <link rel="stylesheet" href="../static/css/hero-section.css">
+    <link rel="stylesheet" href="../static/css/general-style.css">
+</head>
+<body>
+    <div class="outer-div">
+        <h2>Add New Encounter</h2>
+        <form method="post">
+            <label for="location">Location:</label>
+            <input type="text" id="location" name="location" required><br><br>
+            <label for="species">Species:</label>
+            <select id="species" name="species" required>
+                {% for species in species_list %}
+                    <option value="{{ species[0] }}">{{ species[1] + " (" + species[2] + ")" }}</option>
+                {% endfor %}
+            </select><br><br>
+            <label for="notes">Notes:</label>
+            <textarea id="notes" name="notes" rows="4" cols="50"></textarea><br><br>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+Required: mysqlclient. See instructions: https://pypi.org/project/mysqlclient/
+
+
+sudo mysql -u root -p
+ALTER USER 'js521'@'localhost' IDENTIFIED BY 'password1';
+
+drop table if exists test_database.clip;
+drop table if exists test_database.recording;
+drop table if exists test_database.encounter;
+drop table if exists test_database.species;
+drop table if exists test_database.roccaoutput;
