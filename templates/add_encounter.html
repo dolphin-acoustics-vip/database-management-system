@@ -10,19 +10,43 @@
 <body>
     <div class="outer-div">
         <h2>Add New Encounter</h2>
+        <style>
+            form {
+                display: grid;
+                gap: 0px;
+            }
+        
+            label {
+                display: block;
+            }
+        
+            input, select, textarea, button {
+                width: 20%;
+            }
+        </style>
         <form method="post">
-            <label for="location">Location:</label>
-            <input type="text" id="location" name="location" required><br><br>
-            <label for="species">Species:</label>
+            <label for="encounter_name" style="margin-bottom:5px;">Name:</label>
+            <input type="text" id="encounter_name" name="encounter_name" required><br><br>
+            <label for="location" style="margin-bottom:5px;">Location:</label>
+            <input type="text" id="location" name="location"><br><br>
+            <label for="origin" style="margin-bottom:5px;">Origin:</label>
+            <input type="text" id="origin" name="origin"><br><br>
+            <label for="species" style="margin-bottom:5px;">Species:</label>
             <select id="species" name="species" required>
                 {% for species in species_list %}
-                    <option value="{{ species[0] }}">{{ species[1] + " (" + species[2] + ")" }}</option>
+                    {% if species.common_name == '' %}
+                    <option value="{{ species.id }}">{{ species.species_name}}</option>
+                    {% else %}
+                    <option value="{{ species.id }}">{{ species.species_name +" (" + species.common_name+ ")" }}</option>
+                    {% endif %}
                 {% endfor %}
             </select><br><br>
-            <label for="notes">Notes:</label>
+            <label for="notes" style="margin-bottom:5px;">Notes:</label>
             <textarea id="notes" name="notes" rows="4" cols="50"></textarea><br><br>
             <button type="submit">Submit</button>
         </form>
     </div>
+
 </body>
+
 </html>

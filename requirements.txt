@@ -9,3 +9,4 @@ drop table if exists test_database.recording;
 drop table if exists test_database.encounter;
 drop table if exists test_database.species;
 drop table if exists test_database.roccaoutput;
+

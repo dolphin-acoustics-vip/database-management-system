@@ -4,8 +4,9 @@ from flask import Flask, flash,get_flashed_messages, jsonify, redirect,render_te
 from flask_mysqldb import MySQL
 from flask import send_from_directory
 import pprint
+from database_handler import *
 #import mysql.connector
-
+MySQLdb.Error
 import os
 
 app = Flask(__name__)
@@ -17,41 +18,33 @@ app.config['MYSQL_HOST'] = os.environ['STADOLPHINACOUSTICS_HOST']
 app.config['MYSQL_USER'] = os.environ['STADOLPHINACOUSTICS_USER'] 
 app.config['MYSQL_PASSWORD'] = os.environ['STADOLPHINACOUSTICS_PASSWORD'] 
 app.config['MYSQL_DB'] = os.environ['STADOLPHINACOUSTICS_DATABASE'] 
+app.config['MYSQL_CURSORCLASS'] = 'DictCursor' # return all queries as dict
+app.config['MYSQL_SQL_MODE'] = 'STRICT_ALL_TABLES'
 app.config['UPLOAD_FOLDER'] = ''
 
 # Initialize the MySQL extension
 mysql = MySQL(app)
+# Set up the application context
+with app.app_context():
+    print("I GOT HERE")
+    handler = DatabaseHandler(mysql)
+
 
 @app.route('/')
 def hello_world():
+
+    with app.app_context():
+        print(handler.query_species_table())
+        print(handler.query_species_table_manual("SELECT * FROM species WHERE id=%s",['d246d579-e2b9-11ee-aa64-00155d9e7589']))
+
     return "Root Page"
 @app.route('/home')
 def home():
     return render_template('home.html')
 
-@app.route('/submit', methods=['POST'])
-def submit():
-    '''
-    username = request.form['username']
-    age = int(request.form['age'])
-    cur = mysql.connection.cursor()
-    cur.execute("INSERT INTO Person (Name,Age) VALUES (%s,%s)", (username,age))
-    mysql.connection.commit()
-    cur.close()
-
-    #file = request.files['test_file']
-    #file.save(os.path.join('uploads', file.filename))
-    return f'You submitted the username: {username} with age {age}. <a href="/">Go back to home</a>'
-    '''
-    return
-
-
 @app.route('/species')
 def view_species():
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT id, classification, name FROM species")
-    species_data = cur.fetchall()
-    cur.close()
+    species_data = handler.query_species_table(["id","species_name","genus_name","common_name"])
     return render_template('species.html', species_list=species_data)
 
     
@@ -73,30 +66,27 @@ def serve_hero_section():
 
 @app.route('/species/edit/<uuid:species_id>', methods=['GET', 'POST'])
 def edit_species(species_id):
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT classification, name FROM species WHERE id = %s", (species_id,))
-    species_data = cur.fetchone()
-    cur.close()
-    
-    if request.method == 'POST':
-        new_name = request.form['name']
-        new_classification = request.form['classification']
+    try:
+        # Fetch species data from the database
+        species_data = handler.query_species_table([],{"id":species_id},one_record=True)
         
-        cur = mysql.connection.cursor()
-        cur.execute("UPDATE species SET name = %s, classification = %s WHERE id = %s", (new_name, new_classification, species_id))
-        mysql.connection.commit()
-        cur.close()
-        flash('Successfully updated the element with ID {}'.format(species_id), 'success')
+        if request.method == 'POST':
+            species_name = request.form['species_name']
+            genus_name = request.form['genus_name']
+            common_name = request.form['common_name']
+
+            handler.update_species_table({"species_name": species_name, "genus_name": genus_name, "common_name": common_name}, species_id)
+            flash('Successfully updated the element with ID {}'.format(species_id), 'success')
+            return redirect('/species')
+    except SQLError as e:
+        flash(e.get_error_description(), 'error')
         return redirect('/species')
-    
     return render_template('edit_species.html', species=species_data)
 
 # Define a route to clear flashed messages
 @app.route('/clear_flashed_messages', methods=['POST'])
 def clear_flashed_messages():
     flashed_messages = get_flashed_messages(with_categories=True)  # Retrieve flashed messages
-    print("IGOTHERE")
-    print(flashed_messages)
     for category, message in flashed_messages:
         print(message)
         session['_flashes'].remove((category, message))  # Remove specific flashed message from the session
@@ -107,15 +97,12 @@ def clear_flashed_messages():
 def delete_species(species_id):
     if request.method == 'POST' or request.method == 'DELETE':
         try:
-            cur = mysql.connection.cursor()
-            cur.execute("DELETE FROM species WHERE id = %s", (species_id,))
-            mysql.connection.commit()
-            cur.close()
-            flash('Successfully deleted species {}'.format(species_id), 'success')
+            species_name = handler.query_species_table(['species_name'],{"id":species_id},one_record=True)['species_name']
+            handler.delete_species_table(species_id)
+            flash('Successfully deleted species {}'.format(species_name), 'success')
             return redirect('/species')
-        except MySQLdb.IntegrityError as e:
-            cur.close()
-            flash('Failed to delete the species {}\nError code: {}\nError message: {}'.format(species_id, e.args[0], e.args[1]), 'error')
+        except SQLError as e:
+            flash(e.get_error_description(), 'error')
             return redirect('/species')
 
     else:
@@ -125,20 +112,17 @@ def delete_species(species_id):
 @app.route('/species/add', methods=['GET', 'POST'])
 def add_species():
     if request.method == 'POST':
-        name = request.form['name']
-        classification = request.form['classification']
+        species_name = request.form['species_name']
+        genus_name = request.form['genus_name']
+        common_name = request.form['common_name']
         
-        cur = mysql.connection.cursor()
         try:
-            cur.execute("INSERT INTO species (name, classification) VALUES (%s, %s)", (name, classification))
-            mysql.connection.commit()
-            flash('Successfully added the species {}!'.format(classification), 'success')
-            cur.close()
+            handler.insert_species_table({"species_name": species_name, "genus_name": genus_name, "common_name": common_name})
+            flash('Successfully added the species {}!'.format(species_name), 'success')
             return redirect('/species')
 
-        except MySQLdb.IntegrityError as e:
-            flash( 'Error: {} {}'.format(e.args[0], e.args[1]), 'error')
-            cur.close()
+        except SQLError as e:
+            flash(e.get_error_description(), 'error')
             return redirect('/species')
     return render_template('add_species.html')
 
@@ -147,46 +131,36 @@ def add_species():
     
 
 
-@app.route('/add_encounter', methods=['GET', 'POST'])
+@app.route('/encounter/add', methods=['GET', 'POST'])
 def add_encounter():
     if request.method == 'POST':
+        encounter_name = request.form['encounter_name']
         location = request.form['location']
         species_id = request.form['species']
+        origin = request.form['origin']
         notes = request.form['notes']
 
         # Insert the encounter data into the database
         try:
-            cur = mysql.connection.cursor()
-            cur.execute("INSERT INTO test_database.encounter (location, notes, species_id) VALUES (%s, %s, %s)",
-                        (location, notes, species_id))
-            mysql.connection.commit()
-            cur.close()
-            flash('Encounter added successfully!', 'success')
+            handler.insert_encounter_table({"encounter_name": encounter_name, "location": location, "species_id": species_id, "origin": origin, "notes": notes})
+            flash('Encounter added.', 'success')
             return redirect('/encounter')
-        except MySQLdb.IntegrityError as e:
-            cur.close()
-            flash('Error: {} {}'.format(e.args[0], e.args[1]), 'error')
+        except SQLError as e:
+            flash(e.get_error_description(), 'error')
             return redirect('/encounter')
 
     else:
-        # Fetch species data from the database
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT id, classification, name FROM test_database.species")
-        species_list = cur.fetchall()
-        cur.close()
 
-        return render_template('add_encounter.html', species_list=species_list)
+        return render_template('add_encounter.html', species_list=handler.query_species_table())
 
 @app.route('/encounter', methods=['GET'])
 def encounter_details():
     # Fetch encounter details from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT e.id, e.location, e.notes, s.classification as species_name FROM test_database.encounter e JOIN test_database.species s ON e.species_id = s.id")
-    encounter_list = cur.fetchall()
+    encounter_list = handler.query_encounter_table_manual(f"SELECT * FROM {ENCOUNTER} JOIN {SPECIES} ON {ENCOUNTER}.species_id = species.id", [])
 
     if len(encounter_list) < 1:
-        cur.execute("SELECT id, classification, name FROM species")
-        species_data = cur.fetchall()
+        species_data = handler.query_species_table(ALL)
         if len(species_data) < 1:
             return render_template('error.html', error_code=404, error_message='No encounter data found. You cannot add encounter data until there are species to add the encounter for.', goback_link='/home', goback_message="Home")
 
@@ -229,40 +203,30 @@ def download_file_from_uploads(filename):
 
 @app.route('/encounter/edit/<uuid:encounter_id>', methods=['GET','POST'])
 def edit_encounter(encounter_id):
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT encounter.id, encounter.location, encounter.notes, encounter.species_id FROM encounter JOIN species ON encounter.species_id = species.id WHERE encounter.id = %s", (encounter_id,))
-    encounter_data = cur.fetchone()
-    cur.close()
-    
-    if request.method == 'POST':
-        location = request.form['location']
-        species_id = request.form['species']
-        notes = request.form['notes']
+    try:
+        encounter_data = handler.query_encounter_table(ALL,{"id":encounter_id},one_record=True)
 
-        cur = mysql.connection.cursor()
-        cur.execute("UPDATE encounter SET location = %s, species_id = %s, notes = %s WHERE id = %s", (location, species_id, notes, encounter_id))
-        mysql.connection.commit()
-        cur.close()
-        
+        if request.method == 'POST':
+            encounter_name = request.form['encounter_name']
+            location = request.form['location']
+            species_id = request.form['species']
+            origin = request.form['origin']
+            notes = request.form['notes']
 
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT encounter.id, encounter.location, encounter.notes, species.classification FROM encounter JOIN species ON encounter.species_id = species.id WHERE encounter.id = %s", (encounter_id,))
-        encounter_data = cur.fetchone()
-        cur.close()
-        flash('Successfully updated the element with ID {}'.format(encounter_id), 'success')
+            handler.update_encounter_table({"encounter_name": encounter_name, "location": location, "species_id": species_id, "origin": origin, "notes": notes}, encounter_id)
 
+            flash('Updated {}'.format(encounter_name), 'success')
+
+            return redirect('/encounter')
+
+
+        species_list = handler.query_species_table(ALL)
+    except SQLError as e:
+        flash(e.get_error_description(), 'error')
         return redirect('/encounter')
 
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT id, classification, name FROM test_database.species")
-    species_list = cur.fetchall()
 
-    cur.execute("SELECT id,time_start,time_end,recording_file,selection_file,encounter_id FROM test_database.recording WHERE encounter_id = %s", (encounter_id,))
-    recordings = cur.fetchall()
-    cur.close()
-
-
-    return render_template('edit_encounter.html', encounter=encounter_data, species_list=species_list,recordings=recordings)
+    return render_template('edit_encounter.html', encounter=encounter_data, species_list=species_list)
 
 
 @app.route('/add_recording', methods=['POST'])
