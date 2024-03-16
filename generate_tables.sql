@@ -20,8 +20,10 @@ create or replace table test_database.file (
     id UUID PRIMARY KEY NOT NULL DEFAULT (UUID()),
     path TEXT NOT NULL,
     filename VARCHAR(255) NOT NULL,
+	extension VARCHAR(10) NOT NULL,
     uploaded_date DATETIME,
-	uploaded_by VARCHAR(100)
+	uploaded_by VARCHAR(100),
+	duration INT
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 CREATE TABLE IF NOT EXISTS test_database.recording (
@@ -52,3 +54,7 @@ create or replace table test_database.roccaoutput (
 	csv_file TEXT,
 	ctr_file TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+
+
+

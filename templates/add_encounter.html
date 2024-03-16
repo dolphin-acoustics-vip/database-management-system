@@ -10,20 +10,7 @@
 <body>
     <div class="outer-div">
         <h2>Add New Encounter</h2>
-        <style>
-            form {
-                display: grid;
-                gap: 0px;
-            }
-        
-            label {
-                display: block;
-            }
-        
-            input, select, textarea, button {
-                width: 20%;
-            }
-        </style>
+
         <form method="post">
             <label for="encounter_name" style="margin-bottom:5px;">Name:</label>
             <input type="text" id="encounter_name" name="encounter_name" required><br><br>
@@ -34,10 +21,10 @@
             <label for="species" style="margin-bottom:5px;">Species:</label>
             <select id="species" name="species" required>
                 {% for species in species_list %}
-                    {% if species.common_name == '' %}
-                    <option value="{{ species.id }}">{{ species.species_name}}</option>
+                    {% if species.get_common_name() == '' %}
+                    <option value="{{ species.id }}">{{ species.get_species_name()}}</option>
                     {% else %}
-                    <option value="{{ species.id }}">{{ species.species_name +" (" + species.common_name+ ")" }}</option>
+                    <option value="{{ species.id }}">{{ species.get_species_name() +" (" + species.get_common_name()+ ")" }}</option>
                     {% endif %}
                 {% endfor %}
             </select><br><br>

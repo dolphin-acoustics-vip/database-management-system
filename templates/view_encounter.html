@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+{% include 'header.html' %}
+
+<head>
+    <title>Edit Encounter</title>
+    <link rel="stylesheet" href="../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../static/css/general-style.css">
+</head>
+
+<body>
+    <div class="outer-div">
+    <h2>Add Recording</h2>
+    <form action="/encounter/view/{{encounter.id}}/add_recording" method="post" enctype="multipart/form-data">
+        <label for="time_start">Start Time:</label>
+        <input type="datetime-local" id="time_start" name="time_start" required><br><br>
+        <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="Seconds" value="0" required><br><br>
+
+        <label for="recording_file">Recording File:</label>
+        <input style="width:100%;" type="file" id="recording_file" name="recording_file" accept=".wav"><br><br>
+
+        <label for="selection_file">Selection File:</label>
+        <input style="width:100%;" type="file" id="selection_file" name="selection_file" accept=".csv"><br><br>
+
+        <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
+
+        <button type="submit">Submit</button>
+    </form>
+    <h2>Recordings</h2>
+    <a href="{{url_for('download_files_from_folder', path=encounter.generate_relative_path())}}">Download All</a>
+    <table>
+        <tr>
+            <th>Start Time</th>
+            <th>Recording File</th>
+            <th>Selection File</th>
+            <th>Actions</th>
+        </tr>
+        {% for recording in recordings %}
+        <tr>
+            <form action="/encounter/view/{{encounter.id}}/edit_recording/{{recording.id}}" method="post"
+                enctype="multipart/form-data">
+                <td>
+                    <label hidden>{{ recording.get_start_time() }}</label><br>
+                    <input style="width: 100%" type="datetime-local" id="time_start" name="time_start" value="{{ recording.get_start_time_string() }}" required>
+                    <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="Seconds" value="{{ recording.get_seconds() }}" required><br><br>
+                </td>
+                {% if recording.recording_file != None %}
+                <td>
+                    <a href="{{ url_for('download_file_from_uploads', full_path=recording.recording_file.get_full_relative_path()) }}">Download</a><br>
+                    <a href="{{ url_for('delete_recording_file', encounter_id=encounter.id, file_id=recording.recording_file.id) }}">Delete</a>
+                </td>
+                {% else %}
+                <td>
+                    <label for="recording_file" class="btn">Add file: </label>
+                    <input style="width:100%;" type="file" id="recording_file" name="recording_file"><br>
+                </td>
+                {% endif %}
+                {% if recording.selection_file != None %}
+                <td>
+                    <a href="{{ url_for('download_file_from_uploads', full_path=recording.selection_file.get_full_relative_path()) }}">Download</a><br>
+                    <a href="{{ url_for('delete_selection_file', encounter_id=encounter.id, file_id=recording.selection_file.id) }}">Delete</a>
+
+                </td>
+                {% else %}
+                <td>
+                    <label for="selection_file" class="btn">Add file: </label>
+                    <input style="width: 100%" type="file" id="selection_file" name="selection_file"><br>
+                </td>
+                {% endif %}
+                <td>
+                    <button style="width: 100%" type="submit">Update</button>
+                    <a href="{{url_for('download_files_from_folder', path=recording.generate_relative_path())}}">Download Folder</a>
+                
+                    <button style="width: 100%" type="delete" formaction="/encounter/view/{{encounter.id}}/delete_recording/{{recording.id}}">Delete</button>
+
+                </td>
+            </form>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+</body>

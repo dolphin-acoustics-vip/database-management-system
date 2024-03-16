@@ -5,7 +5,18 @@ body {
     margin: 0;
     padding: 0;
 }
+form {
+    display: grid;
+    gap: 0px;
+}
 
+label {
+    display: block;
+}
+
+input, select, textarea, button {
+    width: 20%;
+}
 header {
     padding: 0;
 }
