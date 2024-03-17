@@ -53,11 +53,11 @@
                         <td>
                             <form id="editForm" style="margin-bottom:5px;" method="get" action="{{ url_for('edit_species', species_id=species.id) }}">
                                 <input type="hidden" name="_method" value="GET">
-                                <button type="submit"  data-species-id="{{ species.id }}">Edit</button>
+                                <button type="submit" style="width:100%"  data-species-id="{{ species.id }}">Edit</button>
                             </form>
                             <form id="deleteForm_{{ species.id }}" method="post" action="{{ url_for('delete_species', species_id=species.id) }}">
                                 <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" class="delete-link" data-species-id="{{ species.id }}">Delete</button>
+                                <button type="submit" style="width:100%" class="delete-link" data-species-id="{{ species.id }}">Delete</button>
                             </form></td>
                     </tr>
                 {% endfor %}

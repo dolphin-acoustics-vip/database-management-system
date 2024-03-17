@@ -25,7 +25,6 @@
                     <th>Location</th>
                     <th>Species</th>
                     <th>Origin</th>
-                    <th>Notes</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -36,12 +35,11 @@
                         <td>{{ encounter.get_location() }}</td>
                         <td>{{ encounter.species.get_species_name() }}</td>
                         <td>{{ encounter.get_origin() }}</td>
-                        <td>{{ encounter.get_notes() }}</td>
                         <td> <!-- Add buttons for Edit and Delete here -->
 
                             <form style="margin-bottom:5px;" method="get" action="{{ url_for('edit_encounter', encounter_id=encounter.id) }}">
                                 <input type="hidden" name="_method" value="GET">
-                                <button type="submit" data-encounter-id="{{ encounter.id }}">Edit</button>
+                                <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}">Edit</button>
                             </form>
                             <form style="margin-bottom:5px;" method="get" action="{{ url_for('view_encounter', encounter_id=encounter.id) }}">
                                 <input type="hidden" name="_method" value="GET">
@@ -49,7 +47,7 @@
                             </form>
                             <form id="deleteForm_{{ encounter.id }}" method="post" action="{{ url_for('delete_encounter', encounter_id=encounter.id) }}">
                                 <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" class="delete-link" data-encounter-id="{{ encounter.id }}">Delete</button>
+                                <button type="submit" style="width:100%" class="delete-link" data-encounter-id="{{ encounter.id }}">Delete</button>
                             </form></td>
                         </td>
                     </tr>

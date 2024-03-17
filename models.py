@@ -1,6 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
-from sqlalchemy.orm import Session
 import database
 from db import db
 import uuid
@@ -9,6 +8,15 @@ import os
 
 ROOT_PATH="uploads"
 
+
+def clean_up_root_directory(root_directory):
+    # Get the root directory of the project
+    for root, dirs, files in os.walk(root_directory, topdown=False):
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            if not os.listdir(dir_path):
+                os.rmdir(dir_path)
+
 class Species(db.Model):
     __tablename__ = 'species'
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -16,6 +24,12 @@ class Species(db.Model):
     species_name = db.Column(db.String(100), nullable=False, unique=True)
     genus_name = db.Column(db.String(100))
     common_name = db.Column(db.String(100))
+
+    def update_call(self,session):
+        encounters = session.query(Encounter).filter_by(species_id=self.id).all()
+        for encounter in encounters:
+            encounter.update_call(session)
+
 
     def get_species_name(self):
         print("get species name ", self.species_name,'' if self.species_name is None else self.species_name)
@@ -53,10 +67,27 @@ class Encounter(db.Model):
         db.UniqueConstraint('encounter_name', 'location'),
     )
 
+
+    def get_number_of_recordings(self):
+        
+        num_recordings = db.session.query(Recording).filter_by(encounter_id=self.id).count()
+        return num_recordings
+
     def generate_relative_path(self):
         species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
-        return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}/"
+        return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}"
     
+    def update_call(self,session):
+        recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
+        for recording in recordings:
+            recording.update_call(session)
+
+    def delete(self,session):
+        recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
+        for recording in recordings:
+            print("delete recording",recording.id)
+            recording.delete(session)
+        session.delete(self)
 
     
     def set_species_id(self, value):
@@ -124,6 +155,14 @@ class File(db.Model):
     # - size
     # - format
 
+    def delete(self, session):
+        print("DELETING FILE", session)
+        self.move_to_trash()
+        session.delete(self)
+    
+    def update_call(self,session):
+        pass
+
     def get_filename(self):
         return self.filename
     
@@ -144,7 +183,6 @@ class File(db.Model):
         self.filename = new_filename  # filename without extension
 
         self.extension = file.filename.split('.')[-1]
-        print("INSERT INTO ",os.path.join(root_path, self.get_full_relative_path()))
         if not os.path.exists(os.path.join(root_path, self.get_full_relative_path())):
             os.makedirs(os.path.join(root_path, self.get_path()), exist_ok=True)
             file.save(os.path.join(root_path, self.get_full_relative_path()))
@@ -178,16 +216,15 @@ class File(db.Model):
         file_name = self.filename
         file_name_with_unique = file_name + "-" + unique_name
 
-        trash_file_path = os.path.join(trash_folder, file_name_with_unique)
-        os.rename(file_path, trash_file_path)
+        trash_file_path = os.path.join(trash_folder, file_name_with_unique) + "." + self.extension
+        if os.path.exists(trash_folder):
+            os.rename(file_path, trash_file_path)
 
     def move_file(self, session, new_relative_file_path, root_path):
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
         current_relative_file_path = os.path.join(root_path, self.get_full_relative_path())
 
         # make the directory of the new_relative_file_path_with_root
-        print("MAKE DIRECTORY ",os.path.dirname(new_relative_file_path_with_root))
-        print(os.path.exists(os.path.dirname(new_relative_file_path_with_root)))
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
         
@@ -224,12 +261,11 @@ class File(db.Model):
                 while parent_dir != root_path and not os.listdir(parent_dir):
                     os.rmdir(parent_dir)
                     parent_dir = os.path.dirname(parent_dir)
-                print("APPLYING CHANGES")
             # Update self.path and self.filename
             
         else:
-            if not os.path.samefile(new_relative_file_path, current_relative_file_path):
-                raise ValueError(f"Attempted to populate a file that already exists: {new_relative_file_path}")
+            if not os.path.samefile(new_relative_file_path_with_root, current_relative_file_path):
+                raise ValueError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
             return False
         
         
@@ -252,6 +288,23 @@ class Recording(db.Model):
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
+    def update_call(self, session):
+        self.move_file(session,ROOT_PATH)
+        if self.recording_file is not None:
+            self.recording_file.update_call(session)
+        if self.selection_file is not None:
+            self.selection_file.update_call(session)
+
+    def delete(self, session):        
+        if self.recording_file_id is not None:
+            self.recording_file.delete(session)
+            self.recording_file = None  # Remove the reference to the recording file
+        
+        if self.selection_file_id is not None:
+            self.selection_file.delete(session)
+            self.selection_file = None  # Remove the reference to the selection file
+        
+        session.delete(self)
 
 
     def move_file(self, session, root_path):
