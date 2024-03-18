@@ -15,26 +15,24 @@
         </nav>
 
     </header>
-    <div>
+    <div id="flashMessages">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="flash-container" style="padding-top:0px;" id="flashMessage" role="alert">
-                {% set category, message = messages|last %}
-                <div class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}" style="padding-top:10px; padding: 10px 10px"> 
-                    <span class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}">{{ message }}</span>
-                    <button type="button" class="close" aria-label="Close" onclick="closeFlashMessage()">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+            {% for category, message in messages %}
+                <div class="flash-container" style="padding-top:0px;" role="alert">
+                    <div class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}" style="padding-top:10px; padding: 10px 10px"> 
+                        <span class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}">{{ message }}</span>
+                        <button type="button" class="close" aria-label="Close" onclick="closeFlashMessage()">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="progress-bar-container" id="progressBarContainer">
-                    <div class="progress-bar {% if category == 'success' %}success-progress{% elif category == 'error' %}error-progress{% endif %}" id="progressBar"></div>
-                </div>
-            </div>
-            <script>
-                fetch('/clear_flashed_messages', { method: 'POST' });
-            </script>
+            {% endfor %}
         {% endif %}
-    {% endwith %}
+        {% endwith %}
     </div>
     
     <style>
@@ -42,12 +40,15 @@
         position: relative;
         width: 100%;
         color: #000;
-        margin-bottom: 20px;
-        border-radius: 0px;
+        
+        margin-bottom: 0px;
+        
     }
     
     .success-message {
     color: #155724;
+    border-color: #155724;
+    border-width: 3px;
     background-color: #d4edda; /* Background color for success messages */
 }
     
@@ -95,39 +96,41 @@
     </style>
     
     <script>
+    
     function closeFlashMessage() {
-        document.getElementById('flashMessage').style.display = 'none';
-    }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        var flashMessage = document.getElementById('flashMessage');
-        if (flashMessage) {
-            var progressBar = document.getElementById('progressBarContainer');
-            //progressBar.classList.add('progress');
-            var progressBarInner = document.getElementById('progressBar');
-            //progressBarInner.classList.add('progress-bar');
-            progressBarInner.setAttribute('role', 'progressbar');
-            progressBarInner.setAttribute('aria-valuenow', '0');
-            progressBarInner.setAttribute('aria-valuemin', '0');
-            progressBarInner.setAttribute('aria-valuemax', '100');
-            //progressBar.appendChild(progressBarInner);
-            //flashMessage.appendChild(progressBar);
-    
-            var timeLeft = 10; // Time in seconds
-            var interval = 1000; // Update interval in milliseconds
-    
-            var timer = setInterval(function() {
-                timeLeft = timeLeft - 1;
-                var progress = (timeLeft) * 10; // Calculate progress percentage
-                progressBarInner.style.width = progress + '%';
-                progressBarInner.setAttribute('aria-valuenow', progress);
-    
-                if (timeLeft <= -1) {
-                    clearInterval(timer);
-                    flashMessage.style.display = 'none';
-                }
-            }, interval);
-        }
+    // Get all flash containers and remove them from the DOM
+    const flashContainers = document.querySelectorAll('.flash-container');
+    flashContainers.forEach(container => {
+        container.remove();
     });
+}
+    /*
+    document.addEventListener('DOMContentLoaded', function() {
+    var flashMessages = document.querySelectorAll('.flash-container');
+    var lastFlashMessage = flashMessages[flashMessages.length - 1];
+    var progressBarContainer = lastFlashMessage.querySelector('.progress-bar-container');
+    var progressBarInner = progressBarContainer.querySelector('.progress-bar');
+    progressBarInner.setAttribute('role', 'progressbar');
+    progressBarInner.setAttribute('aria-valuenow', '0');
+    progressBarInner.setAttribute('aria-valuemin', '0');
+    progressBarInner.setAttribute('aria-valuemax', '100');
+
+    var timeLeft = 10; // Time in seconds
+    var interval = 1000; // Update interval in milliseconds
+
+    var timer = setInterval(function() {
+        timeLeft = timeLeft - 1;
+        var progress = (timeLeft) * 10; // Calculate progress percentage
+        progressBarInner.style.width = progress + '%';
+        progressBarInner.setAttribute('aria-valuenow', progress);
+
+        if (timeLeft <= -1) {
+            clearInterval(timer);
+            flashMessages.forEach(function(flashMessage) {
+                flashMessage.style.display = 'none';
+            });
+        }
+    }, interval);
+});*/
     </script>
 </html>

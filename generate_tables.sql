@@ -5,14 +5,38 @@ create or replace table test_database.species (
 	common_name VARCHAR(100)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+CREATE OR REPLACE TABLE test_database.data_source (
+    id UUID primary key not null default UUID(),
+    name VARCHAR(255),
+    phone_number1 VARCHAR(20) UNIQUE,
+    phone_number2 VARCHAR(20) UNIQUE,
+    email1 VARCHAR(255) NOT NULL UNIQUE,
+    email2 VARCHAR(255) UNIQUE,
+    address TEXT,
+    notes TEXT,
+    type ENUM('person', 'organisation')
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+CREATE OR REPLACE TABLE test_database.recording_platform (
+	id UUID primary key not null default UUID(),
+	name VARCHAR(100) not null unique
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
 create or replace table test_database.encounter (
     id UUID primary key not null default UUID(),
 	encounter_name VARCHAR(100) not null,
     location VARCHAR(100) not null,
 	species_id UUID not null,
 	origin VARCHAR(100),
+	longitude VARCHAR(20),
+	latitude VARCHAR(20),
 	notes VARCHAR(1000),
+	date_received DATE, 
+	data_source_id UUID,
+	recording_platform_id UUID,
     constraint foreign key (species_id) references test_database.species (id),
+	constraint foreign key (data_source_id) references test_database.data_source (id),
+	constraint foreign key (recording_platform_id) references test_database.recording_platform (id),
 	constraint unique (encounter_name,location)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
@@ -40,19 +64,18 @@ CREATE TABLE IF NOT EXISTS test_database.recording (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 
-create or replace table test_database.clip (
+create or replace table test_database.selection (
 	id UUID primary key not null default UUID(),
-	selection INT not null,
-	clip_file TEXT,
+	selection_number INT not null,
+	selection_file_id TEXT not null,
 	recording_id UUID not null,
-	constraint unique (selection,recording_id),
+	constraint unique (selection_number,recording_id),
 	constraint foreign key (recording_id) references test_database.recording (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-create or replace table test_database.roccaoutput (
+create or replace table test_database.contour (
 	id UUID primary key not null default UUID(),
-	csv_file TEXT,
-	ctr_file TEXT
+	
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 

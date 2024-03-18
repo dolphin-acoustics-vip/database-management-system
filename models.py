@@ -26,7 +26,7 @@ class Species(db.Model):
     common_name = db.Column(db.String(100))
 
     def update_call(self,session):
-        encounters = session.query(Encounter).filter_by(species_id=self.id).all()
+        encounters = session.query(Encounter).filter_by(species=self).all()
         for encounter in encounters:
             encounter.update_call(session)
 
@@ -59,14 +59,32 @@ class Encounter(db.Model):
     location = db.Column(db.String(100), nullable=False)
     species_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('species.id'), nullable=False)
     origin = db.Column(db.String(100))
+    latitude = db.Column(db.String(20))
+    longitude = db.Column(db.String(20))
+    data_source_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('data_source.id'), nullable=False)
+    recording_platform_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording_platform.id'), nullable=False)
     notes = db.Column(db.String(1000))
 
     species = db.relationship("Species")
+    data_source = db.relationship("DataSource")
+    recording_platform = db.relationship("RecordingPlatform")
 
     __table_args__ = (
         db.UniqueConstraint('encounter_name', 'location'),
     )
 
+
+    def set_latitude(self, value):
+        self.latitude = None if value.strip() == '' else value.strip()
+    
+    def set_longitude(self, value):
+        self.longitude = None if value.strip() == '' else value.strip()
+    
+    def get_latitude(self):
+        return '' if self.latitude is None else self.latitude
+
+    def get_longitude(self):
+        return '' if self.longitude is None else self.longitude
 
     def get_number_of_recordings(self):
         
@@ -91,16 +109,40 @@ class Encounter(db.Model):
 
     
     def set_species_id(self, value):
+        print(value,type(value))
         if type(value)==str:
             try:
-                value = uuid.UUID(value)
+                value = uuid.UUID(value.strip())
             except ValueError:
                 value = None
         if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
             value = None
-        
+        print("SET SPECIES",value)
         self.species_id = value
 
+    def set_data_source(self, value):
+        print(value,type(value))
+        if type(value)==str:
+            try:
+                value = uuid.UUID(value.strip())
+            except ValueError:
+                value = None
+        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
+            value = None
+        print("SET DATA SOURCE",value)
+        self.data_source_id = value
+    
+    def set_recording_platform(self,value):
+        print(value,type(value))
+        if type(value)==str:
+            try:
+                value = uuid.UUID(value.strip())
+            except ValueError:
+                value = None
+        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
+            value = None
+        print("SET PLATFORM",value)
+        self.recording_platform_id = value
     
 
     def get_encounter_name(self):
@@ -156,7 +198,6 @@ class File(db.Model):
     # - format
 
     def delete(self, session):
-        print("DELETING FILE", session)
         self.move_to_trash()
         session.delete(self)
     
@@ -187,8 +228,8 @@ class File(db.Model):
             os.makedirs(os.path.join(root_path, self.get_path()), exist_ok=True)
             file.save(os.path.join(root_path, self.get_full_relative_path()))
         else:
-            raise ValueError("File already exists")
-
+            raise IOError(f"File already exists in location {os.path.join(root_path, self.get_full_relative_path())}. Cannot overwrite.")
+            
     def update_path_and_filename(self, new_path, new_filename,root_path):
 
         self.path = new_path
@@ -265,7 +306,7 @@ class File(db.Model):
             
         else:
             if not os.path.samefile(new_relative_file_path_with_root, current_relative_file_path):
-                raise ValueError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
+                raise IOError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
             return False
         
         
@@ -295,6 +336,14 @@ class Recording(db.Model):
         if self.selection_file is not None:
             self.selection_file.update_call(session)
 
+        
+        selections = session.query(Selection).filter_by(recording_id=self.id).all()
+        for selection in selections:
+            selection.update_call(session)
+        
+
+        
+
     def delete(self, session):        
         if self.recording_file_id is not None:
             self.recording_file.delete(session)
@@ -304,6 +353,12 @@ class Recording(db.Model):
             self.selection_file.delete(session)
             self.selection_file = None  # Remove the reference to the selection file
         
+
+        selections = session.query(Selection).filter_by(recording_id=self.id).all()
+        for selection in selections:
+            selection.delete(session)
+
+
         session.delete(self)
 
 
@@ -313,6 +368,9 @@ class Recording(db.Model):
         if self.selection_file is not None:
             self.selection_file.move_file(session,self.generate_full_relative_path(extension="." +self.selection_file.extension),root_path)
 
+    def generate_relative_path_for_selections(self):
+        folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
+        return os.path.join(self.generate_relative_path(), folder_name)
 
     def generate_relative_path(self):
         folder_name = self.start_time.strftime("Recording-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
@@ -344,6 +402,9 @@ class Recording(db.Model):
         elif not isinstance(datetime_object, datetime):
             raise ValueError("Start time must be a valid datetime")
         self.start_time = datetime_object
+    
+    def match_start_time(self, match_datetime):
+        return self.start_time == match_datetime
 
     def get_start_time_string(self, seconds=False):
         if seconds:
@@ -397,3 +458,81 @@ class Recording(db.Model):
         if value is not None and not isinstance(value, int):
             raise ValueError("Duration must be an integer")
         self.duration = value
+    
+
+class Selection(db.Model):
+    __tablename__ = 'selection'
+
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
+    selection_number = db.Column(db.Integer, nullable=False)
+    selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
+    recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
+
+    selection_file = db.relationship("File", foreign_keys=[selection_file_id])
+    recording = db.relationship("Recording", foreign_keys=[recording_id])
+
+
+    __table_args__ = (
+        db.UniqueConstraint('selection_number', 'recording_id', name='unique_selection_number_recording'),
+        {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
+    )
+
+
+    def update_call(self, session):
+        self.move_file(session,ROOT_PATH)
+
+    def move_file(self, session, root_path):
+        if self.selection_file is not None:
+            self.selection_file.move_file(session,self.generate_full_relative_path()+"." +self.selection_file.extension,root_path)
+
+
+    def delete(self, session):        
+        if self.selection_file_id is not None:
+            self.selection_file.delete(session)
+            self.selection_file = None  # Remove the reference to the recording file
+        
+        session.delete(self)
+
+
+    def generate_filename(self):
+        return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
+    
+    def generate_relative_path(self):
+        return os.path.join(self.recording.generate_relative_path_for_selections())
+
+    def generate_full_relative_path(self):
+        print("GENEREATE NEW PATH",os.path.join(self.generate_relative_path(), self.generate_filename()))
+        return os.path.join(self.generate_relative_path(), self.generate_filename())
+    
+    def set_selection_number(self, value):
+        if value is not None and not (isinstance(value, int) or str(value).isdigit()):
+            raise ValueError("Selection must be an integer or a string that can be converted to an integer")
+        self.selection_number = value
+
+
+class DataSource(db.Model):
+    __tablename__ = 'data_source'
+
+    id = db.Column(db.String, primary_key=True, nullable=False, default=db.text("uuid_generate_v4()"))
+    name = db.Column(db.String(255))
+    phone_number1 = db.Column(db.String(20), unique=True)
+    phone_number2 = db.Column(db.String(20), unique=True)
+    email1 = db.Column(db.String(255), nullable=False, unique=True)
+    email2 = db.Column(db.String(255), unique=True)
+    address = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    type = db.Column(db.Enum('person', 'organisation'))
+
+    def __repr__(self):
+        return '<DataSource %r>' % self.name
+    
+
+
+class RecordingPlatform(db.Model):
+    __tablename__ = 'recording_platform'
+
+    id = db.Column(db.String, primary_key=True, nullable=False, default=db.text("uuid_generate_v4()"))
+    name = db.Column(db.String(100), unique=True, nullable=False)
+
+    def __repr__(self):
+        return '<RecordingPlatform %r>' % self.name

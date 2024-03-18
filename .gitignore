@@ -1,3 +1,4 @@
 /uploads/*
 /webapp/*
 /trash/*
+/__pycache__/*

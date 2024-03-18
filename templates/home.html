@@ -5,6 +5,20 @@
     <head>
         <link rel="stylesheet" href="static/css/hero-section.css">
         <link rel="stylesheet" href="static/css/general-style.css">
+        <style>
+gmp-map {
+  height: 100%;
+}
+
+/* Optional: Makes the sample page fill the window. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+        </style>
     </head>
     
 {% include 'header.html' %}
@@ -27,6 +41,14 @@
       <h2>Home</h2>
       <td><a href="/">Back</a></td>
     </div>
+
+    <body>
+      <gmp-map center="56.33772659301758,-2.8119962215423584" zoom="14" map-id="DEMO_MAP_ID">
+        <gmp-advanced-marker position="56.33772659301758,-2.8119962215423584" title="My location"></gmp-advanced-marker>
+      </gmp-map>
+    </body>
   
 </body>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyATlDZBRMK12PvELE9IxpxXlcLgq9DrhAI&callback=console.debug&libraries=maps,marker&v=beta">
+</script>
 </html>
