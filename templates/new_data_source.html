@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    {% include 'header.html' %}
+
+<head>
+    <title>New Data Source</title>
+    <link rel="stylesheet" href="../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../static/css/general-style.css">
+</head>
+
+<body>
+    <div class="outer-div">
+    <h1>New Data Source</h1>
+    <form action="" method="post">
+        {% set editing = False %}
+        {% include 'data_source_form_template.html' %}
+    </form>
+    </div>
+</body>
+</html>

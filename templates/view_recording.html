@@ -13,16 +13,15 @@
         <h2>Recording Summary</h2>
         <p>Start date: {{ recording.get_start_time_string() }}</p>
         <p>Encounter: {{ recording.encounter.encounter_name }} ({{recording.encounter.location}})</p>
-
+        <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
 
         <h2>Add selections</h2>
         <form id="uploadForm" onsubmit="return false;" enctype="multipart/form-data">
             <input type="file" name="selection_files" id="selection_files" multiple>
             <p id="bulk-upload-status-message" hidden="true">Status message</p>
-            <button id="bulk-upload-validate" onclick="checkValidSelections(event)" hidden="true">Validate</button><br>
-
-            <input id="bulk-upload" type="submit" value="Upload" hidden="true">
-            <button id="bulk-upload-clear" onclick="clearBulkUpload(event)" hidden>Reset</button><br>
+            <button id="bulk-upload-validate" style="margin-bottom: 5px;" onclick="checkValidSelections(event)" hidden="true">Validate</button>
+            <input id="bulk-upload" style="margin-bottom: 5px;" type="submit" value="Upload" hidden="true">
+            <button id="bulk-upload-clear" style="margin-bottom: 5px;" onclick="clearBulkUpload(event)" hidden>Reset</button>
             <table id="selectionTable" hidden="true">
                 <thead>
                     <tr>
@@ -43,7 +42,7 @@
 
         <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
         {% if selections|length > 0 %}
-        <a href="{{url_for('download_files_from_folder', path=recording.generate_relative_path_for_selections())}}">Download All</a>
+        <input type="submit" value="Delete Selected" onclick="deleteSelectedSelections()"><br><br>
         <table>
             <tr>
                 <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
@@ -61,15 +60,16 @@
                         {% if selection.selection_file %}
                         <a
                             href="{{ url_for('download_file_from_uploads', full_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>
-                        {% else %}
+                        {% else %}<section id="encounter-summary">
                         No selection file available
                         {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
-                <input type="submit" value="Delete Selected" onclick="deleteSelectedSelections()">
             </form>
         </table>
+        <a href="{{url_for('download_files_from_folder', path=recording.generate_relative_path_for_selections())}}">Download All</a>
+
         {% else %}
         <p>This recording has no selections. Please use the form above to add selections.</p>
         {% endif %}
@@ -310,7 +310,7 @@
                         cell2.appendChild(input);
                         cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
                         cell4.innerHTML = messages.join('<br>');
-                        cell5.innerHTML = '<button onclick="changeSelectionNumber(this)">Change Selection Number</button> <button onclick="deleteFile(this)">Delete File</button>';
+                        cell5.innerHTML = '<button style="width:100%;" onclick="deleteFile(this)">Remove</button>';
                         addFileToSubmit(file, selectionNumber); // Add the file to filesToSubmit array
 
 
@@ -455,7 +455,7 @@
         // Hide the validate and upload buttons, and show the validate and clear buttons
         document.getElementById('bulk-upload-validate').hidden = true;
         document.getElementById('bulk-upload').hidden = true;
-        document.getElementById('bulk-upload-clear').hidden = false;
+        document.getElementById('bulk-upload-clear').hidden = true;
     }
 
 

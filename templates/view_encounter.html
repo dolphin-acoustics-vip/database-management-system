@@ -32,6 +32,9 @@ body, {
 
     
     <div class="outer-div">
+        <h1>Encounter</h1>
+        <a href="#encounter-summary">Encounter Summary</a> | <a href="#add-recording">Add Recording</a> | <a href="#recordings">Recordings</a>
+    <section id="encounter-summary">
     <div class="summary" id="summary">
         <h2>Encounter Summary</h2>
         <p>Encounter: {{ encounter.encounter_name }}</p>
@@ -51,7 +54,8 @@ body, {
     <div class="map" id="map" hidden></div>
 </div><br>
 
-
+    </section>
+    <section id="add-recording">
     <h2>Add Recording</h2>
     <form action="/encounter/view/{{encounter.id}}/add_recording" method="post" enctype="multipart/form-data">
         <label for="time_start">Start Time:</label>
@@ -68,6 +72,8 @@ body, {
 
         <button type="submit">Submit</button>
     </form><br>
+    </section>
+    <section id="recordings">
     <h2>Recordings</h2>
     {% if encounter.get_number_of_recordings() > 0 %}
     <a href="{{url_for('download_files_from_folder', path=encounter.generate_relative_path())}}">Download All</a>
@@ -125,9 +131,11 @@ body, {
         {% endfor %}
     </table>
 
+
     {% else %}
     <p>This encounter has no recordings. Please use the form above to add recordings.</p>
     {% endif %}
+    </section>
 
 
 </div>

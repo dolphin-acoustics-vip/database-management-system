@@ -46,6 +46,143 @@ with app.app_context():
     Session = sessionmaker(bind=engine, autoflush=False)
 
 
+
+@app.route('/administration_portal')
+def administration_portal():
+    with Session() as session:
+        data_source_list = session.query(DataSource).all()
+        recording_platform_list = session.query(RecordingPlatform).all()
+
+        return render_template('admin_portal.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list)
+
+
+@app.route('/data_source/<uuid:data_source_id>/edit', methods=['GET', 'POST'])
+def edit_data_source(data_source_id):
+    with Session() as session:
+        try:
+            data_source = session.query(DataSource).filter_by(id=data_source_id).first()
+            
+            if request.method == 'POST':
+                # Update data source with form data
+                data_source.name = request.form['name']
+                data_source.phone_number1 = request.form['phone_number1']
+                data_source.phone_number2 = request.form['phone_number2']
+                data_source.email1 = request.form['email1']
+                data_source.email2 = request.form['email2']
+                data_source.address = request.form['address']
+                data_source.notes = request.form['notes']
+                data_source.type = request.form['source-type']
+                session.commit()
+                flash('Data source updated: {}'.format(data_source.name), 'success')
+                return redirect('/administration_portal')
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+            return redirect('/administration_portal')
+
+        return render_template('edit_data_source.html', data_source=data_source, data_source_type_values  = DataSource.type.type.enums)
+
+@app.route('/data_source/new', methods=['GET', 'POST'])
+def new_data_source():
+    with Session() as session:
+        try:
+            if request.method == 'POST':
+                # Create a new data source with form data
+                new_data_source = DataSource(
+                    name=request.form['name'],
+                    phone_number1=request.form['phone_number1'],
+                    phone_number2=request.form['phone_number2'],
+                    email1=request.form['email1'],
+                    email2=request.form['email2'],
+                    address=request.form['address'],
+                    notes=request.form['notes'],
+                    type=request.form['source-type']
+                )
+                session.add(new_data_source)
+                session.commit()
+                flash('Data source created: {}'.format(new_data_source.name), 'success')
+                return redirect('/administration_portal')
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+            return redirect('/administration_portal')
+
+        return render_template('new_data_source.html',data_source_type_values  = DataSource.type.type.enums)
+
+@app.route('/data_source/<uuid:data_source_id>/delete', methods=['GET'])
+def delete_data_source(data_source_id):
+    with Session() as session:
+        try:
+            data_source = session.query(DataSource).filter_by(id=data_source_id).first()
+            session.delete(data_source)
+            session.commit()
+            flash('Data source deleted: {}'.format(data_source.name), 'success')
+            return redirect('/administration_portal')
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+            return redirect('/administration_portal')
+
+
+
+@app.route('/recording_platform/<uuid:recording_platform_id>/edit', methods=['GET', 'POST'])
+def edit_recording_platform(recording_platform_id):
+    print(recording_platform_id)
+    with Session() as session:
+        try:
+            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
+            
+            if request.method == 'POST':
+                # Update recording platform with form data
+                recording_platform.name = request.form['name']
+                session.commit()
+                flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
+                return redirect('/administration_portal')
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+            return redirect('/administration_portal')
+
+            
+        return render_template('edit_recording_platform.html', recording_platform=recording_platform)
+
+@app.route('/recording_platform/new', methods=['GET', 'POST'])
+def new_recording_platform():
+    with Session() as session:
+        try:
+            if request.method == 'POST':
+                # Create a new recording platform with form data
+                new_recording_platform = RecordingPlatform(
+                    name=request.form['name']
+                )
+                session.add(new_recording_platform)
+                session.commit()
+                flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
+                return redirect('/administration_portal')
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+            return redirect('/administration_portal')
+
+        
+        return render_template('new_recording_platform.html')
+
+@app.route('/recording_platform/<uuid:recording_platform_id>/delete', methods=['GET'])
+def delete_recording_platform(recording_platform_id):
+    with Session() as session:
+        try:
+            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
+            session.delete(recording_platform)
+            session.commit()
+            flash('Recording platform deleted: {}'.format(recording_platform.name), 'success')
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+            return redirect('/administration_portal')
+
+        return redirect('/administration_portal')
+    
+
 @app.route('/')
 def hello_world():
     return "Root Page"
@@ -83,6 +220,18 @@ def serve_hero_section():
 
 @app.route('/species/edit/<uuid:species_id>', methods=['GET', 'POST'])
 def edit_species(species_id):
+    """
+    Edit and update species data based on the provided species ID.
+
+    Parameters:
+    - species_id: The UUID of the species to edit.
+
+    Returns:
+    - If the request method is POST and the species exists, updates the species data and redirects to '/species'.
+    - If the species does not exist, flashes an error message and redirects to '/species'.
+    - If the request method is not POST, renders the 'edit_species.html' template for editing.
+    - In case of exceptions, rolls back the session, flashes an error message, and redirects to '/species'.
+    """
     try:
         session = Session()
         species_data = session.query(Species).filter_by(id=species_id).first()
@@ -805,6 +954,7 @@ def edit_encounter(encounter_id):
         raise e
     finally:
         session.close()
+
 
 if __name__ == '__main__':
     app.run(debug=True)

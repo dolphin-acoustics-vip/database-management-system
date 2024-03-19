@@ -329,6 +329,10 @@ class Recording(db.Model):
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
+    def get_number_of_selections(self):
+        selections = db.session.query(Selection).filter_by(recording_id=self.id).all()
+        return len(selections)
+
     def update_call(self, session):
         self.move_file(session,ROOT_PATH)
         if self.recording_file is not None:
@@ -513,7 +517,7 @@ class Selection(db.Model):
 class DataSource(db.Model):
     __tablename__ = 'data_source'
 
-    id = db.Column(db.String, primary_key=True, nullable=False, default=db.text("uuid_generate_v4()"))
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
     name = db.Column(db.String(255))
     phone_number1 = db.Column(db.String(20), unique=True)
     phone_number2 = db.Column(db.String(20), unique=True)
@@ -531,7 +535,7 @@ class DataSource(db.Model):
 class RecordingPlatform(db.Model):
     __tablename__ = 'recording_platform'
 
-    id = db.Column(db.String, primary_key=True, nullable=False, default=db.text("uuid_generate_v4()"))
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
     name = db.Column(db.String(100), unique=True, nullable=False)
 
     def __repr__(self):

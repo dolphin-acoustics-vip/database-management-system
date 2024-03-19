@@ -7,14 +7,15 @@ create or replace table test_database.species (
 
 CREATE OR REPLACE TABLE test_database.data_source (
     id UUID primary key not null default UUID(),
-    name VARCHAR(255),
-    phone_number1 VARCHAR(20) UNIQUE,
-    phone_number2 VARCHAR(20) UNIQUE,
-    email1 VARCHAR(255) NOT NULL UNIQUE,
-    email2 VARCHAR(255) UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    phone_number1 VARCHAR(20),
+    phone_number2 VARCHAR(20),
+    email1 VARCHAR(255) NOT NULL,
+    email2 VARCHAR(255),
     address TEXT,
     notes TEXT,
-    type ENUM('person', 'organisation')
+    type ENUM('person', 'organisation'),
+	constraint unique (name,email1)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 CREATE OR REPLACE TABLE test_database.recording_platform (
