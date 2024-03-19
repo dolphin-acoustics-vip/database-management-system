@@ -7,15 +7,29 @@
     <link rel="stylesheet" href="../../static/css/hero-section.css">
     <link rel="stylesheet" href="../../static/css/general-style.css">
 </head>
+<style>
+.large-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #f0f0f0;
+    border: none;
+    text-decoration: none;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+}
+
+</style>
 
 <body>
     <div class="outer-div">
         <h1>Administration Portal</h1>
-        <a href="#data-sources">Data Sources</a> | <a href="#recording-platforms">Recording Platforms</a>
+        <a href="#data-sources" >Data Sources</a> | <a href="#recording-platforms" >Recording Platforms</a>
 
         <section id="data-sources">
             <h2>Data Sources</h2>
-            <a href="{{ url_for('new_data_source') }}" class="add-new-button" style="width:300px"><button>Add new data source</button></a><br>
+            <a href="{{ url_for('admin.admin_data_source_new') }}" class="add-new-button" style="width:300px"><button>Add new data source</button></a><br>
             <div style="margin-top: 10px; margin-bottom: 5px;">
                 <label for="sort-select">Filter (any column):</label>
             </div>
@@ -33,8 +47,8 @@
                     <td>{{ data_source.name }}</td>
                     <td>{{ data_source.email1 }}</td>
                     <td>
-                        <a href="/data_source/{{ data_source.id }}/edit">View</a>
-                        <a href="/data_source/{{ data_source.id }}/delete">Delete</a>
+                        <a href="{{ url_for('admin.admin_data_source_view', data_source_id=data_source.id) }}">View</a>
+                        <a href="{{ url_for('admin.admin_data_source_delete', data_source_id=data_source.id) }}">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}
