@@ -28,7 +28,6 @@ def add():
 
 @app.route('/recording_platform/<uuid:recording_platform_id>/edit', methods=['GET', 'POST'])
 def edit_recording_platform(recording_platform_id):
-    print(recording_platform_id)
     with Session() as session:
         try:
             recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
