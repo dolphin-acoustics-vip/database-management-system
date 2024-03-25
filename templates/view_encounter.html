@@ -34,16 +34,22 @@ body, {
     <div class="outer-div">
         <h1>Encounter</h1>
         <a href="#encounter-summary">Encounter Summary</a> | <a href="#add-recording">Add Recording</a> | <a href="#recordings">Recordings</a>
+        
+
     <section id="encounter-summary">
     <div class="summary" id="summary">
         <h2>Encounter Summary</h2>
+        <form style="margin-bottom:5px;" method="get" action="{{ url_for('edit_encounter', encounter_id=encounter.id) }}">
+            <input type="hidden" name="_method" value="GET">
+            <button type="submit" data-encounter-id="{{ encounter.id }}">Edit</button>
+        </form>
         <p>Encounter: {{ encounter.encounter_name }}</p>
         <p>Location: {{ encounter.location }}</p>
         <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
 
         <h3>Other details</h3>
         <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
-        <p>Origin: {% if encounter.origin %}{{ encounter.origin }} {% else %}Not entered{% endif %}</p>
+        <p>Cruise: {% if encounter.origin %}{{ encounter.origin }} {% else %}Not entered{% endif %}</p>
         <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {% else %}Not entered{% endif %}</p>
         <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{% endif %}</p>
 

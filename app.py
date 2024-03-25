@@ -25,7 +25,7 @@ def add():
     # rest of your route
 
 '''
-
+# test
 @app.route('/recording_platform/<uuid:recording_platform_id>/edit', methods=['GET', 'POST'])
 def edit_recording_platform(recording_platform_id):
     with Session() as session:
@@ -229,8 +229,8 @@ def add_encounter():
         encounter_name = request.form['encounter_name']
         location = request.form['location']
         species_id = request.form['species']
-        latitude = request.form['latitude']
-        longitude = request.form['longitude']
+        latitude = request.form['latitude-start']
+        longitude = request.form['longitude-start']
         data_source = request.form['data_source']
         recording_platform = request.form['recording_platform']
 
@@ -832,8 +832,8 @@ def edit_encounter(encounter_id):
             encounter.set_location(request.form['location'])
             encounter.set_species_id(request.form['species'])
             encounter.set_origin(request.form['origin'])
-            encounter.set_latitude(request.form['latitude'])
-            encounter.set_longitude(request.form['longitude'])
+            encounter.set_latitude(request.form['latitude-start'])
+            encounter.set_longitude(request.form['longitude-start'])
             encounter.set_data_source(request.form['data_source'])
             encounter.set_recording_platform(request.form['recording_platform'])
             encounter.set_notes(request.form['notes'])
