@@ -9,6 +9,13 @@ from models import *
 routes_admin = Blueprint('admin', __name__)
 
 
+@routes_admin.route('/admin')
+def admin():
+    """
+    A route decorator that redirects to the admin dashboard page.
+    """
+    return redirect(url_for('admin.admin_dashboard'))
+
 @routes_admin.route('/admin/dashboard')
 def admin_dashboard():
     """
@@ -74,8 +81,7 @@ def admin_data_source_new():
     """
     A route decorator that handles GET requests for creating a new data source in the admin panel.
     """
-    with Session() as session:
-        return render_template('admin/admin-data-source-new.html', data_source_type_values = DataSource.type.type.enums)
+    return render_template('admin/admin-data-source-new.html', data_source_type_values = DataSource.type.type.enums)
 
 @routes_admin.route('/admin/data-source/insert', methods=['POST'])
 def admin_data_source_insert():
@@ -125,3 +131,83 @@ def admin_data_source_delete(data_source_id):
             session.rollback()
             return redirect(url_for('admin.admin_dashboard'))
 
+@routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/view', methods=['GET'])
+def admin_recording_platform_view(recording_platform_id):
+    """
+    Renders the admin view for a specific recording platform.
+
+    Parameters:
+    recording_platform_id (uuid): The unique identifier of the recording platform.
+
+    Returns:
+    flask.Response: The rendered HTML template for the admin recording platform view.
+    """
+    with Session() as session:
+        recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
+        return render_template('admin/admin-recording-platform-view.html', recording_platform=recording_platform)
+
+@routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/edit', methods=['POST'])
+def admin_recording_platform_edit(recording_platform_id):
+    """
+    A function to edit a recording platform in the admin interface.
+    
+    Parameters:
+    recording_platform_id (str): The UUID of the recording platform to edit.
+    
+    Returns:
+    None
+    """
+    with Session() as session:
+        try:
+            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
+            if request.method == 'POST':
+                # Update recording platform with form data
+                recording_platform.name = request.form['name']
+                session.commit()
+                flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
+        except SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+        return redirect(url_for('admin.admin_dashboard'))
+
+@routes_admin.route('/admin/recording-platform/new', methods=['GET'])
+def admin_recording_platform_new():
+    """
+    A route decorator for creating a new recording platform in the admin panel.
+    """
+    return render_template('admin/admin-recording-platform-new.html')
+
+@routes_admin.route('/admin/recording-platform/insert', methods=['POST'])
+def admin_recording_platform_insert():
+    """
+    Create a new recording platform with form data and insert it into the database.
+    """
+    with Session() as session:
+        try:
+            new_recording_platform = RecordingPlatform(
+                name=request.form['name']
+            )
+            session.add(new_recording_platform)
+            session.commit()
+            flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
+        except SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+        return redirect(url_for('admin.admin_dashboard'))
+
+@routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/delete', methods=['GET'])
+def admin_recording_platform_delete(recording_platform_id):
+    """
+    A route to delete a recording platform in the admin panel. Takes the recording platform id as a parameter.
+    """
+    with Session() as session:
+        try:
+            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
+            session.delete(recording_platform)
+            session.commit()
+            flash('Recording platform deleted: {}'.format(recording_platform.name), 'success')
+        except SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+        return redirect(url_for('admin.admin_dashboard'))
+    

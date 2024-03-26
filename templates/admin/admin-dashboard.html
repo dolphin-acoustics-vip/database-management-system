@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-{% include 'header.html' %}
+{% include 'partials/header.html' %}
 
 <head>
     <title>Administration Portal</title>
@@ -60,7 +60,7 @@
 
         <section id="recording-platforms">
             <h2>Recording Platforms</h2>
-            <a href="{{ url_for('new_recording_platform') }}" class="add-new-button" style="width:300px"><button>Add new recording platform</button></a><br>
+            <a href="{{ url_for('admin.admin_recording_platform_new') }}" class="add-new-button" style="width:300px"><button>Add new recording platform</button></a><br>
             <div style="margin-top: 10px; margin-bottom: 5px;">
                 <label for="sort-select">Filter (any column):</label>
             </div>
@@ -76,8 +76,8 @@
                 <tr>
                     <td>{{ recording_platform.name }}</td>
                     <td>
-                        <a href="/recording_platform/{{ recording_platform.id }}/edit">View</a>
-                        <a href="/recording_platform/{{ recording_platform.id }}/delete">Delete</a>
+                        <a href="{{ url_for('admin.admin_recording_platform_view', recording_platform_id=recording_platform.id) }}">View</a>
+                        <a href="{{ url_for('admin.admin_recording_platform_delete', recording_platform_id=recording_platform.id) }}">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}

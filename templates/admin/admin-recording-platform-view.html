@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+{% include 'partials/header.html' %}
 <head>
     <title>Edit Recording Platform</title>
     <link rel="stylesheet" href="../../static/css/hero-section.css">
@@ -7,9 +8,9 @@
 </head>
 <body>
     <h1>Edit Recording Platform</h1>
-    <form action="" method="post">
+    <form action="{{ url_for('admin.admin_recording_platform_edit', recording_platform_id=recording_platform.id) }}" method="post">
         {% set editing = True %}
-        {% include 'recording_platform_form_template.html' %}
+        {% include 'admin/admin-recording-platform-template.html' %}
     </form>
 </body>
 </html>
