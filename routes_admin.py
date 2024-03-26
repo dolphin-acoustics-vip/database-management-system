@@ -24,7 +24,9 @@ def admin_dashboard():
     with Session() as session:
         data_source_list = session.query(DataSource).all()
         recording_platform_list = session.query(RecordingPlatform).all()
-        return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list)
+        species_list = session.query(Species).all()
+
+        return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list, species_list=species_list)
 
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/view', methods=['GET'])
 def admin_data_source_view(data_source_id):
@@ -210,4 +212,100 @@ def admin_recording_platform_delete(recording_platform_id):
             flash(database.parse_alchemy_error(e), 'error')
             session.rollback()
         return redirect(url_for('admin.admin_dashboard'))
+
+
+'''
+@routes_admin.route('/species/dashboard', methods=['GET'])
+def admin_species_dashboard():
+    with Session() as session:
+        try:
+            species_data = session.query(Species).all()
+            return render_template('species/species.html', species_list=species_data)
+        except Exception as e:
+            flash(str(e), 'error')
+'''
+
+@routes_admin.route('/admin/species/<uuid:species_id>/view', methods=['GET'])
+def admin_species_view(species_id):
+    """
+    Edit and update species data based on the provided species ID.
+
+    Parameters:
+    - species_id: The UUID of the species to edit.
+
+    Returns:
+    - If the request method is POST and the species exists, updates the species data and redirects to '/species'.
+    - If the species does not exist, flashes an error message and redirects to '/species'.
+    - If the request method is not POST, renders the 'edit_species.html' template for editing.
+    - In case of exceptions, rolls back the session, flashes an error message, and redirects to '/species'.
+    """
+    try:
+        session = Session()
+        species_data = session.query(Species).filter_by(id=species_id).first()
+ 
+        return render_template('admin/admin-species-view.html', species=species_data)
+    except Exception as e:
+        session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('admin.admin_dashboard'))
+    finally:
+        session.close()
     
+    
+@routes_admin.route('/admin/species/<uuid:species_id>/edit', methods=['POST'])
+def admin_species_edit(species_id):
+    with Session() as session:
+        species_data = session.query(Species).filter_by(id=species_id).first()
+
+        if species_data:
+            species_name = request.form['species_name']
+            genus_name = request.form['genus_name']
+            common_name = request.form['common_name']
+            species_data.set_species_name(species_name)
+            species_data.set_genus_name(genus_name)
+            species_data.set_common_name(common_name)
+            species_data.update_call(session)
+            session.commit()
+            #clean_up_root_directory(UPLOAD_FOLDER)
+            flash('Species updated: {}'.format(species_name), 'success')
+        else:
+            flash('Species with ID {} not found'.format(species_id), 'error')
+            session.rollback()
+        return redirect(url_for('admin.admin_dashboard'))
+
+# Update the route handler to use SQLAlchemy for deleting a species from the table
+@routes_admin.route('/admin/species/<uuid:species_id>/delete', methods=['POST'])
+def admin_species_delete(species_id):
+    try:
+        with Session() as session:
+            species = session.query(Species).filter_by(id=species_id).first()
+            species_name = species.get_species_name()
+            session.delete(species)
+            session.commit()
+            flash('Species deleted: {}'.format(species_name), 'success')
+    except SQLAlchemyError as e:
+        flash(str(e), 'error')
+        session.rollback()
+    return redirect(url_for('admin.admin_dashboard'))
+
+    
+@routes_admin.route('/admin/species/new', methods=['GET'])
+def admin_species_new():
+    return render_template('admin/admin-species-new.html')
+
+@routes_admin.route('/admin/species/insert', methods=['POST'])
+def admin_species_insert():
+    with Session() as session:
+        species_name = request.form['species_name']
+        genus_name = request.form['genus_name']
+        common_name = request.form['common_name']
+        try:
+            new_species = Species(species_name=species_name, genus_name=genus_name, common_name=common_name)
+            session.add(new_species)
+            session.commit()
+            flash('Species added: {}.'.format(species_name), 'success')
+        except SQLAlchemyError as e:
+            flash(database.parse_alchemy_error(e), 'error')
+            session.rollback()
+    return redirect(url_for('admin.admin_dashboard'))
+

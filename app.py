@@ -6,9 +6,10 @@ from db import app,Session,UPLOAD_FOLDER
 import database
 from models import *
 from routes_admin import routes_admin
-
+from routes_species import routes_species
 
 app.register_blueprint(routes_admin)
+app.register_blueprint(routes_species)
 
 '''
 NOTE: to restrict access to certain routes, add the following to the routes.py file:
@@ -26,62 +27,7 @@ def add():
 
 '''
 # test
-@app.route('/recording_platform/<uuid:recording_platform_id>/edit', methods=['GET', 'POST'])
-def edit_recording_platform(recording_platform_id):
-    with Session() as session:
-        try:
-            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
-            
-            if request.method == 'POST':
-                # Update recording platform with form data
-                recording_platform.name = request.form['name']
-                session.commit()
-                flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
-                return redirect('/administration_portal')
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/administration_portal')
 
-            
-        return render_template('edit_recording_platform.html', recording_platform=recording_platform)
-
-@app.route('/recording_platform/new', methods=['GET', 'POST'])
-def new_recording_platform():
-    with Session() as session:
-        try:
-            if request.method == 'POST':
-                # Create a new recording platform with form data
-                new_recording_platform = RecordingPlatform(
-                    name=request.form['name']
-                )
-                session.add(new_recording_platform)
-                session.commit()
-                flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
-                return redirect('/administration_portal')
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/administration_portal')
-
-        
-        return render_template('new_recording_platform.html')
-
-@app.route('/recording_platform/<uuid:recording_platform_id>/delete', methods=['GET'])
-def delete_recording_platform(recording_platform_id):
-    with Session() as session:
-        try:
-            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
-            session.delete(recording_platform)
-            session.commit()
-            flash('Recording platform deleted: {}'.format(recording_platform.name), 'success')
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/administration_portal')
-
-        return redirect('/administration_portal')
-    
 
 @app.route('/')
 def hello_world():
@@ -91,16 +37,6 @@ def home():
     return render_template('home.html')
 
 
-@app.route('/species')
-def view_species():
-    session = Session()
-    try:
-        species_data = session.query(Species).all()
-        return render_template('species.html', species_list=species_data)
-    except Exception as e:
-        raise e
-    finally:
-        session.close()
 
 # Route to serve the image file from the resources directory
 @app.route('/resources/<path:filename>')
@@ -118,54 +54,6 @@ def serve_general_style():
 def serve_hero_section():
     return send_from_directory('static/css', 'hero-section.css')
 
-@app.route('/species/edit/<uuid:species_id>', methods=['GET', 'POST'])
-def edit_species(species_id):
-    """
-    Edit and update species data based on the provided species ID.
-
-    Parameters:
-    - species_id: The UUID of the species to edit.
-
-    Returns:
-    - If the request method is POST and the species exists, updates the species data and redirects to '/species'.
-    - If the species does not exist, flashes an error message and redirects to '/species'.
-    - If the request method is not POST, renders the 'edit_species.html' template for editing.
-    - In case of exceptions, rolls back the session, flashes an error message, and redirects to '/species'.
-    """
-    try:
-        session = Session()
-        species_data = session.query(Species).filter_by(id=species_id).first()
-        
-        if request.method == 'POST':
-            if species_data:
-                species_name = request.form['species_name']
-                genus_name = request.form['genus_name']
-                common_name = request.form['common_name']
-
-                species_data.set_species_name(species_name)
-                species_data.set_genus_name(genus_name)
-                species_data.set_common_name(common_name)
-                species_data.update_call(session)
-                
-                session.commit()
-                clean_up_root_directory(UPLOAD_FOLDER)
-
-                flash('Species updated: {}'.format(species_name), 'success')
-                return redirect('/species')
-            else:
-                
-                flash('Species with ID {} not found'.format(species_id), 'error')
-                return redirect('/species')
-        else:
-
-            return render_template('edit_species.html', species=species_data)
-    except Exception as e:
-        session.rollback()
-        flash(str(e), 'error')
-        return redirect('/species')
-    finally:
-        session.close()
-    
 
 # Define a route to clear flashed messages
 @app.route('/clear_flashed_messages', methods=['POST'])
@@ -175,52 +63,6 @@ def clear_flashed_messages():
         session['_flashes'].remove((category, message))  # Remove specific flashed message from the session
         
     return jsonify({'message': 'Flashed messages cleared'})
-
-# Update the route handler to use SQLAlchemy for deleting a species from the table
-@app.route('/species/delete/<uuid:species_id>', methods=['POST', 'DELETE'])
-def delete_species(species_id):
-    session = Session()
-    
-    if request.method == 'POST' or request.method == 'DELETE':
-        try:
-            species = session.query(Species).filter_by(id=species_id).first()
-            species_name = species.get_species_name()
-            session.delete(species)
-            session.commit()
-
-            flash('Species deleted: {}'.format(species_name), 'success')
-            return redirect('/species')
-        except SQLAlchemyError as e:
-            flash(str(e), 'error')
-            session.rollback()
-            return redirect('/species')
-    else:
-        flash('Failed to delete species {}'.format(species_id), 'error')
-        return redirect('/species')
-    
-@app.route('/species/add', methods=['GET', 'POST'])
-def add_species():
-    if request.method == 'POST':
-        species_name = request.form['species_name']
-        genus_name = request.form['genus_name']
-        common_name = request.form['common_name']
-        
-        session = Session()
-        try:
-            new_species = Species(species_name=species_name, genus_name=genus_name, common_name=common_name)
-            session.add(new_species)
-            
-            session.commit()
-            flash('Species added: {}.'.format(species_name), 'success')
-            return redirect('/species')
-
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/species')
-        finally:
-            session.close()
-    return render_template('add_species.html')
 
 
 @app.route('/encounter/add', methods=['GET', 'POST'])
