@@ -3,7 +3,7 @@ from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,rende
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from db import Session
-import database
+import db
 from models import *
 
 routes_species = Blueprint('species', __name__)
@@ -99,7 +99,7 @@ def species_insert():
             session.commit()
             flash('Species added: {}.'.format(species_name), 'success')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
     return redirect(url_for('species.species_dashboard'))
 

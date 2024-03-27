@@ -1,6 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
-import database
 from db import db
 import uuid
 from datetime import datetime

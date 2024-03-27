@@ -3,7 +3,7 @@ from flask import Flask, flash,get_flashed_messages, jsonify, redirect,render_te
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from db import app,Session,UPLOAD_FOLDER
-import database
+import db
 from models import *
 from routes_admin import routes_admin
 from routes_species import routes_species
@@ -97,7 +97,7 @@ def add_encounter():
             flash(f'Encounter added: {encounter_name}', 'success')
             return redirect('/encounter')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect('/encounter')
         finally:
@@ -145,7 +145,7 @@ def delete_encounter(encounter_id):
             flash(f'Encounter deleted: {encounter.get_encounter_name()}-{encounter.get_location()}.', 'success')
             return redirect('/encounter')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect('/encounter')
         finally:
@@ -179,7 +179,7 @@ def add_recording(encounter_id):
             flash(f'Added recording: {recording_obj.id}', 'success')
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -246,7 +246,7 @@ def delete_selection(recording_id, selection_id):
         flash(f'Deleted selection: {selection_number}', 'success')
         return redirect(url_for('view_recording', recording_id=recording_id)),500
     except SQLAlchemyError as e:
-        flash(database.parse_alchemy_error(e), 'error')
+        flash(db.parse_alchemy_error(e), 'error')
         session.rollback()
         return redirect(url_for('view_recording', recording_id=recording_id))
     finally:
@@ -272,8 +272,8 @@ def bulk_delete_selections(recording_id):
             return jsonify({'message': 'Bulk delete completed'}), 200
         except SQLAlchemyError as e:
             session.rollback()
-            flash(database.parse_alchemy_error(e), 'error')
-            return jsonify({'error': database.parse_alchemy_error(e)}), 500
+            flash(db.parse_alchemy_error(e), 'error')
+            return jsonify({'error': db.parse_alchemy_error(e)}), 500
         finally:
             session.close()
     else:
@@ -284,7 +284,7 @@ def process_uploaded_files(files):
     
     for file in files:
         file_name = file.filename
-        is_valid = bool(re.match(r'.*sel_\d+\..*', file_name))
+        is_valid = bool(re.match(r'sel_\d', file_name))
         file_validity_info.append({'file_name': file_name, 'is_valid': is_valid})
     
     return file_validity_info
@@ -365,7 +365,7 @@ def extract_selection_number():
 
     
     # Extract the selection number from the filename using regular expression
-    match = re.search(r'sel_(\d+)\.wav', filename)
+    match = re.search(r'sel_(\d+)', filename)
     if match:
         if selection_number == None:
             selection_number = match.group(1).lstrip('0')  # Remove leading zeros
@@ -441,17 +441,17 @@ def review_files(recording_id):
 
                     add_or_edit_selection(session,selection_numbers[i], file, recording_id)
                     session.commit()
-                    flash(f'Added selection {selection_numbers[i]} for recording: {recording_id}', 'success')
+                    flash(f'Added selection {selection_numbers[i]}', 'success')
                 except SQLAlchemyError as e:
                     session.rollback()
-                    flash(database.parse_alchemy_error(e), 'error')
+                    flash(db.parse_alchemy_error(e), 'error')
                 except IOError as e:
                     session.rollback()
                     flash(str(e), 'error')
             session.commit()
             return jsonify({'message': 'Files uploaded successfully'}), 200
     except SQLAlchemyError as e:
-        flash(database.parse_alchemy_error(e), 'error')
+        flash(db.parse_alchemy_error(e), 'error')
         return jsonify({'error': str(e)}), 500
     except IOError as e:
         flash(str(e), 'error')
@@ -471,7 +471,7 @@ def add_selection(recording_id):
             flash(f'Added selection for recording: {recording_id}', 'success')
             return redirect(url_for('view_recording', recording_id=recording_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_recording', recording_id=recording_id))
         except IOError as e:
@@ -547,7 +547,7 @@ def edit_recording(encounter_id, recording_id):
                 flash(f'Edited recording: {recording_obj.id}', 'success')                
                 return redirect(url_for('view_encounter', encounter_id=encounter_id))
             except SQLAlchemyError as e:
-                flash(database.parse_alchemy_error(e), 'error')
+                flash(db.parse_alchemy_error(e), 'error')
                 session.rollback()
                 return redirect(url_for('view_encounter', encounter_id=encounter_id))
             finally:
@@ -563,7 +563,7 @@ def delete_recording(encounter_id,recording_id):
             flash(f'Deleted recording: {recording.id}', 'success')
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -589,7 +589,7 @@ def delete_recording_file(encounter_id,file_id):
             
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -616,7 +616,7 @@ def delete_selection_file(encounter_id,file_id):
             
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -688,7 +688,7 @@ def edit_encounter(encounter_id):
         return render_template('edit_encounter.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
     except SQLAlchemyError as e:
-        flash(database.parse_alchemy_error(e), 'error')
+        flash(db.parse_alchemy_error(e), 'error')
         session.rollback()
         return redirect('/encounter')
     except Exception as e:

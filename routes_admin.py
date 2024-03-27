@@ -3,7 +3,7 @@ from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,rende
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from db import Session
-import database
+import db
 from models import *
 
 routes_admin = Blueprint('admin', __name__)
@@ -44,7 +44,7 @@ def admin_data_source_view(data_source_id):
             data_source = session.query(DataSource).filter_by(id=data_source_id).first()  
             return render_template('admin/admin-data-source-view.html', data_source=data_source, data_source_type_values  = DataSource.type.type.enums)
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('admin.admin_dashboard'))
         
@@ -74,7 +74,7 @@ def admin_data_source_edit(data_source_id):
             flash('Data source updated: {}'.format(data_source.name), 'success')
             return redirect(url_for('admin.admin_dashboard'))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -108,7 +108,7 @@ def admin_data_source_insert():
             flash('Data source created: {}'.format(new_data_source.name), 'success')
             return redirect(url_for('admin.admin_dashboard'))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -129,7 +129,7 @@ def admin_data_source_delete(data_source_id):
             flash('Data source deleted: {}'.format(data_source.name), 'success')
             return redirect(url_for('admin.admin_dashboard'))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -168,7 +168,7 @@ def admin_recording_platform_edit(recording_platform_id):
                 session.commit()
                 flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
         return redirect(url_for('admin.admin_dashboard'))
 
@@ -193,7 +193,7 @@ def admin_recording_platform_insert():
             session.commit()
             flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
         return redirect(url_for('admin.admin_dashboard'))
 
@@ -209,7 +209,7 @@ def admin_recording_platform_delete(recording_platform_id):
             session.commit()
             flash('Recording platform deleted: {}'.format(recording_platform.name), 'success')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
         return redirect(url_for('admin.admin_dashboard'))
 
@@ -305,7 +305,7 @@ def admin_species_insert():
             session.commit()
             flash('Species added: {}.'.format(species_name), 'success')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
     return redirect(url_for('admin.admin_dashboard'))
 
