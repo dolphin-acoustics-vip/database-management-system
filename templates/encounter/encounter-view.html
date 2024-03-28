@@ -116,7 +116,7 @@
                             <a
                                 href="{{ url_for('download_file_from_uploads', full_path=recording.recording_file.get_full_relative_path()) }}">Download</a><br>
                             <a
-                                href="{{ url_for('delete_recording_file', encounter_id=encounter.id, file_id=recording.recording_file.id) }}">Delete</a>
+                                href="{{ url_for('recording.recording_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
                         </td>
                         {% else %}
                         <td>
@@ -129,7 +129,7 @@
                             <a
                                 href="{{ url_for('download_file_from_uploads', full_path=recording.selection_file.get_full_relative_path()) }}">Download</a><br>
                             <a
-                                href="{{ url_for('delete_selection_file', encounter_id=encounter.id, file_id=recording.selection_file.id) }}">Delete</a>
+                                href="{{ url_for('recording.selection_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.selection_file.id) }}">Delete</a>
 
                         </td>
                         {% else %}
@@ -140,9 +140,9 @@
                         {% endif %}
                         <td>
                             <button style="width: 100%" type="submit">Update</button>
-                            <button style="width:100%" type="button" onclick="window.location.href='{{ url_for('view_recording', recording_id=recording.id) }}'">View Selections</button><br>
+                            <button style="width:100%" type="button" onclick="window.location.href='{{ url_for('recording.recording_view', encounter_id=encounter.id, recording_id=recording.id) }}'">View Selections</button><br>
 
-                            <button style="width: 100%" type="button" onclick="return confirm('Are you sure you want to delete this recording?') ? window.location.href='{{ url_for("delete_recording", encounter_id=encounter.id, recording_id=recording.id) }}' :false;">Delete</button><br>
+                            <button style="width: 100%" type="button" onclick="return confirm('Are you sure you want to delete this recording?') ? window.location.href='{{ url_for("recording.recording_delete", encounter_id=encounter.id, recording_id=recording.id) }}' :false;">Delete</button><br>
 
                             <a
                                 href="{{url_for('download_files_from_folder', path=recording.generate_relative_path())}}">Download
