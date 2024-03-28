@@ -14,6 +14,11 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 UPLOAD_FOLDER = 'uploads'
+# get google_api_key from google_api_key.txt
+GOOGLE_API_KEY = ''
+if os.path.exists('google_api_key.txt'):
+    with open('google_api_key.txt', 'r') as f:
+        GOOGLE_API_KEY = f.read()
 
 db.init_app(app)
 

@@ -2,7 +2,7 @@ import re, uuid, zipfile, os
 from flask import Flask, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from db import app,Session,UPLOAD_FOLDER
+from db import app,Session,UPLOAD_FOLDER,GOOGLE_API_KEY
 import db
 from models import *
 from routes_admin import routes_admin
@@ -165,7 +165,7 @@ def view_encounter(encounter_id):
 
         # No need to manually close the session due to the context manager
 
-        return render_template('view_encounter.html', encounter=encounter, recordings=recordings)
+        return render_template('view_encounter.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY)
 
 
 @app.route('/encounter/view/<uuid:encounter_id>/add_recording', methods=['POST'])
