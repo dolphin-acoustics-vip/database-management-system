@@ -142,10 +142,11 @@ body, {
     <p>This encounter has no recordings. Please use the form above to add recordings.</p>
     {% endif %}
     </section>
+    <p>server_side_api_key_variable: {{server_side_api_key_variable}}</p>
 
 
 </div>
-<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyATlDZBRMK12PvELE9IxpxXlcLgq9DrhAI&callback=console.debug&libraries=maps,marker&v=beta&callback=initMap&loading=async"></script>
+<script async src="https://maps.googleapis.com/maps/api/js?key={{server_side_api_key_variable}}&callback=console.debug&libraries=maps,marker&v=beta&callback=initMap&loading=async"></script>
 <script>
 
 function extractDate(fileName) {
