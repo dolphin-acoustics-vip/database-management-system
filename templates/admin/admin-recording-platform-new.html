@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-    {% include 'header.html' %}
+    {% include 'partials/header.html' %}
 
 <head>
     <title>New Recording Platform</title>
@@ -11,9 +11,9 @@
 <body>
     <div class="outer-div">
     <h1>New Recording Platform</h1>
-    <form action="" method="post">
+    <form action="{{ url_for('admin.admin_recording_platform_insert') }}" method="post">
         {% set editing = False %}
-        {% include 'recording_platform_form_template.html' %}
+        {% include 'admin/admin-recording-platform-template.html' %}
     </form>
     </div>
 </body>

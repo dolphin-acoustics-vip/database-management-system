@@ -1,12 +1,15 @@
-Required: mysqlclient. See instructions: https://pypi.org/project/mysqlclient/
-
-
-sudo mysql -u root -p
-ALTER USER 'js521'@'localhost' IDENTIFIED BY 'password1';
-
-drop table if exists test_database.clip;
-drop table if exists test_database.recording;
-drop table if exists test_database.encounter;
-drop table if exists test_database.species;
-drop table if exists test_database.roccaoutput;
-
+blinker==1.7.0
+click==8.1.7
+Flask==3.0.2
+Flask-MySQLdb==2.0.0
+Flask-SQLAlchemy==3.1.1
+greenlet==3.0.3
+itsdangerous==2.1.2
+Jinja2==3.1.3
+MarkupSafe==2.1.5
+mysql==0.0.3
+mysql-connector==2.2.9
+mysqlclient==2.2.4
+SQLAlchemy==2.0.28
+typing_extensions==4.10.0
+Werkzeug==3.0.1

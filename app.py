@@ -3,12 +3,13 @@ from flask import Flask, flash,get_flashed_messages, jsonify, redirect,render_te
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from db import app,Session,UPLOAD_FOLDER
-import database
+import db
 from models import *
 from routes_admin import routes_admin
-
+from routes_species import routes_species
 
 app.register_blueprint(routes_admin)
+app.register_blueprint(routes_species)
 
 '''
 NOTE: to restrict access to certain routes, add the following to the routes.py file:
@@ -26,62 +27,7 @@ def add():
 
 '''
 # test
-@app.route('/recording_platform/<uuid:recording_platform_id>/edit', methods=['GET', 'POST'])
-def edit_recording_platform(recording_platform_id):
-    with Session() as session:
-        try:
-            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
-            
-            if request.method == 'POST':
-                # Update recording platform with form data
-                recording_platform.name = request.form['name']
-                session.commit()
-                flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
-                return redirect('/administration_portal')
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/administration_portal')
 
-            
-        return render_template('edit_recording_platform.html', recording_platform=recording_platform)
-
-@app.route('/recording_platform/new', methods=['GET', 'POST'])
-def new_recording_platform():
-    with Session() as session:
-        try:
-            if request.method == 'POST':
-                # Create a new recording platform with form data
-                new_recording_platform = RecordingPlatform(
-                    name=request.form['name']
-                )
-                session.add(new_recording_platform)
-                session.commit()
-                flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
-                return redirect('/administration_portal')
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/administration_portal')
-
-        
-        return render_template('new_recording_platform.html')
-
-@app.route('/recording_platform/<uuid:recording_platform_id>/delete', methods=['GET'])
-def delete_recording_platform(recording_platform_id):
-    with Session() as session:
-        try:
-            recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()
-            session.delete(recording_platform)
-            session.commit()
-            flash('Recording platform deleted: {}'.format(recording_platform.name), 'success')
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/administration_portal')
-
-        return redirect('/administration_portal')
-    
 
 @app.route('/')
 def hello_world():
@@ -91,16 +37,6 @@ def home():
     return render_template('home.html')
 
 
-@app.route('/species')
-def view_species():
-    session = Session()
-    try:
-        species_data = session.query(Species).all()
-        return render_template('species.html', species_list=species_data)
-    except Exception as e:
-        raise e
-    finally:
-        session.close()
 
 # Route to serve the image file from the resources directory
 @app.route('/resources/<path:filename>')
@@ -118,54 +54,6 @@ def serve_general_style():
 def serve_hero_section():
     return send_from_directory('static/css', 'hero-section.css')
 
-@app.route('/species/edit/<uuid:species_id>', methods=['GET', 'POST'])
-def edit_species(species_id):
-    """
-    Edit and update species data based on the provided species ID.
-
-    Parameters:
-    - species_id: The UUID of the species to edit.
-
-    Returns:
-    - If the request method is POST and the species exists, updates the species data and redirects to '/species'.
-    - If the species does not exist, flashes an error message and redirects to '/species'.
-    - If the request method is not POST, renders the 'edit_species.html' template for editing.
-    - In case of exceptions, rolls back the session, flashes an error message, and redirects to '/species'.
-    """
-    try:
-        session = Session()
-        species_data = session.query(Species).filter_by(id=species_id).first()
-        
-        if request.method == 'POST':
-            if species_data:
-                species_name = request.form['species_name']
-                genus_name = request.form['genus_name']
-                common_name = request.form['common_name']
-
-                species_data.set_species_name(species_name)
-                species_data.set_genus_name(genus_name)
-                species_data.set_common_name(common_name)
-                species_data.update_call(session)
-                
-                session.commit()
-                clean_up_root_directory(UPLOAD_FOLDER)
-
-                flash('Species updated: {}'.format(species_name), 'success')
-                return redirect('/species')
-            else:
-                
-                flash('Species with ID {} not found'.format(species_id), 'error')
-                return redirect('/species')
-        else:
-
-            return render_template('edit_species.html', species=species_data)
-    except Exception as e:
-        session.rollback()
-        flash(str(e), 'error')
-        return redirect('/species')
-    finally:
-        session.close()
-    
 
 # Define a route to clear flashed messages
 @app.route('/clear_flashed_messages', methods=['POST'])
@@ -175,52 +63,6 @@ def clear_flashed_messages():
         session['_flashes'].remove((category, message))  # Remove specific flashed message from the session
         
     return jsonify({'message': 'Flashed messages cleared'})
-
-# Update the route handler to use SQLAlchemy for deleting a species from the table
-@app.route('/species/delete/<uuid:species_id>', methods=['POST', 'DELETE'])
-def delete_species(species_id):
-    session = Session()
-    
-    if request.method == 'POST' or request.method == 'DELETE':
-        try:
-            species = session.query(Species).filter_by(id=species_id).first()
-            species_name = species.get_species_name()
-            session.delete(species)
-            session.commit()
-
-            flash('Species deleted: {}'.format(species_name), 'success')
-            return redirect('/species')
-        except SQLAlchemyError as e:
-            flash(str(e), 'error')
-            session.rollback()
-            return redirect('/species')
-    else:
-        flash('Failed to delete species {}'.format(species_id), 'error')
-        return redirect('/species')
-    
-@app.route('/species/add', methods=['GET', 'POST'])
-def add_species():
-    if request.method == 'POST':
-        species_name = request.form['species_name']
-        genus_name = request.form['genus_name']
-        common_name = request.form['common_name']
-        
-        session = Session()
-        try:
-            new_species = Species(species_name=species_name, genus_name=genus_name, common_name=common_name)
-            session.add(new_species)
-            
-            session.commit()
-            flash('Species added: {}.'.format(species_name), 'success')
-            return redirect('/species')
-
-        except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect('/species')
-        finally:
-            session.close()
-    return render_template('add_species.html')
 
 
 @app.route('/encounter/add', methods=['GET', 'POST'])
@@ -255,7 +97,7 @@ def add_encounter():
             flash(f'Encounter added: {encounter_name}', 'success')
             return redirect('/encounter')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect('/encounter')
         finally:
@@ -303,7 +145,7 @@ def delete_encounter(encounter_id):
             flash(f'Encounter deleted: {encounter.get_encounter_name()}-{encounter.get_location()}.', 'success')
             return redirect('/encounter')
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect('/encounter')
         finally:
@@ -337,7 +179,7 @@ def add_recording(encounter_id):
             flash(f'Added recording: {recording_obj.id}', 'success')
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -404,7 +246,7 @@ def delete_selection(recording_id, selection_id):
         flash(f'Deleted selection: {selection_number}', 'success')
         return redirect(url_for('view_recording', recording_id=recording_id)),500
     except SQLAlchemyError as e:
-        flash(database.parse_alchemy_error(e), 'error')
+        flash(db.parse_alchemy_error(e), 'error')
         session.rollback()
         return redirect(url_for('view_recording', recording_id=recording_id))
     finally:
@@ -430,8 +272,8 @@ def bulk_delete_selections(recording_id):
             return jsonify({'message': 'Bulk delete completed'}), 200
         except SQLAlchemyError as e:
             session.rollback()
-            flash(database.parse_alchemy_error(e), 'error')
-            return jsonify({'error': database.parse_alchemy_error(e)}), 500
+            flash(db.parse_alchemy_error(e), 'error')
+            return jsonify({'error': db.parse_alchemy_error(e)}), 500
         finally:
             session.close()
     else:
@@ -442,7 +284,7 @@ def process_uploaded_files(files):
     
     for file in files:
         file_name = file.filename
-        is_valid = bool(re.match(r'.*sel_\d+\..*', file_name))
+        is_valid = bool(re.match(r'sel_\d', file_name))
         file_validity_info.append({'file_name': file_name, 'is_valid': is_valid})
     
     return file_validity_info
@@ -523,7 +365,7 @@ def extract_selection_number():
 
     
     # Extract the selection number from the filename using regular expression
-    match = re.search(r'sel_(\d+)\.wav', filename)
+    match = re.search(r'sel_(\d+)', filename)
     if match:
         if selection_number == None:
             selection_number = match.group(1).lstrip('0')  # Remove leading zeros
@@ -599,17 +441,17 @@ def review_files(recording_id):
 
                     add_or_edit_selection(session,selection_numbers[i], file, recording_id)
                     session.commit()
-                    flash(f'Added selection {selection_numbers[i]} for recording: {recording_id}', 'success')
+                    flash(f'Added selection {selection_numbers[i]}', 'success')
                 except SQLAlchemyError as e:
                     session.rollback()
-                    flash(database.parse_alchemy_error(e), 'error')
+                    flash(db.parse_alchemy_error(e), 'error')
                 except IOError as e:
                     session.rollback()
                     flash(str(e), 'error')
             session.commit()
             return jsonify({'message': 'Files uploaded successfully'}), 200
     except SQLAlchemyError as e:
-        flash(database.parse_alchemy_error(e), 'error')
+        flash(db.parse_alchemy_error(e), 'error')
         return jsonify({'error': str(e)}), 500
     except IOError as e:
         flash(str(e), 'error')
@@ -629,7 +471,7 @@ def add_selection(recording_id):
             flash(f'Added selection for recording: {recording_id}', 'success')
             return redirect(url_for('view_recording', recording_id=recording_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_recording', recording_id=recording_id))
         except IOError as e:
@@ -705,7 +547,7 @@ def edit_recording(encounter_id, recording_id):
                 flash(f'Edited recording: {recording_obj.id}', 'success')                
                 return redirect(url_for('view_encounter', encounter_id=encounter_id))
             except SQLAlchemyError as e:
-                flash(database.parse_alchemy_error(e), 'error')
+                flash(db.parse_alchemy_error(e), 'error')
                 session.rollback()
                 return redirect(url_for('view_encounter', encounter_id=encounter_id))
             finally:
@@ -721,7 +563,7 @@ def delete_recording(encounter_id,recording_id):
             flash(f'Deleted recording: {recording.id}', 'success')
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -747,7 +589,7 @@ def delete_recording_file(encounter_id,file_id):
             
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -774,7 +616,7 @@ def delete_selection_file(encounter_id,file_id):
             
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            flash(database.parse_alchemy_error(e), 'error')
+            flash(db.parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('view_encounter', encounter_id=encounter_id))
         finally:
@@ -846,7 +688,7 @@ def edit_encounter(encounter_id):
         return render_template('edit_encounter.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
     except SQLAlchemyError as e:
-        flash(database.parse_alchemy_error(e), 'error')
+        flash(db.parse_alchemy_error(e), 'error')
         session.rollback()
         return redirect('/encounter')
     except Exception as e:
