@@ -40,7 +40,6 @@ def add():
 
 '''
 
-
 @app.route('/resources/<path:filename>')
 def serve_resource(filename):
     """
@@ -54,20 +53,6 @@ def serve_style(filename):
     Serve a file from the 'static/css' directory (for CSS).
     """
     return send_from_directory('static/css', filename)
-
-@app.route('/')
-def hello_world():
-    """
-    Redirect user from root to home directory.
-    """
-    return redirect(url_for('home'))
-
-@app.route('/home')
-def home():
-    """
-    Route for the home page.
-    """
-    return render_template('home.html')
 
 @app.route('/download-folder/<path:relative_path>')
 def download_folder(relative_path):
@@ -91,7 +76,6 @@ def download_folder(relative_path):
 
         return response
 
-
 @app.route('/download-file/<path:relative_path>')
 def download_file(relative_path):
     """
@@ -100,6 +84,20 @@ def download_file(relative_path):
     if relative_path != "":
         file_path = os.path.join(UPLOAD_FOLDER, relative_path)
         return send_file(file_path, as_attachment=True)
+
+@app.route('/')
+def hello_world():
+    """
+    Redirect user from root to home directory.
+    """
+    return redirect(url_for('home'))
+
+@app.route('/home')
+def home():
+    """
+    Route for the home page.
+    """
+    return render_template('home.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
