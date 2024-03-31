@@ -112,7 +112,6 @@ def encounter_update(encounter_id):
             encounter.set_notes(request.form['notes'])
             encounter.update_call(session)
             session.commit()
-            clean_up_root_directory(FILE_SPACE_PATH)
             flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except SQLAlchemyError as e:
