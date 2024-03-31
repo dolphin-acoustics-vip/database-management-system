@@ -4,14 +4,14 @@
 
 <head>
     <title>Encounters</title>
-    <link rel="stylesheet" href="../static/css/hero-section.css">
-    <link rel="stylesheet" href="../static/css/general-style.css">
+    <link rel="stylesheet" href="../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../static/css/general-style.css">
 </head>
 <body>
     <div class="outer-div">
         
         <h1>Encounters</h2>
-        <a href="{{ url_for('add_encounter') }}" style="width:300px; margin-bottom: 10px"><button>Add New Encounter</button></a><br>
+        <a href="{{ url_for('encounter.encounter_new') }}" style="width:300px; margin-bottom: 10px"><button>Add New Encounter</button></a><br>
 
         {% if encounter_list %}
         <div style="margin-top: 10px; margin-bottom: 5px;">
@@ -38,15 +38,15 @@
                         <td>{{ encounter.get_origin() }}</td>
                         <td> <!-- Add buttons for Edit and Delete here -->
 
-                            <form style="margin-bottom:5px;" method="get" action="{{ url_for('edit_encounter', encounter_id=encounter.id) }}">
+                            <form style="margin-bottom:5px;" method="get" action="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">
                                 <input type="hidden" name="_method" value="GET">
                                 <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}">Edit</button>
                             </form>
-                            <form style="margin-bottom:5px;" method="get" action="{{ url_for('view_encounter', encounter_id=encounter.id) }}">
+                            <form style="margin-bottom:5px;" method="get" action="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">
                                 <input type="hidden" name="_method" value="GET">
                                 <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}">View</button>
                             </form>
-                            <form id="deleteForm_{{ encounter.id }}" method="post" action="{{ url_for('delete_encounter', encounter_id=encounter.id) }}">
+                            <form id="deleteForm_{{ encounter.id }}" method="post" action="{{ url_for('encounter.encounter_delete', encounter_id=encounter.id) }}">
                                 <input type="hidden" name="_method" value="DELETE">
                                 <button type="submit" style="width:100%" class="delete-link" data-encounter-id="{{ encounter.id }}">Delete</button>
                             </form></td>

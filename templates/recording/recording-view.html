@@ -4,8 +4,8 @@
 
 <head>
     <title>View Selections</title>
-    <link rel="stylesheet" href="../../static/css/hero-section.css">
-    <link rel="stylesheet" href="../../static/css/general-style.css">
+    <link rel="stylesheet" href="../../../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../../../static/css/general-style.css">
 </head>
 
 <body>
@@ -107,7 +107,7 @@
             selectedIds.push(selectedCheckboxes[i].value);
         }
 
-        var url = "{{ url_for('bulk_delete_selections', recording_id=recording.id) }}";
+        var url = "{{ url_for('recording.recording_delete_selections', recording_id=recording.id) }}";
 
         // Make an AJAX request to delete the selections in bulk
         var xhr = new XMLHttpRequest();
@@ -222,7 +222,7 @@
             };
 
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/extract_selection_number?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&selection_number=" + encodeURIComponent(data.selection_number), true);
+            xhr.open('GET', '/process_selection?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&selection_number=" + encodeURIComponent(data.selection_number), true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onload = function () {
                 if (xhr.status === 200) {
@@ -292,7 +292,7 @@
             // Create a closure to capture the correct file for each row
             (function (file, cell2, cell3, cell4, cell5) {
                 var xhr = new XMLHttpRequest();
-                xhr.open('GET', '/extract_selection_number?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(file.name) + '&selection_number=', true);
+                xhr.open('GET', '/process_selection?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(file.name) + '&selection_number=', true);
                 xhr.onload = function () {
                     if (xhr.status === 200) {
                         var response = JSON.parse(xhr.responseText);
@@ -418,7 +418,7 @@
         });
 
         // Send the form data to the server
-        fetch('{{url_for('review_files',recording_id=recording.id)}}', {
+        fetch('{{url_for('selection.selection_insert_bulk',encounter_id=recording.encounter.id, recording_id=recording.id)}}', {
             method: 'POST',
             body: formData
         })
