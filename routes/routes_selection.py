@@ -72,6 +72,7 @@ def process_selection():
     recording_id = request.args.get('recording_id')
     filename = request.args.get('filename')
     selection_number = request.args.get('selection_number')
+    print("PROCESS",selection_number,filename)
     valid = True # flag
     messages=[] # to return at the end
     
@@ -89,6 +90,7 @@ def process_selection():
             if selection_number == match.group(1).lstrip('0'):
                 messages.append("Selection number: " + selection_number + ".")
             else:
+                messages.append("Selection number: " + selection_number + ".")
                 messages.append("Warning: selection number mismatch.")
     elif not match and selection_number == None:
         messages.append("<span style='color: red;'>Error: invalid selection number.</span>")
@@ -131,7 +133,7 @@ def process_selection():
 
     return jsonify(selection_number=selection_number,messages=messages,valid=valid)
 
-@routes_selection.route('/encounter<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
+@routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
 def selection_insert_bulk(encounter_id,recording_id):
     """
     Inserts multiple selection files into the database for a given encounter ID and recording ID.
@@ -141,6 +143,7 @@ def selection_insert_bulk(encounter_id,recording_id):
     Returns:
         A JSON response indicating success or failure.
     """
+    print("I GOT HERE")
     with Session() as session:
         try:
             if 'selection_files' not in request.files:
