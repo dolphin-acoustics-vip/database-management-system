@@ -16,10 +16,8 @@ from routes.routes_admin import routes_admin
 from routes.routes_encounter import routes_encounter
 from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
-from routes.routes_species import routes_species
 
 app.register_blueprint(routes_admin)
-app.register_blueprint(routes_species)
 app.register_blueprint(routes_encounter)
 app.register_blueprint(routes_recording)
 app.register_blueprint(routes_selection)
