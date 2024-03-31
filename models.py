@@ -1,11 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
-from db import db
+from db import db, FILE_SPACE_PATH
 import uuid
 from datetime import datetime
 import os
 
-ROOT_PATH="uploads"
 
 
 def clean_up_root_directory(root_directory):
@@ -173,7 +172,7 @@ def encounter_updated(session, encounter_id):
     try:
         recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
         for recording in recordings:
-            recording.move_file(session,ROOT_PATH)
+            recording.move_file(session,FILE_SPACE_PATH)
         session.commit()
     except Exception as e:
         session.rollback()
@@ -252,12 +251,12 @@ class File(db.Model):
 
         os.makedirs(trash_folder, exist_ok=True)
 
-        file_path = os.path.join(ROOT_PATH, self.get_full_relative_path())
+        file_path = os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
         file_name = self.filename
         file_name_with_unique = file_name + "-" + unique_name
 
         trash_file_path = os.path.join(trash_folder, file_name_with_unique) + "." + self.extension
-        if os.path.exists(trash_folder):
+        if os.path.exists(trash_folder) and os.path.exists(file_path):
             os.rename(file_path, trash_file_path)
 
     def move_file(self, session, new_relative_file_path, root_path):
@@ -317,11 +316,11 @@ class Recording(db.Model):
     start_time = db.Column(db.DateTime, nullable=False)
     duration = db.Column(db.Integer)
     recording_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
-    selection_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
+    selection_table_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
     encounter_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('encounter.id'), nullable=False)
 
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
-    selection_file = db.relationship("File", foreign_keys=[selection_file_id])
+    selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
 
     __table_args__ = (
@@ -333,11 +332,11 @@ class Recording(db.Model):
         return len(selections)
 
     def update_call(self, session):
-        self.move_file(session,ROOT_PATH)
+        self.move_file(session,FILE_SPACE_PATH)
         if self.recording_file is not None:
             self.recording_file.update_call(session)
-        if self.selection_file is not None:
-            self.selection_file.update_call(session)
+        if self.selection_table_file is not None:
+            self.selection_table_file.update_call(session)
 
         
         selections = session.query(Selection).filter_by(recording_id=self.id).all()
@@ -352,9 +351,9 @@ class Recording(db.Model):
             self.recording_file.delete(session)
             self.recording_file = None  # Remove the reference to the recording file
         
-        if self.selection_file_id is not None:
-            self.selection_file.delete(session)
-            self.selection_file = None  # Remove the reference to the selection file
+        if self.selection_table_file_id is not None:
+            self.selection_table_file.delete(session)
+            self.selection_table_file = None  # Remove the reference to the selection file
         
 
         selections = session.query(Selection).filter_by(recording_id=self.id).all()
@@ -368,8 +367,8 @@ class Recording(db.Model):
     def move_file(self, session, root_path):
         if self.recording_file is not None:
             self.recording_file.move_file(session,self.generate_full_relative_path(extension="." + self.recording_file.extension),root_path)
-        if self.selection_file is not None:
-            self.selection_file.move_file(session,self.generate_full_relative_path(extension="." +self.selection_file.extension),root_path)
+        if self.selection_table_file is not None:
+            self.selection_table_file.move_file(session,self.generate_full_relative_path(extension="." +self.selection_table_file.extension),root_path)
 
     def generate_relative_path_for_selections(self):
         folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
@@ -385,7 +384,7 @@ class Recording(db.Model):
     def generate_full_relative_path(self,extension=""):
         return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
 
-    def generate_selection_filename(self,extension=""):
+    def generate_selection_table_filename(self,extension=""):
         return f"Sel-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}{extension}"
     def get_start_time(self):
         return self.start_time
@@ -435,7 +434,7 @@ class Recording(db.Model):
         self.recording_file_id = value
     
 
-    def set_selection_file_id(self, value):
+    def set_selection_table_file_id(self, value):
         if type(value)==str:
             try:
                 value = uuid.UUID(value)
@@ -444,7 +443,7 @@ class Recording(db.Model):
         if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
             value = None
         
-        self.selection_file_id = value
+        self.selection_table_file_id = value
 
     def set_encounter_id(self, value):
         if type(value)==str:
@@ -482,7 +481,7 @@ class Selection(db.Model):
 
 
     def update_call(self, session):
-        self.move_file(session,ROOT_PATH)
+        self.move_file(session,FILE_SPACE_PATH)
 
     def move_file(self, session, root_path):
         if self.selection_file is not None:
