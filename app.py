@@ -5,11 +5,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from db import app,Session,UPLOAD_FOLDER,GOOGLE_API_KEY
 import db
 from models import *
-from routes_admin import routes_admin
-from routes_species import routes_species
-from routes_encounter import routes_encounter
-from routes_recording import routes_recording
-from routes_selection import routes_selection
+from routes.routes_admin import routes_admin
+from routes.routes_species import routes_species
+from routes.routes_encounter import routes_encounter
+from routes.routes_recording import routes_recording
+from routes.routes_selection import routes_selection
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_species)
