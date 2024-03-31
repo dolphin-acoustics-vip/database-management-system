@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 {% include 'partials/header.html' %}
-
 <head>
     <title>Encounters</title>
     <link rel="stylesheet" href="../../static/css/hero-section.css">
@@ -9,16 +8,13 @@
 </head>
 <body>
     <div class="outer-div">
-        
         <h1>Encounters</h2>
         <a href="{{ url_for('encounter.encounter_new') }}" style="width:300px; margin-bottom: 10px"><button>Add New Encounter</button></a><br>
-
         {% if encounter_list %}
         <div style="margin-top: 10px; margin-bottom: 5px;">
             <label for="sort-select">Filter (any column):</label>
         </div>
         <input style="margin-bottom: 10px; width:195px;" type="text" id="filter-input" placeholder="No filter">
-
         <table style="margin-top: 10px" id="encounter-table">
             <thead>
                 <tr>
@@ -64,29 +60,27 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
+        // Add click event listener to the delete button
         $('.delete-link').on('click', function(e) {
             e.preventDefault();
             var encounterId = $(this).data('encounter-id');
             var confirmed = confirm("Are you sure you want to delete this encounter?");
+            // Continue with the delete if the user confirms
             if (confirmed) {
-                console.log("CONFIM DELETE")
                 var formId = 'deleteForm_' + encounterId;
                 var form = document.getElementById(formId);
                 form.querySelector('input[name="_method"]').value = "DELETE";
                 form.submit();
-            } else {
-                // Do nothing if the user cancels
             }
-    });
-    $('#filter-input').on('input', function(){
-                var filterValue = $(this).val().toLowerCase();
-                $('#encounter-table tbody tr').filter(function() {
-                    $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1)
-                });
+        // Filter the encounter table according to user input
+        $('#filter-input').on('input', function(){
+            var filterValue = $(this).val().toLowerCase();
+            $('#encounter-table tbody tr').filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1)
             });
+        });
+    }); 
 });
-
-
 </script>
 </body>
 </html>

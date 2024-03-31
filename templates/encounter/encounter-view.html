@@ -25,23 +25,16 @@
     }
 
     html,
-    body
-    {
-    height: 100%;
-    margin: 0;
-    padding: 0;
+    body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
     }
 </style>
-
 <body>
-
-
     <div class="outer-div">
         <h1>Encounter</h1>
-        <a href="#encounter-summary">Encounter Summary</a> | <a href="#add-recording">Add Recording</a> | <a
-            href="#recordings">Recordings</a>
-
-
+        <a href="#encounter-summary">Encounter Summary</a> | <a href="#add-recording">Add Recording</a> | <a href="#recordings">Recordings</a>
         <section id="encounter-summary">
             <div class="summary" id="summary">
                 <h2>Encounter Summary</h2>
@@ -53,46 +46,37 @@
                 <p>Encounter: {{ encounter.encounter_name }}</p>
                 <p>Location: {{ encounter.location }}</p>
                 <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
-
                 <h3>Other details</h3>
                 <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
                 <p>Cruise: {% if encounter.origin %}{{ encounter.origin }} {% else %}Not entered{% endif %}</p>
-                <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {%
-                    else %}Not entered{% endif %}</p>
-                <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{%
-                    endif %}</p>
-
+                <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {%else %}Not entered{% endif %}</p>
+                <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{%endif %}</p>
             </div>
             <h4 id="encounter-coordinate-message">Interactive map view of the encounter coordinates</h4>
-
             <div id="outer-map" hidden>
                 <div class="map" id="map" hidden></div>
             </div><br>
-
         </section>
+
         <section id="add-recording">
             <h2>Add Recording</h2>
             <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post" enctype="multipart/form-data">
                 <label for="time_start">Start Time:</label>
                 <input type="datetime-local" id="time_start" name="time_start" required>
                 <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="seconds" required><br>
-
                 <label for="recording_file">Recording File:</label>
                 <input style="width:100%;" type="file" id="recording_file" name="recording_file" accept=".wav"><br>
-
                 <label for="selection_table_file">Selection File:</label>
                 <input style="width:100%;" type="file" id="selection_table_file" name="selection_table_file" accept=".csv"><br>
-
                 <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
-
                 <button type="submit">Submit</button>
             </form><br>
         </section>
+
         <section id="recordings">
             <h2>Recordings</h2>
             {% if encounter.get_number_of_recordings() > 0 %}
-            <a href="{{url_for('download_folder', relative_path=encounter.generate_relative_path())}}">Download
-                All</a>
+            <a href="{{url_for('download_folder', relative_path=encounter.generate_relative_path())}}">Download All</a>
             <table>
                 <tr>
                     <th>Start Time</th>
@@ -102,21 +86,18 @@
                 </tr>
                 {% for recording in recordings %}
                 <tr>
-                    <form action="{{ url_for('recording.recording_update', encounter_id=encounter.id, recording_id=recording.id)}}" method="post"
-                        enctype="multipart/form-data">
+                    <form
+                        action="{{ url_for('recording.recording_update', encounter_id=encounter.id, recording_id=recording.id)}}"
+                        method="post" enctype="multipart/form-data">
                         <td>
                             <label hidden>{{ recording.get_start_time() }}</label><br>
-                            <input style="width: 100%" type="datetime-local" id="time_start" name="time_start"
-                                value="{{ recording.get_start_time_string() }}" required>
-                            <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="Seconds"
-                                value="{{ recording.get_seconds() }}" required><br>
+                            <input style="width: 100%" type="datetime-local" id="time_start" name="time_start" value="{{ recording.get_start_time_string() }}" required>
+                            <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="Seconds" value="{{ recording.get_seconds() }}" required><br>
                         </td>
                         {% if recording.recording_file != None %}
                         <td>
-                            <a
-                                href="{{ url_for('download_file', relative_path=recording.recording_file.get_full_relative_path()) }}">Download</a><br>
-                            <a
-                                href="{{ url_for('recording.recording_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
+                            <a href="{{ url_for('download_file', relative_path=recording.recording_file.get_full_relative_path()) }}">Download</a><br>
+                            <a href="{{ url_for('recording.recording_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
                         </td>
                         {% else %}
                         <td>
@@ -126,11 +107,8 @@
                         {% endif %}
                         {% if recording.selection_table_file != None %}
                         <td>
-                            <a
-                                href="{{ url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path()) }}">Download</a><br>
-                            <a
-                                href="{{ url_for('recording.selection_table_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.selection_table_file.id) }}">Delete</a>
-
+                            <a href="{{ url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path()) }}">Download</a><br>
+                            <a href="{{ url_for('recording.selection_table_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.selection_table_file.id) }}">Delete</a>
                         </td>
                         {% else %}
                         <td>
@@ -141,32 +119,28 @@
                         <td>
                             <button style="width: 100%" type="submit">Update</button>
                             <button style="width:100%" type="button" onclick="window.location.href='{{ url_for('recording.recording_view', encounter_id=encounter.id, recording_id=recording.id) }}'">View Selections</button><br>
-
-                            <button style="width: 100%" type="button" onclick="return confirm('Are you sure you want to delete this recording?') ? window.location.href='{{ url_for("recording.recording_delete", encounter_id=encounter.id, recording_id=recording.id) }}' :false;">Delete</button><br>
-
-                            <a
-                                href="{{url_for('download_folder', relative_path=recording.generate_relative_path())}}">Download
-                                All</a><br>
-
-
+                            <button style="width: 100%" type="button" onclick="return confirm('Are you sure you want to delete this recording?') ? window.location.href='{{ url_for("recording.recording_delete", encounter_id=encounter.id, recording_id=recording.id) }}':false;">Delete</button><br>
+                            <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path())}}">Download All</a><br>
                         </td>
                     </form>
                 </tr>
                 {% endfor %}
             </table>
-
-
             {% else %}
             <p>This encounter has no recordings. Please use the form above to add recordings.</p>
             {% endif %}
         </section>
-
-
     </div>
-    <script async
-        src="https://maps.googleapis.com/maps/api/js?key={{server_side_api_key_variable}}&callback=console.debug&libraries=maps,marker&v=beta&callback=initMap&loading=async"></script>
+    <script async src="https://maps.googleapis.com/maps/api/js?key={{server_side_api_key_variable}}&callback=console.debug&libraries=maps,marker&v=beta&callback=initMap&loading=async"></script>
     <script>
 
+    
+        /**
+         * Extracts the date from a given file name and updates the time_start and seconds fields in the document.
+         * The date is extracted using an HTTP request to a server-side method which determines the regex code.
+         * 
+         * @param {string} fileName - The name of the file to extract the date from.
+         */
         function extractDate(fileName) {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', '/extract_date?filename=' + encodeURIComponent(fileName), true);
@@ -177,34 +151,31 @@
                     var response = JSON.parse(xhr.responseText);
                     if (response.date != null) {
                         var date = new Date(response.date);
-
                         var formattedDate = date.toISOString().slice(0, 16);
-
-                        console.log(date)
-                        console.log(formattedDate)
                         document.getElementById('time_start').value = formattedDate;
                         document.getElementById('seconds').value = date.getSeconds();
                     }
                 }
             }
             xhr.send();
-
-
         }
 
+        // Extract the date from the recording file name once a file is input.
         document.getElementById('recording_file').addEventListener('change', function () {
             if (this.files.length === 1) {
                 extractDate(this.files[0].name);
             }
         });
 
+        /**
+         * Initializes the (Google) map based on encounter coordinates and handles errors.
+         */
         function initMap() {
-            console.log("INIT MAP");
-
             try {
-                // Initialize the map and handle any errors related to coordinates here
                 const latitude = parseFloat('{{encounter.get_latitude()}}');
                 const longitude = parseFloat('{{encounter.get_longitude()}}');
+                
+                // Check for invalid coordinates
                 if (isNaN(latitude) || isNaN(longitude)) {
                     throw new Error('Invalid coordinates');
                 }
@@ -217,20 +188,21 @@
 
                 const map = new google.maps.Map(document.getElementById('map'), mapOptions);
 
-                const marker = new google.maps.marker.AdvancedMarkerElement({
+                const marker = new google.maps.Marker({
                     position: { lat: latitude, lng: longitude },
                     map: map,
                     title: 'My location'
                 });
 
-
+                // Display encounter coordinates
                 document.getElementById('encounter-coordinate-message').innerHTML = 'Encounter coordinates: {{ encounter.get_latitude() }}, {{ encounter.get_longitude() }}';
 
             } catch (error) {
                 if (error.message === 'Invalid coordinates') {
+                    // Display error message for invalid coordinates
                     document.getElementById('encounter-coordinate-message').innerHTML = 'Invalid coordinates for encounter ({{ encounter.get_latitude() }}, {{ encounter.get_longitude() }}). Cannot show map.';
                 } else if (error.message.includes('InvalidKeyMapError')) {
-                    // Handle the InvalidKeyMapError here
+                    // Handle InvalidKeyMapError
                     console.log('Invalid Google Maps API Key.');
                     document.getElementById('outer-map').style.display = 'none';
                     document.getElementById('error-message').innerText = 'Invalid Google Maps API Key. Please check the API key configuration.';
@@ -240,11 +212,10 @@
                     document.getElementById('encounter-coordinate-message').innerHTML = 'An error occurred while initializing the map: ' + error;
                     document.getElementById('outer-map').style.display = 'none';
                 }
+                // Remove the map container
                 document.getElementById('outer-map').remove();
             }
         }
-
     </script>
 </body>
-
 </html>
