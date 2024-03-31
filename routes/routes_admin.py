@@ -266,7 +266,7 @@ def admin_species_edit(species_id):
             species_data.set_common_name(common_name)
             species_data.update_call(session)
             session.commit()
-            #clean_up_root_directory(UPLOAD_FOLDER)
+            #clean_up_root_directory(FILE_SPACE_PATH)
             flash('Species updated: {}'.format(species_name), 'success')
         else:
             flash('Species with ID {} not found'.format(species_id), 'error')
