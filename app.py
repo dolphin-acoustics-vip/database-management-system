@@ -69,21 +69,18 @@ def home():
     """
     return render_template('home.html')
 
-@app.route('/download_folder/<path:path>')
-def download_files_from_folder(path):
-    print("DOWNLOAD", path)
-
-    if path != "":
-        folder_path = os.path.join(UPLOAD_FOLDER, path)
-        print("folder path", folder_path)
-        zip_path = os.path.join(UPLOAD_FOLDER, f"{path}.zip")
-        print(zip_path)
+@app.route('/download-folder/<path:relative_path>')
+def download_folder(relative_path):
+    """
+    Download files from a specified folder and send them as a zip file for download.
+    """
+    if relative_path != "":
+        folder_path = os.path.join(UPLOAD_FOLDER, relative_path)
+        zip_path = os.path.join(UPLOAD_FOLDER, f"{relative_path}.zip")
 
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for root, dirs, files in os.walk(folder_path):
-                print(root, dirs, files)
                 for file in files:
-                    print(file)
                     zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), folder_path))
 
         # Send the zip file for download
@@ -94,17 +91,15 @@ def download_files_from_folder(path):
 
         return response
 
-@app.route('/download_file/<path:full_path>')
-def download_file_from_uploads(full_path):
-    if full_path!="":
-        
-        # Assuming the files are stored in a directory named 'uploads'
-        # You may need to adjust the file path based on your actual file storage setup
-        file_path = os.path.join(UPLOAD_FOLDER, full_path)
-        
-        return send_file(file_path, as_attachment=True) 
 
-
+@app.route('/download-file/<path:relative_path>')
+def download_file(relative_path):
+    """
+    Download a file from the 'uploads' directory and send it for download.
+    """
+    if relative_path != "":
+        file_path = os.path.join(UPLOAD_FOLDER, relative_path)
+        return send_file(file_path, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -91,7 +91,7 @@
         <section id="recordings">
             <h2>Recordings</h2>
             {% if encounter.get_number_of_recordings() > 0 %}
-            <a href="{{url_for('download_files_from_folder', path=encounter.generate_relative_path())}}">Download
+            <a href="{{url_for('download_folder', relative_path=encounter.generate_relative_path())}}">Download
                 All</a>
             <table>
                 <tr>
@@ -114,7 +114,7 @@
                         {% if recording.recording_file != None %}
                         <td>
                             <a
-                                href="{{ url_for('download_file_from_uploads', full_path=recording.recording_file.get_full_relative_path()) }}">Download</a><br>
+                                href="{{ url_for('download_file', relative_path=recording.recording_file.get_full_relative_path()) }}">Download</a><br>
                             <a
                                 href="{{ url_for('recording.recording_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
                         </td>
@@ -145,7 +145,7 @@
                             <button style="width: 100%" type="button" onclick="return confirm('Are you sure you want to delete this recording?') ? window.location.href='{{ url_for("recording.recording_delete", encounter_id=encounter.id, recording_id=recording.id) }}' :false;">Delete</button><br>
 
                             <a
-                                href="{{url_for('download_files_from_folder', path=recording.generate_relative_path())}}">Download
+                                href="{{url_for('download_folder', relative_path=recording.generate_relative_path())}}">Download
                                 All</a><br>
 
 
