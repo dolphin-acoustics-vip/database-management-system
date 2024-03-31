@@ -1,15 +1,22 @@
-import re, uuid, zipfile, os
-from flask import Flask, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
-from sqlalchemy.orm import joinedload,sessionmaker
+# Standard library imports
+import os
+import zipfile
+
+# Third-party imports
+from flask import (Flask, flash, get_flashed_messages, jsonify, redirect,
+                   render_template, request, send_file, session, url_for,
+                   send_from_directory)
 from sqlalchemy.exc import SQLAlchemyError
-from db import app,Session,UPLOAD_FOLDER,GOOGLE_API_KEY
-import db
+from sqlalchemy.orm import joinedload, sessionmaker
+
+# Local application imports
+from db import Session, UPLOAD_FOLDER, GOOGLE_API_KEY, app
 from models import *
 from routes.routes_admin import routes_admin
-from routes.routes_species import routes_species
 from routes.routes_encounter import routes_encounter
 from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
+from routes.routes_species import routes_species
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_species)
@@ -32,33 +39,43 @@ def add():
     # rest of your route
 
 '''
-# test
+
+
+@app.route('/resources/<path:filename>')
+def download_file(filename):
+    """
+    Serve a file from the 'resources' directory.
+    """
+    return send_from_directory('resources', filename)
+
+@app.route('/static/css/<path:filename>')
+def serve_general_style(filename):
+    """
+    Serve a file from the 'static/css' directory
+    """
+    return send_from_directory('static/css', filename)
+
+# # Add a route to serve the hero-section.css file
+# @app.route('/static/css/hero-section.css')
+# def serve_hero_section():
+#     return send_from_directory('static/css', 'hero-section.css')
+
 
 
 @app.route('/')
 def hello_world():
-    return "Root Page"
+    """
+    Redirects the user to the 'home' route when accessing the root URL.
+    """
+    return redirect(url_for('home'))
+
 @app.route('/home')
 def home():
+    """
+    Route for the home page.
+    """
     return render_template('home.html')
 
-
-
-# Route to serve the image file from the resources directory
-@app.route('/resources/<path:filename>')
-def download_file(filename):
-    return send_from_directory('resources', filename)
-
-
-# Add a route to serve the general-style.css file
-@app.route('/static/css/general-style.css')
-def serve_general_style():
-    return send_from_directory('static/css', 'general-style.css')
-
-# Add a route to serve the hero-section.css file
-@app.route('/static/css/hero-section.css')
-def serve_hero_section():
-    return send_from_directory('static/css', 'hero-section.css')
 
 
 # Define a route to clear flashed messages
