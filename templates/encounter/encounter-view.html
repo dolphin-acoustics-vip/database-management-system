@@ -80,8 +80,8 @@
                 <label for="recording_file">Recording File:</label>
                 <input style="width:100%;" type="file" id="recording_file" name="recording_file" accept=".wav"><br>
 
-                <label for="selection_file">Selection File:</label>
-                <input style="width:100%;" type="file" id="selection_file" name="selection_file" accept=".csv"><br>
+                <label for="selection_table_file">Selection File:</label>
+                <input style="width:100%;" type="file" id="selection_table_file" name="selection_table_file" accept=".csv"><br>
 
                 <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
 
@@ -102,7 +102,7 @@
                 </tr>
                 {% for recording in recordings %}
                 <tr>
-                    <form action="url_for('recording.recording_update', encounter_id=encounter.id, recording_id=recording.id)" method="post"
+                    <form action="{{ url_for('recording.recording_update', encounter_id=encounter.id, recording_id=recording.id)}}" method="post"
                         enctype="multipart/form-data">
                         <td>
                             <label hidden>{{ recording.get_start_time() }}</label><br>
@@ -124,18 +124,18 @@
                             <input style="width:100%;" type="file" id="recording_file" name="recording_file"><br>
                         </td>
                         {% endif %}
-                        {% if recording.selection_file != None %}
+                        {% if recording.selection_table_file != None %}
                         <td>
                             <a
-                                href="{{ url_for('download_file_from_uploads', full_path=recording.selection_file.get_full_relative_path()) }}">Download</a><br>
+                                href="{{ url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path()) }}">Download</a><br>
                             <a
-                                href="{{ url_for('recording.selection_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.selection_file.id) }}">Delete</a>
+                                href="{{ url_for('recording.selection_table_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.selection_table_file.id) }}">Delete</a>
 
                         </td>
                         {% else %}
                         <td>
-                            <label for="selection_file" class="btn">Add file: </label>
-                            <input style="width: 100%" type="file" id="selection_file" name="selection_file"><br>
+                            <label for="selection_table_file" class="btn">Add file: </label>
+                            <input style="width: 100%" type="file" id="selection_table_file" name="selection_table_file"><br>
                         </td>
                         {% endif %}
                         <td>

@@ -78,6 +78,7 @@ def encounter_view(encounter_id):
     """
     Route to show the encounter view page.
     """
+    print(encounter_id)
     with Session() as session:
         encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
         recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()

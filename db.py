@@ -41,6 +41,7 @@ def parse_alchemy_error(error):
     Returns:
     A human-readable error message based on the type of SQLAlchemy error.
     """
+    raise error
     if isinstance(error, sqlalchemy.exc.IntegrityError):
         error_message = str(error)
         if "cannot be null" in error_message:

@@ -92,16 +92,16 @@ CREATE TABLE `recording` (
   `start_time` datetime NOT NULL,
   `duration` int(11) DEFAULT NULL,
   `recording_file_id` uuid DEFAULT NULL,
-  `selection_file_id` uuid DEFAULT NULL,
+  `selection_table_file_id` uuid DEFAULT NULL,
   `encounter_id` uuid NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_time_encounter_id` (`start_time`,`encounter_id`),
   KEY `fk_encounter_id` (`encounter_id`),
   KEY `fk_recording_file_id` (`recording_file_id`),
-  KEY `fk_selection_file_id` (`selection_file_id`),
+  KEY `fk_selection_table_file_id` (`selection_table_file_id`),
   CONSTRAINT `fk_encounter_id` FOREIGN KEY (`encounter_id`) REFERENCES `encounter` (`id`),
   CONSTRAINT `fk_recording_file_id` FOREIGN KEY (`recording_file_id`) REFERENCES `file` (`id`),
-  CONSTRAINT `fk_selection_file_id` FOREIGN KEY (`selection_file_id`) REFERENCES `file` (`id`)
+  CONSTRAINT `fk_selection_table_file_id` FOREIGN KEY (`selection_table_file_id`) REFERENCES `file` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
