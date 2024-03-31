@@ -2,7 +2,7 @@ import re, uuid, zipfile, os
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from db import UPLOAD_FOLDER, Session, GOOGLE_API_KEY
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY
 import db
 from models import *
 
@@ -13,7 +13,7 @@ routes_recording = Blueprint('recording', __name__)
 
 def insert_or_update_recording(session, request, encounter_id, recording_id=None):
     encounter = session.query(Encounter).filter_by(id=encounter_id).first()
-    root_path = UPLOAD_FOLDER
+    root_path = FILE_SPACE_PATH
 
     time_start = request.form['time_start']
     seconds = request.form['seconds']

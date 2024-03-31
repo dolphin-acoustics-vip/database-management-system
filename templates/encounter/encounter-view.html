@@ -72,7 +72,7 @@
         </section>
         <section id="add-recording">
             <h2>Add Recording</h2>
-            <form action="/encounter/view/{{encounter.id}}/add_recording" method="post" enctype="multipart/form-data">
+            <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post" enctype="multipart/form-data">
                 <label for="time_start">Start Time:</label>
                 <input type="datetime-local" id="time_start" name="time_start" required>
                 <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="seconds" required><br>
@@ -102,7 +102,7 @@
                 </tr>
                 {% for recording in recordings %}
                 <tr>
-                    <form action="/encounter/view/{{encounter.id}}/edit_recording/{{recording.id}}" method="post"
+                    <form action="url_for('recording.recording_update', encounter_id=encounter.id, recording_id=recording.id)" method="post"
                         enctype="multipart/form-data">
                         <td>
                             <label hidden>{{ recording.get_start_time() }}</label><br>

@@ -257,7 +257,7 @@ class File(db.Model):
         file_name_with_unique = file_name + "-" + unique_name
 
         trash_file_path = os.path.join(trash_folder, file_name_with_unique) + "." + self.extension
-        if os.path.exists(trash_folder):
+        if os.path.exists(trash_folder) and os.path.exists(file_path):
             os.rename(file_path, trash_file_path)
 
     def move_file(self, session, new_relative_file_path, root_path):

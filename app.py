@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, sessionmaker
 
 # Local application imports
-from db import Session, UPLOAD_FOLDER, GOOGLE_API_KEY, app
+from db import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
 from models import *
 from routes.routes_admin import routes_admin
 from routes.routes_encounter import routes_encounter
@@ -60,8 +60,8 @@ def download_folder(relative_path):
     Download files from a specified folder and send them as a zip file for download.
     """
     if relative_path != "":
-        folder_path = os.path.join(UPLOAD_FOLDER, relative_path)
-        zip_path = os.path.join(UPLOAD_FOLDER, f"{relative_path}.zip")
+        folder_path = os.path.join(FILE_SPACE_PATH, relative_path)
+        zip_path = os.path.join(FILE_SPACE_PATH, f"{relative_path}.zip")
 
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for root, dirs, files in os.walk(folder_path):
@@ -82,7 +82,7 @@ def download_file(relative_path):
     Download a file from the 'uploads' directory and send it for download.
     """
     if relative_path != "":
-        file_path = os.path.join(UPLOAD_FOLDER, relative_path)
+        file_path = os.path.join(FILE_SPACE_PATH, relative_path)
         return send_file(file_path, as_attachment=True)
 
 @app.route('/')

@@ -2,7 +2,7 @@ import re, uuid, zipfile, os
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from db import UPLOAD_FOLDER, Session, GOOGLE_API_KEY
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY
 import db
 from models import *
 
@@ -131,7 +131,7 @@ def encounter_update(encounter_id):
         encounter.set_notes(request.form['notes'])
         encounter.update_call(session)
         session.commit()
-        clean_up_root_directory(UPLOAD_FOLDER)
+        clean_up_root_directory(FILE_SPACE_PATH)
         flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
         return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
