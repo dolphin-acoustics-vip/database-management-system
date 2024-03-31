@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html>
 {% include 'partials/header.html' %}
-<link rel="stylesheet" href="../../../static/css/hero-section.css">
-<link rel="stylesheet" href="../../../static/css/general-style.css">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Species</title>
+    <link rel="stylesheet" href="../../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../../static/css/general-style.css">
 </head>
 <body>
     <div class="outer-div">
@@ -14,16 +12,12 @@
     <form action="{{ url_for('admin.admin_species_edit', species_id=species.id) }}" method="post">
         <label for="species_name">Scientific name:</label>
         <input type="text" id="species_name" name="species_name" value="{{ species.get_species_name() }}" required><br><br>
-        
         <label for="genus_name">Genus:</label>
         <input type="text" id="genus_name" name="genus_name" value="{{ species.get_genus_name() }}"><br><br>
-        
         <label for="common_name">Common name:</label>
         <input type="text" id="common_name" name="common_name" value="{{ species.get_common_name() }}"><br><br>
-    
         <button type="submit">Save Changes</button>
     </form>
     </div>
-    
 </body>
 </html>
