@@ -143,7 +143,6 @@ def selection_insert_bulk(encounter_id,recording_id):
     Returns:
         A JSON response indicating success or failure.
     """
-    print("I GOT HERE")
     with Session() as session:
         try:
             if 'selection_files' not in request.files:

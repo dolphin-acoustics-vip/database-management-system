@@ -1,22 +1,20 @@
-<form method="post">
-    <label for="name" style="margin-bottom:5px;">Name:</label>
-    <input type="text" id="name" name="name" {% if editing %} value="{{ data_source.name }}" {% endif %} required><br>
-    <label for="phone_number1" style="margin-bottom:5px;">Phone Number 1:</label>
-    <input type="text" id="phone_number1" name="phone_number1" {% if editing %} value="{{ data_source.phone_number1 }}" {% endif %}><br>
-    <label for="phone_number2" style="margin-bottom:5px;">Phone Number 2:</label>
-    <input type="text" id="phone_number2" name="phone_number2" {% if editing %} value="{{ data_source.phone_number2 }}" {% endif %}><br>
-    <label for="email1" style="margin-bottom:5px;">Email 1:</label>
-    <input type="text" id="email1" name="email1" {% if editing %} value="{{ data_source.email1 }}" {% endif %} required><br>
-    <label for="email2" style="margin-bottom:5px;">Email 2:</label>
-    <input type="text" id="email2" name="email2" {% if editing %} value="{{ data_source.email2 }}" {% endif %}><br>
-    <label for="address" style="margin-bottom:5px;">Address:</label>
-    <textarea id="address" name="address" rows="4" cols="50" >{% if editing %}{{ data_source.address }}{% endif %}</textarea><br>
-    <label for="notes" style="margin-bottom:5px;">Notes:</label>
-    <textarea id="notes" name="notes" rows="4" cols="50" >{% if editing %}{{ data_source.notes }}{% endif %}</textarea><br>
-    <select id="source-type" name="source-type">
-        {% for value in data_source_type_values %}
-            <option value="{{ value }}" {% if editing and value == data_source.type %} selected {% endif %}>{{ value }}</option>
-        {% endfor %}
-    </select><br><br>
-    <button type="submit">{% if editing %} Update {% else %} Submit {% endif %}</button>
-</form>
+<label for="name" style="margin-bottom:5px;">Name:</label>
+<input type="text" id="name" name="name" {% if editing %} value="{{ data_source.name }}" {% endif %} required><br>
+<label for="phone_number1" style="margin-bottom:5px;">Phone Number 1:</label>
+<input type="text" id="phone_number1" name="phone_number1" {% if editing %} value="{{ data_source.phone_number1 }}" {% endif %}><br>
+<label for="phone_number2" style="margin-bottom:5px;">Phone Number 2:</label>
+<input type="text" id="phone_number2" name="phone_number2" {% if editing %} value="{{ data_source.phone_number2 }}" {% endif %}><br>
+<label for="email1" style="margin-bottom:5px;">Email 1:</label>
+<input type="text" id="email1" name="email1" {% if editing %} value="{{ data_source.email1 }}" {% endif %} required><br>
+<label for="email2" style="margin-bottom:5px;">Email 2:</label>
+<input type="text" id="email2" name="email2" {% if editing %} value="{{ data_source.email2 }}" {% endif %}><br>
+<label for="address" style="margin-bottom:5px;">Address:</label>
+<textarea id="address" name="address" rows="4" cols="50" >{% if editing %}{{ data_source.address }}{% endif %}</textarea><br>
+<label for="notes" style="margin-bottom:5px;">Notes:</label>
+<textarea id="notes" name="notes" rows="4" cols="50" >{% if editing %}{{ data_source.notes }}{% endif %}</textarea><br>
+<select id="source-type" name="source-type">
+    {% for value in data_source_type_values %}
+        <option value="{{ value }}" {% if editing and value == data_source.type %} selected {% endif %}>{{ value }}</option>
+    {% endfor %}
+</select><br><br>
+<button type="submit">{% if editing %} Update {% else %} Submit {% endif %}</button>
