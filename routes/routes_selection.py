@@ -2,7 +2,7 @@ import re, uuid, zipfile, os
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY
+from db import UPLOAD_FOLDER, Session, GOOGLE_API_KEY
 import db
 from models import *
 
@@ -32,7 +32,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = File()
     try:
-        new_file.insert_path_and_filename(selection_file, selection_relative_path, selection_filename, FILE_SPACE_PATH)
+        new_file.insert_path_and_filename(selection_file, selection_relative_path, selection_filename, UPLOAD_FOLDER)
     except IOError as e:
         if "File already exists" in str(e):
             if session.query(Selection).filter_by(selection_number=selection_number).filter_by(recording_id=recording_id).first() is not None:

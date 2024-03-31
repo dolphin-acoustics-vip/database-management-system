@@ -1,7 +1,5 @@
-/uploads/
-/webapp/
-/trash/
-/filespace/
-/routes/__pycache__/
-__pycache__/
+/uploads/*
+/webapp/*
+/trash/*
+/__pycache__/*
 google_api_key.txt

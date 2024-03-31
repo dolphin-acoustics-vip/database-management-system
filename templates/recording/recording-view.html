@@ -59,7 +59,7 @@
                     <td>
                         {% if selection.selection_file %}
                         <a
-                            href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>
+                            href="{{ url_for('download_file_from_uploads', full_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>
                         {% else %}<section id="encounter-summary">
                         No selection file available
                         {% endif %}
@@ -68,7 +68,7 @@
                 {% endfor %}
             </form>
         </table>
-        <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path_for_selections())}}">Download All</a>
+        <a href="{{url_for('download_files_from_folder', path=recording.generate_relative_path_for_selections())}}">Download All</a>
 
         {% else %}
         <p>This recording has no selections. Please use the form above to add selections.</p>

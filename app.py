@@ -1,22 +1,15 @@
-# Standard library imports
-import os
-import zipfile
-
-# Third-party imports
-from flask import (Flask, flash, get_flashed_messages, jsonify, redirect,
-                   render_template, request, send_file, session, url_for,
-                   send_from_directory)
+import re, uuid, zipfile, os
+from flask import Flask, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
+from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload, sessionmaker
-
-# Local application imports
-from db import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
+from db import app,Session,UPLOAD_FOLDER,GOOGLE_API_KEY
+import db
 from models import *
 from routes.routes_admin import routes_admin
+from routes.routes_species import routes_species
 from routes.routes_encounter import routes_encounter
 from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
-from routes.routes_species import routes_species
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_species)
@@ -39,33 +32,59 @@ def add():
     # rest of your route
 
 '''
+# test
 
+
+@app.route('/')
+def hello_world():
+    return "Root Page"
+@app.route('/home')
+def home():
+    return render_template('home.html')
+
+
+
+# Route to serve the image file from the resources directory
 @app.route('/resources/<path:filename>')
-def serve_resource(filename):
-    """
-    Serve a file from the 'resources' directory (for resources such as images).
-    """
+def download_file(filename):
     return send_from_directory('resources', filename)
 
-@app.route('/static/css/<path:filename>')
-def serve_style(filename):
-    """
-    Serve a file from the 'static/css' directory (for CSS).
-    """
-    return send_from_directory('static/css', filename)
 
-@app.route('/download-folder/<path:relative_path>')
-def download_folder(relative_path):
-    """
-    Download files from a specified folder and send them as a zip file for download.
-    """
-    if relative_path != "":
-        folder_path = os.path.join(FILE_SPACE_PATH, relative_path)
-        zip_path = os.path.join(FILE_SPACE_PATH, f"{relative_path}.zip")
+# Add a route to serve the general-style.css file
+@app.route('/static/css/general-style.css')
+def serve_general_style():
+    return send_from_directory('static/css', 'general-style.css')
+
+# Add a route to serve the hero-section.css file
+@app.route('/static/css/hero-section.css')
+def serve_hero_section():
+    return send_from_directory('static/css', 'hero-section.css')
+
+
+# Define a route to clear flashed messages
+@app.route('/clear_flashed_messages', methods=['POST'])
+def clear_flashed_messages():
+    flashed_messages = get_flashed_messages(with_categories=True)  # Retrieve flashed messages
+    for category, message in flashed_messages:
+        session['_flashes'].remove((category, message))  # Remove specific flashed message from the session
+        
+    return jsonify({'message': 'Flashed messages cleared'})
+
+@app.route('/download_folder/<path:path>')
+def download_files_from_folder(path):
+    print("DOWNLOAD", path)
+
+    if path != "":
+        folder_path = os.path.join(UPLOAD_FOLDER, path)
+        print("folder path", folder_path)
+        zip_path = os.path.join(UPLOAD_FOLDER, f"{path}.zip")
+        print(zip_path)
 
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for root, dirs, files in os.walk(folder_path):
+                print(root, dirs, files)
                 for file in files:
+                    print(file)
                     zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), folder_path))
 
         # Send the zip file for download
@@ -76,28 +95,17 @@ def download_folder(relative_path):
 
         return response
 
-@app.route('/download-file/<path:relative_path>')
-def download_file(relative_path):
-    """
-    Download a file from the 'uploads' directory and send it for download.
-    """
-    if relative_path != "":
-        file_path = os.path.join(FILE_SPACE_PATH, relative_path)
-        return send_file(file_path, as_attachment=True)
+@app.route('/download_file/<path:full_path>')
+def download_file_from_uploads(full_path):
+    if full_path!="":
+        
+        # Assuming the files are stored in a directory named 'uploads'
+        # You may need to adjust the file path based on your actual file storage setup
+        file_path = os.path.join(UPLOAD_FOLDER, full_path)
+        
+        return send_file(file_path, as_attachment=True) 
 
-@app.route('/')
-def hello_world():
-    """
-    Redirect user from root to home directory.
-    """
-    return redirect(url_for('home'))
 
-@app.route('/home')
-def home():
-    """
-    Route for the home page.
-    """
-    return render_template('home.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
