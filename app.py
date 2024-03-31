@@ -42,30 +42,23 @@ def add():
 
 
 @app.route('/resources/<path:filename>')
-def download_file(filename):
+def serve_resource(filename):
     """
-    Serve a file from the 'resources' directory.
+    Serve a file from the 'resources' directory (for resources such as images).
     """
     return send_from_directory('resources', filename)
 
 @app.route('/static/css/<path:filename>')
-def serve_general_style(filename):
+def serve_style(filename):
     """
-    Serve a file from the 'static/css' directory
+    Serve a file from the 'static/css' directory (for CSS).
     """
     return send_from_directory('static/css', filename)
-
-# # Add a route to serve the hero-section.css file
-# @app.route('/static/css/hero-section.css')
-# def serve_hero_section():
-#     return send_from_directory('static/css', 'hero-section.css')
-
-
 
 @app.route('/')
 def hello_world():
     """
-    Redirects the user to the 'home' route when accessing the root URL.
+    Redirect user from root to home directory.
     """
     return redirect(url_for('home'))
 
@@ -75,17 +68,6 @@ def home():
     Route for the home page.
     """
     return render_template('home.html')
-
-
-
-# Define a route to clear flashed messages
-@app.route('/clear_flashed_messages', methods=['POST'])
-def clear_flashed_messages():
-    flashed_messages = get_flashed_messages(with_categories=True)  # Retrieve flashed messages
-    for category, message in flashed_messages:
-        session['_flashes'].remove((category, message))  # Remove specific flashed message from the session
-        
-    return jsonify({'message': 'Flashed messages cleared'})
 
 @app.route('/download_folder/<path:path>')
 def download_files_from_folder(path):
