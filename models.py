@@ -1,13 +1,30 @@
+# Standard library imports
+import os, uuid
+from datetime import datetime
+
+# Third-party imports
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
+
+# Local application imports
 from db import db, FILE_SPACE_PATH
-import uuid
-from datetime import datetime
-import os
 
 
 
-def clean_up_root_directory(root_directory):
+def process_id(value):
+    if type(value)==str:
+        try:
+            return uuid.UUID(value.strip())
+        except ValueError:
+            value = None
+    if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
+        return None
+    return None
+
+def clean_directory(root_directory):
+    """
+    Walk through a given directory and remove any empty directories
+    """
     # Get the root directory of the project
     for root, dirs, files in os.walk(root_directory, topdown=False):
         for dir in dirs:
@@ -18,7 +35,6 @@ def clean_up_root_directory(root_directory):
 class Species(db.Model):
     __tablename__ = 'species'
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    #id = db.Column(db.String(36), primary_key=True, default=str(uuid.uuid4()))
     species_name = db.Column(db.String(100), nullable=False, unique=True)
     genus_name = db.Column(db.String(100))
     common_name = db.Column(db.String(100))
@@ -28,9 +44,7 @@ class Species(db.Model):
         for encounter in encounters:
             encounter.update_call(session)
 
-
     def get_species_name(self):
-        print("get species name ", self.species_name,'' if self.species_name is None else self.species_name)
         return '' if self.species_name is None else self.species_name
 
     def set_species_name(self, value):
@@ -62,7 +76,7 @@ class Encounter(db.Model):
     data_source_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('data_source.id'), nullable=False)
     recording_platform_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording_platform.id'), nullable=False)
     notes = db.Column(db.String(1000))
-
+    
     species = db.relationship("Species")
     data_source = db.relationship("DataSource")
     recording_platform = db.relationship("RecordingPlatform")
@@ -70,26 +84,18 @@ class Encounter(db.Model):
     __table_args__ = (
         db.UniqueConstraint('encounter_name', 'location'),
     )
-
-
-    def set_latitude(self, value):
-        self.latitude = None if value.strip() == '' else value.strip()
     
-    def set_longitude(self, value):
-        self.longitude = None if value.strip() == '' else value.strip()
-    
-    def get_latitude(self):
-        return '' if self.latitude is None else self.latitude
-
-    def get_longitude(self):
-        return '' if self.longitude is None else self.longitude
-
     def get_number_of_recordings(self):
-        
+        """
+        Calculate the number of recordings associated with the encounter and return
+        """
         num_recordings = db.session.query(Recording).filter_by(encounter_id=self.id).count()
         return num_recordings
 
     def generate_relative_path(self):
+        """
+        Generate a relative path for files stored in the file space based on the species, location, and encounter name.
+        """
         species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
         return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}"
     
@@ -105,44 +111,28 @@ class Encounter(db.Model):
             recording.delete(session)
         session.delete(self)
 
+
+    def get_latitude(self):
+        return '' if self.latitude is None else self.latitude
+
+    def set_latitude(self, value):
+        self.latitude = None if value.strip() == '' else value.strip()
+    
+    def get_longitude(self):
+        return '' if self.longitude is None else self.longitude
+
+    def set_longitude(self, value):
+        self.longitude = None if value.strip() == '' else value.strip()
     
     def set_species_id(self, value):
-        print(value,type(value))
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value.strip())
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        print("SET SPECIES",value)
-        self.species_id = value
+        self.species_id = process_id(value)
 
-    def set_data_source(self, value):
-        print(value,type(value))
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value.strip())
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        print("SET DATA SOURCE",value)
-        self.data_source_id = value
+    def set_data_source_id(self, value):
+        self.data_source_id = process_id(value)
     
-    def set_recording_platform(self,value):
-        print(value,type(value))
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value.strip())
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        print("SET PLATFORM",value)
-        self.recording_platform_id = value
+    def set_recording_platform_id(self,value):
+        self.recording_platform_id = process_id(value)
     
-
     def get_encounter_name(self):
         return '' if self.encounter_name is None else self.encounter_name
 
@@ -167,7 +157,7 @@ class Encounter(db.Model):
     def set_notes(self, value):
         self.notes = None if value.strip() == '' else value.strip()
 
-
+'''
 def encounter_updated(session, encounter_id):
     try:
         recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
@@ -177,7 +167,8 @@ def encounter_updated(session, encounter_id):
     except Exception as e:
         session.rollback()
         raise e
-    
+'''
+
 class File(db.Model):
     __tablename__ = 'file'
 
