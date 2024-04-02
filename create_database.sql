@@ -130,12 +130,13 @@ DROP TABLE IF EXISTS `selection`;
 CREATE TABLE `selection` (
   `id` uuid NOT NULL DEFAULT uuid(),
   `selection_number` int(11) NOT NULL,
-  `selection_file_id` text NOT NULL,
+  `selection_file_id` uuid NOT NULL,
   `recording_id` uuid NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `selection_number` (`selection_number`,`recording_id`),
   KEY `recording_id` (`recording_id`),
-  CONSTRAINT `selection_ibfk_1` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`)
+  CONSTRAINT `selection_ibfk_1` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`),
+  CONSTRAINT `fk_selection_file_id` FOREIGN KEY (`selection_file_id`) REFERENCES `file` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
