@@ -111,4 +111,61 @@ All data files stored by the user in the DBMS are placed in the File Space. The 
 <blockquote class="warning">Warning: the File Space should rarely be manually modified by the Developer and never by the User. This is because changing file paths would invalidate the file references in the MetaBase.
 </blockquote><br>
 
-An important aspect of the File Space is its heirarchical structure that can be understood by the user. Namely, when a file is added to the DBMS, it is placed in an intuitive location within the File Space 
+An important aspect of the File Space is its heirarchical structure that can be understood by the user. Namely, when a file is added to the DBMS, it is placed in an intuitive location within the File Space. With read-only permissions, a user could then access files without using the Web App as an intermediary.
+
+![File Space](file_space.png)
+*The File Space shown in a diagramattic form. Note that the numbering system is for demonstration purposes only and does not accurately reflect the File Space itself*
+
+
+## The Web App
+The Web App brings together the MetaBase and the File Space into a single user interface. The Web App was written in Flask, meaning the code contained Python files to define routes and HTML, CSS, and JavaScript files to create the user interface. 
+
+The following folders exist in the Web App's root directory (note that a *module* refers to a compartamentalised section of code pertaining to a specific functionality such as encounter, recording or selection):
+- `resources` contains additional files required in the Web App such as images.
+- `routes` contains all the Flask route blueprints for separate modules.
+- `static` contains all CSS scripts used in the user interface.
+- `templates` contains all HTML scripts used in the user interface.
+- [db.py](db.py) handles database connection and the loading of external files such as [file_space_path.txt](file_space_path.txt) and [google_api_key.txt](google_api_key.txt).
+- [app.py](app.py) is the mainline which calls `db.py` and loads all `routes`.
+
+### Templates and static files
+Templates are pre-designed layouts that arrange content on a webpage, usually written in HTML. Found in the `templates` folder, templates were structured into modular sub-categories for set funcations.
+
+The template [templates/partials/header.html]() was created to define a reusable header at the top of each page.
+
+Styling (or CSS) files were stored in the `static` folder. These files were referenced in each of the templates through a route specified in [app.py](app.py).
+
+### Routes
+Routes are a server-side URL schema which describe interfaces through which a client can interact with a web app. Routes follow a Hypertext Transfer Protocol (HTTP) through which requests such as `GET` and `POST` can be made. Any request sent to the server that matches a defined URL schema is handed to the associated method defined in [routes](). 
+
+> The majority of routes exist in the folder [routes](), however the mainline [app.py]() also contains some basic routes such as `/home` and `/`, where the latter redirects to the prior.
+
+#### Requests
+HTTP has a large number of possible request types. For simplicity, the Web App uses:
+- `GET` to load templates and/or send information to the client;
+- `POST` to send information from the client to the server, usually to complete a CRUD operation in the MetaBase.
+
+### Object relational mapping
+When interacting with the MetaBase, an object relational mapping (ORM) based approach was implemented. This allowed all the database relations to be lazily and effortlessly loaded in a familiar object-oriented structure in Python.
+
+The classes for each relation were written in [models.py](models.py) using the [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/). This library was chosen as it offered seamless integration with the web application. The structure of each model was written to closely match the [MetaBase schema](#the-metabase). 
+
+Additional methods were also written within each ORM class as to provide additional APIs for the program to interact with the database, such as:
+
+#### `update_call()` 
+This method was written in each class as a generic method that could be used to implement clean-up or quality-assurance checks. In addition, calling the `update_call()` method in a master would subsequently call `update_call()` in all its slaves. 
+
+> An example of the update_call method being used is when metadata of a *species* is changed. Each *encounter*, *recording*, and *selection* that are slave to that *species* would have their own `update_call()` methods added to the call stack. Functionality written in these methods would then update the files in the File Space to include the updated species data.
+
+
+#### `delete()`
+This method was written in each class to prevent foreign key error references upon delete. Upon the deletion request of a master object (by calling `delete()` in the master), the  `delete()` method in each slave would be added to the call stack, and would need to be fulfilled first before the master could be deleted.
+
+<blockquote class="warning">Cascading delete is dangerous, and where it is implemented the user should always be warned before execution. </blockquote><br>
+
+  whereby upon the deletion of a master class (e.g., *recording*), all slave classes could also be deleted (e.g., *selection*).
+
+### Session handling
+As data must be synchronised between the File Space and MetaBase, atomicity is crucial. An atomic database transaction is one where either all required operations occur or none at all.
+
+To implement atomicity in the Web App, all database operations were bundled into sessions. If an error was produced in interacting with the File Space, any metadata changes pertainin the the request would be rolled back, and the same would be true the other way round.
