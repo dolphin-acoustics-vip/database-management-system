@@ -1,3 +1,15 @@
+
+<style>
+.green {
+    color: green;
+    font-weight:700;
+    font-size: 30px;
+}
+.warning {
+    border-left: 5px solid red;
+}
+</style>
+
 > ⚠️ **warning:** this project is still in a developmental stage. Some sections of the code and/or documentation may be incomplete.
 
 # Dolphin Acoustics VIP Database Management System
@@ -46,7 +58,8 @@ To setup the virtual environment with all the required packages, run the followi
 
 `python3 virtualenv venv && venv/bin/pip install -r requirements.txt`
 
-### Setting up the File Space
+<a name="setting-up-the-file-space"></a>
+### Setting Up the File Space
 The File Space is simply a designated path on the file system of the server (the machine running the Webapp). To set this folder, insert the relative or absolute path into [file_space_path.txt](file_space_path.txt) in the program root. For testing purposes it is recommended to use a relative path such as `filespace` as the File Space.
 
 ### Connecting the Web App to the MetaBase
@@ -93,7 +106,9 @@ Stores a particular selection (otherwise known as clip) from a recording. Intuit
 
 
 ## The File Space
+All data files stored by the user in the DBMS are placed in the File Space. The File Space should already be initialised [above](#setting-up-the-file-space).
 
+<blockquote class="warning">Warning: the File Space should rarely be manually modified by the Developer and never by the User. This is because changing file paths would invalidate the file references in the MetaBase.
+</blockquote><br>
 
-
-## The Web App
+An important aspect of the File Space is its heirarchical structure that can be understood by the user. Namely, when a file is added to the DBMS, it is placed in an intuitive location within the File Space 
