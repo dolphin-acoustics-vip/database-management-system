@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 {% include 'partials/header.html' %}
-
 <head>
     <title>Edit Encounter</title>
     <link rel="stylesheet" href="../../../static/css/hero-section.css">
@@ -12,10 +11,8 @@
         <h2>Edit Encounter</h2>
         {% set editing = True %}
         <form method="post" action="{{ url_for('encounter.encounter_update', encounter_id=encounter.id) }}">
-
-        {% include 'encounter/encounter-form-template.html' %}
+            {% include 'encounter/encounter-form-template.html' %}
         </form>
-        
     </div>
 </body>
 </html>

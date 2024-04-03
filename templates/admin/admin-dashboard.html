@@ -1,35 +1,20 @@
 <!DOCTYPE html>
 <html>
 {% include 'partials/header.html' %}
-
 <head>
     <title>Administration Portal</title>
     <link rel="stylesheet" href="../../static/css/hero-section.css">
     <link rel="stylesheet" href="../../static/css/general-style.css">
 </head>
-<style>
-.large-button {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: #f0f0f0;
-    border: none;
-    text-decoration: none;
-    font-size: 20px;
-    font-weight: bold;
-    text-align: center;
-    cursor: pointer;
-}
-
-</style>
-
 <body>
     <div class="outer-div">
         <h1>Administration Portal</h1>
-        <a href="#data-sources" >Data Sources</a> | <a href="#recording-platforms" >Recording Platforms</a> | <a href="#species" >Species</a>
-
+        <a href="#data-sources">Data Sources</a> | <a href="#recording-platforms">Recording Platforms</a> | <a
+            href="#species">Species</a>
         <section id="data-sources">
             <h2>Data Sources</h2>
-            <a href="{{ url_for('admin.admin_data_source_new') }}" class="add-new-button" style="width:300px"><button>Add new data source</button></a><br>
+            <a href="{{ url_for('admin.admin_data_source_new') }}" class="add-new-button"
+                style="width:300px"><button>Add new data source</button></a><br>
             <div style="margin-top: 10px; margin-bottom: 5px;">
                 <label for="sort-select">Filter (any column):</label>
             </div>
@@ -48,7 +33,8 @@
                     <td>{{ data_source.email1 }}</td>
                     <td>
                         <a href="{{ url_for('admin.admin_data_source_view', data_source_id=data_source.id) }}">View</a>
-                        <a href="{{ url_for('admin.admin_data_source_delete', data_source_id=data_source.id) }}">Delete</a>
+                        <a
+                            href="{{ url_for('admin.admin_data_source_delete', data_source_id=data_source.id) }}">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -57,10 +43,10 @@
             <p>No data sources found. Please add new data sources using the button above.</p>
             {% endif %}
         </section>
-
         <section id="recording-platforms">
             <h2>Recording Platforms</h2>
-            <a href="{{ url_for('admin.admin_recording_platform_new') }}" class="add-new-button" style="width:300px"><button>Add new recording platform</button></a><br>
+            <a href="{{ url_for('admin.admin_recording_platform_new') }}" class="add-new-button"
+                style="width:300px"><button>Add new recording platform</button></a><br>
             <div style="margin-top: 10px; margin-bottom: 5px;">
                 <label for="sort-select">Filter (any column):</label>
             </div>
@@ -76,8 +62,10 @@
                 <tr>
                     <td>{{ recording_platform.name }}</td>
                     <td>
-                        <a href="{{ url_for('admin.admin_recording_platform_view', recording_platform_id=recording_platform.id) }}">View</a>
-                        <a href="{{ url_for('admin.admin_recording_platform_delete', recording_platform_id=recording_platform.id) }}">Delete</a>
+                        <a
+                            href="{{ url_for('admin.admin_recording_platform_view', recording_platform_id=recording_platform.id) }}">View</a>
+                        <a
+                            href="{{ url_for('admin.admin_recording_platform_delete', recording_platform_id=recording_platform.id) }}">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -88,102 +76,87 @@
         </section>
         <section id="species">
             <h2>Species</h1>
-                <a href="{{ url_for('admin.admin_species_new') }}" class="add-new-button" style="width:300px"><button>Add New
+                <a href="{{ url_for('admin.admin_species_new') }}" class="add-new-button"
+                    style="width:300px"><button>Add New
                         Species</button></a>
-                    {% if species_list %}
-                    <div style="margin-top: 10px;">
-                        <label for="sort-select">Filter (any column):</label>
-                    </div>
-                    <input style="margin-bottom: 10px; width:195px;" type="text" id="filter-species" placeholder="No filter">
-                    <table id="species-table">
-                        <thead>
-                            <tr>
-                                <th>Scientific name</th>
-                                <th>Genus</th>
-                                <th>Common Name</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for species in species_list %}
-                            <tr>
-                                <td>{{ species.get_species_name() }}</td>
-                                <td>{{ species.get_genus_name() }}</td>
-                                <td>{{ species.get_common_name() }}</td>
-                                <td>
-                                    <form id="editForm" style="margin-bottom:5px;" method="get"
-                                        action="{{ url_for('admin.admin_species_view', species_id=species.id) }}">
-                                        <input type="hidden" name="_method" value="GET">
-                                        <button type="submit" style="width:100%"
-                                            data-species-id="{{ species.id }}">Edit</button>
-                                    </form>
-                                    <form id="deleteForm_{{ species.id }}" method="post"
-                                        action="{{ url_for('admin.admin_species_delete', species_id=species.id) }}">
-                                        <input type="hidden" name="_method" value="DELETE">
-                                        <button type="submit" style="width:100%" class="delete-link"
-                                            data-species-id="{{ species.id }}">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {% else %}
-                    <div class="no-species-message" , style="margin-top:15px;">
-                        No species found. Please add new species using the button above.
-                    </div>
-                    {% endif %}
-            </section>
+                {% if species_list %}
+                <div style="margin-top: 10px;">
+                    <label for="sort-select">Filter (any column):</label>
+                </div>
+                <input style="margin-bottom: 10px; width:195px;" type="text" id="filter-species"
+                    placeholder="No filter">
+                <table id="species-table">
+                    <thead>
+                        <tr>
+                            <th>Scientific name</th>
+                            <th>Genus</th>
+                            <th>Common Name</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for species in species_list %}
+                        <tr>
+                            <td>{{ species.get_species_name() }}</td>
+                            <td>{{ species.get_genus_name() }}</td>
+                            <td>{{ species.get_common_name() }}</td>
+                            <td>
+                                <form id="editForm" style="margin-bottom:5px;" method="get"
+                                    action="{{ url_for('admin.admin_species_view', species_id=species.id) }}">
+                                    <input type="hidden" name="_method" value="GET">
+                                    <button type="submit" style="width:100%"
+                                        data-species-id="{{ species.id }}">Edit</button>
+                                </form>
+                                <form id="deleteForm_{{ species.id }}" method="post"
+                                    action="{{ url_for('admin.admin_species_delete', species_id=species.id) }}">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit" style="width:100%" class="delete-link"
+                                        data-species-id="{{ species.id }}">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="no-species-message" , style="margin-top:15px;">
+                    No species found. Please add new species using the button above.
+                </div>
+                {% endif %}
+        </section>
     </div>
-
 </body>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </script>
 <script>
-$(document).ready(function () {
-    $('#filter-data-source').on('input', function () {
-        var filterValue = $(this).val().toLowerCase();
-        $('#data-source-table tbody tr').filter(function () {
-            if (!$(this).find('th').length) {
-                $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1);
-            }
-        });
-    });
-
-    $('#filter-recording-platform').on('input', function () {
-        var filterValue = $(this).val().toLowerCase();
-        $('#recording-platform-table tbody tr').filter(function () {
-            if (!$(this).find('th').length) {
-                $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1);
-            }
-        });
-    });
-});
-</script>
-
-    <script>
-        // $(document).ready(function () {
-        //     $('.delete-link').on('click', function (e) {
-        //         e.preventDefault();
-        //         var speciesId = $(this).data('species-id');
-        //         var confirmed = confirm("Are you sure you want to delete this species?");
-        //         if (confirmed) {
-        //             console.log("CONFIM DELETE")
-        //             var formId = 'deleteForm_' + speciesId;
-        //             var form = document.getElementById(formId);
-        //             form.querySelector('input[name="_method"]').value = "DELETE";
-        //             form.submit();
-        //         } else {
-        //             // Do nothing if the user cancels
-        //         }
-        //     });
-            $('#filter-species').on('input', function () {
-                var filterValue = $(this).val().toLowerCase();
-                $('#species-table tbody tr').filter(function () {
-                    $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1)
-                });
+    // function to filter the data source table
+    $(document).ready(function () {
+        $('#filter-data-source').on('input', function () {
+            var filterValue = $(this).val().toLowerCase();
+            $('#data-source-table tbody tr').filter(function () {
+                if (!$(this).find('th').length) {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1);
+                }
             });
+        });
 
-        //});
-    </script>
+        // function to filter the recording platform table
+        $('#filter-recording-platform').on('input', function () {
+            var filterValue = $(this).val().toLowerCase();
+            $('#recording-platform-table tbody tr').filter(function () {
+                if (!$(this).find('th').length) {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1);
+                }
+            });
+        });
+
+        // function to filter the species table
+        $('#filter-species').on('input', function () {
+            var filterValue = $(this).val().toLowerCase();
+            $('#species-table tbody tr').filter(function () {
+                $(this).toggle($(this).text().toLowerCase().indexOf(filterValue) > -1)
+            });
+        });
+    });
+</script>
 </html>

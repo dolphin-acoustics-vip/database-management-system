@@ -17,12 +17,14 @@
 
         <h2>Add selections</h2>
         <form id="uploadForm" onsubmit="return false;" enctype="multipart/form-data">
-            <input type="file" name="selection_files" id="selection_files" multiple>
+            <input type="file" name="selection-files" id="selection-files" multiple>
             <p id="bulk-upload-status-message" hidden="true">Status message</p>
-            <button id="bulk-upload-validate" style="margin-bottom: 5px;" onclick="checkValidSelections(event)" hidden="true">Validate</button>
+            <button id="bulk-upload-validate" style="margin-bottom: 5px;" onclick="checkValidSelections(event)"
+                hidden="true">Validate</button>
             <input id="bulk-upload" style="margin-bottom: 5px;" type="submit" value="Upload" hidden="true">
-            <button id="bulk-upload-clear" style="margin-bottom: 5px;" onclick="clearBulkUpload(event)" hidden>Reset</button>
-            <table id="selectionTable" hidden="true">
+            <button id="bulk-upload-clear" style="margin-bottom: 5px;" onclick="clearBulkUpload(event)"
+                hidden>Reset</button>
+            <table id="selection-table" hidden="true">
                 <thead>
                     <tr>
                         <th>Filename</th>
@@ -35,10 +37,7 @@
                 <tbody>
                 </tbody>
             </table>
-
         </form>
-
-
 
         <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
         {% if selections|length > 0 %}
@@ -52,16 +51,13 @@
             <form id="deleteForm" onsubmit="return false;">
                 {% for selection in selections %}
                 <tr>
-                    <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}">
-                    </td>
-
+                    <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}"></td>
                     <td>{{ selection.selection_number }}</td>
                     <td>
                         {% if selection.selection_file %}
-                        <a
-                            href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>
-                        {% else %}<section id="encounter-summary">
-                        No selection file available
+                        <a href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>
+                        {% else %}
+                        <section id="encounter-summary"> No selection file available</section>
                         {% endif %}
                     </td>
                 </tr>
@@ -69,23 +65,22 @@
             </form>
         </table>
         <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path_for_selections())}}">Download All</a>
-
         {% else %}
         <p>This recording has no selections. Please use the form above to add selections.</p>
         {% endif %}
-
-
-
     </div>
-
 </body>
 
-
 <script>
+    /**
+     * Toggles the selection of all rows based on the state of the "Select All" checkbox.
+     */
     function selectAllRows() {
+        // Get references to the "Select All" checkbox and all row checkboxes
         const selectAllCheckBox = document.getElementById('selectAllCheckBox');
         const rowCheckboxes = document.querySelectorAll('.rowCheckbox');
 
+        // Check the state of the "Select All" checkbox
         if (selectAllCheckBox.checked) {
             // If the "Select All" checkbox is checked, select all rows
             rowCheckboxes.forEach(checkbox => {
@@ -98,51 +93,77 @@
             });
         }
     }
+
+
+    /**
+     * Deletes the selected selections in bulk using an AJAX request.
+     */
     async function deleteSelectedSelections() {
+        // Get the delete form and all selected checkboxes
         var form = document.getElementById('deleteForm');
         var selectedCheckboxes = document.querySelectorAll('input[name="selectedSelections"]:checked');
+
+        // Create an empty array to store the selected ids
         var selectedIds = [];
 
+        // Extract the values of the selected checkboxes and store them in the selectedIds array
         for (var i = 0; i < selectedCheckboxes.length; i++) {
             selectedIds.push(selectedCheckboxes[i].value);
         }
 
+        // Define the URL for the delete request
         var url = "{{ url_for('recording.recording_delete_selections', recording_id=recording.id) }}";
 
-        // Make an AJAX request to delete the selections in bulk
+        // Create an XMLHttpRequest object for making the delete request
         var xhr = new XMLHttpRequest();
         xhr.open('DELETE', url);
         xhr.setRequestHeader('Content-Type', 'application/json');
+
+        // Once the request is complete, redirect to the current page
         xhr.onload = function () {
             window.location.href = window.location.href;
         };
+
+        // Send the selectionIds array as JSON in the request body
         xhr.send(JSON.stringify({ selectionIds: selectedIds }));
     }
+
+    
+    /**
+     * Selects or deselects all checkboxes based on the state of the Shift key and the last checked checkbox.
+     */
+
     var lastChecked;
+    var checkboxes = Array.from(document.querySelectorAll('input[name="selectedSelections"]'));
 
-    var checkboxes = document.querySelectorAll('input[name="selectedSelections"]');
-    checkboxes = Array.from(checkboxes); // Convert NodeList to array
-
+    // Add a click event listener to each checkbox
     checkboxes.forEach(function (checkbox) {
         checkbox.addEventListener('click', function (event) {
+            // Check if the Shift key is pressed and there is a lastChecked checkbox
             if (event.shiftKey && lastChecked) {
+                // Calculate the start and end positions of the range of checkboxes to be selected
                 var start = checkboxes.indexOf(lastChecked);
                 var end = checkboxes.indexOf(event.target);
+                
+                // Select the checkboxes within the calculated range
                 checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
                     .forEach(function (checkbox) {
                         checkbox.checked = event.target.checked;
                     });
             }
+            
+            // Update the lastChecked variable to the currently clicked checkbox
             lastChecked = event.target;
         });
     });
+
+
     // Define an array to store the files to be submitted
     var filesToSubmit = [];
-
     // Define an array to store the files to be deleted
     var filesToDelete = [];
-    var selectionFilesInput = document.getElementById('selection_files');
-    var selectionTable = document.getElementById('selectionTable');
+    var selectionFilesInput = document.getElementById('selection-files');
+    var selectionTable = document.getElementById('selection-table');
 
     function changeFileToSubmitSelectionNumber(fileName, selectionNumber) {
         filesToSubmit.forEach((item) => {
@@ -190,78 +211,128 @@
     });
 
 
-
+    /**
+     * Validates selections and updates the selections table based on the validation results.
+     * @param {Event} event - The event object.
+     */
     function checkValidSelections(event) {
+        console.log('check Valid');
         event.preventDefault(); // Prevent default form submission behavior
 
-        var tableRows = document.querySelectorAll('#selectionTable tbody tr');
+        // Get table rows and initialize variables
+        var tableRows = document.querySelectorAll('#selection-table tbody tr');
         var rowCount = tableRows.length;
         var allValid = true;
         var completedCount = 0;
-        document.getElementById("bulk-upload").hidden = true;
-        document.getElementById("bulk-upload-validate").hidden = true
-        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait"
-        document.getElementById("bulk-upload-status-message").hidden = false;
-        document.getElementById("bulk-upload-clear").hidden = true;
 
+        // Update UI elements
+        updateUIBeforeValidation();
+
+        // Iterate through table rows
         tableRows.forEach(function (row) {
-            var cell1 = row.cells[0];
-            var cell2 = row.cells[1];
-            var cell3 = row.cells[2];
-            var cell4 = row.cells[3];
-            var cell5 = row.cells[5];
+            validateRow(row, function(valid, messages, fileName, updatedSelectionNumber) {
+                if (!valid) { allValid = false; }
+                updateCellContents(row, valid, messages);
+                changeFileToSubmitSelectionNumber(fileName, updatedSelectionNumber);
 
-            var fileName = cell1.textContent;
-            var input = cell2.querySelector('input');
-            var selectionNumber = input.value;
-
-
-            var data = {
-                filename: fileName,
-                selection_number: selectionNumber
-            };
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/process_selection?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&selection_number=" + encodeURIComponent(data.selection_number), true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    console.log(response)
-                    var messages = response.messages;
-                    var updatedSelectionNumber = response.selection_number;
-                    var valid = response.valid;
-                    if (valid == false) { allValid = false; }
-                    cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
-
-                    cell4.innerHTML = messages.join('<br>');
-                    changeFileToSubmitSelectionNumber(fileName, updatedSelectionNumber)
-                    // Increment the completed count
-
-                }
+                // Increment the completed count
                 completedCount++;
-                document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait (" + Math.round(100 * completedCount / rowCount) + "%)."
-
-                // Check if all rows have been processed
-                if (completedCount === rowCount) {
-                    if (allValid) {
-                        document.getElementById("bulk-upload").hidden = false
-                        document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: green;">All entries are valid</span>';
-                        document.getElementById('bulk-upload-validate').hidden = false;
-                    } else {
-                        document.getElementById("bulk-upload").hidden = true
-                        document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: red;">One or more entires are invalid</span><br>All entries must be valid before submission.<br>Please update or remove invalid rows and re-validate.'
-                        document.getElementById('bulk-upload-status-message').hidden = false
-                        document.getElementById('bulk-upload-validate').hidden = false;
-                    }
-                    document.getElementById("bulk-upload-clear").hidden = false;
-                }
-
-            };
-            xhr.send(JSON.stringify(data));
+                updateValidationProgress(completedCount, rowCount, allValid);
+            });
         });
     }
 
+    /**
+     * Validates a single row and executes a callback with the result.
+     * @param {HTMLElement} row - The table row to validate.
+     * @param {Function} callback - The callback function to execute with the validation result.
+     */
+    function validateRow(row, callback) {
+        var cell1 = row.cells[0];
+        var cell2 = row.cells[1];
+        var cell3 = row.cells[2];
+        var cell4 = row.cells[3];
+        var cell5 = row.cells[5];
+
+        var fileName = cell1.textContent;
+        var input = cell2.querySelector('input');
+        console.log(input.value);
+        var selectionNumber = input.value;
+
+        var data = {
+            filename: fileName,
+            selection_number: selectionNumber
+        };
+
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/process_selection?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&selection_number=" + encodeURIComponent(data.selection_number), true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                var messages = response.messages;
+                console.log(messages);
+                var updatedSelectionNumber = response.selection_number;
+                var valid = response.valid;
+                callback(valid, messages, fileName, updatedSelectionNumber);
+            }
+        };
+        xhr.send(JSON.stringify(data));
+    }
+
+    /**
+     * Updates the UI elements before starting the validation process.
+     */
+    function updateUIBeforeValidation() {
+        document.getElementById("bulk-upload").hidden = true;
+        document.getElementById("bulk-upload-validate").hidden = true;
+        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait";
+        document.getElementById("bulk-upload-status-message").hidden = false;
+        document.getElementById("bulk-upload-clear").hidden = true;
+    }
+
+    /**
+     * Updates the contents of the cells based on validation result.
+     * @param {HTMLElement} row - The table row.
+     * @param {boolean} valid - Whether the row is valid.
+     * @param {string[]} messages - Array of messages.
+     */
+    function updateCellContents(row, valid, messages) {
+        var cell3 = row.cells[2];
+        var cell4 = row.cells[3];
+
+        cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
+        cell4.innerHTML = messages.join('<br>');
+    }
+
+    /**
+     * Updates the progress of validation.
+     * @param {number} completedCount - Number of completed rows.
+     * @param {number} rowCount - Total number of rows.
+     * @param {boolean} allValid - Whether all rows are valid.
+     */
+    function updateValidationProgress(completedCount, rowCount, allValid) {
+        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait (" + Math.round(100 * completedCount / rowCount) + "%).";
+
+        if (completedCount === rowCount) {
+            if (allValid) {
+                document.getElementById("bulk-upload").hidden = false;
+                document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: green;">All entries are valid</span>';
+                document.getElementById('bulk-upload-validate').hidden = false;
+            } else {
+                document.getElementById("bulk-upload").hidden = true;
+                document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: red;">One or more entires are invalid</span><br>All entries must be valid before submission.<br>Please update or remove invalid rows and re-validate.';
+                document.getElementById('bulk-upload-status-message').hidden = false;
+                document.getElementById('bulk-upload-validate').hidden = false;
+            }
+            document.getElementById("bulk-upload-clear").hidden = false;
+        }
+    }
+
+    /**
+     * Populates the selection table with file data.
+     */
     function populateSelectionTable() {
         var files = selectionFilesInput.files;
         var tableBody = selectionTable.tBodies[0];
@@ -269,131 +340,79 @@
         var completedCount = 0;
         var allValid = true;
 
-        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait"
-        document.getElementById("bulk-upload-status-message").hidden = false;
-        document.getElementById("bulk-upload-clear").hidden = true;
+        updateUIBeforeValidation();
 
         // Clear existing rows
         tableBody.innerHTML = '';
 
         // Loop through the selected files and add rows to the table
         for (var i = 0; i < files.length; i++) {
-            var file = files[i];
+            (function(file) {
+                var row = tableBody.insertRow();
+                var cell1 = row.insertCell(0);
+                var cell2 = row.insertCell(1);
+                var cell3 = row.insertCell(2);
+                var cell4 = row.insertCell(3);
+                var cell5 = row.insertCell(4);
 
-            var row = tableBody.insertRow();
-            var cell1 = row.insertCell(0);
-            var cell2 = row.insertCell(1);
-            var cell3 = row.insertCell(2);
-            var cell4 = row.insertCell(3);
-            var cell5 = row.insertCell(4);
+                cell1.textContent = file.name;
+                
+                var input = document.createElement('input');
+                input.type = 'text';
+                input.value = '';
 
-            cell1.textContent = files[i].name;
+                cell2.appendChild(input);
 
-            // Create a closure to capture the correct file for each row
-            (function (file, cell2, cell3, cell4, cell5) {
-                var xhr = new XMLHttpRequest();
-                xhr.open('GET', '/process_selection?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(file.name) + '&selection_number=', true);
-                xhr.onload = function () {
-                    if (xhr.status === 200) {
-                        var response = JSON.parse(xhr.responseText);
-                        console.log(response)
-                        var selectionNumber = response.selection_number;
-                        var messages = response.messages;
-                        var valid = response.valid;
-                        if (valid == false) { allValid = false }
+                validateRow(row, function(valid, messages, fileName, updatedSelectionNumber) {
+                    if (!valid) { allValid = false; }
 
-                        // Create input element
-                        var input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = selectionNumber || '';
-                        input.placeholder = 'Enter Selection Number';
-                        cell2.appendChild(input);
-                        cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
-                        cell4.innerHTML = messages.join('<br>');
-                        cell5.innerHTML = '<button style="width:100%;" onclick="deleteFile(this)">Remove</button>';
-                        addFileToSubmit(file, selectionNumber); // Add the file to filesToSubmit array
+                    input.value = updatedSelectionNumber || '';
+                    input.placeholder = 'Enter Selection Number';
+                    updateCellContents(row, valid, messages);
+                    cell5.innerHTML = '<button style="width:100%;" onclick="deleteFile(this)">Remove</button>';
+                    addFileToSubmit(file, updatedSelectionNumber);
 
-
-
-                    }
                     completedCount++;
-                    document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait (" + Math.round(100 * completedCount / rowCount) + "%)."
-
-                    // Check if all rows have been processed
-                    if (completedCount === rowCount) {
-                        if (allValid) {
-                            document.getElementById("bulk-upload").hidden = false
-                            document.getElementById('bulk-upload-status-message').hidden = false
-                            document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: green;">All entries are valid</span>';
-                            document.getElementById('bulk-upload-validate').hidden = false;
-
-
-                        } else {
-                            document.getElementById("bulk-upload").hidden = true
-                            document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: red;">One or more entires are invalid</span><br>All entries must be valid before submission.<br>Please update or remove invalid rows and re-validate.'
-                            document.getElementById('bulk-upload-status-message').hidden = false
-                            document.getElementById('bulk-upload-validate').hidden = false;
-
-                        }
-                        document.getElementById("bulk-upload-clear").hidden = false;
-                    }
-                };
-                xhr.send();
-            })(file, cell2, cell3, cell4, cell5);
-            document.getElementById('selectionTable').hidden = false;
-            document.getElementById('selection_files').hidden = true;
-
-
-
+                    updateValidationProgress(completedCount, rowCount, allValid);
+                });
+            })(files[i]);
         }
+
+        document.getElementById('selection-table').hidden = false;
+        document.getElementById('selection-files').hidden = true;
     }
 
+    // Clears the selection table by removing all the rows from the table body.
     function clearSelectionTable() {
         var tableBody = selectionTable.tBodies[0];
         tableBody.innerHTML = '';
     }
 
-    function changeSelectionNumber(button) {
-        var row = button.parentNode.parentNode;
-        var filename = row.cells[0].textContent;
-        var selectionNumber = row.cells[1].textContent;
-
-        // Perform the action to change the selection number for the file
-        // You can use AJAX or a server-side script to update the selection number
-        // and update the table dynamically
-    }
-
-
+    /**
+    Deletes a file from the table based on the button clicked.
+    @param {Element} button - The button element that triggered the file deletion.
+    This function efficiently deletes a file from the table and updates the necessary arrays.
+    */
     function deleteFile(button) {
         // Get the row that contains the button clicked
         var row = button.closest('tr');
-
         // Get the file name from the first cell of the row
         var fileName = row.cells[0].textContent;
-
         // Perform any necessary cleanup or additional actions before deleting the file
         // Find the file object based on the file name
-        console.log(filesToSubmit)
         var fileToDelete = filesToSubmit.find(item => item.file.name === fileName);
-        console.log(fileToDelete)
-
         if (fileToDelete) {
             removeFileFromSubmit(fileToDelete); // Remove the file from filesToSubmit array
             addFileToDelete(fileToDelete); // Add the file to filesToDelete array
         }
-
         // Remove the row from the table
         row.remove();
-
     }
-    var form = document.getElementById('uploadForm');
 
-    form.addEventListener('submit', function (event) {
+    document.getElementById('uploadForm').addEventListener('submit', function (event) {
         // Call the function to update the file input before the form is submitted
         updateFileInputForSubmission();
     });
-
-
 
     // Function to update file input for submission with selection numbers
     function updateFileInputForSubmission() {
@@ -402,15 +421,10 @@
         document.getElementById("bulk-upload").hidden = true;
         document.getElementById("bulk-upload-validate").hidden = true;
         document.getElementById("bulk-upload-clear").hidden = true;
-
-
-
-        var fileInput = document.getElementById('selection_files');
+        var fileInput = document.getElementById('selection-files');
         var formData = new FormData();
-
         // Filter out the files that are marked for deletion
         var filesToSubmitFiltered = filesToSubmit.filter(file => !filesToDelete.includes(file));
-        console.log(filesToSubmit)
         // Append the files to the form data along with their selection numbers
         filesToSubmitFiltered.forEach((file, index) => {
             formData.append('selection_files', file.file);
@@ -418,7 +432,7 @@
         });
 
         // Send the form data to the server
-        fetch('{{url_for('selection.selection_insert_bulk',encounter_id=recording.encounter.id, recording_id=recording.id)}}', {
+        fetch("{{url_for('selection.selection_insert_bulk',encounter_id=recording.encounter.id, recording_id=recording.id)}}", {
             method: 'POST',
             body: formData
         })
@@ -429,12 +443,10 @@
                 } else {
                     console.error('Failed to upload files');
                     window.location.href = window.location.href;
-
                 }
             })
             .catch(error => {
                 console.error('Error uploading files:', error);
-
             });
     }
 
@@ -444,13 +456,12 @@
         event.preventDefault(); // Prevent default button behavior
 
         // Reset the file input field
-        document.getElementById('selection_files').value = "";
-        document.getElementById('selection_files').hidden = false;
-
+        document.getElementById('selection-files').value = "";
+        document.getElementById('selection-files').hidden = false;
 
         // Hide the status message and table
         document.getElementById('bulk-upload-status-message').hidden = true;
-        document.getElementById('selectionTable').hidden = true;
+        document.getElementById('selection-table').hidden = true;
 
         // Hide the validate and upload buttons, and show the validate and clear buttons
         document.getElementById('bulk-upload-validate').hidden = true;

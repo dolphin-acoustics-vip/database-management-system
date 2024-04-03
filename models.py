@@ -1,13 +1,30 @@
+# Standard library imports
+import os, uuid
+from datetime import datetime
+
+# Third-party imports
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
+
+# Local application imports
 from db import db, FILE_SPACE_PATH
-import uuid
-from datetime import datetime
-import os
 
 
 
-def clean_up_root_directory(root_directory):
+def process_id(value):
+    if type(value)==str:
+        try:
+            return uuid.UUID(value.strip())
+        except ValueError:
+            value = None
+    if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
+        return None
+    return None
+
+def clean_directory(root_directory):
+    """
+    Walk through a given directory and remove any empty directories
+    """
     # Get the root directory of the project
     for root, dirs, files in os.walk(root_directory, topdown=False):
         for dir in dirs:
@@ -18,7 +35,7 @@ def clean_up_root_directory(root_directory):
 class Species(db.Model):
     __tablename__ = 'species'
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    #id = db.Column(db.String(36), primary_key=True, default=str(uuid.uuid4()))
+    # TODO rename to scientific_name (refactor with actual database)
     species_name = db.Column(db.String(100), nullable=False, unique=True)
     genus_name = db.Column(db.String(100))
     common_name = db.Column(db.String(100))
@@ -28,9 +45,7 @@ class Species(db.Model):
         for encounter in encounters:
             encounter.update_call(session)
 
-
     def get_species_name(self):
-        print("get species name ", self.species_name,'' if self.species_name is None else self.species_name)
         return '' if self.species_name is None else self.species_name
 
     def set_species_name(self, value):
@@ -48,8 +63,6 @@ class Species(db.Model):
     def set_common_name(self, value):
         self.common_name = None if value.strip() == '' else value.strip()
 
-
-
 class Encounter(db.Model):
     __tablename__ = 'encounter'
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -62,7 +75,7 @@ class Encounter(db.Model):
     data_source_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('data_source.id'), nullable=False)
     recording_platform_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording_platform.id'), nullable=False)
     notes = db.Column(db.String(1000))
-
+    
     species = db.relationship("Species")
     data_source = db.relationship("DataSource")
     recording_platform = db.relationship("RecordingPlatform")
@@ -70,26 +83,18 @@ class Encounter(db.Model):
     __table_args__ = (
         db.UniqueConstraint('encounter_name', 'location'),
     )
-
-
-    def set_latitude(self, value):
-        self.latitude = None if value.strip() == '' else value.strip()
     
-    def set_longitude(self, value):
-        self.longitude = None if value.strip() == '' else value.strip()
-    
-    def get_latitude(self):
-        return '' if self.latitude is None else self.latitude
-
-    def get_longitude(self):
-        return '' if self.longitude is None else self.longitude
-
     def get_number_of_recordings(self):
-        
+        """
+        Calculate the number of recordings associated with the encounter and return
+        """
         num_recordings = db.session.query(Recording).filter_by(encounter_id=self.id).count()
         return num_recordings
 
     def generate_relative_path(self):
+        """
+        Generate a relative path for files stored in the file space based on the species, location, and encounter name.
+        """
         species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
         return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}"
     
@@ -105,44 +110,27 @@ class Encounter(db.Model):
             recording.delete(session)
         session.delete(self)
 
+    def get_latitude(self):
+        return '' if self.latitude is None else self.latitude
+
+    def set_latitude(self, value):
+        self.latitude = None if value.strip() == '' else value.strip()
+    
+    def get_longitude(self):
+        return '' if self.longitude is None else self.longitude
+
+    def set_longitude(self, value):
+        self.longitude = None if value.strip() == '' else value.strip()
     
     def set_species_id(self, value):
-        print(value,type(value))
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value.strip())
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        print("SET SPECIES",value)
-        self.species_id = value
+        self.species_id = process_id(value)
 
-    def set_data_source(self, value):
-        print(value,type(value))
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value.strip())
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        print("SET DATA SOURCE",value)
-        self.data_source_id = value
+    def set_data_source_id(self, value):
+        self.data_source_id = process_id(value)
     
-    def set_recording_platform(self,value):
-        print(value,type(value))
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value.strip())
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        print("SET PLATFORM",value)
-        self.recording_platform_id = value
+    def set_recording_platform_id(self,value):
+        self.recording_platform_id = process_id(value)
     
-
     def get_encounter_name(self):
         return '' if self.encounter_name is None else self.encounter_name
 
@@ -168,6 +156,8 @@ class Encounter(db.Model):
         self.notes = None if value.strip() == '' else value.strip()
 
 
+"""TODO remove"""
+@DeprecationWarning
 def encounter_updated(session, encounter_id):
     try:
         recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
@@ -177,7 +167,8 @@ def encounter_updated(session, encounter_id):
     except Exception as e:
         session.rollback()
         raise e
-    
+
+
 class File(db.Model):
     __tablename__ = 'file'
 
@@ -188,12 +179,6 @@ class File(db.Model):
     uploaded_by = db.Column(db.String(100))
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
-
-    # TODO
-    # add metadata such as
-    # - duration
-    # - size
-    # - format
 
     def delete(self, session):
         self.move_to_trash()
@@ -212,12 +197,6 @@ class File(db.Model):
         return os.path.join(self.path, f"{self.filename}.{self.extension}")
     
     def insert_path_and_filename(self, file, new_path, new_filename, root_path):
-        #file_location = os.path.join(root_path, path)
-        #if not os.path.exists(file_location):
-        #    raise ValueError("File path does not exist")
-        #if not os.path.exists(os.path.join(file_location, filename)):
-        #    raise ValueError("File does not exist")
-        
         self.path = new_path
         self.filename = new_filename  # filename without extension
 
@@ -246,20 +225,32 @@ class File(db.Model):
         self.uploaded_by = value
 
     def move_to_trash(self):
+        """
+        Moves the file to the trash folder.
+
+        This function moves the file to the trash folder by renaming the file and adding a unique identifier to its name.
+        TODO: keep a record of deleted file metadata
+        """
         trash_folder = 'trash'
         unique_name = str(uuid.uuid4())
-
         os.makedirs(trash_folder, exist_ok=True)
-
         file_path = os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
         file_name = self.filename
         file_name_with_unique = file_name + "-" + unique_name
-
         trash_file_path = os.path.join(trash_folder, file_name_with_unique) + "." + self.extension
         if os.path.exists(trash_folder) and os.path.exists(file_path):
             os.rename(file_path, trash_file_path)
 
     def move_file(self, session, new_relative_file_path, root_path):
+        """
+        Move a file to a new location with the provided session.
+
+        Parameters:
+        - session: The session object to use for the database transaction
+        - new_relative_file_path: The new relative file path to move the file to
+        - root_path: The root path where the file is currently located
+        - return: False if the file already exists at the new location, None otherwise
+        """
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
         current_relative_file_path = os.path.join(root_path, self.get_full_relative_path())
 
@@ -268,11 +259,8 @@ class File(db.Model):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
         
         # if the new and current file paths are not the same
-        print(new_relative_file_path_with_root)
-        print(current_relative_file_path)
         if new_relative_file_path_with_root != current_relative_file_path:
         
-            print("UPDATING")
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
@@ -284,23 +272,13 @@ class File(db.Model):
                     os.rename(new_relative_file_path_with_root,current_relative_file_path)
                 except Exception:
                     pass
-
-
             
             parent_dir = os.path.dirname(current_relative_file_path)
-            
-            # Check if the old directory is empty and delete it if so
-            #if not os.listdir(parent_dir):
-            #    os.rmdir(parent_dir)
-            
-            # Step down into parent folders to check if they are empty
 
             if os.path.exists(parent_dir):
-
                 while parent_dir != root_path and not os.listdir(parent_dir):
                     os.rmdir(parent_dir)
                     parent_dir = os.path.dirname(parent_dir)
-            # Update self.path and self.filename
             
         else:
             if not os.path.samefile(new_relative_file_path_with_root, current_relative_file_path):
@@ -423,38 +401,14 @@ class Recording(db.Model):
 
     
     def set_recording_file_id(self, value):
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value)
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        
-        self.recording_file_id = value
+        self.recording_file_id = process_id(value)
     
 
     def set_selection_table_file_id(self, value):
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value)
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        
-        self.selection_table_file_id = value
+        self.selection_table_file_id = process_id(value)
 
     def set_encounter_id(self, value):
-        if type(value)==str:
-            try:
-                value = uuid.UUID(value)
-            except ValueError:
-                value = None
-        if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-            value = None
-        
-        self.encounter_id = value
+        self.encounter_id = process_id(value)
 
     def set_duration(self,value):
         if value is not None and not isinstance(value, int):
