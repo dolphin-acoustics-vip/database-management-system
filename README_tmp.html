@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>README.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<style>
+.green {
+    color: green;
+    font-weight:700;
+    font-size: 30px;
+}
+.warning {
+    border-left: 5px solid red;
+}
+</style>
+<blockquote>
+<p>⚠️ <strong>warning:</strong> this project is still in a developmental stage. Some sections of the code and/or documentation may be incomplete.</p>
+</blockquote>
+<h1 id="dolphin-acoustics-vip-database-management-system">Dolphin Acoustics VIP Database Management System</h1>
+<p>This Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics VIP (the Project) at the University of St Andrews.</p>
+<p>The ensuing readme details the structure of the code written for the DBMS user interface, otherwise referred to as the Web App.</p>
+<p>Familiarity with the data pipeline and implementation strategy, as well as the requirements written below are prerequisite.</p>
+<p><a name="dependencies"></a></p>
+<h2 id="requirements">Requirements</h2>
+<p>The Web App has been developed on, and for, a Lunix based system (Debian 12). It is recommended to continue development on a Linux machine, whether physical or virtual. Listed below are dependencies of the DBMS:</p>
+<ul>
+<li>Python 3.10.12 (Linux) from <a href="https://www.python.org/downloads/release/python-31012/">here</a></li>
+<li>All Python extensions in <a href="requirements.txt">requirements.txt</a></li>
+<li>MariaDB 11.3.2 from <a href="https://mariadb.org/download/?t=mariadb&amp;p=mariadb&amp;r=11.3.2&amp;os=windows&amp;cpu=x86_64&amp;pkg=msi&amp;mirror=heanet-ltd">here</a></li>
+</ul>
+<h2 id="glossary">Glossary</h2>
+<p>`</p>
+<h2 id="project-description">Project description</h2>
+<p>The DBMS was developed to store a range of files at various spots in the data pipeline of the Project (for more specific details on each file please view the project report):</p>
+<ul>
+<li>storage of raw audio recordings (wav)</li>
+<li>storage of selections of the recordings (wav)</li>
+<li>storage of summary selection tables (csv)</li>
+<li>storage of contours of the selections (csv) and their statistics</li>
+<li>export of contour files in contour</li>
+<li>quality assurance at each stage of the pipeline</li>
+</ul>
+<p>The storage of data was split into two separate streams which were then brought together by a web application:</p>
+<ul>
+<li>storing file metadata in a database (the MetaBase)</li>
+<li>storing the files themselves in a file heirarchy (the File Space)</li>
+</ul>
+<p><img src="file:///home/js521/sta-dolphinacoustics/webapp/image.png" alt="alt text"></p>
+<h2 id="structure-and-setup">Structure and setup</h2>
+<p>This repository includes all Webapp code, as well as helper code and documentation to setup the MetaBase and File Space.</p>
+<p><a name="setting-up-the-metabase"></a></p>
+<h3 id="setting-up-the-metabase">Setting Up the MetaBase</h3>
+<p>The MetaBase was developed in MariaDB, which needs to be installed on a Linux machine or virtual machine before the Webapp can be run successfully (see <a href="#dependencies">dependencies</a>).</p>
+<p>Once downloaded, the MetaBase may be initialised and a new database created. The database must then be populated by running the script in <a href="create_database.sql">create_database.sql</a>.</p>
+<h3 id="setting-up-the-python-virtual-environment">Setting Up the Python virtual environment</h3>
+<p>The Webapp was developed using Flask in Python, which needs to be installed on a Linux machine or virtual machine before the Webapp can be run successfully (see <a href="#dependencies">dependencies</a>).</p>
+<p>To setup the virtual environment with all the required packages, run the following command from the root directory of the Webapp.</p>
+<p><code>python3 virtualenv venv &amp;&amp; venv/bin/pip install -r requirements.txt</code></p>
+<p><a name="setting-up-the-file-space"></a></p>
+<h3 id="setting-up-the-file-space">Setting Up the File Space</h3>
+<p>The File Space is simply a designated path on the file system of the server (the machine running the Webapp). To set this folder, insert the relative or absolute path into <a href="file_space_path.txt">file_space_path.txt</a> in the program root. For testing purposes it is recommended to use a relative path such as <code>filespace</code> as the File Space.</p>
+<h3 id="connecting-the-web-app-to-the-metabase">Connecting the Web App to the MetaBase</h3>
+<p>The python script <a href="db.py">db.py</a> handles all database connection. For security reasons, all database connection parameters were required to be stored in the global environment variables.</p>
+<p>The following are the parameters that must be set:</p>
+<ul>
+<li><code>STADOLPHINACOUSTICS_HOST</code> to set the host of the database (usually <code>localhost</code> for local development environment)</li>
+<li><code>STADOLPHINACOUSTICS_USER</code> to set the user of the database (usually <code>root</code> for local development environment)</li>
+<li><code>STADOLPHINACOUSTICS_PASSWORD</code> to set the password of the database (must be set in the MariaDB shell)</li>
+<li><code>STADOLPHINACOUSTICS_DATABASE</code> to set the name of the database (must be created in the MariaDB shell)</li>
+</ul>
+<p>While it is recommended to set these variables manually, <a href="set_os_variables.py">set_os_variables.py</a> was written to set these environemnt variables. Please read and understand the code beforehand and use with caution.</p>
+<h3 id="other-setup-instructions">Other setup instructions</h3>
+<p>If Google Maps are desired to view encounter coordinates, a Maps Embed API key is required to be placed in <a href="google_api_key.txt">google_api_key.txt</a> in the program root. See <a href="https://developers.google.com/maps/documentation/embed/get-api-key">here</a> for more details.</p>
+<p>To start the server, run <a href="app.py">app.py</a> from within the Python virtual environment from the root directory.</p>
+<h2 id="the-metabase">The MetaBase</h2>
+<p>The metadata for each file was stored in a MariaDB database, otherwise called the MetaBase. See <a href="#setting-up-the-metabase">Setting Up the Metabase</a>.</p>
+<p>The MetaBase currently models most data from the point of an audio recording to storing selections. An entity relationship diagram for the current MetaBase is shown below, where each entity contains attributes and foreign key references to other tables.</p>
+<p><img src="file:///home/js521/sta-dolphinacoustics/webapp/er_diagram.png" alt="ER Diagram"></p>
+<p><img src="file:///home/js521/sta-dolphinacoustics/webapp/image-1.png" alt="alt text"></p>
+<p>Each entity was given a Universally Unique Identifier (<a href="https://www.cockroachlabs.com/blog/what-is-a-uuid/">uuid</a>) such that foreign key references could be simplified. Additional unique and nullity constraints were therefore defined in each table to standardise data quality assurance.</p>
+<p>The following subsections describe the tables from the ER diagram in more detail. Note that particular implemention details are found in <a href="">create_database.sql</a>.</p>
+<h4 id="encounter">Encounter</h4>
+<p>Stores information on a marine animal encounter. Categorical information was stored in separate entities (<em>species</em>, <em>data_source</em>, and <em>recording_platform</em>) while other information in entity attributes.</p>
+<h4 id="file">File</h4>
+<p>Stores general metadata on a file stored in the File Space, such as the filename, extension, and upload date. Each file was given a unique ID that could be referenced by other entities that required file storage.</p>
+<h4 id="recording">Recording</h4>
+<p>Stores information on each recording in an encounter. Intuitively, each <em>recording</em> references an <em>encounter</em> (many-to-one).</p>
+<h4 id="selection">Selection</h4>
+<p>Stores a particular selection (otherwise known as clip) from a recording. Intuitively, each <em>selection</em> references a <em>recording</em>.</p>
+<h2 id="the-file-space">The File Space</h2>
+<p>All data files stored by the user in the DBMS are placed in the File Space. The File Space should already be initialised <a href="#setting-up-the-file-space">above</a>.</p>
+<blockquote class="warning">Warning: the File Space should rarely be manually modified by the Developer and never by the User. This is because changing file paths would invalidate the file references in the MetaBase.
+</blockquote><br>
+<p>An important aspect of the File Space is its heirarchical structure that can be understood by the user. Namely, when a file is added to the DBMS, it is placed in an intuitive location within the File Space. With read-only permissions, a user could then access files without using the Web App as an intermediary.</p>
+<p><img src="file:///home/js521/sta-dolphinacoustics/webapp/file_space.png" alt="File Space">
+<em>The File Space shown in a diagramattic form. Note that the numbering system is for demonstration purposes only and does not accurately reflect the File Space itself</em></p>
+<h2 id="the-web-app">The Web App</h2>
+<p>The Web App brings together the MetaBase and the File Space into a single user interface. The Web App was written in Flask, meaning the code contained Python files to define routes and HTML, CSS, and JavaScript files to create the user interface.</p>
+<p>The following folders exist in the Web App's root directory (note that a <em>module</em> refers to a compartamentalised section of code pertaining to a specific functionality such as encounter, recording or selection):</p>
+<ul>
+<li><code>resources</code> contains additional files required in the Web App such as images.</li>
+<li><code>routes</code> contains all the Flask route blueprints for separate modules.</li>
+<li><code>static</code> contains all CSS scripts used in the user interface.</li>
+<li><code>templates</code> contains all HTML scripts used in the user interface.</li>
+<li><a href="db.py">db.py</a> handles database connection and the loading of external files such as <a href="file_space_path.txt">file_space_path.txt</a> and <a href="google_api_key.txt">google_api_key.txt</a>.</li>
+<li><a href="app.py">app.py</a> is the mainline which calls <code>db.py</code> and loads all <code>routes</code>.</li>
+</ul>
+<h3 id="templates-and-static-files">Templates and static files</h3>
+<p>Templates are pre-designed layouts that arrange content on a webpage, usually written in HTML. Found in the <code>templates</code> folder, templates were structured into modular sub-categories for set funcations.</p>
+<p>The template <a href="">templates/partials/header.html</a> was created to define a reusable header at the top of each page.</p>
+<p>Styling (or CSS) files were stored in the <code>static</code> folder. These files were referenced in each of the templates through a route specified in <a href="app.py">app.py</a>.</p>
+<h3 id="routes">Routes</h3>
+<p>Routes are a server-side URL schema which describe interfaces through which a client can interact with a web app. Routes follow a Hypertext Transfer Protocol (HTTP) through which requests such as <code>GET</code> and <code>POST</code> can be made. Any request sent to the server that matches a defined URL schema is handed to the associated method defined in <a href="">routes</a>.</p>
+<blockquote>
+<p>The majority of routes exist in the folder <a href="">routes</a>, however the mainline <a href="">app.py</a> also contains some basic routes such as <code>/home</code> and <code>/</code>, where the latter redirects to the prior.</p>
+</blockquote>
+<h4 id="requests">Requests</h4>
+<p>HTTP has a large number of possible request types. For simplicity, the Web App uses:</p>
+<ul>
+<li><code>GET</code> to load templates and/or send information to the client;</li>
+<li><code>POST</code> to send information from the client to the server, usually to complete a CRUD operation in the MetaBase.</li>
+</ul>
+<h3 id="object-relational-mapping">Object relational mapping</h3>
+<p>When interacting with the MetaBase, an object relational mapping (ORM) based approach was implemented. This allowed all the database relations to be lazily and effortlessly loaded in a familiar object-oriented structure in Python.</p>
+<p>The classes for each relation were written in <a href="models.py">models.py</a> using the <a href="https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/">Flask-SQLAlchemy</a>. This library was chosen as it offered seamless integration with the web application. The structure of each model was written to closely match the <a href="#the-metabase">MetaBase schema</a>.</p>
+<p>Additional methods were also written within each ORM class as to provide additional APIs for the program to interact with the database, such as:</p>
+<h4 id="updatecall"><code>update_call()</code></h4>
+<p>This method was written in each class as a generic method that could be used to implement clean-up or quality-assurance checks. In addition, calling the <code>update_call()</code> method in a master would subsequently call <code>update_call()</code> in all its slaves.</p>
+<blockquote>
+<p>An example of the update_call method being used is when metadata of a <em>species</em> is changed. Each <em>encounter</em>, <em>recording</em>, and <em>selection</em> that are slave to that <em>species</em> would have their own <code>update_call()</code> methods added to the call stack. Functionality written in these methods would then update the files in the File Space to include the updated species data.</p>
+</blockquote>
+<h4 id="delete"><code>delete()</code></h4>
+<p>This method was written in each class to prevent foreign key error references upon delete. Upon the deletion request of a master object (by calling <code>delete()</code> in the master), the  <code>delete()</code> method in each slave would be added to the call stack, and would need to be fulfilled first before the master could be deleted.</p>
+<blockquote class="warning">Cascading delete is dangerous, and where it is implemented the user should always be warned before execution. </blockquote><br>
+<p>whereby upon the deletion of a master class (e.g., <em>recording</em>), all slave classes could also be deleted (e.g., <em>selection</em>).</p>
+<h3 id="session-handling">Session handling</h3>
+<p>As data must be synchronised between the File Space and MetaBase, atomicity is crucial. An atomic database transaction is one where either all required operations occur or none at all.</p>
+<p>To implement atomicity in the Web App, all database operations were bundled into sessions. If an error was produced in interacting with the File Space, any metadata changes pertainin the the request would be rolled back, and the same would be true the other way round.</p>
+
+</body>
+</html>

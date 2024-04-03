@@ -16,15 +16,23 @@
 
 This Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics VIP (the Project) at the University of St Andrews.
 
+The ensuing readme details the structure of the code written for the DBMS user interface, otherwise referred to as the Web App.
+
+Familiarity with the data pipeline and implementation strategy, as well as the requirements written below are prerequisite.
+
+
 <a name="dependencies"></a>
-## Dependencies
+## Requirements
+
+The Web App has been developed on, and for, a Lunix based system (Debian 12). It is recommended to continue development on a Linux machine, whether physical or virtual. Listed below are dependencies of the DBMS:
+
 - Python 3.10.12 (Linux) from [here](https://www.python.org/downloads/release/python-31012/)
 - All Python extensions in [requirements.txt](requirements.txt)
 - MariaDB 11.3.2 from [here](https://mariadb.org/download/?t=mariadb&p=mariadb&r=11.3.2&os=windows&cpu=x86_64&pkg=msi&mirror=heanet-ltd)
 
 ## Glossary
 
-
+`
 
 ## Project description
 The DBMS was developed to store a range of files at various spots in the data pipeline of the Project (for more specific details on each file please view the project report):
@@ -87,6 +95,7 @@ The MetaBase currently models most data from the point of an audio recording to 
 ![ER Diagram](er_diagram.png)
 
 
+![alt text](image-1.png)
 
 Each entity was given a Universally Unique Identifier ([uuid](https://www.cockroachlabs.com/blog/what-is-a-uuid/)) such that foreign key references could be simplified. Additional unique and nullity constraints were therefore defined in each table to standardise data quality assurance.
 
