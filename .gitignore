@@ -1,6 +1,7 @@
 /uploads/
 /webapp/
 /trash/
+/venv/
 /filespace/
 /routes/__pycache__/
 __pycache__/
