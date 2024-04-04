@@ -124,6 +124,7 @@ An important aspect of the File Space is its heirarchical structure, and the fac
 The structure of the file space is shown below, notingt that the contour WAV file is not yet developed in the DBMS. 
 
 ![File Space](documentation/readme-resources/file-space.png)
+
 *The File Space shown in a diagramattic form. Note that the naming conventions are for demonstration purposes only and do not accurately reflect the implementation of the File Space*
 
 
