@@ -48,7 +48,7 @@ The storage of data was split into two separate streams which were then brought 
 - storing the files themselves in a file heirarchy (the File Space)
 
 
-![alt text](image.png)
+![alt text](documentation/readme-resources/data-flow-high-level.png)
 
 ## Structure and setup
 This repository includes all Webapp code, as well as helper code and documentation to setup the MetaBase and File Space.
@@ -92,10 +92,10 @@ The metadata for each file was stored in a MariaDB database, otherwise called th
 
 The MetaBase currently models most data from the point of an audio recording to storing selections. An entity relationship diagram for the current MetaBase is shown below, where each entity contains attributes and foreign key references to other tables.
 
-![ER Diagram](er_diagram.png)
+![ER Diagram](documentation/readme-resources/er-diagram.png)
 
 
-![alt text](image-1.png)
+![alt text](documentation/readme-resources/er-diagram abstract.png)
 
 Each entity was given a Universally Unique Identifier ([uuid](https://www.cockroachlabs.com/blog/what-is-a-uuid/)) such that foreign key references could be simplified. Additional unique and nullity constraints were therefore defined in each table to standardise data quality assurance.
 
@@ -122,7 +122,7 @@ All data files stored by the user in the DBMS are placed in the File Space. The 
 
 An important aspect of the File Space is its heirarchical structure that can be understood by the user. Namely, when a file is added to the DBMS, it is placed in an intuitive location within the File Space. With read-only permissions, a user could then access files without using the Web App as an intermediary.
 
-![File Space](file_space.png)
+![File Space](documentation/readme-resources/file-space.png)
 *The File Space shown in a diagramattic form. Note that the numbering system is for demonstration purposes only and does not accurately reflect the File Space itself*
 
 
