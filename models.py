@@ -17,9 +17,12 @@ def process_id(value):
             return uuid.UUID(value.strip())
         except ValueError:
             value = None
-    if value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
+    elif value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
         return None
-    return None
+    elif isinstance(value, uuid.UUID):
+        return value
+    else:
+        return None
 
 def clean_directory(root_directory):
     """

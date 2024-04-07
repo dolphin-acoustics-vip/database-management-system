@@ -37,6 +37,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     seconds = request.form['seconds']
     new_recording.set_start_time(time_start, seconds)
     new_recording.set_duration(0)
+    print("Set encounter", type(encounter_id))
     new_recording.set_encounter_id(encounter_id)
     session.add(new_recording)
     session.commit()
