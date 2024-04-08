@@ -16,11 +16,13 @@ from routes.routes_admin import routes_admin
 from routes.routes_encounter import routes_encounter
 from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
+from routes.routes_contour import routes_contour
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_encounter)
 app.register_blueprint(routes_recording)
 app.register_blueprint(routes_selection)
+app.register_blueprint(routes_contour)
 
 '''
 NOTE: to restrict access to certain routes, add the following to the routes.py file:
@@ -51,6 +53,12 @@ def serve_style(filename):
     Serve a file from the 'static/css' directory (for CSS).
     """
     return send_from_directory('static/css', filename)
+
+def get_file_path(relative_path):
+    if relative_path != "":
+        return os.path.join(FILE_SPACE_PATH,relative_path)
+    else:
+        return None
 
 @app.route('/download-folder/<path:relative_path>')
 def download_folder(relative_path):

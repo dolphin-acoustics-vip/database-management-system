@@ -37,7 +37,6 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     seconds = request.form['seconds']
     new_recording.set_start_time(time_start, seconds)
     new_recording.set_duration(0)
-    print("Set encounter", type(encounter_id))
     new_recording.set_encounter_id(encounter_id)
     session.add(new_recording)
     session.commit()
@@ -182,6 +181,33 @@ def recording_delete_selections(recording_id):
     else:
         return jsonify({'error': 'Method not allowed'}), 405
 
+
+@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/check-selection-table', methods=['GET'])
+def check_selection_table(encounter_id, recording_id):
+    return_string = "None"
+    
+    with Session() as session:
+        try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            selections = session.query(Selection).filter_by(recording_id=recording_id).all()
+            selection_numbers = []
+            for selection in selections:
+                selection_numbers.append(selection.selection_number)
+                
+            selection_table_file = recording.selection_table_file
+            if selection_table_file == None:
+                raise FileNotFoundError()   
+            else:
+                selection_table_file_path = selection_table_file.get_full_absolute_path()
+                print(selection_table_file_path)
+                if os.path.exists(selection_table_file_path):
+                    # parse CSV file and check if the selection numbers exist in 
+                    # the list above selection_numbers
+                    pass
+        except Exception as e:
+            return(str(e))
+        
+        return return_string
 
          
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table-file/<uuid:file_id>/delete', methods=['GET'])

@@ -199,6 +199,9 @@ class File(db.Model):
     def get_full_relative_path(self):
         return os.path.join(self.path, f"{self.filename}.{self.extension}")
     
+    def get_full_absolute_path(self):
+        return os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
+    
     def insert_path_and_filename(self, file, new_path, new_filename, root_path):
         self.path = new_path
         self.filename = new_filename  # filename without extension

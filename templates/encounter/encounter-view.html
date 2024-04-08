@@ -85,6 +85,7 @@
                         <td>
                             <a href="{{ url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path()) }}">Download</a><br>
                             <a href="{{ url_for('recording.selection_table_file_delete', encounter_id=encounter.id, recording_id=recording.id, file_id=recording.selection_table_file.id) }}">Delete</a>
+                            <a href="{{ url_for('recording.check_selection_table', encounter_id=encounter.id, recording_id=recording.id) }}">Check</a>
                         </td>
                         {% else %}
                         <td>
