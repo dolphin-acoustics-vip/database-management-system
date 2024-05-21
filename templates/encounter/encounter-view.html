@@ -120,7 +120,7 @@
          */
         function extractDate(fileName) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/extract_date?filename=' + encodeURIComponent(fileName), true);
+            xhr.open('GET', '/encounter/extract_date?filename=' + encodeURIComponent(fileName), true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onload = function () {
                 console.log(xhr)

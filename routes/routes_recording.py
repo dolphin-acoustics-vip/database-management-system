@@ -1,5 +1,5 @@
 # Standard library imports
-import uuid, os
+import uuid, os, re
 
 # Third-party imports
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
@@ -236,3 +236,21 @@ def selection_table_file_delete(encounter_id,recording_id,file_id):
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('encounter_view', encounter_id=encounter_id))
+
+
+@routes_recording.route('/encounter/extract_date', methods=['GET'])
+def extract_date():
+    filename = request.args.get('filename')
+    date = None
+    match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', filename)
+    if match:
+        year = match.group(1)
+        month = match.group(2)
+        day = match.group(3)
+        hour = match.group(4)
+        minute = match.group(5)
+        second = match.group(6)
+        
+        date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+        date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
+    return jsonify(date=date)
