@@ -1,4 +1,5 @@
 # Standard library imports
+import pandas as pd
 import uuid, os, re
 
 # Third-party imports
@@ -67,6 +68,69 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     session.commit()
     return new_recording
 
+
+
+
+@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/add', methods=['POST'])
+def recording_selection_table_add(encounter_id,recording_id):
+    #load_selection_table_data
+    with Session() as session:
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        # If a selection file has been given, add it to the Recording object
+        if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
+            selection_table_file = request.files['selection-table-file']
+            
+
+            new_selection_table_filename = recording.generate_selection_table_filename()
+            new_relative_path = recording.generate_relative_path()
+            new_file = File()
+            new_file.insert_path_and_filename(selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
+            new_file.set_uploaded_date = datetime.now()
+            new_file.set_uploaded_by("User 1")
+            session.add(new_file)
+            recording.selection_table_file = new_file 
+            print("VALIDATE")
+            missing_selections, error_msg = recording.validate_selection_table(session)
+            if error_msg != None and error_msg != "":
+                new_file.move_to_trash()
+                session.rollback()
+                flash(error_msg, 'error')
+                return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+
+            
+        session.commit()  
+    
+    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+ 
+@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/delete', methods=['POST'])
+def recording_selection_table_delete(encounter_id, recording_id):
+
+    """
+    Deletes a selection table file of a given ID
+    """
+    with Session() as session:
+        try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            # Remove selection table file reference from recording
+            recording.selection_table_file=None
+            # Delete the File object for the selection table file
+            file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
+            try:
+                file_path = file.get_full_relative_path()
+                file.move_to_trash()
+                session.delete(file)
+                session.commit()
+                flash(f'Deleted file: {file_path}', 'success')
+            except FileNotFoundError:
+                session.commit()
+                flash(f'Deleted file record but could not find file: {file_path}', 'success')
+            return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+        except SQLAlchemyError as e:
+            flash(parse_alchemy_error(e), 'error')
+            session.rollback()
+            return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+
+
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['POST'])
 def recording_insert(encounter_id):
     """
@@ -92,7 +156,9 @@ def recording_view(encounter_id,recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         selections = session.query(Selection).filter_by(recording_id=recording_id).order_by(Selection.selection_number).all()
-        return render_template('recording/recording-view.html', recording=recording, selections=selections)
+        missing_selections, error_msg = recording.validate_selection_table(session)
+        
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, missing_selections=missing_selections,valid_selections_table_error_msg=error_msg)
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
 def recording_update(encounter_id, recording_id):
@@ -111,7 +177,7 @@ def recording_update(encounter_id, recording_id):
             session.rollback()
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/delete', methods=['POST'])
+@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/delete', methods=['GET'])
 def recording_delete(encounter_id,recording_id):
     """
     Function for deleting a recording of a given ID
@@ -209,34 +275,7 @@ def check_selection_table(encounter_id, recording_id):
         
         return return_string
 
-         
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table-file/<uuid:file_id>/delete', methods=['GET'])
-def selection_table_file_delete(encounter_id,recording_id,file_id):
-    """
-    Deletes a selection table file of a given ID
-    """
-    with Session() as session:
-        try:
-            recording = session.query(Recording).filter_by(selection_table_file_id=file_id).first()
-            # Remove selection table file reference from recording
-            recording.selection_table_file=None
-            # Delete the File object for the selection table file
-            file = session.query(File).filter_by(id=file_id).first()
-            try:
-                file_path = file.get_full_relative_path()
-                file.move_to_trash()
-                session.delete(file)
-                session.commit()
-                flash(f'Deleted file: {file_path}', 'success')
-            except FileNotFoundError:
-                session.commit()
-                flash(f'Deleted file record but could not find file: {file_path}', 'success')
-            return redirect(url_for('encounter_view', encounter_id=encounter_id))
-        except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect(url_for('encounter_view', encounter_id=encounter_id))
-
+  
 
 @routes_recording.route('/encounter/extract_date', methods=['GET'])
 def extract_date():

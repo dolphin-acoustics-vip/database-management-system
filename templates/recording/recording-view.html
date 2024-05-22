@@ -39,6 +39,42 @@
             </table>
         </form>
 
+        <h2>Manage selection table</h2>
+        {% if recording.selection_table_file %}
+            <form action="{{ url_for('recording.recording_selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}" method="post">
+                <button type="submit">Delete</button>
+            </form>
+            <a href="{{url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path())}}">Download</a>
+        {% else %}
+            <form action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}" method="post" enctype="multipart/form-data">
+                <input type="file" name="selection-table-file" id="selection-table-file">
+                <button type="submit">Upload</button>
+            </form>
+        {% endif %}
+        {% if valid_selections_table_error_msg=="" and missing_selections|length > 0%}
+        <p>The following selection numbers are missing based on the selection table provided:</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Selection Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for selection in missing_selections %}
+                <tr style="color: red;">
+                    <td>{{ selection.selection_number }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% elif valid_selections_table_error_msg=="" and missing_selections|length == 0%}
+        <p style="color: green;">All selections from the selection table are present.</p>
+        {% else %}
+        <p style="color: red;">{{valid_selections_table_error_msg}}</p>
+        {% endif %}
+
+
+
         <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
         {% if selections|length > 0 %}
         <input type="submit" value="Delete Selected" onclick="deleteSelectedSelections()"><br><br>
@@ -46,6 +82,7 @@
             <tr>
                 <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
                 <th>Selection</th>
+                <th>Selection Table</th>
                 <th>Actions</th>
             </tr>
             <form id="deleteForm" onsubmit="return false;">
@@ -53,6 +90,14 @@
                 <tr>
                     <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}"></td>
                     <td>{{ selection.selection_number }}</td>
+                    {% if selection.selection_table_file %}
+                        <td>No selection table
+                    {% elif selection.cross_referenced %}
+                        <td>True
+                    {% else %}
+                        <td style="color: red;">False
+                    {% endif %}
+                        </td>
                     <td>
                         {% if selection.selection_file %}
                         <a href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>

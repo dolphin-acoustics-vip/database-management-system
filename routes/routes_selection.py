@@ -72,7 +72,6 @@ def process_selection():
     recording_id = request.args.get('recording_id')
     filename = request.args.get('filename')
     selection_number = request.args.get('selection_number')
-    print("PROCESS",selection_number,filename)
     valid = True # flag
     messages=[] # to return at the end
     
@@ -91,20 +90,30 @@ def process_selection():
                 messages.append("Selection number: " + selection_number + ".")
             else:
                 messages.append("Selection number: " + selection_number + ".")
-                messages.append("Warning: selection number mismatch.")
+                messages.append("<span style='color: orange;'>Warning: selection number mismatch.</span>")
     elif not match and selection_number == None:
         messages.append("<span style='color: red;'>Error: invalid selection number.</span>")
         valid=False
     else:
         messages.append("Selection number: " + selection_number + ".")
     
+    # Check if selection number is an integer
+    if selection_number != None and selection_number != "":
+        try:
+            int(selection_number)
+        except Exception:
+            messages.append("<span style='color: red;'>Error: invalid selection number.</span>")
+            valid=False
+    
     # Check if selection number already exists
     with Session() as session:
         if selection_number != None:
-            selection_number_exits = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
-            if selection_number_exits:
+            selection_number_exists = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
+            if selection_number_exists:
                 messages.append("<span style='color: red;'>Error: selection number already exists.</span>")
                 valid=False
+            
+            
         
         # Check if the selection start time matches that of its recording
         recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
@@ -119,17 +128,14 @@ def process_selection():
             date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
             date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
             if not recording.match_start_time(date):
-                messages.append("Warning: start time mismatch.")
+                messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
         else:
-            messages.append("Warning: no start time.")
+            messages.append("<span style='color: orange;'>Warning: no start time.</span>")
     
-    # Check if selection number is an integer
-    if selection_number != None and selection_number != "":
-        try:
-            int(selection_number)
-        except Exception:
-            messages.append("<span style='color: red;'>Error: invalid selection number.</span>")
-            valid=False
+        if valid and not recording.selection_exists_in_selection_table(int(selection_number)):
+            messages.append("<span style='color: orange;'>Warning: selection number not in selection table.</span>")
+    
+
 
     return jsonify(selection_number=selection_number,messages=messages,valid=valid)
 

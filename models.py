@@ -306,6 +306,8 @@ class Recording(db.Model):
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
+    
+    
 
     __table_args__ = (
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
@@ -327,6 +329,112 @@ class Recording(db.Model):
         for selection in selections:
             selection.update_call(session)
         
+            
+
+    def load_selection_table_data(self,custom_file=None):
+        import pandas as pd
+        
+        if self.selection_table_file is not None or custom_file is not None:
+            if custom_file:
+                file_path=custom_file
+            else:
+                file_path = self.selection_table_file.get_full_absolute_path()
+            if file_path is None or file_path == "":
+                return pd.DataFrame()
+            # Read the file into a pandas DataFrame
+            file_extension = os.path.splitext(file_path)[1].lower()
+            if file_extension == '.csv':
+                # Read the CSV file into a pandas DataFrame
+                df = pd.read_csv(file_path)
+            elif file_extension == '.xlsx':
+                # Read the Excel file into a pandas DataFrame
+                df = pd.read_excel(file_path)
+            else:
+                raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
+            # Define the expected column names and data types
+            expected_columns = {
+                'Selection': int,
+                'View': object,
+                'Channel': int,
+                'Begin Time (s)': float,
+                'End Time (s)': float,
+                'Low Freq (Hz)': float,
+                'High Freq (Hz)': float,
+                'Delta Time (s)': float,
+                'Delta Freq (Hz)': float,
+                'Avg Power Density (dB FS/Hz)': float,
+                'Annotation': object,
+                'Contoured': object
+            }
+
+            # Check that the columns match the expected names and types
+            for column, dtype in expected_columns.items():
+                if column not in df.columns:
+                    raise ValueError(f"Missing column: {column}")
+                if df[column].dtype != dtype:
+                    raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
+
+            # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
+            if not df['Annotation'].isin(['Y', 'M', 'N']).all():
+                raise ValueError("Invalid values in 'Contoured' column: expected 'Y' or 'N'")
+
+            return df
+
+        return pd.DataFrame()
+
+    def selection_exists_in_selection_table(self, selection_number):
+        
+        st_df = self.load_selection_table_data()
+        if not st_df.empty:
+            return selection_number in st_df.Selection.to_list()
+
+    def validate_selection_table(self, session, custom_file=None):
+        print("VALIDATING")
+        try:  
+            st_df = self.load_selection_table_data(custom_file=custom_file)
+            if st_df.empty:
+                self.set_all_cross_referenced(session)
+                return [], "The selection table does not exist"
+            self.cross_reference_selections(session, st_df)
+            missing_selections = self.find_missing_selections(session, st_df)
+            session.commit()
+            return missing_selections, ""
+        except Exception as e:
+            self.set_all_cross_referenced(session)
+            return [], "The selection table provided is invalid: " + str(e)
+            
+        return [], "The selection table does not exist"
+
+        
+    def set_all_cross_referenced(self, session):
+        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+        for selection in selections:
+            selection.setCrossReferencedFalse(session)
+        
+        
+    def cross_reference_selections(self,session,st_df):
+        print("CROSS REFERENCING")
+        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+        selection_table_selection_numbers = st_df.Selection.to_list()
+        for selection in selections:
+            if selection.selection_number not in selection_table_selection_numbers:
+                selection.setCrossReferencedFalse(session)  
+            elif selection.selection_number in selection_table_selection_numbers:
+                selection.setCrossReferencedTrue(session, st_df.loc[st_df['Selection'] == selection.selection_number, 'Contoured'].values[0])
+
+
+    def find_missing_selections(self, session, st_df):
+        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+        missing_selections = []
+        selection_numbers = [selection.selection_number for selection in selections]
+        if self.selection_table_file != None:
+            # Validate files exist for all selections within the selection table
+            selections_array = sorted(st_df['Selection'].to_list())
+            print(selections_array)
+            for selection_num in selections_array:
+                if selection_num not in selection_numbers:
+                    missing_selections.append({"selection_number":selection_num})
+        return missing_selections
 
         
 
@@ -429,9 +537,13 @@ class Selection(db.Model):
     selection_number = db.Column(db.Integer, nullable=False)
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
+    cross_referenced = db.Column(db.Boolean, nullable=False, default=False)
+    contoured = db.Column(db.String, nullable=False)
+    
 
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
+    
 
 
     __table_args__ = (
@@ -439,6 +551,15 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+
+    def setCrossReferencedTrue(self, session, contoured):
+        print("SET TRUE",contoured)
+        self.cross_referenced = True
+        self.contoured = contoured
+        session.commit()
+        
+    def setCrossReferencedFalse(self, session):
+        self.cross_referenced = False
 
     def update_call(self, session):
         self.move_file(session,FILE_SPACE_PATH)
