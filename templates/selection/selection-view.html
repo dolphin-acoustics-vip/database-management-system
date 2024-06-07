@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+
+<head>
+    <title>View Selections</title>
+    <link rel="stylesheet" href="../../../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../../../static/css/general-style.css">
+</head>
+
+<body>
+    <div class="outer-div">
+        <h2>Selection Number: {{ selection.selection_number }}</h1>
+        <hr>
+        <p>Encounter: {{ selection.recording.encounter.encounter_name }}</p>
+        <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording: {{ selection.recording.get_start_time_string() }}</a>
+
+        <hr>
+        <div>
+            {% if selection.getWarnings()|length > 0 and selection.ignore_warnings %}
+                <h3>{{selection.getWarnings()|length}} resolved warning{% if selection.getWarnings()|length > 1 %}s{% endif %} </h3>
+            {% elif selection.getWarnings()|length > 0 and not selection.ignore_warnings %}
+                <h3 style="color:orangered">{{selection.getWarnings()|length}} warning{% if selection.getWarnings()|length > 1 %}s{% endif %} </h3>
+            {% else %}
+                <h3>Warnings</h3>
+            {% endif %}
+            {% if selection.getWarnings()|length > 0%}
+                {% for warning in selection.getWarnings() %}
+                {% if selection.ignore_warnings %}
+                    <label style="margin-left:10px; color: black;">{{ warning }} (ignored)</label>
+                {% else %}
+                    <label style="margin-left:10px; color: orangered;">{{ warning }}</label>
+                {% endif %}
+                {% endfor %}
+            {% else %}
+                <p>No warnings</p>
+            {% endif %}
+        </div>
+
+        <hr>
+        {% if selection.selection_file %}
+            <a href="{{url_for('download_file', relative_path=selection.selection_file.get_full_relative_path())}}">Download selection file</a><br><br>
+        {% else %}
+            <p style="margin-right:10px;">This selection has no selection file.</p>
+            <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Add</a><br>
+        {% endif %}
+        {% if selection.contour_file %}
+            <a href="{{url_for('download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download contour file</a><br>
+        {% else %}
+        <p>This selection has no contour file.</p>
+        <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Add</a><br>
+        {% endif %}
+        
+        <hr>
+        <h3>Selection Table</h3>
+        {% if selection.recording.selection_table_file %}
+        <p>Selection table excerpt for selection number {{ selection.selection_number }}</p>
+            <table>
+                <tbody>
+                  {% for column in selection.get_selection_table_row() %}
+                  {% set value = selection.get_selection_table_row()[column] %}
+                  <tr>
+                    <th>{{ column }}</th>
+                    <td>{{ value }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              <a href="{{url_for('download_file', relative_path=selection.recording.selection_table_file.get_full_relative_path())}}">Download full selection table</a><br>
+
+        {% else %}
+            <p>This selection has no selection table.</p>
+        {% endif %}
+        <hr>
+
+
+    </div>
+
+</body>

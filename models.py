@@ -302,6 +302,7 @@ class Recording(db.Model):
     recording_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
     selection_table_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
     encounter_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('encounter.id'), nullable=False)
+    ignore_selection_table_warnings = db.Column(db.Boolean, default=False)
 
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
@@ -313,9 +314,27 @@ class Recording(db.Model):
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
+    def get_number_of_unresolved_warnings(self):
+        counter = 0
+        selections = db.session.query(Selection).filter_by(recording_id=self.id).all()
+        for selection in selections:
+            if selection.ignore_warnings == False and len(selection.getWarnings())>0:
+                counter += 1
+                
+        missing_selections, error_msg = self.validate_selection_table(db.session)
+        if not self.ignore_selection_table_warnings:
+            for selection in missing_selections:
+                counter += 1
+        print("Unresolved",counter)
+        return counter
+
     def get_number_of_selections(self):
         selections = db.session.query(Selection).filter_by(recording_id=self.id).all()
         return len(selections)
+
+    def get_number_of_contours(self):
+        contours = db.session.query(Selection).filter_by(recording_id=self.id).filter(Selection.contour_file != None).all()
+        return len(contours)
 
     def update_call(self, session):
         self.move_file(session,FILE_SPACE_PATH)
@@ -382,6 +401,16 @@ class Recording(db.Model):
 
         return pd.DataFrame()
 
+    def get_selection_table_row(self, selection_number):
+        st_df = self.load_selection_table_data()
+        return st_df.loc[st_df['Selection'] == selection_number]
+
+    def reset_all_selections_unresolved_warnings(self,session):
+        print("reset_all_selections_unresolved_warnings")
+        selections = session.query(Selection).filter_by(recording_id=self.id).all()
+        for selection in selections:
+            selection.ignore_warnings = False
+
     def selection_exists_in_selection_table(self, selection_number):
         
         st_df = self.load_selection_table_data()
@@ -389,7 +418,6 @@ class Recording(db.Model):
             return selection_number in st_df.Selection.to_list()
 
     def validate_selection_table(self, session, custom_file=None):
-        print("VALIDATING")
         try:  
             st_df = self.load_selection_table_data(custom_file=custom_file)
             if st_df.empty:
@@ -413,7 +441,6 @@ class Recording(db.Model):
         
         
     def cross_reference_selections(self,session,st_df):
-        print("CROSS REFERENCING")
         selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
         selection_table_selection_numbers = st_df.Selection.to_list()
         for selection in selections:
@@ -537,10 +564,12 @@ class Selection(db.Model):
     selection_number = db.Column(db.Integer, nullable=False)
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
+    contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     cross_referenced = db.Column(db.Boolean, nullable=False, default=False)
     contoured = db.Column(db.String, nullable=False)
+    ignore_warnings = db.Column(db.Boolean, nullable=False, default=False)
     
-
+    contour_file = db.relationship("File", foreign_keys=[contour_file_id])
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
     
@@ -552,14 +581,38 @@ class Selection(db.Model):
     )
 
 
+    def getWarnings(self):
+        warnings = []
+        if self.contour_file and self.contoured=="N":
+            warnings.append("Contour file exists but annotated 'N'.")
+        elif not self.contour_file and self.contoured=="Y" or self.contoured=="M":
+            warnings.append(f"Selection annotated '{self.contoured}' but no contour file.")
+        elif not self.recording.selection_table_file:
+            warnings.append("No selection table file.")
+        return warnings
+
     def setCrossReferencedTrue(self, session, contoured):
-        print("SET TRUE",contoured)
         self.cross_referenced = True
         self.contoured = contoured
         session.commit()
         
     def setCrossReferencedFalse(self, session):
         self.cross_referenced = False
+        self.contoured=None
+        session.commit()
+
+    def get_selection_table_row(self):
+        #print(self.recording.get_selection_table_row(self.selection_number))
+        row_dict = {}
+
+        row = self.recording.get_selection_table_row(self.selection_number)
+        print(row)
+        if not row.empty:
+            first_row = row.iloc[0]
+            for column, value in first_row.items():
+                row_dict[column] = value
+        return row_dict
+
 
     def update_call(self, session):
         self.move_file(session,FILE_SPACE_PATH)
@@ -567,24 +620,36 @@ class Selection(db.Model):
     def move_file(self, session, root_path):
         if self.selection_file is not None:
             self.selection_file.move_file(session,self.generate_full_relative_path()+"." +self.selection_file.extension,root_path)
-
+        if self.contour_file is not None:
+            self.contour_file.move_file(session,self.generate_full_relative_path()+"." +self.contour_file.extension,root_path)
 
     def delete(self, session):        
         if self.selection_file_id is not None:
             self.selection_file.delete(session)
             self.selection_file = None  # Remove the reference to the recording file
-        
+        if self.contour_file_id is not None:
+            self.contour_file.delete(session)
+            self.contour_file = None
         session.delete(self)
 
 
+    def delete_contour_file(self, session):
+        if self.contour_file_id is not None:
+            self.contour_file.delete(session)
+            self.contour_file = None
+            self.ignore_warnings=False
+        
+
     def generate_filename(self):
         return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
+    
+    def generate_contour_filename(self):
+        return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
     
     def generate_relative_path(self):
         return os.path.join(self.recording.generate_relative_path_for_selections())
 
     def generate_full_relative_path(self):
-        print("GENEREATE NEW PATH",os.path.join(self.generate_relative_path(), self.generate_filename()))
         return os.path.join(self.generate_relative_path(), self.generate_filename())
     
     def set_selection_number(self, value):

@@ -32,6 +32,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
         selection_obj = Selection()
     selection_obj.recording = recording
     session.add(selection_obj)
+    selection_obj.ignore_warnings=False
     selection_obj.set_selection_number(selection_number)
     selection_file = file
     selection_filename = selection_obj.generate_filename()
@@ -53,6 +54,98 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     session.add(new_file)
     return selection_obj
 
+
+@routes_selection.route('/contour_file_delete/<uuid:selection_id>')
+def contour_file_delete(selection_id):
+    with Session() as session:
+        selection_obj = session.query(Selection).filter_by(id=selection_id).first()
+        selection_obj.delete_contour_file(session)
+        session.commit()
+        return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id))
+
+def insert_or_update_contour(session, selection_id, file, recording_id):
+    selection_obj = session.query(Selection).filter_by(id=selection_id).first()
+    contour_file = file
+    contour_filename = selection_obj.generate_contour_filename()
+    contour_relative_path = selection_obj.generate_relative_path()
+    new_file = File()
+    try:
+        new_file.insert_path_and_filename(contour_file, contour_relative_path, contour_filename, FILE_SPACE_PATH)
+    except IOError as e:
+        if "File already exists" in str(e):
+            raise IOError (f"Contour {selection_id} for this recording already exists in the database.")
+        raise e
+    new_file.set_uploaded_date(datetime.now())
+    new_file.set_uploaded_by("User 1")
+    selection_obj.contour_file = new_file
+    session.add(new_file)
+    return selection_obj
+
+@routes_selection.route('/process_contour', methods=["GET"])
+def process_contour():
+    recording_id = request.args.get('recording_id')
+    filename = request.args.get('filename')
+    selection_number = request.args.get('id')
+    valid = True
+    messages = []
+    
+    with Session() as session:
+        
+        # Extract the selection number from the filename using regular expression
+        match = re.search(r'sel_(\d+)', filename)
+        if match:
+            if selection_number == None or selection_number.strip() == "":
+                selection_number = match.group(1).lstrip('0')  # Remove leading zeros
+                messages.append("Selection number: " + selection_number + ".")
+            else:
+                if selection_number == match.group(1).lstrip('0'):
+                    messages.append("Selection number: " + selection_number + ".")
+                else:
+                    messages.append("Selection number: " + selection_number + ".")
+                    messages.append("<span style='color: orange;'>Warning: selection number mismatch.</span>")
+        elif not match and selection_number == None:
+            messages.append("<span style='color: red;'>Error: invalid selection number.</span>")
+            valid=False
+        else:
+            messages.append("Selection number: " + selection_number + ".")
+        
+        selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
+
+        if selection:
+            if selection.contoured == "N":
+                messages.append("<span style='color: orange;'>Selection annotated 'N'. Double check.</span>")
+            elif selection.contoured == None:
+                messages.append("<span style='color: orange;'>Selection not annotated. Double check selection table.</span>")
+        
+
+                
+        else:
+            messages.append("<span style='color: red;'>Could not cross-reference selection number.</span>")
+            valid = False
+        
+    return jsonify(id=selection_number,messages=messages,valid=valid)
+
+
+@routes_selection.route('/selection/selection_ignore_warnings/<uuid:selection_id>', methods=['POST'])
+def selection_ignore_warnings(selection_id):
+    # Retrieve the selection object based on the selection_id
+    selection = Selection.query.get(selection_id)
+    
+    if selection:
+        # Toggle the ignore_warnings value
+        selection.ignore_warnings = not selection.ignore_warnings
+        db.session.commit()
+        
+        # Prepare the response data
+        response_data = {
+            'selection_id': selection_id,
+            'ignore_warnings': selection.ignore_warnings
+        }
+        return jsonify(response_data)
+    
+    return jsonify({'error': 'Selection not found'}), 404
+    
+
 @routes_selection.route('/process_selection', methods=['GET'])
 def process_selection():
     """
@@ -71,7 +164,7 @@ def process_selection():
     """
     recording_id = request.args.get('recording_id')
     filename = request.args.get('filename')
-    selection_number = request.args.get('selection_number')
+    selection_number = request.args.get('id')
     valid = True # flag
     messages=[] # to return at the end
     
@@ -137,7 +230,37 @@ def process_selection():
     
 
 
-    return jsonify(selection_number=selection_number,messages=messages,valid=valid)
+    return jsonify(id=selection_number,messages=messages,valid=valid)
+
+
+@routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/contour/insert-bulk', methods=['GET', 'POST'])
+def contour_insert_bulk(encounter_id, recording_id):
+    with Session() as session:
+        try:
+            if 'files' not in request.files:
+                return jsonify({'error': 'No files found'}), 400
+
+            # Access the uploaded files
+            files = request.files.getlist('files')
+            ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
+
+            # Process the files and add them to the Selection object
+            for i, file in enumerate(files):
+                try:
+                    selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
+
+                    insert_or_update_contour(session,selection.id, file, recording_id)
+                    session.commit()
+                    flash(f'Added contour {ids[i]}', 'success')
+                except SQLAlchemyError as e:
+                    session.rollback()
+                    raise e
+                    flash(f'Error inserting contour {ids[i]}: {e}', 'error')
+        except Exception as e:
+            session.rollback()
+            raise e
+            flash(f'Error inserting contour: {e}', 'error')
+    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
 
 @routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
 def selection_insert_bulk(encounter_id,recording_id):
@@ -151,19 +274,19 @@ def selection_insert_bulk(encounter_id,recording_id):
     """
     with Session() as session:
         try:
-            if 'selection_files' not in request.files:
+            if 'files' not in request.files:
                 return jsonify({'error': 'No files found'}), 400
 
             # Access the uploaded files
-            files = request.files.getlist('selection_files')
-            selection_numbers = [request.form.get(f'selection_numbers[{i}]') for i in range(len(files ))]
+            files = request.files.getlist('files')
+            ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
 
             # Process the files and add them to the Selection object
             for i, file in enumerate(files):
                 try:
-                    insert_or_update_selection(session,selection_numbers[i], file, recording_id)
+                    insert_or_update_selection(session,ids[i], file, recording_id)
                     session.commit()
-                    flash(f'Added selection {selection_numbers[i]}', 'success')
+                    flash(f'Added selection {ids[i]}', 'success')
                 except SQLAlchemyError as e:
                     session.rollback()
                     flash(parse_alchemy_error(e), 'error')
@@ -179,3 +302,15 @@ def selection_insert_bulk(encounter_id,recording_id):
             flash(str(e), 'error')
             return jsonify({'error': str(e)}), 500
         
+        
+
+
+@routes_selection.route('/selection/<uuid:selection_id>/view', methods=['GET'])
+def selection_view(selection_id):
+    """
+    Renders the recording view page for a specific encounter and recording.
+    """
+    with Session() as session:
+        selection = session.query(Selection).filter_by(id=selection_id).first()
+        
+        return render_template('selection/selection-view.html', selection=selection)

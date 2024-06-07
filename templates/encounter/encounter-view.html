@@ -58,6 +58,7 @@
                     <th>Start Time</th>
                     <th>Recording File</th>
                     <th>Selection File</th>
+                    <th>Warnings</th>
                     <th>Actions</th>
                 </tr>
                 {% for recording in recordings %}
@@ -92,6 +93,13 @@
                             <input style="width: 100%" type="file" id="selection_table_file" name="selection_table_file"><br>
                         </td>
                         {% endif %}
+                        <td>
+                            {%if recording.get_number_of_unresolved_warnings() > 0%}
+                            <label style="color:red;">{{ recording.get_number_of_unresolved_warnings() }} warning{% if recording.get_number_of_unresolved_warnings() > 1 %}s{% endif %}</label>
+                            {%else%}
+                            <label style="color:green">No warnings</label>
+                            {%endif%}
+                        </td>
                         <td>
                             <button style="width: 100%" type="submit">Update</button>
                             <button style="width:100%" type="button" onclick="window.location.href='{{ url_for('recording.recording_view', encounter_id=encounter.id, recording_id=recording.id) }}'">View Selections</button><br>

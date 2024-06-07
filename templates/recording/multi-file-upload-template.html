@@ -1,0 +1,363 @@
+<form id="{{unique_id}}-upload-form" onsubmit="return false;" enctype="multipart/form-data">
+    <input type="file" name="{{unique_id}}-files" id="{{unique_id}}-files" multiple>
+    <p id="{{unique_id}}-bulk-upload-status-message" hidden="true">Status message</p>
+    <button id="{{unique_id}}-bulk-upload-validate" style="margin-bottom: 5px;" hidden="true">Validate</button>
+    <input id="{{unique_id}}-bulk-upload" style="margin-bottom: 5px;" type="submit" value="Upload" hidden="true">
+    <button id="{{unique_id}}-bulk-upload-clear" style="margin-bottom: 5px;" hidden>Reset</button>
+    <table id="{{unique_id}}-table" hidden="true">
+        <thead>
+            <tr>
+                <th>Filename</th>
+                <th>{{identifier_heading}}</th>
+                <th>Validity</th>
+                <th>Information</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</form>
+
+<script>
+    // Enclose the script in a function to limit the scope to each time the template is embedded
+    // in a page 
+    (function () {
+
+        // Define an array to store the files to be submitted
+        var filesToSubmit = [];
+        // Define an array to store the files to be deleted
+        var filesToDelete = [];
+
+        // Add event listeners
+        // All elements in the template are preceded by the unique_id so the template can be called multiple times in the same webpage
+
+        var fileTable = document.getElementById('{{unique_id}}-table');
+        var fileInput = document.getElementById('{{unique_id}}-files');
+        fileInput.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                // Populate the file table with the selected files
+                populateFileTable();
+            } else {
+                // Clear the file table if no files are selected
+                clearFileTable();
+            }
+        });
+        var validateButton = document.getElementById('{{unique_id}}-bulk-upload-validate');
+        validateButton.addEventListener('click', function (event) {
+            checkValidFiles(event);
+        });
+        var clearButton = document.getElementById('{{unique_id}}-bulk-upload-clear');
+        clearButton.addEventListener('click', function (event) {
+            clearBulkUpload(event);
+        });
+
+        // Function to change the selection number in the filesToSubmit array
+        function changeFileToSubmitID(fileName, id) {
+            filesToSubmit.forEach((item) => {
+                if (item.file.name === fileName) {
+                    item.id = id;
+                }
+            });
+        }
+
+        // Function to add a file to the filesToSubmit array
+        function addFileToSubmit(file, id) {
+            console.log("ADD FILE SUBMIT")
+            filesToSubmit.push({ file, id });
+            console.log(filesToSubmit)
+        }
+
+        // Function to remove a file from the filesToSubmit array
+        function removeFileFromSubmit(file) {
+            var index = filesToSubmit.findIndex(item => item.file === file);
+            if (index !== -1) {
+                filesToSubmit.splice(index, 1);
+            }
+        }
+
+        // Function to add a file to the filesToDelete array
+        function addFileToDelete(file) {
+            filesToDelete.push(file);
+        }
+
+        // Function to remove a file from the filesToDelete array
+        function removeFileFromDelete(file) {
+            var index = filesToDelete.indexOf(file);
+            if (index !== -1) {
+                filesToDelete.splice(index, 1);
+            }
+        }
+
+        /**
+         * Validates selections and updates the selections table based on the validation results.
+         * @param {Event} event - The event object.
+         */
+        function checkValidFiles(event) {
+            event.preventDefault(); // Prevent default form submission behavior
+
+            // Get table rows and initialize variables
+            var tableRows = document.querySelectorAll('#{{unique_id}}-table tbody tr');
+            var rowCount = tableRows.length;
+            var allValid = true;
+            var completedCount = 0;
+
+            // Update UI elements
+            updateUIBeforeValidation();
+
+            // Iterate through table rows
+            tableRows.forEach(function (row) {
+                validateRow(row, function (valid, messages, fileName, updatedId) {
+                    if (!valid) { allValid = false; }
+                    updateCellContents(row, valid, messages);
+                    changeFileToSubmitID(fileName, updatedId);
+
+                    // Increment the completed count
+                    completedCount++;
+                    updateValidationProgress(completedCount, rowCount, allValid);
+                });
+            });
+        }
+
+        /**
+         * Validates a single row and executes a callback with the result.
+         * @param {HTMLElement} row - The table row to validate.
+         * @param {Function} callback - The callback function to execute with the validation result.
+         */
+        function validateRow(row, callback) {
+            var cell1 = row.cells[0];
+            var cell2 = row.cells[1];
+            var cell3 = row.cells[2];
+            var cell4 = row.cells[3];
+            var cell5 = row.cells[5];
+
+            var fileName = cell1.textContent;
+            var input = cell2.querySelector('input');
+
+            var id = input.value;
+
+            var data = {
+                filename: fileName,
+                id: id
+            };
+
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/{{process_route}}?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&id=" + encodeURIComponent(data.id), true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    var messages = response.messages;
+                    var updatedId = response.id;
+                    var valid = response.valid;
+                    callback(valid, messages, fileName, updatedId);
+                }
+            };
+            xhr.send(JSON.stringify(data));
+        }
+
+        /**
+         * Updates the UI elements before starting the validation process.
+         */
+        function updateUIBeforeValidation() {
+            document.getElementById("{{unique_id}}-bulk-upload").hidden = true;
+            document.getElementById("{{unique_id}}-bulk-upload-validate").hidden = true;
+            document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Validating... Please wait";
+            document.getElementById("{{unique_id}}-bulk-upload-status-message").hidden = false;
+            document.getElementById("{{unique_id}}-bulk-upload-clear").hidden = true;
+        }
+
+        /**
+         * Updates the contents of the cells based on validation result.
+         * @param {HTMLElement} row - The table row.
+         * @param {boolean} valid - Whether the row is valid.
+         * @param {string[]} messages - Array of messages.
+         */
+        function updateCellContents(row, valid, messages) {
+            var cell3 = row.cells[2];
+            var cell4 = row.cells[3];
+
+            cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
+            cell4.innerHTML = messages.join('<br>');
+        }
+
+        /**
+         * Updates the progress of validation.
+         * @param {number} completedCount - Number of completed rows.
+         * @param {number} rowCount - Total number of rows.
+         * @param {boolean} allValid - Whether all rows are valid.
+         */
+        function updateValidationProgress(completedCount, rowCount, allValid) {
+            document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Validating... Please wait (" + Math.round(100 * completedCount / rowCount) + "%).";
+
+            if (completedCount === rowCount) {
+                if (allValid) {
+                    document.getElementById("{{unique_id}}-bulk-upload").hidden = false;
+                    document.getElementById('{{unique_id}}-bulk-upload-status-message').innerHTML = '<span style="color: green;">All entries are valid</span>';
+                    document.getElementById('{{unique_id}}-bulk-upload-validate').hidden = false;
+                } else {
+                    document.getElementById("{{unique_id}}-bulk-upload").hidden = true;
+                    document.getElementById('{{unique_id}}-bulk-upload-status-message').innerHTML = '<span style="color: red;">One or more entires are invalid</span><br>All entries must be valid before submission.<br>Please update or remove invalid rows and re-validate.';
+                    document.getElementById('{{unique_id}}-bulk-upload-status-message').hidden = false;
+                    document.getElementById('{{unique_id}}-bulk-upload-validate').hidden = false;
+                }
+                document.getElementById("{{unique_id}}-bulk-upload-clear").hidden = false;
+            }
+        }
+
+        /**
+         * Populates the selection table with file data.
+         */
+        function populateFileTable() {
+            var files = fileInput.files;
+            var tableBody = fileTable.tBodies[0];
+            var rowCount = files.length;
+            var completedCount = 0;
+            var allValid = true;
+
+            updateUIBeforeValidation();
+
+            // Clear existing rows
+            tableBody.innerHTML = '';
+
+            // Loop through the selected files and add rows to the table
+            for (var i = 0; i < files.length; i++) {
+                (function (file) {
+                    var row = tableBody.insertRow();
+                    var cell1 = row.insertCell(0);
+                    var cell2 = row.insertCell(1);
+                    var cell3 = row.insertCell(2);
+                    var cell4 = row.insertCell(3);
+                    var cell5 = row.insertCell(4);
+
+                    cell1.textContent = file.name;
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = '';
+
+
+                    cell2.appendChild(input);
+                    validateRow(row, function (valid, messages, fileName, updatedId) {
+                        if (!valid) { allValid = false; }
+                        input.value = updatedId || '';
+                        input.placeholder = 'Enter {{identifier_heading}}';
+
+                        //cell5.innerHTML = '<button style="width:100%;" class="btn btn-danger" id="' + unique_id + '-delete-button" onclick="return false;">Remove</button>';
+                        (function () {
+                            var deleteButton = document.createElement('button');
+                            deleteButton.style = "width:100%;";
+                            deleteButton.class = "btn btn-danger";
+                            deleteButton.id = "{{unique_id}}-delete-button";
+                            deleteButton.textContent = "Delete";
+                            cell5.appendChild(deleteButton);
+                            deleteButton.addEventListener('click', function (event) {
+                                deleteFile(deleteButton);
+                            });
+                        })();
+
+                        updateCellContents(row, valid, messages);
+                        addFileToSubmit(file, updatedId);
+
+                        completedCount++;
+                        updateValidationProgress(completedCount, rowCount, allValid);
+                    });
+                })(files[i]);
+            }
+
+            document.getElementById('{{unique_id}}-table').hidden = false;
+            document.getElementById('{{unique_id}}-files').hidden = true;
+        }
+
+        // Clears the selection table by removing all the rows from the table body.
+        function clearFileTable() {
+            var tableBody = fileTable.tBodies[0];
+            tableBody.innerHTML = '';
+        }
+
+        /**
+        Deletes a file from the table based on the button clicked.
+        @param {Element} button - The button element that triggered the file deletion.
+        This function efficiently deletes a file from the table and updates the necessary arrays.
+        */
+        function deleteFile(button) {
+            // Get the row that contains the button clicked
+            var row = button.closest('tr');
+            // Get the file name from the first cell of the row
+            var fileName = row.cells[0].textContent;
+            // Perform any necessary cleanup or additional actions before deleting the file
+            // Find the file object based on the file name
+            var fileToDelete = filesToSubmit.find(item => item.file.name === fileName);
+            if (fileToDelete) {
+                removeFileFromSubmit(fileToDelete); // Remove the file from filesToSubmit array
+                addFileToDelete(fileToDelete); // Add the file to filesToDelete array
+            }
+            // Remove the row from the table
+            row.remove();
+        }
+
+        document.getElementById('{{unique_id}}-upload-form').addEventListener('submit', function (event) {
+            // Call the function to update the file input before the form is submitted
+            console.log("FILES TO SUBMIT")
+            console.log(filesToSubmit)
+            updateFileInputForSubmission();
+        });
+
+        // Function to update file input for submission with selection numbers
+        async function updateFileInputForSubmission() {
+            document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Uploading... Please wait and do not close your browser."
+            document.getElementById("{{unique_id}}-bulk-upload-status-message").hidden = false;
+            document.getElementById("{{unique_id}}-bulk-upload").hidden = true;
+            document.getElementById("{{unique_id}}-bulk-upload-validate").hidden = true;
+            document.getElementById("{{unique_id}}-bulk-upload-clear").hidden = true;
+            var fileInput = document.getElementById('{{unique_id}}-files');
+            var formData = new FormData();
+            console.log(filesToSubmit)
+            // Filter out the files that are marked for deletion
+            var filesToSubmitFiltered = filesToSubmit.filter(file => !filesToDelete.includes(file));
+            // Append the files to the form data along with their selection numbers
+            await filesToSubmitFiltered.forEach((file, index) => {
+                formData.append('files', file.file);
+                formData.append(`ids[${index}]`, file.id); // Add selection number as a custom field
+            });
+            console.log(formData)
+            
+            // Send the form data to the server
+            fetch("{{ url_for(insert_route, encounter_id=recording.encounter.id, recording_id=recording.id) }}", {
+                method: 'POST', 
+                body: formData
+            })
+            .then(response => {
+                // Handle the server response
+                if (response.ok) {
+                    window.location.href = window.location.href;
+                } else {
+                    console.error('Failed to upload files');
+                    window.location.href = window.location.href;
+                }
+            })
+            .catch(error => {
+                console.error('Error uploading files:', error);
+            });
+        }
+
+
+
+        function clearBulkUpload(event) {
+            event.preventDefault(); // Prevent default button behavior
+
+            // Reset the file input field
+            document.getElementById('{{unique_id}}-files').value = "";
+            document.getElementById('{{unique_id}}-files').hidden = false;
+
+            // Hide the status message and table
+            document.getElementById('{{unique_id}}-bulk-upload-status-message').hidden = true;
+            document.getElementById('{{unique_id}}-table').hidden = true;
+
+            // Hide the validate and upload buttons, and show the validate and clear buttons
+            document.getElementById('{{unique_id}}-bulk-upload-validate').hidden = true;
+            document.getElementById('{{unique_id}}-bulk-upload').hidden = true;
+            document.getElementById('{{unique_id}}-bulk-upload-clear').hidden = true;
+        }
+    })();
+</script>

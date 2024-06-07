@@ -12,61 +12,71 @@
     <div class="outer-div">
         <h2>Recording Summary</h2>
         <p>Start date: {{ recording.get_start_time_string() }}</p>
-        <p>Encounter: {{ recording.encounter.encounter_name }} ({{recording.encounter.location}})</p>
+        <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
+            recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
         <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
+        <p>Number of contours: {{ recording.get_number_of_contours() }}</p>
+        <p id="unresolved-warning-count">Unresolved warnings: {{ recording.get_number_of_unresolved_warnings() }}</p>
+        {% set identifier_heading = "Selection Number" %}
+        {% set unique_id = "selection-number"%}
+        {% set process_route = "process_selection" %}
+        {% set insert_route = "selection.selection_insert_bulk" %}
 
         <h2>Add selections</h2>
-        <form id="uploadForm" onsubmit="return false;" enctype="multipart/form-data">
-            <input type="file" name="selection-files" id="selection-files" multiple>
-            <p id="bulk-upload-status-message" hidden="true">Status message</p>
-            <button id="bulk-upload-validate" style="margin-bottom: 5px;" onclick="checkValidSelections(event)"
-                hidden="true">Validate</button>
-            <input id="bulk-upload" style="margin-bottom: 5px;" type="submit" value="Upload" hidden="true">
-            <button id="bulk-upload-clear" style="margin-bottom: 5px;" onclick="clearBulkUpload(event)"
-                hidden>Reset</button>
-            <table id="selection-table" hidden="true">
-                <thead>
-                    <tr>
-                        <th>Filename</th>
-                        <th>Selection Number</th>
-                        <th>Validity</th>
-                        <th>Information</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </form>
+        {% include 'recording/multi-file-upload-template.html' %}
+
+        {% set identifier_heading = "Contour Number" %}
+        {% set unique_id = "contour-number"%}
+        {% set process_route = "process_contour" %}
+        {% set insert_route = "selection.contour_insert_bulk" %}
+        <h2>Add contours</h2>
+        {% include 'recording/multi-file-upload-template.html' %}
+
+
 
         <h2>Manage selection table</h2>
         {% if recording.selection_table_file %}
-            <form action="{{ url_for('recording.recording_selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}" method="post">
-                <button type="submit">Delete</button>
-            </form>
-            <a href="{{url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path())}}">Download</a>
+        <form
+            action="{{ url_for('recording.recording_selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
+            method="post">
+            <button type="submit">Delete</button>
+        </form>
+        <a
+            href="{{url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path())}}">Download</a>
         {% else %}
-            <form action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}" method="post" enctype="multipart/form-data">
-                <input type="file" name="selection-table-file" id="selection-table-file">
-                <button type="submit">Upload</button>
-            </form>
+        <form
+            action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
+            method="post" enctype="multipart/form-data">
+            <input type="file" name="selection-table-file" id="selection-table-file">
+            <button type="submit">Upload</button>
+        </form>
         {% endif %}
         {% if valid_selections_table_error_msg=="" and missing_selections|length > 0%}
         <p>The following selection numbers are missing based on the selection table provided:</p>
-        <table>
+        <table id="missing-selection-table">
             <thead>
                 <tr>
-                    <th>Selection Number</th>
+                    <th
+                        style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orangered;{% endif %}">
+                        Selection Number ({%if recording.ignore_selection_table_warnings
+                        %}Resolved{%else%}Unresolved{%endif%})</th>
                 </tr>
             </thead>
             <tbody>
                 {% for selection in missing_selections %}
-                <tr style="color: red;">
+                <tr
+                    style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orangered;{% endif %}">
                     <td>{{ selection.selection_number }}</td>
                 </tr>
                 {% endfor %}
+
             </tbody>
         </table>
+        <form action="return false;" method="post">
+            <button style="width: 100%" type="submit" class="ignore-table-button" data-recording-id="{{ recording.id }}"
+                value={% if recording.ignore_selection_table_warnings %}1{% else %}0{% endif %}>{% if
+                recording.ignore_selection_table_warnings %}Flag{% else %}Resolve{% endif %}</button>
+        </form>
         {% elif valid_selections_table_error_msg=="" and missing_selections|length == 0%}
         <p style="color: green;">All selections from the selection table are present.</p>
         {% else %}
@@ -81,35 +91,71 @@
         <table>
             <tr>
                 <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
+                <th></th>
                 <th>Selection</th>
                 <th>Selection Table</th>
-                <th>Actions</th>
+                <th>Annotation</th>
+                <th>Contour</th>
+                <th>Warnings</th>
+                <th>Resolve Warnings</th>
             </tr>
             <form id="deleteForm" onsubmit="return false;">
                 {% for selection in selections %}
                 <tr>
-                    <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}"></td>
-                    <td>{{ selection.selection_number }}</td>
-                    {% if selection.selection_table_file %}
-                        <td>No selection table
-                    {% elif selection.cross_referenced %}
-                        <td>True
-                    {% else %}
-                        <td style="color: red;">False
-                    {% endif %}
-                        </td>
+                    <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}">
+                    </td>
+                    <td><a href="{{ url_for('selection.selection_view', selection_id=selection.id)}}">View</a> </td>
                     <td>
+                        <label style="float:left; margin-right:15px;">{{ selection.selection_number }}</label>
                         {% if selection.selection_file %}
-                        <a href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>
+                        <label style="float:left;">(</label>
+                        <a style="float:left;"
+                            href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">download</a>)<br>
                         {% else %}
                         <section id="encounter-summary"> No selection file available</section>
+                        {% endif %}
+                    </td>
+                    {% if selection.selection_table_file %}
+                    <td>No selection table
+                        {% elif selection.cross_referenced %}
+                    <td>True
+                        {% else %}
+                    <td style="color: red;">False
+                        {% endif %}
+                    </td>
+                    <td>
+                        <label>{{ selection.contoured }}</label>
+                    </td>
+                    <td>
+                        {% if selection.contour_file %}
+                        <a
+                            href="{{ url_for('download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
+                        <a href="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}">Delete</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for warning in selection.getWarnings() %}
+                        <label id="warning-{{ selection.id }}"
+                            style="color: {% if selection.ignore_warnings %}black{% else %}orange{% endif %}">{{ warning
+                            }}</label>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {%if selection.getWarnings()|length > 0%}
+                        <form method="post" onclick="return false;">
+                            <button style="width: 100%" type="submit" class="ignore-button"
+                                data-selection-id="{{ selection.id }}" value={% if selection.ignore_warnings
+                                %}1{%else%}0{%endif%}>{% if selection.ignore_warnings %}Flag{% else %}Resolve{% endif
+                                %}</button>
+                        </form>
                         {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </form>
         </table>
-        <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path_for_selections())}}">Download All</a>
+        <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path_for_selections())}}">Download
+            All</a>
         {% else %}
         <p>This recording has no selections. Please use the form above to add selections.</p>
         {% endif %}
@@ -138,6 +184,106 @@
             });
         }
     }
+
+    function updateNumberOfUnresolvedWarnings(numberOfUnresolvedWarnings) {
+        document.getElementById('unresolved-warning-count').textContent = 'Unresolved warnings: ' + numberOfUnresolvedWarnings;
+        if (numberOfUnresolvedWarnings > 0) {
+            document.getElementById('unresolved-warning-count').style.color = 'red';
+        } else {
+            document.getElementById('unresolved-warning-count').style.color = 'black';
+        }
+    }
+
+
+    var ignoreButtons = document.querySelectorAll('.ignore-button');
+
+    ignoreButtons.forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            var selectionId = this.getAttribute('data-selection-id');
+            this.hidden = true;
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/selection/selection_ignore_warnings/' + selectionId, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    var warnings = document.querySelectorAll('#warning-' + response.selection_id);
+                    warnings.forEach(function (warning) {
+                        warning.style.color = response.ignore_warnings ? 'black' : 'orange';
+                        button.hidden = false;
+                        button.textContent = response.ignore_warnings ? 'Flag' : 'Resolve';
+
+                    });
+                    updateWarningCount()
+                }
+            };
+            xhr.send(JSON.stringify({ selection_id: selectionId }));
+        });
+    });
+    document.querySelector('.ignore-table-button').addEventListener('click', function (event) {
+        event.preventDefault();
+        var button = event.target;
+        button.hidden = true;
+        var recordingId = button.dataset.recordingId;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/recording/recording_selection_table_ignore_warnings/' + recordingId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                button.textContent = response.ignore_selection_table_warnings ? 'Flag' : 'Resolve';
+
+                var missingSelectionTable = document.getElementById('missing-selection-table');
+                var header = missingSelectionTable.querySelector('th');
+                var rows = missingSelectionTable.querySelectorAll('td');
+                updateWarningCount()
+                if (response.ignore_selection_table_warnings) {
+                    header.textContent = 'Missing Selection Numbers (Resolved)';
+                    header.style.color = 'black'
+                    rows.forEach(function (row) {
+                        row.style.color = 'black';
+                    });
+                } else {
+                    header.textContent = 'Missing Selection Numbers (Unresolved)';
+                    header.style.color = 'orangered'
+                    rows.forEach(function (row) {
+                        row.style.color = 'orangered';
+                    });
+                }
+                button.hidden = false;
+
+            }
+        };
+        xhr.send(JSON.stringify({
+            ignore_selection_table_warnings: button.value === '1' ? false : true
+        }));
+    });
+
+    function updateWarningCount() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/recording/{{recording.id}}/get-unresolved-warnings', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        document.getElementById('unresolved-warning-count').textContent = 'Unresolved warnings: updating...';
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                updateNumberOfUnresolvedWarnings(response.number_of_unresolved_warnings);
+            }
+        };
+        xhr.send(JSON.stringify({ recording_id: '{{recording.id}}' }));
+    }
+
+
+    updateWarningCount();
+
+
+
+
+
 
 
     /**
@@ -173,7 +319,7 @@
         xhr.send(JSON.stringify({ selectionIds: selectedIds }));
     }
 
-    
+
     /**
      * Selects or deselects all checkboxes based on the state of the Shift key and the last checked checkbox.
      */
@@ -189,330 +335,19 @@
                 // Calculate the start and end positions of the range of checkboxes to be selected
                 var start = checkboxes.indexOf(lastChecked);
                 var end = checkboxes.indexOf(event.target);
-                
+
                 // Select the checkboxes within the calculated range
                 checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
                     .forEach(function (checkbox) {
                         checkbox.checked = event.target.checked;
                     });
             }
-            
+
             // Update the lastChecked variable to the currently clicked checkbox
             lastChecked = event.target;
         });
     });
 
-
-    // Define an array to store the files to be submitted
-    var filesToSubmit = [];
-    // Define an array to store the files to be deleted
-    var filesToDelete = [];
-    var selectionFilesInput = document.getElementById('selection-files');
-    var selectionTable = document.getElementById('selection-table');
-
-    function changeFileToSubmitSelectionNumber(fileName, selectionNumber) {
-        filesToSubmit.forEach((item) => {
-            if (item.file.name === fileName) {
-                item.selectionNumber = selectionNumber;
-            }
-        });
-
-    }
-
-    // Function to add a file to the filesToSubmit array
-    function addFileToSubmit(file, selectionNumber) {
-        filesToSubmit.push({ file, selectionNumber });
-    }
-
-    // Function to remove a file from the filesToSubmit array
-    function removeFileFromSubmit(file) {
-        var index = filesToSubmit.findIndex(item => item.file === file);
-        if (index !== -1) {
-            filesToSubmit.splice(index, 1);
-        }
-    }
-
-    // Function to add a file to the filesToDelete array
-    function addFileToDelete(file) {
-        filesToDelete.push(file);
-    }
-
-    // Function to remove a file from the filesToDelete array
-    function removeFileFromDelete(file) {
-        var index = filesToDelete.indexOf(file);
-        if (index !== -1) {
-            filesToDelete.splice(index, 1);
-        }
-    }
-
-    selectionFilesInput.addEventListener('change', function () {
-        if (this.files.length > 0) {
-            // Populate the selectionTable with the selected files
-            populateSelectionTable();
-        } else {
-            // Clear the selectionTable if no files are selected
-            clearSelectionTable();
-        }
-    });
-
-
-    /**
-     * Validates selections and updates the selections table based on the validation results.
-     * @param {Event} event - The event object.
-     */
-    function checkValidSelections(event) {
-        console.log('check Valid');
-        event.preventDefault(); // Prevent default form submission behavior
-
-        // Get table rows and initialize variables
-        var tableRows = document.querySelectorAll('#selection-table tbody tr');
-        var rowCount = tableRows.length;
-        var allValid = true;
-        var completedCount = 0;
-
-        // Update UI elements
-        updateUIBeforeValidation();
-
-        // Iterate through table rows
-        tableRows.forEach(function (row) {
-            validateRow(row, function(valid, messages, fileName, updatedSelectionNumber) {
-                if (!valid) { allValid = false; }
-                updateCellContents(row, valid, messages);
-                changeFileToSubmitSelectionNumber(fileName, updatedSelectionNumber);
-
-                // Increment the completed count
-                completedCount++;
-                updateValidationProgress(completedCount, rowCount, allValid);
-            });
-        });
-    }
-
-    /**
-     * Validates a single row and executes a callback with the result.
-     * @param {HTMLElement} row - The table row to validate.
-     * @param {Function} callback - The callback function to execute with the validation result.
-     */
-    function validateRow(row, callback) {
-        var cell1 = row.cells[0];
-        var cell2 = row.cells[1];
-        var cell3 = row.cells[2];
-        var cell4 = row.cells[3];
-        var cell5 = row.cells[5];
-
-        var fileName = cell1.textContent;
-        var input = cell2.querySelector('input');
-        console.log(input.value);
-        var selectionNumber = input.value;
-
-        var data = {
-            filename: fileName,
-            selection_number: selectionNumber
-        };
-
-        
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/process_selection?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&selection_number=" + encodeURIComponent(data.selection_number), true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                var messages = response.messages;
-                console.log(messages);
-                var updatedSelectionNumber = response.selection_number;
-                var valid = response.valid;
-                callback(valid, messages, fileName, updatedSelectionNumber);
-            }
-        };
-        xhr.send(JSON.stringify(data));
-    }
-
-    /**
-     * Updates the UI elements before starting the validation process.
-     */
-    function updateUIBeforeValidation() {
-        document.getElementById("bulk-upload").hidden = true;
-        document.getElementById("bulk-upload-validate").hidden = true;
-        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait";
-        document.getElementById("bulk-upload-status-message").hidden = false;
-        document.getElementById("bulk-upload-clear").hidden = true;
-    }
-
-    /**
-     * Updates the contents of the cells based on validation result.
-     * @param {HTMLElement} row - The table row.
-     * @param {boolean} valid - Whether the row is valid.
-     * @param {string[]} messages - Array of messages.
-     */
-    function updateCellContents(row, valid, messages) {
-        var cell3 = row.cells[2];
-        var cell4 = row.cells[3];
-
-        cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
-        cell4.innerHTML = messages.join('<br>');
-    }
-
-    /**
-     * Updates the progress of validation.
-     * @param {number} completedCount - Number of completed rows.
-     * @param {number} rowCount - Total number of rows.
-     * @param {boolean} allValid - Whether all rows are valid.
-     */
-    function updateValidationProgress(completedCount, rowCount, allValid) {
-        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait (" + Math.round(100 * completedCount / rowCount) + "%).";
-
-        if (completedCount === rowCount) {
-            if (allValid) {
-                document.getElementById("bulk-upload").hidden = false;
-                document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: green;">All entries are valid</span>';
-                document.getElementById('bulk-upload-validate').hidden = false;
-            } else {
-                document.getElementById("bulk-upload").hidden = true;
-                document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: red;">One or more entires are invalid</span><br>All entries must be valid before submission.<br>Please update or remove invalid rows and re-validate.';
-                document.getElementById('bulk-upload-status-message').hidden = false;
-                document.getElementById('bulk-upload-validate').hidden = false;
-            }
-            document.getElementById("bulk-upload-clear").hidden = false;
-        }
-    }
-
-    /**
-     * Populates the selection table with file data.
-     */
-    function populateSelectionTable() {
-        var files = selectionFilesInput.files;
-        var tableBody = selectionTable.tBodies[0];
-        var rowCount = files.length;
-        var completedCount = 0;
-        var allValid = true;
-
-        updateUIBeforeValidation();
-
-        // Clear existing rows
-        tableBody.innerHTML = '';
-
-        // Loop through the selected files and add rows to the table
-        for (var i = 0; i < files.length; i++) {
-            (function(file) {
-                var row = tableBody.insertRow();
-                var cell1 = row.insertCell(0);
-                var cell2 = row.insertCell(1);
-                var cell3 = row.insertCell(2);
-                var cell4 = row.insertCell(3);
-                var cell5 = row.insertCell(4);
-
-                cell1.textContent = file.name;
-                
-                var input = document.createElement('input');
-                input.type = 'text';
-                input.value = '';
-
-                cell2.appendChild(input);
-
-                validateRow(row, function(valid, messages, fileName, updatedSelectionNumber) {
-                    if (!valid) { allValid = false; }
-
-                    input.value = updatedSelectionNumber || '';
-                    input.placeholder = 'Enter Selection Number';
-                    updateCellContents(row, valid, messages);
-                    cell5.innerHTML = '<button style="width:100%;" onclick="deleteFile(this)">Remove</button>';
-                    addFileToSubmit(file, updatedSelectionNumber);
-
-                    completedCount++;
-                    updateValidationProgress(completedCount, rowCount, allValid);
-                });
-            })(files[i]);
-        }
-
-        document.getElementById('selection-table').hidden = false;
-        document.getElementById('selection-files').hidden = true;
-    }
-
-    // Clears the selection table by removing all the rows from the table body.
-    function clearSelectionTable() {
-        var tableBody = selectionTable.tBodies[0];
-        tableBody.innerHTML = '';
-    }
-
-    /**
-    Deletes a file from the table based on the button clicked.
-    @param {Element} button - The button element that triggered the file deletion.
-    This function efficiently deletes a file from the table and updates the necessary arrays.
-    */
-    function deleteFile(button) {
-        // Get the row that contains the button clicked
-        var row = button.closest('tr');
-        // Get the file name from the first cell of the row
-        var fileName = row.cells[0].textContent;
-        // Perform any necessary cleanup or additional actions before deleting the file
-        // Find the file object based on the file name
-        var fileToDelete = filesToSubmit.find(item => item.file.name === fileName);
-        if (fileToDelete) {
-            removeFileFromSubmit(fileToDelete); // Remove the file from filesToSubmit array
-            addFileToDelete(fileToDelete); // Add the file to filesToDelete array
-        }
-        // Remove the row from the table
-        row.remove();
-    }
-
-    document.getElementById('uploadForm').addEventListener('submit', function (event) {
-        // Call the function to update the file input before the form is submitted
-        updateFileInputForSubmission();
-    });
-
-    // Function to update file input for submission with selection numbers
-    function updateFileInputForSubmission() {
-        document.getElementById("bulk-upload-status-message").innerHTML = "Uploading... Please wait and do not close your browser."
-        document.getElementById("bulk-upload-status-message").hidden = false;
-        document.getElementById("bulk-upload").hidden = true;
-        document.getElementById("bulk-upload-validate").hidden = true;
-        document.getElementById("bulk-upload-clear").hidden = true;
-        var fileInput = document.getElementById('selection-files');
-        var formData = new FormData();
-        // Filter out the files that are marked for deletion
-        var filesToSubmitFiltered = filesToSubmit.filter(file => !filesToDelete.includes(file));
-        // Append the files to the form data along with their selection numbers
-        filesToSubmitFiltered.forEach((file, index) => {
-            formData.append('selection_files', file.file);
-            formData.append(`selection_numbers[${index}]`, file.selectionNumber); // Add selection number as a custom field
-        });
-
-        // Send the form data to the server
-        fetch("{{url_for('selection.selection_insert_bulk',encounter_id=recording.encounter.id, recording_id=recording.id)}}", {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => {
-                // Handle the server response
-                if (response.ok) {
-                    window.location.href = window.location.href;
-                } else {
-                    console.error('Failed to upload files');
-                    window.location.href = window.location.href;
-                }
-            })
-            .catch(error => {
-                console.error('Error uploading files:', error);
-            });
-    }
-
-
-
-    function clearBulkUpload(event) {
-        event.preventDefault(); // Prevent default button behavior
-
-        // Reset the file input field
-        document.getElementById('selection-files').value = "";
-        document.getElementById('selection-files').hidden = false;
-
-        // Hide the status message and table
-        document.getElementById('bulk-upload-status-message').hidden = true;
-        document.getElementById('selection-table').hidden = true;
-
-        // Hide the validate and upload buttons, and show the validate and clear buttons
-        document.getElementById('bulk-upload-validate').hidden = true;
-        document.getElementById('bulk-upload').hidden = true;
-        document.getElementById('bulk-upload-clear').hidden = true;
-    }
 
 
 </script>

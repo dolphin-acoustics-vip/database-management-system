@@ -64,6 +64,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_file.set_uploaded_date = datetime.now()
         new_file.set_uploaded_by("User 1")
         session.add(new_file)
+        new_recording.reset_all_selections_unresolved_warnings(session)
         new_recording.selection_table_file = new_file    
     session.commit()
     return new_recording
@@ -90,6 +91,7 @@ def recording_selection_table_add(encounter_id,recording_id):
             session.add(new_file)
             recording.selection_table_file = new_file 
             print("VALIDATE")
+            recording.reset_all_selections_unresolved_warnings(session)
             missing_selections, error_msg = recording.validate_selection_table(session)
             if error_msg != None and error_msg != "":
                 new_file.move_to_trash()
@@ -111,6 +113,8 @@ def recording_selection_table_delete(encounter_id, recording_id):
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
+            recording.reset_all_selections_unresolved_warnings(session)
+
             # Remove selection table file reference from recording
             recording.selection_table_file=None
             # Delete the File object for the selection table file
@@ -147,6 +151,22 @@ def recording_insert(encounter_id):
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+
+@routes_recording.route('/recording/<uuid:recording_id>/get-unresolved-warnings', methods=['GET'])
+def get_number_of_unresolved_warnings(recording_id):
+    print("I GOT HERE AGAIN")
+    with Session() as session:
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+                
+        # Prepare the response data
+        response_data = {
+            'recording_id': recording_id,
+            'number_of_unresolved_warnings': recording.get_number_of_unresolved_warnings()
+        }
+        print(response_data)
+        return jsonify(response_data)
+    
+    
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/view', methods=['GET'])
 def recording_view(encounter_id,recording_id):
@@ -246,6 +266,23 @@ def recording_delete_selections(recording_id):
             session.close()
     else:
         return jsonify({'error': 'Method not allowed'}), 405
+
+
+@routes_recording.route('/recording/recording_selection_table_ignore_warnings/<uuid:recording_id>', methods=['POST'])
+def recording_selection_table_ignore_warnings(recording_id):
+    session = Session()
+    data = request.get_json()
+    try:
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        recording.ignore_selection_table_warnings = not recording.ignore_selection_table_warnings
+        session.commit()
+        return jsonify({'ignore_selection_table_warnings': recording.ignore_selection_table_warnings}), 200
+    except SQLAlchemyError as e:
+        session.rollback()
+        flash(parse_alchemy_error(e), 'error')
+        return jsonify({'error': parse_alchemy_error(e)}), 500
+    finally:
+        session.close()
 
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/check-selection-table', methods=['GET'])
