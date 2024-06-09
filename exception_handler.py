@@ -22,6 +22,23 @@ def parse_alchemy_error(error):
         return "An error occurred: {}.".format(str(error))    
 
 
+def handle_exception(exception: Exception | str, session=None) -> None:
+    """
+    Handle exception and rollback the session.
+    
+    Parameters:
+    - exception: Exception or string
+    - session: SQLAlchemy session
+    
+    Returns:
+    - string: Parsed error message
+    """
+    
+    flash(str(exception), 'error')
+    if session:
+        session.rollback()
+    return str(exception)
+
 def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQLAlchemyError) -> None:
     """
     Handle the SQLAlchemy exception and rollback the session.
@@ -29,12 +46,16 @@ def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQ
     Parameters:
     - session: SQLAlchemy session
     - sqlAlchemy_exception: SQLAlchemy exception
+    
+    Returns:
+    - string: Parsed error message
     """
     if isinstance(sqlAlchemy_exception, sqlalchemy.exc.IntegrityError):
         error_string = parse_alchemy_error(sqlAlchemy_exception)
     else:
-        error_string = sqlAlchemy_exception
+        error_string = str(sqlAlchemy_exception)
+
 
     flash(error_string, 'error')
     session.rollback()
-    return
+    return error_string
