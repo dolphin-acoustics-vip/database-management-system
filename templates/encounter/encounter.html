@@ -32,16 +32,10 @@
                         <td>{{ encounter.get_location() }}</td>
                         <td>{{ encounter.species.get_species_name() }}</td>
                         <td>{{ encounter.get_origin() }}</td>
-                        <td> <!-- Add buttons for Edit and Delete here -->
+                        <td>
 
-                            <form style="margin-bottom:5px;" method="get" action="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">
-                                <input type="hidden" name="_method" value="GET">
-                                <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}">Edit</button>
-                            </form>
-                            <form style="margin-bottom:5px;" method="get" action="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">
-                                <input type="hidden" name="_method" value="GET">
-                                <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}">View</button>
-                            </form>
+                            <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}" onclick="window.location.href='{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}'">Edit</button>
+                            <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}" onclick="window.location.href='{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}'">View</button>
                             <form id="deleteForm_{{ encounter.id }}" method="post" action="{{ url_for('encounter.encounter_delete', encounter_id=encounter.id) }}">
                                 <input type="hidden" name="_method" value="DELETE">
                                 <button type="submit" style="width:100%" class="delete-link" data-encounter-id="{{ encounter.id }}">Delete</button>
