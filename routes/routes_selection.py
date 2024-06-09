@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 # Location application imports
 from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error
 from models import *
+from exception_handler import *
 
 routes_selection = Blueprint('selection', __name__)
 
@@ -43,7 +44,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     except IOError as e:
         if "File already exists" in str(e):
             if session.query(Selection).filter_by(selection_number=selection_number).filter_by(recording_id=recording_id).first() is not None:
-                raise IOError (f"Selection selection {selection_number} for this recording already exists in the database.")
+                raise IOError (f"Selection {selection_number} for this recording already exists in the database (original file {selection_file.name}).")
             else:
                 raise IOError (f"A file with selection {selection_number} for this recording already exists. Cannot overwrite file. Please choose a different selection number or contact administrator to remove the file manually.")
         raise e
@@ -272,6 +273,8 @@ def selection_insert_bulk(encounter_id,recording_id):
     Returns:
         A JSON response indicating success or failure.
     """
+    
+    
     with Session() as session:
         try:
             if 'files' not in request.files:
@@ -281,19 +284,19 @@ def selection_insert_bulk(encounter_id,recording_id):
             files = request.files.getlist('files')
             ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
 
+            counter = 0
             # Process the files and add them to the Selection object
             for i, file in enumerate(files):
                 try:
                     insert_or_update_selection(session,ids[i], file, recording_id)
                     session.commit()
-                    flash(f'Added selection {ids[i]}', 'success')
+                    counter += 1
                 except SQLAlchemyError as e:
-                    session.rollback()
-                    flash(parse_alchemy_error(e), 'error')
+                    handle_sqlalchemy_exception(session, e)
                 except IOError as e:
-                    session.rollback()
-                    flash(str(e), 'error')
+                    handle_sqlalchemy_exception(session, e)
             session.commit()
+            flash(f'Added {counter} selections', 'success')
             return jsonify({'message': 'Files uploaded successfully'}), 200
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')

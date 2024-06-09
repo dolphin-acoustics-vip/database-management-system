@@ -57,7 +57,7 @@
             <thead>
                 <tr>
                     <th
-                        style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orangered;{% endif %}">
+                        style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orange;{% endif %}">
                         Selection Number ({%if recording.ignore_selection_table_warnings
                         %}Resolved{%else%}Unresolved{%endif%})</th>
                 </tr>
@@ -65,7 +65,7 @@
             <tbody>
                 {% for selection in missing_selections %}
                 <tr
-                    style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orangered;{% endif %}">
+                    style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orange;{% endif %}">
                     <td>{{ selection.selection_number }}</td>
                 </tr>
                 {% endfor %}
@@ -93,7 +93,6 @@
                 <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
                 <th></th>
                 <th>Selection</th>
-                <th>Selection Table</th>
                 <th>Annotation</th>
                 <th>Contour</th>
                 <th>Warnings</th>
@@ -113,14 +112,6 @@
                             href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">download</a>)<br>
                         {% else %}
                         <section id="encounter-summary"> No selection file available</section>
-                        {% endif %}
-                    </td>
-                    {% if selection.selection_table_file %}
-                    <td>No selection table
-                        {% elif selection.cross_referenced %}
-                    <td>True
-                        {% else %}
-                    <td style="color: red;">False
                         {% endif %}
                     </td>
                     <td>
@@ -188,7 +179,7 @@
     function updateNumberOfUnresolvedWarnings(numberOfUnresolvedWarnings) {
         document.getElementById('unresolved-warning-count').textContent = 'Unresolved warnings: ' + numberOfUnresolvedWarnings;
         if (numberOfUnresolvedWarnings > 0) {
-            document.getElementById('unresolved-warning-count').style.color = 'red';
+            document.getElementById('unresolved-warning-count').style.color = 'orange';
         } else {
             document.getElementById('unresolved-warning-count').style.color = 'black';
         }
@@ -248,9 +239,9 @@
                     });
                 } else {
                     header.textContent = 'Missing Selection Numbers (Unresolved)';
-                    header.style.color = 'orangered'
+                    header.style.color = 'orange'
                     rows.forEach(function (row) {
-                        row.style.color = 'orangered';
+                        row.style.color = 'orange';
                     });
                 }
                 button.hidden = false;

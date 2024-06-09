@@ -422,16 +422,16 @@ class Recording(db.Model):
             st_df = self.load_selection_table_data(custom_file=custom_file)
             if st_df.empty:
                 self.set_all_cross_referenced(session)
-                return [], "The selection table does not exist"
+                return [], "The Selection Table does not exist"
             self.cross_reference_selections(session, st_df)
             missing_selections = self.find_missing_selections(session, st_df)
             session.commit()
             return missing_selections, ""
         except Exception as e:
             self.set_all_cross_referenced(session)
-            return [], "The selection table provided is invalid: " + str(e)
+            return [], "The Selection Table provided is invalid: " + str(e)
             
-        return [], "The selection table does not exist"
+        return [], "The Selection Table does not exist"
 
         
     def set_all_cross_referenced(self, session):
@@ -455,7 +455,7 @@ class Recording(db.Model):
         missing_selections = []
         selection_numbers = [selection.selection_number for selection in selections]
         if self.selection_table_file != None:
-            # Validate files exist for all selections within the selection table
+            # Validate files exist for all selections within the Selection Table
             selections_array = sorted(st_df['Selection'].to_list())
             print(selections_array)
             for selection_num in selections_array:
@@ -587,8 +587,11 @@ class Selection(db.Model):
             warnings.append("Contour file exists but annotated 'N'.")
         elif not self.contour_file and self.contoured=="Y" or self.contoured=="M":
             warnings.append(f"Selection annotated '{self.contoured}' but no contour file.")
-        elif not self.recording.selection_table_file:
-            warnings.append("No selection table file.")
+        if not self.recording.selection_table_file:
+            warnings.append("No Selection Table file.")
+        elif self.get_selection_table_row() == {}:
+            warnings.append("No row in Selection Table.")
+        print(warnings)
         return warnings
 
     def setCrossReferencedTrue(self, session, contoured):
@@ -601,17 +604,20 @@ class Selection(db.Model):
         self.contoured=None
         session.commit()
 
-    def get_selection_table_row(self):
-        #print(self.recording.get_selection_table_row(self.selection_number))
-        row_dict = {}
 
+    def get_selection_table_row(self) -> dict:
+        """
+        Get the row from the Selection Table for this selection. If there exists no
+        row, return an empty dictionary.
+        """
+        row_dict = {}
         row = self.recording.get_selection_table_row(self.selection_number)
-        print(row)
         if not row.empty:
             first_row = row.iloc[0]
             for column, value in first_row.items():
                 row_dict[column] = value
         return row_dict
+
 
 
     def update_call(self, session):

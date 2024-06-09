@@ -95,7 +95,7 @@
                         {% endif %}
                         <td>
                             {%if recording.get_number_of_unresolved_warnings() > 0%}
-                            <label style="color:red;">{{ recording.get_number_of_unresolved_warnings() }} warning{% if recording.get_number_of_unresolved_warnings() > 1 %}s{% endif %}</label>
+                            <label style="color:orange;">{{ recording.get_number_of_unresolved_warnings() }} warning{% if recording.get_number_of_unresolved_warnings() > 1 %}s{% endif %}</label>
                             {%else%}
                             <label style="color:green">No warnings</label>
                             {%endif%}

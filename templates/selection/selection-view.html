@@ -20,7 +20,7 @@
             {% if selection.getWarnings()|length > 0 and selection.ignore_warnings %}
                 <h3>{{selection.getWarnings()|length}} resolved warning{% if selection.getWarnings()|length > 1 %}s{% endif %} </h3>
             {% elif selection.getWarnings()|length > 0 and not selection.ignore_warnings %}
-                <h3 style="color:orangered">{{selection.getWarnings()|length}} warning{% if selection.getWarnings()|length > 1 %}s{% endif %} </h3>
+                <h3 style="color:orange">{{selection.getWarnings()|length}} warning{% if selection.getWarnings()|length > 1 %}s{% endif %} </h3>
             {% else %}
                 <h3>Warnings</h3>
             {% endif %}
@@ -29,7 +29,7 @@
                 {% if selection.ignore_warnings %}
                     <label style="margin-left:10px; color: black;">{{ warning }} (ignored)</label>
                 {% else %}
-                    <label style="margin-left:10px; color: orangered;">{{ warning }}</label>
+                    <label style="margin-left:10px; color: orange;">{{ warning }}</label>
                 {% endif %}
                 {% endfor %}
             {% else %}
