@@ -8,6 +8,8 @@ from flask import (Flask, flash, get_flashed_messages, jsonify, redirect,
                    send_from_directory)
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, sessionmaker
+from flask_login import LoginManager
+from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
 from db import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
@@ -17,12 +19,14 @@ from routes.routes_encounter import routes_encounter
 from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
 from routes.routes_contour import routes_contour
+from routes.routes_auth import routes_auth
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_encounter)
 app.register_blueprint(routes_recording)
 app.register_blueprint(routes_selection)
 app.register_blueprint(routes_contour)
+app.register_blueprint(routes_auth)
 
 '''
 NOTE: to restrict access to certain routes, add the following to the routes.py file:
@@ -96,14 +100,17 @@ def hello_world():
     """
     Redirect user from root to home directory.
     """
-    return redirect(url_for('home'))
+
+    return redirect(url_for('home', user=current_user))
 
 @app.route('/home')
 def home():
     """
     Route for the home page.
     """
-    return render_template('home.html')
+    print("\n\nCURRENT USER")
+    print(current_user, current_user.is_authenticated)
+    return render_template('home.html', user=current_user)
 
 if __name__ == '__main__':
     app.run(debug=True)

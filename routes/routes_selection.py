@@ -5,6 +5,7 @@ import re
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
+from flask_login import login_user,login_required, current_user, login_manager
 
 # Location application imports
 from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error
@@ -62,7 +63,7 @@ def contour_file_delete(selection_id):
         selection_obj = session.query(Selection).filter_by(id=selection_id).first()
         selection_obj.delete_contour_file(session)
         session.commit()
-        return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id))
+        return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id, user=current_user))
 
 def insert_or_update_contour(session, selection_id, file, recording_id):
     selection_obj = session.query(Selection).filter_by(id=selection_id).first()
@@ -261,7 +262,7 @@ def contour_insert_bulk(encounter_id, recording_id):
             session.rollback()
             raise e
             flash(f'Error inserting contour: {e}', 'error')
-    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id, user=current_user))
 
 @routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
 def selection_insert_bulk(encounter_id,recording_id):
@@ -316,4 +317,4 @@ def selection_view(selection_id):
     with Session() as session:
         selection = session.query(Selection).filter_by(id=selection_id).first()
         
-        return render_template('selection/selection-view.html', selection=selection)
+        return render_template('selection/selection-view.html', selection=selection, user=current_user)

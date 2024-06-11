@@ -21,7 +21,16 @@
 <body>
   <div class="outer-div">
     <h2>Home</h2>
-    <td><a href="/">Back</a></td>
-  </div>
+
+    {% if user.is_authenticated %}
+    <h4>Logged in as: {{ user.name }} ({{ user.email }})</h4>
+    {% else %}
+    <h4>You are not logged in</h4>
+    {% endif %}
+
+
+  
+</div>
+
 </body>
 </html>

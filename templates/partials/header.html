@@ -3,14 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>University of St Andrews Style Header</title>
+    <title>Home</title>
 </head>
 <header class="header-top">
-    <h1 style="padding: 0px 10px">University of St Andrews - Dolphin Acoustics VIP</h1>
+    <h1 style="padding: 0px 10px">University of St Andrews - Dolphin Acoustics VIP {% if user.is_authenticated %}({{ user.role.name }}){% endif %}</h1>
     <nav class="menu">
+        
         <a href="/home" class="menu-item">Home</a>
+        
+        {% if user.is_authenticated %}
         <a href="/encounter" class="menu-item">Encounters</a>
         <a href="{{ url_for('admin.admin_dashboard') }}" class="menu-item">Admin</a>
+        <a href="{{ url_for('auth.logout') }}" class="menu-item">Logout ({{ user.name }})</a>
+        {% else %}
+        <a href="/login" class="menu-item">Login</a>
+        {% endif %}
     </nav>
 </header>
 <div id="flashMessages">

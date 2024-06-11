@@ -5,6 +5,7 @@ from datetime import datetime
 # Third-party imports
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
+from flask_login import UserMixin
 
 # Local application imports
 from db import db, FILE_SPACE_PATH
@@ -34,6 +35,24 @@ def clean_directory(root_directory):
             dir_path = os.path.join(root, dir)
             if not os.listdir(dir_path):
                 os.rmdir(dir_path)
+
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True) # primary keys are required by SQLAlchemy
+    email = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    name = db.Column(db.String(1000))
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    is_active = db.Column(db.Boolean, default=True)
+    
+    role=db.relationship('Role', backref='users', lazy=True)
+
+    def get_id(self):
+        return str(self.id)
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
 
 class Species(db.Model):
     __tablename__ = 'species'

@@ -2,6 +2,7 @@
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
+from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
 from db import Session, parse_alchemy_error
@@ -15,7 +16,10 @@ def admin():
     """
     A route decorator that redirects to the admin dashboard page.
     """
-    return redirect(url_for('admin.admin_dashboard'))
+    return redirect(url_for('admin.admin_dashboard', user=current_user))
+
+
+
 
 @routes_admin.route('/admin/dashboard')
 def admin_dashboard():
@@ -26,7 +30,7 @@ def admin_dashboard():
         data_source_list = session.query(DataSource).all()
         recording_platform_list = session.query(RecordingPlatform).all()
         species_list = session.query(Species).all()
-        return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list, species_list=species_list)
+        return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list, species_list=species_list, user=current_user)
 
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/view', methods=['GET'])
 def admin_data_source_view(data_source_id):
@@ -36,10 +40,10 @@ def admin_data_source_view(data_source_id):
     with Session() as session:
         try:
             data_source = session.query(DataSource).filter_by(id=data_source_id).first()  
-            return render_template('admin/admin-data-source-view.html', data_source=data_source, data_source_type_values  = DataSource.type.type.enums)
+            return render_template('admin/admin-data-source-view.html', data_source=data_source, data_source_type_values  = DataSource.type.type.enums, user=current_user)
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
         
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/edit', methods=['POST'])
 def admin_data_source_edit(data_source_id):
@@ -63,14 +67,14 @@ def admin_data_source_edit(data_source_id):
             flash('Data source updated: {}'.format(data_source.name), 'success')
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
-    return redirect(url_for('admin.admin_dashboard'))
+    return redirect(url_for('admin.admin_dashboard', user=current_user))
 
 @routes_admin.route('/admin/data-source/new', methods=['GET'])
 def admin_data_source_new():
     """
     A route for the new data source page.
     """
-    return render_template('admin/admin-data-source-new.html', data_source_type_values = DataSource.type.type.enums)
+    return render_template('admin/admin-data-source-new.html', data_source_type_values = DataSource.type.type.enums, user=current_user)
 
 @routes_admin.route('/admin/data-source/insert', methods=['POST'])
 def admin_data_source_insert():
@@ -97,7 +101,7 @@ def admin_data_source_insert():
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         finally:
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
 
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/delete', methods=['GET'])
 def admin_data_source_delete(data_source_id):
@@ -113,7 +117,7 @@ def admin_data_source_delete(data_source_id):
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
             
-    return redirect(url_for('admin.admin_dashboard'))
+    return redirect(url_for('admin.admin_dashboard', user=current_user))
 
 @routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/view', methods=['GET'])
 def admin_recording_platform_view(recording_platform_id):
@@ -123,10 +127,10 @@ def admin_recording_platform_view(recording_platform_id):
     with Session() as session:
         try:
             recording_platform = session.query(RecordingPlatform).filter_by(id=recording_platform_id).first()  
-            return render_template('admin/admin-recording-platform-view.html', recording_platform=recording_platform)
+            return render_template('admin/admin-recording-platform-view.html', recording_platform=recording_platform, user=current_user)
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
         
 @routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/edit', methods=['POST'])
 def admin_recording_platform_edit(recording_platform_id):
@@ -144,14 +148,14 @@ def admin_recording_platform_edit(recording_platform_id):
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         finally:
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
 
 @routes_admin.route('/admin/recording-platform/new', methods=['GET'])
 def admin_recording_platform_new():
     """
     A route decorator for creating a new recording platform in the admin panel.
     """
-    return render_template('admin/admin-recording-platform-new.html')
+    return render_template('admin/admin-recording-platform-new.html', user=current_user)
 
 @routes_admin.route('/admin/recording-platform/insert', methods=['POST'])
 def admin_recording_platform_insert():
@@ -169,7 +173,7 @@ def admin_recording_platform_insert():
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         finally:
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
 
 @routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/delete', methods=['GET'])
 def admin_recording_platform_delete(recording_platform_id):
@@ -185,7 +189,7 @@ def admin_recording_platform_delete(recording_platform_id):
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         finally:
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
 
 @routes_admin.route('/admin/species/<uuid:species_id>/view', methods=['GET'])
 def admin_species_view(species_id):
@@ -196,10 +200,10 @@ def admin_species_view(species_id):
         try:
             session = Session()
             species_data = session.query(Species).filter_by(id=species_id).first()
-            return render_template('admin/admin-species-view.html', species=species_data)
+            return render_template('admin/admin-species-view.html', species=species_data, user=current_user)
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
     
 @routes_admin.route('/admin/species/<uuid:species_id>/edit', methods=['POST'])
 def admin_species_edit(species_id):
@@ -218,7 +222,7 @@ def admin_species_edit(species_id):
         else:
             flash('Species with ID {} not found'.format(species_id), 'error')
             session.rollback()
-        return redirect(url_for('admin.admin_dashboard'))
+        return redirect(url_for('admin.admin_dashboard', user=current_user))
 
 @routes_admin.route('/admin/species/<uuid:species_id>/delete', methods=['POST'])
 def admin_species_delete(species_id):
@@ -235,12 +239,12 @@ def admin_species_delete(species_id):
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         finally:
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_dashboard', user=current_user))
 
     
 @routes_admin.route('/admin/species/new', methods=['GET'])
 def admin_species_new():
-    return render_template('admin/admin-species-new.html')
+    return render_template('admin/admin-species-new.html', user=current_user)
 
 @routes_admin.route('/admin/species/insert', methods=['POST'])
 def admin_species_insert():
@@ -256,5 +260,5 @@ def admin_species_insert():
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-    return redirect(url_for('admin.admin_dashboard'))
+    return redirect(url_for('admin.admin_dashboard', user=current_user))
 

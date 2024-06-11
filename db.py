@@ -3,14 +3,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload, sessionmaker
 import sqlalchemy
+from flask_login import LoginManager
+import uuid
 
-# Create a Flask app
-app = Flask(__name__)
-app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
-
-# Configure the database connection using SQLAlchemy and MariaDB
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Define the file space folder and get the Google API key from a file
 FILE_SPACE_PATH = ''
@@ -22,6 +17,19 @@ if os.path.exists('google_api_key.txt'):
     with open('google_api_key.txt', 'r') as f:
         GOOGLE_API_KEY = f.read()
 
+
+
+
+
+# Create a Flask app
+app = Flask(__name__)
+app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
+
+# Configure the database connection using SQLAlchemy and MariaDB
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
 # Initialize the SQLAlchemy database
 db = SQLAlchemy(session_options={"autoflush": False})
 db.init_app(app)
@@ -30,6 +38,19 @@ db.init_app(app)
 with app.app_context():
     engine = db.get_engine()
     Session = sessionmaker(bind=engine, autoflush=False)
+
+# Setup user login
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    from models import User
+    # since the user_id is just the primary key of our user table, use it in the query for the user
+    return User.query.get(uuid.UUID(user_id))
+
+
 
 def parse_alchemy_error(error):
     """
