@@ -7,6 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
 from flask_login import UserMixin
 
+
 # Local application imports
 from db import db, FILE_SPACE_PATH
 
@@ -337,9 +338,11 @@ class Recording(db.Model):
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
-    
-    
+    from sqlalchemy.sql import func
 
+    #row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+    #row_end = db.Column(db.DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    #valid_to = Column(DateTime, server_default=func.inf())
     __table_args__ = (
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )

@@ -11,11 +11,12 @@
 <body>
     <div class="outer-div">
         <h2>Recording Summary</h2>
-        <p>Start date: {{ recording.get_start_time_string() }}</p>
+        <p>Start date: {{ recording.start_time }}</p>
         <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
             recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
         <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
         <p>Number of contours: {{ recording.get_number_of_contours() }}</p>
+        <p>Start Timestamp: {{ recording.row_start }}</p>
         <p id="unresolved-warning-count">Unresolved warnings: {{ recording.get_number_of_unresolved_warnings() }}</p>
         {% set identifier_heading = "Selection Number" %}
         {% set unique_id = "selection-number"%}
@@ -31,6 +32,7 @@
                             <th>Date</th>
                             <th>Action</th>
                             <th>User</th>
+                            <th>View Snapshot</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -39,6 +41,7 @@
                                 <td>{{ recording['row_start'] }}</td>
                                 <td>{{ recording['action'] }}</td>
                                 <td>{{ recording['updated_by'].name }}</td>
+                                <td><a href="{{ url_for('recording.recording_view', encounter_id=recording['encounter_id'], recording_id=recording['id'], snapshot_date=recording['row_start']) }}" >HERE</a></td>
                             </tr>
                         {% endfor %}
                     </tbody>

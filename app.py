@@ -4,8 +4,9 @@ import zipfile
 
 # Third-party imports
 from flask import (Flask, flash, get_flashed_messages, jsonify, redirect,
-                   render_template, request, send_file, session, url_for,
+                   render_template, request, send_file, url_for,
                    send_from_directory)
+from flask import session as client_session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, sessionmaker
 from flask_login import LoginManager
@@ -43,6 +44,26 @@ def add():
     # rest of your route
 
 '''
+
+def remove_snapshot_date_from_url(url):
+    # Split the URL into base URL and query parameters
+    base_url, params = url.split('?', 1) if '?' in url else (url, '')
+    
+    # Split the query parameters into individual parameters
+    param_list = params.split('&')
+    
+    # Remove the snapshot_date parameter
+    updated_params = [param for param in param_list if not param.startswith('snapshot_date=')]
+    
+    # Reconstruct the URL without the snapshot_date parameter
+    updated_url = base_url + ('?' + '&'.join(updated_params) if updated_params else '')
+    
+    return updated_url
+
+@app.route('/reset-snapshot-in-session')
+def reset_snapshot_in_session():
+    client_session['snapshot_date']=None
+    return redirect(remove_snapshot_date_from_url(request.referrer))
 
 @app.route('/resources/<path:filename>')
 def serve_resource(filename):

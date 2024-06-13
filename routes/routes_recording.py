@@ -3,12 +3,13 @@ import pandas as pd
 import uuid, os, re
 
 # Third-party imports
-from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
+from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file, url_for, send_from_directory
+from flask import session as client_session
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session
 from models import *
 from exception_handler import *
 
@@ -170,8 +171,31 @@ def recording_view(encounter_id,recording_id):
     """
     Renders the recording view page for a specific encounter and recording.
     """
+    
+    if request.args.get('snapshot_date'):
+        save_snapshot_date_to_session(request.args.get('snapshot_date'))
+    snapshot_date = get_snapshot_date_from_session()
+
     with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
+        query = session.query(Recording)
+        
+        if snapshot_date:
+            snapshot_date = datetime.strptime(snapshot_date, '%Y-%m-%d %H:%M:%S.%f')  # Convert snapshot_date to datetime
+            query = db.text("""
+                SELECT * 
+                FROM recording 
+                FOR SYSTEM_TIME AS OF '{}'
+                WHERE id = :recording_id
+            """.format(snapshot_date))
+            print("\n\nQUERY")
+            print(query)
+            
+            recording = session.query(Recording).from_statement(query).params(recording_id=recording_id).first()
+            print("RECORDING",recording,recording.start_time)
+            # .filter(Recording.row_start <= snapshot_date, Recording.row_end >= snapshot_date) 
+        else:
+            recording = query.filter_by(id=recording_id).first()
+        #recording = query.filter_by(id=recording_id).first()
         selections = session.query(Selection).filter_by(recording_id=recording_id).order_by(Selection.selection_number).all()
         #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
         from sqlalchemy.sql import select
@@ -233,7 +257,7 @@ def recording_view(encounter_id,recording_id):
 
         missing_selections, error_msg = recording.validate_selection_table(session)
         
-        return render_template('recording/recording-view.html', recording=recording, selections=selections, missing_selections=missing_selections,valid_selections_table_error_msg=error_msg, user=current_user,recording_history=recording_history)
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, missing_selections=missing_selections,valid_selections_table_error_msg=error_msg, user=current_user,recording_history=recording_history, snapshot_date=snapshot_date)
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
 def recording_update(encounter_id, recording_id):

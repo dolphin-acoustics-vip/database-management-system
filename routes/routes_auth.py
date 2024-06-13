@@ -3,6 +3,7 @@ from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,rende
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager, logout_user
+from flask import session as client_session
 import uuid
 
 # Local application imports
@@ -43,4 +44,5 @@ def login():
 @routes_auth.route('/logout')
 def logout():
     logout_user()
+    client_session.clear()
     return redirect(url_for('home', user=current_user))

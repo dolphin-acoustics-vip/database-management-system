@@ -1,6 +1,7 @@
 import os
-from flask import Flask
+from flask import Flask, session
 from flask_sqlalchemy import SQLAlchemy
+from flask import session as client_session
 from sqlalchemy.orm import joinedload, sessionmaker
 import sqlalchemy
 from flask_login import LoginManager
@@ -18,7 +19,17 @@ if os.path.exists('google_api_key.txt'):
         GOOGLE_API_KEY = f.read()
 
 
+def get_snapshot_date_from_session():
+    """
+    Gets the snapshot date from the session.
+    """
+    return client_session.get('snapshot_date')
 
+def save_snapshot_date_to_session(snapshot_date):
+    """
+    Saves the snapshot date to the session.
+    """
+    client_session['snapshot_date'] = snapshot_date
 
 
 # Create a Flask app

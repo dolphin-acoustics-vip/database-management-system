@@ -7,6 +7,11 @@
 </head>
 <header class="header-top">
     <h1 style="padding: 0px 10px">University of St Andrews - Dolphin Acoustics VIP {% if user.is_authenticated %}({{ user.role.name }}){% endif %}</h1>
+    {% if session['snapshot_date'] %}
+    <div id="warning-bar" style="background-color: red; color: white; padding: 10px; margin-top: 10px;">
+        Warning: viewing archived date from {{ session['snapshot_date'] }} (<a href="{{ url_for('reset_snapshot_in_session') }}">Exit View</a>)
+    </div>
+    {% endif %}
     <nav class="menu">
         
         <a href="/home" class="menu-item">Home</a>
@@ -115,4 +120,5 @@
         });
     }
 </script>
+
 </html>
