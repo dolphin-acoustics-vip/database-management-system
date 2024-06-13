@@ -22,6 +22,30 @@
         {% set process_route = "process_selection" %}
         {% set insert_route = "selection.selection_insert_bulk" %}
 
+        <section>
+            <div class="audit-history">
+                <h3>Audit History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>User</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for recording in recording_history %}
+                            <tr>
+                                <td>{{ recording['row_start'] }}</td>
+                                <td>{{ recording['action'] }}</td>
+                                <td>{{ recording['updated_by'].name }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <h2>Add selections</h2>
         {% include 'recording/multi-file-upload-template.html' %}
 

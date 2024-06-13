@@ -309,9 +309,18 @@ class File(db.Model):
             if not os.path.samefile(new_relative_file_path_with_root, current_relative_file_path):
                 raise IOError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
             return False
-        
-        
 
+"""
+class Audit(db.Model):
+    __tablename__ = 'audit'
+
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    created_at = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()")
+    updated_at = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()", onupdate="current_timestamp()")
+    action = db.Column(db.String(50), nullable=False)
+
+"""
+    
 class Recording(db.Model):
     __tablename__ = 'recording'
 
@@ -322,16 +331,21 @@ class Recording(db.Model):
     selection_table_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
     encounter_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('encounter.id'), nullable=False)
     ignore_selection_table_warnings = db.Column(db.Boolean, default=False)
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
 
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     
     
 
     __table_args__ = (
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
+
+    def set_user_id(self, user_id):
+        self.updated_by_id = user_id
 
     def get_number_of_unresolved_warnings(self):
         counter = 0
@@ -575,7 +589,14 @@ class Recording(db.Model):
             raise ValueError("Duration must be an integer")
         self.duration = value
     
+"""
 
+class RecordingAudit(Audit, Recording, db.Model):
+    __tablename__ = 'recording_audit'
+
+    record_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
+    record = db.relationship("Recording", foreign_keys=[record_id])
+"""
 class Selection(db.Model):
     __tablename__ = 'selection'
 

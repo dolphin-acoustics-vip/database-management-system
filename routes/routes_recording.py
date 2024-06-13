@@ -30,20 +30,23 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     - new_recording: the newly inserted or updated recording
     """
     
+    time_start = request.form['time_start']
     # Get Recording object if updating or make a new one is inserting.
     # This is decided by whether recording_id is None or not.
     if recording_id is not None:
         new_recording = session.query(Recording).filter_by(id=recording_id).first()
     else:
         new_recording = Recording()
-    time_start = request.form['time_start']
+
+    
     seconds = request.form['seconds']
     new_recording.set_start_time(time_start, seconds)
     new_recording.set_duration(0)
     new_recording.set_encounter_id(encounter_id)
+    new_recording.set_user_id(current_user.id)
     session.add(new_recording)
     session.commit()
-    
+
     # If a recording file has been given, add it to the Recording object
     if 'recording_file' in request.files and request.files['recording_file'].filename != '':
         recording_file = request.files['recording_file']
@@ -143,13 +146,13 @@ def recording_insert(encounter_id):
             flash(f'Added recording: {recording_obj.id}', 'success')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
         except SQLAlchemyError as e:
+            raise e
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
 
 @routes_recording.route('/recording/<uuid:recording_id>/get-unresolved-warnings', methods=['GET'])
 def get_number_of_unresolved_warnings(recording_id):
-    print("I GOT HERE AGAIN")
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
                 
@@ -158,7 +161,6 @@ def get_number_of_unresolved_warnings(recording_id):
             'recording_id': recording_id,
             'number_of_unresolved_warnings': recording.get_number_of_unresolved_warnings()
         }
-        print(response_data)
         return jsonify(response_data)
     
     
@@ -171,9 +173,67 @@ def recording_view(encounter_id,recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         selections = session.query(Selection).filter_by(recording_id=recording_id).order_by(Selection.selection_number).all()
+        #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
+        from sqlalchemy.sql import select
+        # Retrieve the historical records of a row
+        
+        #sql_query = session.query(Recording).filter_by(id=recording_id).all()
+
+        # Write the raw SQL query to select all records from the recording table for all system time versions
+        sql_query = db.text("SELECT *,row_start FROM recording FOR SYSTEM_TIME ALL WHERE id=:recording_id;")
+        # Execute the raw SQL query with the recording_id parameter
+        result = session.execute(sql_query, {"recording_id": recording_id})
+        
+        # Fetch all results
+        records = result.fetchall()
+
+        # Create a list of dictionaries with column names as keys
+        recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
+
+        for recording_history_item in recording_history:
+            if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
+                recording_history_item['updated_by'] = session.query(User).filter_by(id=uuid.UUID(recording_history_item['updated_by_id'])).first()  
+            else:
+                recording_history_item['updated_by'] = None 
+        # Sort the data by 'row_start' dates
+        recording_history.sort(key=lambda x: x['row_start'])
+
+        def parse_value(key, value, prev_value):
+            return_string = ""
+            if type(value) == datetime or type(prev_value) == datetime:
+                return_string = 'UPDATE ' + key + ' ' + str(value)
+            else:
+                try:
+                    value = uuid.UUID(value) if value else None
+                    prev_value = uuid.UUID(prev_value) if prev_value else None
+                    
+                    if value and prev_value == None:
+                        return_string = 'ADD ' + key
+                    elif value == None and prev_value:
+                        return_string = 'DELETE ' + key
+                    elif value and prev_value:
+                        return_string = 'UPDATE ' + key
+                    else:
+                        return_string="TEST"
+                except ValueError:
+                    pass
+
+
+            
+            return return_string
+
+        prev_element = None
+        for element in recording_history:
+            if prev_element is None:
+                element['action'] = 'CREATE'
+            else:
+                changes = [parse_value(key, element[key], prev_element[key]) for key in element if element[key] != prev_element.get(key) and key not in ['row_start', 'updated_by_id', 'updated_by']]
+                element['action'] = changes if changes else 'No changes'
+            prev_element = element
+
         missing_selections, error_msg = recording.validate_selection_table(session)
         
-        return render_template('recording/recording-view.html', recording=recording, selections=selections, missing_selections=missing_selections,valid_selections_table_error_msg=error_msg, user=current_user)
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, missing_selections=missing_selections,valid_selections_table_error_msg=error_msg, user=current_user,recording_history=recording_history)
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
 def recording_update(encounter_id, recording_id):
@@ -299,7 +359,6 @@ def check_selection_table(encounter_id, recording_id):
                 raise FileNotFoundError()   
             else:
                 selection_table_file_path = selection_table_file.get_full_absolute_path()
-                print(selection_table_file_path)
                 if os.path.exists(selection_table_file_path):
                     # parse CSV file and check if the selection numbers exist in 
                     # the list above selection_numbers

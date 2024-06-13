@@ -30,7 +30,7 @@ def login_post():
             flash('Invalid username or password', 'error')
             return redirect(url_for('auth.login', user=current_user))
         
-        login_user(user, remember=True)
+        login_user(user, remember=False)
                 
 
     return redirect(url_for('home', user=current_user))
