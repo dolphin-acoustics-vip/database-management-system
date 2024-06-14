@@ -99,11 +99,10 @@ def recording_selection_table_add(encounter_id,recording_id):
             new_file.set_uploaded_by("User 1") # TODO: change
             session.add(new_file)
             recording.selection_table_file = new_file 
-            recording.reset_all_selections_unresolved_warnings(session)
             # Validate the selection table - if invalid then delete the selection table file
-            missing_selections, error_msg = recording.validate_selection_table(session)
+            error_msg = recording.validate_selection_table(session)
             if error_msg != None and error_msg != "":
-                new_file.move_to_trash()
+                new_file.move_to_trash(session)
                 handle_exception(error_msg, session)
                 return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id, user=current_user))
         session.commit()  
@@ -117,19 +116,21 @@ def recording_selection_table_delete(encounter_id, recording_id):
     """
     with Session() as session:
         try:
+            print("I GOT HERE")
             recording = session.query(Recording).filter_by(id=recording_id).first()
             recording.selection_table_file=None
             file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
             try:
+                print("TRYING",recording,recording.selection_table_file)
                 # All manually resolved warnings will be reset to 'unresolved' (forcing
                 # them to be re-validated after the selection table is deleted)
-                recording.reset_all_selections_unresolved_warnings(session)
-                session.delete(file)
                 session.commit()
                 flash(f'Deleted Selection Table', 'success')
                 file.move_to_trash()
             except FileNotFoundError:
-                pass # Database entry already deleted - if file to delete was not found then ignore
+                print("ERROR")
+                session.commit()
+                flash(f'Deleted Selection Table', 'success')
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         finally:

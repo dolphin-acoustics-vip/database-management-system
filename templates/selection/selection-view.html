@@ -12,9 +12,36 @@
     <div class="outer-div">
         <h2>Selection Number: {{ selection.selection_number }}</h1>
         <hr>
+        <p>Test: {{selection.recording.start_time}}</p>
         <p>Encounter: {{ selection.recording.encounter.encounter_name }}</p>
         <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording: {{ selection.recording.get_start_time_string() }}</a>
 
+        <hr>
+        <section>
+            <div class="audit-history">
+                <h3>Audit History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>User</th>
+                            <th>View Snapshot</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for selection in selection_history %}
+                            <tr>
+                                <td>{{ selection['row_start'] }}</td>
+                                <td>{{ selection['action'] }}</td>
+                                <td>{{ selection['updated_by'].name }}</td>
+                                <td><a href="{{ url_for('selection.selection_view', encounter_id=selection['encounter_id'], selection_id=selection['id'], snapshot_date=selection['row_start']) }}" >HERE</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
         <hr>
         <div>
             {% if selection.getWarnings()|length > 0 and selection.ignore_warnings %}
@@ -55,17 +82,54 @@
         <h3>Selection Table</h3>
         {% if selection.recording.selection_table_file %}
         <p>Selection table excerpt for selection number {{ selection.selection_number }}</p>
-            <table>
-                <tbody>
-                  {% for column in selection.get_selection_table_row() %}
-                  {% set value = selection.get_selection_table_row()[column] %}
-                  <tr>
-                    <th>{{ column }}</th>
-                    <td>{{ value }}</td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+        <table>
+            <tr>Selection Number</tr>
+            <tr>{{ selection.selection_number }}</tr>
+            <tr>
+                <th>Attribute</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>View</td>
+                <td>{{ selection.view }}</td>
+            </tr>
+            <tr>
+                <td>Channel</td>
+                <td>{{ selection.channel }}</td>
+            </tr>
+            <tr>
+                <td>Begin Time</td>
+                <td>{{ selection.begin_time }}</td>
+            </tr>
+            <tr>
+                <td>End Time</td>
+                <td>{{ selection.end_time }}</td>
+            </tr>
+            <tr>
+                <td>Low Frequency</td>
+                <td>{{ selection.low_frequency }}</td>
+            </tr>
+            <tr>
+                <td>High Frequency</td>
+                <td>{{ selection.high_frequency }}</td>
+            </tr>
+            <tr>
+                <td>Delta Time</td>
+                <td>{{ selection.delta_time }}</td>
+            </tr>
+            <tr>
+                <td>Delta Frequency</td>
+                <td>{{ selection.delta_frequency }}</td>
+            </tr>
+            <tr>
+                <td>Average Power</td>
+                <td>{{ selection.average_power }}</td>
+            </tr>
+            <tr>
+                <td>Annotation</td>
+                <td>{{ selection.annotation }}</td>
+            </tr>
+        </table>
               <a href="{{url_for('download_file', relative_path=selection.recording.selection_table_file.get_full_relative_path())}}">Download full selection table</a><br>
 
         {% else %}

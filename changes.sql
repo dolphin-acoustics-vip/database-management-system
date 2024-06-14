@@ -108,8 +108,10 @@ CREATE TABLE `file` (
   `filename` varchar(255) NOT NULL,
   `extension` varchar(10) NOT NULL,
   `uploaded_date` datetime DEFAULT NULL,
-  `uploaded_by` varchar(100) DEFAULT NULL,
+  `updated_by_id` uuid DEFAULT NULL,
   `duration` int(11) DEFAULT NULL,
+  KEY `fk_updated_by_id_file` (`updated_by_id`),
+  CONSTRAINT `fk_updated_by_id_file` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -118,8 +120,7 @@ CREATE TABLE `file` (
 -- Table structure for table `recording`
 --
 
-ALTER TABLE IF EXISTS `recording` DROP SYSTEM VERSIONING
-DROP TABLE IF EXISTS `recording`
+DROP TABLE IF EXISTS `recording`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `recording` (
@@ -220,9 +221,19 @@ DROP TABLE IF EXISTS `selection`;
 CREATE TABLE `selection` (
   `id` uuid NOT NULL DEFAULT uuid(),
   `selection_number` int(11) NOT NULL,
-  `selection_file_id` uuid NOT NULL,
+  `selection_file_id` uuid DEFAULT NULL,
   `recording_id` uuid NOT NULL,
   `contour_file_id` uuid DEFAULT NULL,
+  `view` varchar(30) DEFAULT NULL,
+  `channel` int(4) DEFAULT NULL,
+  `begin_time` float DEFAULT NULL,
+  `end_time` float DEFAULT NULL,
+  `low_frequency` float DEFAULT NULL,
+  `high_frequency` float DEFAULT NULL,
+  `delta_time` float DEFAULT NULL,
+  `delta_frequency` float DEFAULT NULL,
+  `average_power` float DEFAULT NULL,
+  `annotation` varchar(10) DEFAULT NULL,
   `freq_max` float DEFAULT NULL,
   `freq_min` float DEFAULT NULL,
   `duration` float DEFAULT NULL,
@@ -294,9 +305,6 @@ CREATE TABLE `selection` (
   `median_timezc` float DEFAULT NULL,
   `variance_timezc` float DEFAULT NULL,
   `whale_train` float DEFAULT NULL,
-  `cross_referenced` tinyint(1) NOT NULL DEFAULT 0,
-  `contoured` varchar(10) DEFAULT NULL,
-  `ignore_warnings` tinyint(1) NOT NULL DEFAULT 0,
   `updated_by_id` uuid DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_updated_by_id_selection` (`updated_by_id`),
@@ -371,7 +379,7 @@ CREATE TABLE `user` (
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 INSERT INTO `user` VALUES ('b9e03621-3286-46c1-9c2c-429d5c5a6b25','js521@st-andrews.ac.uk','test123','Jamie',1,1);
-INSERT INTO `user` VALUES ('b9e03621-3286-46c1-9c2c-429d5c5a6b25','sullivanj041@gmail.com','test123','Jamie Copy',2,0);
+INSERT INTO `user` VALUES ('c9e03621-3286-46c1-9c2c-429d5c5a6b25','sullivanj041@gmail.com','test123','Jamie Copy',2,0);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 

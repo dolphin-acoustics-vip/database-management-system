@@ -81,8 +81,8 @@ def create_all_time_request(session, db_object, filters=None, order_by=None):
                     return_string = 'UPDATE ' + key
                 else:
                     return_string="TEST"
-            except ValueError:
-                pass
+            except (ValueError,AttributeError):
+                return_string = 'UPDATE ' + key + ' -> ' + str(value)
 
 
         

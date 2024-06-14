@@ -10,10 +10,12 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
 from flask_login import UserMixin
 from sqlalchemy.sql import func
+from sqlalchemy import event
 
 
 # Local application imports
 from db import db, FILE_SPACE_PATH
+
 
 
 
@@ -52,6 +54,7 @@ class User(db.Model, UserMixin):
     
     role=db.relationship('Role', backref='users', lazy=True)
 
+
     def get_id(self):
         return str(self.id)
 
@@ -66,6 +69,8 @@ class Species(db.Model):
     species_name = db.Column(db.String(100), nullable=False, unique=True)
     genus_name = db.Column(db.String(100))
     common_name = db.Column(db.String(100))
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
     def update_call(self,session):
         encounters = session.query(Encounter).filter_by(species=self).all()
@@ -107,6 +112,8 @@ class Encounter(db.Model):
     data_source = db.relationship("DataSource")
     recording_platform = db.relationship("RecordingPlatform")
 
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     __table_args__ = (
         db.UniqueConstraint('encounter_name', 'location'),
     )
@@ -202,9 +209,11 @@ class File(db.Model):
     path = db.Column(db.String, nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     uploaded_date = db.Column(db.DateTime)
-    uploaded_by = db.Column(db.String(100))
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
+
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
     def delete(self, session):
         self.move_to_trash(session)
@@ -353,18 +362,7 @@ class Recording(db.Model):
     def set_user_id(self, user_id):
         self.updated_by_id = user_id
 
-    def get_number_of_unresolved_warnings(self):
-        counter = 0
-        selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
-        for selection in selections:
-            if selection.ignore_warnings == False and len(selection.getWarnings())>0:
-                counter += 1
-                
-        missing_selections, error_msg = self.validate_selection_table(db.session)
-        if not self.ignore_selection_table_warnings:
-            for selection in missing_selections:
-                counter += 1
-        return counter
+
 
     def get_number_of_selections(self):
         selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
@@ -411,6 +409,7 @@ class Recording(db.Model):
             else:
                 raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
             # Define the expected column names and data types
+            '''
             expected_columns = {
                 'Selection': int,
                 'View': object,
@@ -423,7 +422,7 @@ class Recording(db.Model):
                 'Delta Freq (Hz)': float,
                 'Avg Power Density (dB FS/Hz)': float,
                 'Annotation': object,
-                'Contoured': object
+                'annotation': object
             }
 
             # Check that the columns match the expected names and types
@@ -432,62 +431,43 @@ class Recording(db.Model):
                     raise ValueError(f"Missing column: {column}")
                 if df[column].dtype != dtype:
                     raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
-
+            '''
             # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
             if not df['Annotation'].isin(['Y', 'M', 'N']).all():
-                raise ValueError("Invalid values in 'Contoured' column: expected 'Y' or 'N'")
+                raise ValueError("Invalid values in 'annotation' column: expected 'Y' or 'N'")
 
             return df
 
         return pd.DataFrame()
 
-    def get_selection_table_row(self, selection_number):
-        st_df = self.load_selection_table_data()
-        return st_df.loc[st_df['Selection'] == selection_number]
-
-    def reset_all_selections_unresolved_warnings(self,session):
-        selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
-        for selection in selections:
-            selection.ignore_warnings = False
-
-    def selection_exists_in_selection_table(self, selection_number):
-        
-        st_df = self.load_selection_table_data()
-        if not st_df.empty:
-            return selection_number in st_df.Selection.to_list()
-
     def validate_selection_table(self, session, custom_file=None):
-        try:  
+        try:
             st_df = self.load_selection_table_data(custom_file=custom_file)
             if st_df.empty:
-                self.set_all_cross_referenced(session)
                 return [], "The Selection Table does not exist"
-            self.cross_reference_selections(session, st_df)
-            missing_selections = self.find_missing_selections(session, st_df)
+            self.upload_selection_table_rows(session, st_df)
+            #missing_selections = self.find_missing_selections(session, st_df)
             session.commit()
-            return missing_selections, ""
+            #return missing_selections, ""
+            return ""
         except Exception as e:
-            self.set_all_cross_referenced(session)
-            return [], "The Selection Table provided is invalid: " + str(e)
+            raise e
+            return "The Selection Table provided is invalid: " + str(e)
             
-        return [], "The Selection Table does not exist"
+        return "The Selection Table does not exist"
 
-        
-    def set_all_cross_referenced(self, session):
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
-        for selection in selections:
-            selection.setCrossReferencedFalse(session)
-        
-        
-    def cross_reference_selections(self,session,st_df):
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+    def upload_selection_table_rows(self, session, st_df):
         selection_table_selection_numbers = st_df.Selection.to_list()
-        for selection in selections:
-            if selection.selection_number not in selection_table_selection_numbers:
-                selection.setCrossReferencedFalse(session)  
-            elif selection.selection_number in selection_table_selection_numbers:
-                selection.setCrossReferencedTrue(session, st_df.loc[st_df['Selection'] == selection.selection_number, 'Contoured'].values[0])
-
+        for selection_number in selection_table_selection_numbers:
+            selection = session.query(Selection).filter_by(recording_id=self.id, selection_number=selection_number).first()
+            if selection is None:
+                new_selection = Selection(recording_id=self.id, selection_number=selection_number)
+                session.add(new_selection)
+                new_selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
+            else:
+                selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
+        session.commit()
+    
 
     def find_missing_selections(self, session, st_df):
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
@@ -610,15 +590,26 @@ class Selection(db.Model):
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
-    cross_referenced = db.Column(db.Boolean, nullable=False, default=False)
-    contoured = db.Column(db.String, nullable=False)
-    ignore_warnings = db.Column(db.Boolean, nullable=False, default=False)
+    annotation = db.Column(db.String, nullable=False)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+
+    ### Selection Table data ###
+    view = db.Column(db.String)
+    channel = db.Column(db.Integer)
+    begin_time = db.Column(db.Float)
+    end_time = db.Column(db.Float)
+    low_frequency = db.Column(db.Float)
+    high_frequency = db.Column(db.Float)
+    delta_time = db.Column(db.Float)
+    delta_frequency = db.Column(db.Float)
+    average_power = db.Column(db.Float)
 
     contour_file = db.relationship("File", foreign_keys=[contour_file_id])
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
     
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
 
     __table_args__ = (
@@ -629,41 +620,29 @@ class Selection(db.Model):
 
     def getWarnings(self):
         warnings = []
-        if self.contour_file and self.contoured=="N":
+        if self.contour_file and self.annotation=="N":
             warnings.append("Contour file exists but annotated 'N'.")
-        elif not self.contour_file and self.contoured=="Y" or self.contoured=="M":
-            warnings.append(f"Selection annotated '{self.contoured}' but no contour file.")
+        elif not self.contour_file and self.annotation=="Y" or self.annotation=="M":
+            warnings.append(f"Selection annotated '{self.annotation}' but no contour file.")
         if not self.recording.selection_table_file:
             warnings.append("No Selection Table file.")
-        elif self.get_selection_table_row() == {}:
-            warnings.append("No row in Selection Table.")
+        ## ADD CHECK THAT SELECTION TABLE HAS BEEN UPLOADED
         return warnings
 
-    def setCrossReferencedTrue(self, session, contoured):
-        self.cross_referenced = True
-        self.contoured = contoured
+
+    def upload_selection_table_data(self, session, st_df):
+        if st_df.iloc[0,0]==self.selection_number:
+            self.view = st_df.iloc[0, 1]
+            self.channel = st_df.iloc[0, 2]
+            self.begin_time = st_df.iloc[0, 3]
+            self.end_time = st_df.iloc[0, 4]
+            self.low_frequency = st_df.iloc[0, 5]
+            self.high_frequency = st_df.iloc[0, 6]
+            self.delta_time = st_df.iloc[0, 7]
+            self.delta_frequency = st_df.iloc[0, 8]
+            self.average_power = st_df.iloc[0, 9]
+            self.annotation = st_df.iloc[0, 10]
         session.commit()
-        
-    def setCrossReferencedFalse(self, session):
-        self.cross_referenced = False
-        self.contoured=None
-        session.commit()
-
-
-    def get_selection_table_row(self) -> dict:
-        """
-        Get the row from the Selection Table for this selection. If there exists no
-        row, return an empty dictionary.
-        """
-        row_dict = {}
-        row = self.recording.get_selection_table_row(self.selection_number)
-        if not row.empty:
-            first_row = row.iloc[0]
-            for column, value in first_row.items():
-                row_dict[column] = value
-        return row_dict
-
-
 
     def update_call(self, session):
         self.move_file(session,FILE_SPACE_PATH)
@@ -688,7 +667,6 @@ class Selection(db.Model):
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
             self.contour_file = None
-            self.ignore_warnings=False
         
 
     def generate_filename(self):
@@ -722,6 +700,8 @@ class DataSource(db.Model):
     notes = db.Column(db.Text)
     type = db.Column(db.Enum('person', 'organisation'))
 
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<DataSource %r>' % self.name
     
@@ -732,6 +712,7 @@ class RecordingPlatform(db.Model):
 
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
     name = db.Column(db.String(100), unique=True, nullable=False)
-
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name

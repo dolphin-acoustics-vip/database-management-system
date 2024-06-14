@@ -95,11 +95,7 @@
                         </td>
                         {% endif %}
                         <td>
-                            {%if recording.get_number_of_unresolved_warnings() > 0%}
-                            <label style="color:orange;">{{ recording.get_number_of_unresolved_warnings() }} warning{% if recording.get_number_of_unresolved_warnings() > 1 %}s{% endif %}</label>
-                            {%else%}
-                            <label style="color:green">No warnings</label>
-                            {%endif%}
+                            INOP
                         </td>
                         <td>
                             <button style="width: 100%" type="submit">Update</button>

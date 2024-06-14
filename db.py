@@ -6,6 +6,8 @@ from sqlalchemy.orm import joinedload, sessionmaker
 import sqlalchemy
 from flask_login import LoginManager
 import uuid
+from sqlalchemy import event
+from flask_login import login_user,login_required, current_user, login_manager
 
 
 # Define the file space folder and get the Google API key from a file
@@ -49,6 +51,34 @@ db.init_app(app)
 with app.app_context():
     engine = db.get_engine()
     Session = sessionmaker(bind=engine, autoflush=False)
+    @event.listens_for(Session, 'before_commit')
+    def before_commit(session):
+        for obj in session.dirty.union(session.new):
+            print("CATCHING BEFORE COMMIT",obj.__class__.__name__)
+            if obj.__class__.__name__ == 'Recording' or obj.__class__.__name__ == 'Encounter' or obj.__class__.__name__ == 'File' or obj.__class__.__name__ == 'RecordingPlatform' or obj.__class__.__name__ == 'DataSource' or obj.__class__.__name__ == 'Selection' or obj.__class__.__name__ == 'Species':
+                obj.updated_by_id = current_user.id
+            elif obj.__class__.__name__ == 'Selection':
+                print("UPDATING SELECTION",current_user.id)
+                print(obj)
+                obj.updated_by_id = current_user.id
+"""
+def before_commit(session):
+    
+    for obj in session.dirty:
+        print("CATCHING BEFORE COMMIT",obj.__class__.__name__)
+        if obj.__class__.__name__ == 'Recording':
+            obj.updated_by_id = current_user.id
+        elif obj.__class__.__name__ == 'Selection':
+            print("UPDATING SELECTION",current_user.id)
+            print(obj)
+            obj.updated_by_id = current_user.id
+        session.commit()
+        raise Exception()
+"""
+
+
+                    
+
 
 # Setup user login
 login_manager = LoginManager()
