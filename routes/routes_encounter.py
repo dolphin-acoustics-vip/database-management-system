@@ -25,7 +25,7 @@ def encounter():
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('home.home', user=current_user))
+            return redirect(url_for('home', user=current_user))
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
 def encounter_new():
@@ -79,7 +79,6 @@ def encounter_view(encounter_id):
     """
     Route to show the encounter view page.
     """
-    print(encounter_id)
     with Session() as session:
         encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
         recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()

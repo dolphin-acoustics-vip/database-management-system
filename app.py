@@ -124,6 +124,9 @@ def hello_world():
 
     return redirect(url_for('home', user=current_user))
 
+
+
+
 @app.route('/home')
 def home():
     """

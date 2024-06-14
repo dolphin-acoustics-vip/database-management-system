@@ -1,11 +1,15 @@
 # Standard library imports
 import os, uuid
 from datetime import datetime
+import shared_functions
+
+
 
 # Third-party imports
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
 from flask_login import UserMixin
+from sqlalchemy.sql import func
 
 
 # Local application imports
@@ -129,7 +133,6 @@ class Encounter(db.Model):
     def delete(self,session):
         recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
         for recording in recordings:
-            print("delete recording",recording.id)
             recording.delete(session)
         session.delete(self)
 
@@ -204,8 +207,8 @@ class File(db.Model):
     duration = db.Column(db.Integer)
 
     def delete(self, session):
-        self.move_to_trash()
-        session.delete(self)
+        self.move_to_trash(session)
+        #session.delete(self)
     
     def update_call(self,session):
         pass
@@ -250,22 +253,22 @@ class File(db.Model):
     def set_uploaded_by(self, value):
         self.uploaded_by = value
 
-    def move_to_trash(self):
+    def move_to_trash(self,session):
         """
         Moves the file to the trash folder.
 
         This function moves the file to the trash folder by renaming the file and adding a unique identifier to its name.
         TODO: keep a record of deleted file metadata
         """
+        
         trash_folder = 'trash'
         unique_name = str(uuid.uuid4())
         os.makedirs(trash_folder, exist_ok=True)
-        file_path = os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
         file_name = self.filename
-        file_name_with_unique = file_name + "-" + unique_name
-        trash_file_path = os.path.join(trash_folder, file_name_with_unique) + "." + self.extension
-        if os.path.exists(trash_folder) and os.path.exists(file_path):
-            os.rename(file_path, trash_file_path)
+        trash_file_path = os.path.join(trash_folder,os.path.join(self.get_path(),unique_name + '_' + file_name + '.' + self.extension))
+        
+        self.move_file(session, trash_file_path, FILE_SPACE_PATH)
+
 
     def move_file(self, session, new_relative_file_path, root_path):
         """
@@ -290,7 +293,8 @@ class File(db.Model):
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
-            os.rename(current_relative_file_path, new_relative_file_path_with_root)
+            if os.path.exists(current_relative_file_path):
+                os.rename(current_relative_file_path, new_relative_file_path_with_root)
             try:
                 session.commit()
             except Exception as e:
@@ -338,9 +342,8 @@ class Recording(db.Model):
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
-    from sqlalchemy.sql import func
 
-    #row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
     #row_end = db.Column(db.DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
     #valid_to = Column(DateTime, server_default=func.inf())
     __table_args__ = (
@@ -352,7 +355,7 @@ class Recording(db.Model):
 
     def get_number_of_unresolved_warnings(self):
         counter = 0
-        selections = db.session.query(Selection).filter_by(recording_id=self.id).all()
+        selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         for selection in selections:
             if selection.ignore_warnings == False and len(selection.getWarnings())>0:
                 counter += 1
@@ -361,14 +364,15 @@ class Recording(db.Model):
         if not self.ignore_selection_table_warnings:
             for selection in missing_selections:
                 counter += 1
-        print("Unresolved",counter)
         return counter
 
     def get_number_of_selections(self):
-        selections = db.session.query(Selection).filter_by(recording_id=self.id).all()
+        selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         return len(selections)
 
     def get_number_of_contours(self):
+        #selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
+
         contours = db.session.query(Selection).filter_by(recording_id=self.id).filter(Selection.contour_file != None).all()
         return len(contours)
 
@@ -442,8 +446,7 @@ class Recording(db.Model):
         return st_df.loc[st_df['Selection'] == selection_number]
 
     def reset_all_selections_unresolved_warnings(self,session):
-        print("reset_all_selections_unresolved_warnings")
-        selections = session.query(Selection).filter_by(recording_id=self.id).all()
+        selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         for selection in selections:
             selection.ignore_warnings = False
 
@@ -471,13 +474,13 @@ class Recording(db.Model):
 
         
     def set_all_cross_referenced(self, session):
-        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         for selection in selections:
             selection.setCrossReferencedFalse(session)
         
         
     def cross_reference_selections(self,session,st_df):
-        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         selection_table_selection_numbers = st_df.Selection.to_list()
         for selection in selections:
             if selection.selection_number not in selection_table_selection_numbers:
@@ -487,13 +490,12 @@ class Recording(db.Model):
 
 
     def find_missing_selections(self, session, st_df):
-        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         missing_selections = []
         selection_numbers = [selection.selection_number for selection in selections]
         if self.selection_table_file != None:
             # Validate files exist for all selections within the Selection Table
             selections_array = sorted(st_df['Selection'].to_list())
-            print(selections_array)
             for selection_num in selections_array:
                 if selection_num not in selection_numbers:
                     missing_selections.append({"selection_number":selection_num})
@@ -611,7 +613,8 @@ class Selection(db.Model):
     cross_referenced = db.Column(db.Boolean, nullable=False, default=False)
     contoured = db.Column(db.String, nullable=False)
     ignore_warnings = db.Column(db.Boolean, nullable=False, default=False)
-    
+    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+
     contour_file = db.relationship("File", foreign_keys=[contour_file_id])
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
@@ -634,7 +637,6 @@ class Selection(db.Model):
             warnings.append("No Selection Table file.")
         elif self.get_selection_table_row() == {}:
             warnings.append("No row in Selection Table.")
-        print(warnings)
         return warnings
 
     def setCrossReferencedTrue(self, session, contoured):

@@ -1,6 +1,7 @@
 # Standard library imports
 import pandas as pd
 import uuid, os, re
+import shared_functions
 
 # Third-party imports
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file, url_for, send_from_directory
@@ -155,8 +156,8 @@ def recording_insert(encounter_id):
 @routes_recording.route('/recording/<uuid:recording_id>/get-unresolved-warnings', methods=['GET'])
 def get_number_of_unresolved_warnings(recording_id):
     with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
-                
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id})
+
         # Prepare the response data
         response_data = {
             'recording_id': recording_id,
@@ -177,87 +178,23 @@ def recording_view(encounter_id,recording_id):
     snapshot_date = get_snapshot_date_from_session()
 
     with Session() as session:
-        query = session.query(Recording)
         
-        if snapshot_date:
-            snapshot_date = datetime.strptime(snapshot_date, '%Y-%m-%d %H:%M:%S.%f')  # Convert snapshot_date to datetime
-            query = db.text("""
-                SELECT * 
-                FROM recording 
-                FOR SYSTEM_TIME AS OF '{}'
-                WHERE id = :recording_id
-            """.format(snapshot_date))
-            print("\n\nQUERY")
-            print(query)
-            
-            recording = session.query(Recording).from_statement(query).params(recording_id=recording_id).first()
-            print("RECORDING",recording,recording.start_time)
-            # .filter(Recording.row_start <= snapshot_date, Recording.row_end >= snapshot_date) 
-        else:
-            recording = query.filter_by(id=recording_id).first()
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id})
+        recording = recording[0] if len(recording)>0 else None
+        
         #recording = query.filter_by(id=recording_id).first()
-        selections = session.query(Selection).filter_by(recording_id=recording_id).order_by(Selection.selection_number).all()
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id}, order_by="selection_number")
+
+        
         #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
         from sqlalchemy.sql import select
         # Retrieve the historical records of a row
         
         #sql_query = session.query(Recording).filter_by(id=recording_id).all()
 
-        # Write the raw SQL query to select all records from the recording table for all system time versions
-        sql_query = db.text("SELECT *,row_start FROM recording FOR SYSTEM_TIME ALL WHERE id=:recording_id;")
-        # Execute the raw SQL query with the recording_id parameter
-        result = session.execute(sql_query, {"recording_id": recording_id})
+        recording_history = shared_functions.create_all_time_request(session, Recording, filters={"id":recording_id}, order_by="row_start")
         
-        # Fetch all results
-        records = result.fetchall()
-
-        # Create a list of dictionaries with column names as keys
-        recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
-
-        for recording_history_item in recording_history:
-            if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
-                recording_history_item['updated_by'] = session.query(User).filter_by(id=uuid.UUID(recording_history_item['updated_by_id'])).first()  
-            else:
-                recording_history_item['updated_by'] = None 
-        # Sort the data by 'row_start' dates
-        recording_history.sort(key=lambda x: x['row_start'])
-
-        def parse_value(key, value, prev_value):
-            return_string = ""
-            if type(value) == datetime or type(prev_value) == datetime:
-                return_string = 'UPDATE ' + key + ' ' + str(value)
-            else:
-                try:
-                    value = uuid.UUID(value) if value else None
-                    prev_value = uuid.UUID(prev_value) if prev_value else None
-                    
-                    if value and prev_value == None:
-                        return_string = 'ADD ' + key
-                    elif value == None and prev_value:
-                        return_string = 'DELETE ' + key
-                    elif value and prev_value:
-                        return_string = 'UPDATE ' + key
-                    else:
-                        return_string="TEST"
-                except ValueError:
-                    pass
-
-
-            
-            return return_string
-
-        prev_element = None
-        for element in recording_history:
-            if prev_element is None:
-                element['action'] = 'CREATE'
-            else:
-                changes = [parse_value(key, element[key], prev_element[key]) for key in element if element[key] != prev_element.get(key) and key not in ['row_start', 'updated_by_id', 'updated_by']]
-                element['action'] = changes if changes else 'No changes'
-            prev_element = element
-
-        missing_selections, error_msg = recording.validate_selection_table(session)
-        
-        return render_template('recording/recording-view.html', recording=recording, selections=selections, missing_selections=missing_selections,valid_selections_table_error_msg=error_msg, user=current_user,recording_history=recording_history, snapshot_date=snapshot_date)
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history)
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
 def recording_update(encounter_id, recording_id):

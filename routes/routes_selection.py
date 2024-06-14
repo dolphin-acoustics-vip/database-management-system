@@ -1,5 +1,6 @@
 # Standard library imports
 import re
+import shared_functions
 
 # Third-party imports
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
@@ -315,6 +316,7 @@ def selection_view(selection_id):
     Renders the recording view page for a specific encounter and recording.
     """
     with Session() as session:
-        selection = session.query(Selection).filter_by(id=selection_id).first()
+        
+        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
         
         return render_template('selection/selection-view.html', selection=selection, user=current_user)

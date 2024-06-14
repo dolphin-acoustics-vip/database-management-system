@@ -32,9 +32,12 @@ CREATE TABLE `data_source` (
   `address` text DEFAULT NULL,
   `notes` text DEFAULT NULL,
   `type` enum('person','organisation') DEFAULT NULL,
+  `updated_by_id` uuid DEFAULT NULL,
+  KEY `fk_updated_by_id_data_source` (`updated_by_id`),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `name` (`name`,`email1`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  UNIQUE KEY `name` (`name`,`email1`),
+  CONSTRAINT `fk_updated_by_id_data_source` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
+) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -44,7 +47,7 @@ CREATE TABLE `data_source` (
 LOCK TABLES `data_source` WRITE;
 /*!40000 ALTER TABLE `data_source` DISABLE KEYS */;
 INSERT INTO `data_source` VALUES
-('b57ea826-26a2-11ef-9e2c-00155d747785','John Doe','','','johndoe@icloud.com','','','','person');
+('b57ea826-26a2-11ef-9e2c-00155d747785','John Doe','','','johndoe@icloud.com','','','','person','b9e03621-3286-46c1-9c2c-429d5c5a6b25');
 /*!40000 ALTER TABLE `data_source` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67,15 +70,18 @@ CREATE TABLE `encounter` (
   `date_received` date DEFAULT NULL,
   `data_source_id` uuid DEFAULT NULL,
   `recording_platform_id` uuid DEFAULT NULL,
+  `updated_by_id` uuid DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `encounter_name` (`encounter_name`,`location`),
   KEY `species_id` (`species_id`),
   KEY `data_source_id` (`data_source_id`),
   KEY `recording_platform_id` (`recording_platform_id`),
+  KEY `fk_updated_by_id_encounter` (`updated_by_id`),
   CONSTRAINT `encounter_ibfk_1` FOREIGN KEY (`species_id`) REFERENCES `species` (`id`),
   CONSTRAINT `encounter_ibfk_2` FOREIGN KEY (`data_source_id`) REFERENCES `data_source` (`id`),
-  CONSTRAINT `encounter_ibfk_3` FOREIGN KEY (`recording_platform_id`) REFERENCES `recording_platform` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  CONSTRAINT `encounter_ibfk_3` FOREIGN KEY (`recording_platform_id`) REFERENCES `recording_platform` (`id`),
+  CONSTRAINT `fk_updated_by_id_encounter` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
+) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -85,7 +91,7 @@ CREATE TABLE `encounter` (
 LOCK TABLES `encounter` WRITE;
 /*!40000 ALTER TABLE `encounter` DISABLE KEYS */;
 INSERT INTO `encounter` VALUES
-('927f282b-5430-49b8-886f-b8236efa6dee','s125','Hawaii','c9e03621-0333-46c1-9c2c-429d5c5a6b25',NULL,'4','2',NULL,NULL,NULL,NULL);
+('927f282b-5430-49b8-886f-b8236efa6dee','s125','Hawaii','c9e03621-0333-46c1-9c2c-429d5c5a6b25',NULL,'4','2',NULL,NULL,NULL,NULL,'b9e03621-3286-46c1-9c2c-429d5c5a6b25');
 /*!40000 ALTER TABLE `encounter` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -112,7 +118,8 @@ CREATE TABLE `file` (
 -- Table structure for table `recording`
 --
 
-DROP TABLE IF EXISTS `recording`;
+ALTER TABLE IF EXISTS `recording` DROP SYSTEM VERSIONING
+DROP TABLE IF EXISTS `recording`
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `recording` (
@@ -129,11 +136,11 @@ CREATE TABLE `recording` (
   KEY `fk_encounter_id` (`encounter_id`),
   KEY `fk_recording_file_id` (`recording_file_id`),
   KEY `fk_selection_table_file_id` (`selection_table_file_id`),
-  KEY `fk_updated_by_id` (`updated_by_id`),
+  KEY `fk_updated_by_id_recording` (`updated_by_id`),
   CONSTRAINT `fk_encounter_id` FOREIGN KEY (`encounter_id`) REFERENCES `encounter` (`id`),
   CONSTRAINT `fk_recording_file_id` FOREIGN KEY (`recording_file_id`) REFERENCES `file` (`id`),
   CONSTRAINT `fk_selection_table_file_id` FOREIGN KEY (`selection_table_file_id`) REFERENCES `file` (`id`),
-  CONSTRAINT `fk_updated_by_id` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
+  CONSTRAINT `fk_updated_by_id_recording` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
 ) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -152,9 +159,12 @@ DROP TABLE IF EXISTS `recording_platform`;
 CREATE TABLE `recording_platform` (
   `id` uuid NOT NULL DEFAULT uuid(),
   `name` varchar(100) NOT NULL,
+  `updated_by_id` uuid DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unique_name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  KEY `fk_updated_by_id_recording_platform` (`updated_by_id`),
+  UNIQUE KEY `unique_name` (`name`),
+  CONSTRAINT `fk_updated_by_id_recording_platform` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
+) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -164,8 +174,8 @@ CREATE TABLE `recording_platform` (
 LOCK TABLES `recording_platform` WRITE;
 /*!40000 ALTER TABLE `recording_platform` DISABLE KEYS */;
 INSERT INTO `recording_platform` VALUES
-('abcb35ce-26a2-11ef-9e2c-00155d747785','Hydrophone array'),
-('4d89dceb-2831-11ef-894c-00155d7478d9','Recording Station');
+('abcb35ce-26a2-11ef-9e2c-00155d747785','Hydrophone array','b9e03621-3286-46c1-9c2c-429d5c5a6b25'),
+('4d89dceb-2831-11ef-894c-00155d7478d9','Recording Station','b9e03621-3286-46c1-9c2c-429d5c5a6b25');
 /*!40000 ALTER TABLE `recording_platform` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -287,15 +297,18 @@ CREATE TABLE `selection` (
   `cross_referenced` tinyint(1) NOT NULL DEFAULT 0,
   `contoured` varchar(10) DEFAULT NULL,
   `ignore_warnings` tinyint(1) NOT NULL DEFAULT 0,
+  `updated_by_id` uuid DEFAULT NULL,
   PRIMARY KEY (`id`),
+  KEY `fk_updated_by_id_selection` (`updated_by_id`),
   UNIQUE KEY `selection_number` (`selection_number`,`recording_id`),
   KEY `recording_id` (`recording_id`),
   KEY `fk_selection_file_id` (`selection_file_id`),
   KEY `fk_contour_file_id` (`contour_file_id`),
   CONSTRAINT `fk_contour_file_id` FOREIGN KEY (`contour_file_id`) REFERENCES `file` (`id`),
   CONSTRAINT `fk_selection_file_id` FOREIGN KEY (`selection_file_id`) REFERENCES `file` (`id`),
-  CONSTRAINT `selection_ibfk_1` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  CONSTRAINT `selection_ibfk_1` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`),
+  CONSTRAINT `fk_updated_by_id_selection` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
+) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 
@@ -311,9 +324,12 @@ CREATE TABLE `species` (
   `species_name` varchar(100) NOT NULL,
   `genus_name` varchar(100) DEFAULT NULL,
   `common_name` varchar(100) DEFAULT NULL,
+  `updated_by_id` uuid DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `species_name` (`species_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  KEY `fk_updated_by_id_species` (`updated_by_id`),
+  UNIQUE KEY `species_name` (`species_name`),
+  CONSTRAINT `fk_updated_by_id_species` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
+) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -323,8 +339,8 @@ CREATE TABLE `species` (
 LOCK TABLES `species` WRITE;
 /*!40000 ALTER TABLE `species` DISABLE KEYS */;
 INSERT INTO `species` VALUES
-('c9e03621-0333-46c1-9c2c-429d5c5a6b25','Steno','Steno','Rough Toothed Dolphin'),
-('1d90bd2f-d813-4581-a8c0-b42a9e88b8b7','Pseudorca craissidens','Pseudorca','False killer whale');
+('c9e03621-0333-46c1-9c2c-429d5c5a6b25','Steno','Steno','Rough Toothed Dolphin','b9e03621-3286-46c1-9c2c-429d5c5a6b25'),
+('1d90bd2f-d813-4581-a8c0-b42a9e88b8b7','Pseudorca craissidens','Pseudorca','False killer whale','b9e03621-3286-46c1-9c2c-429d5c5a6b25');
 /*!40000 ALTER TABLE `species` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -355,6 +371,7 @@ CREATE TABLE `user` (
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 INSERT INTO `user` VALUES ('b9e03621-3286-46c1-9c2c-429d5c5a6b25','js521@st-andrews.ac.uk','test123','Jamie',1,1);
+INSERT INTO `user` VALUES ('b9e03621-3286-46c1-9c2c-429d5c5a6b25','sullivanj041@gmail.com','test123','Jamie Copy',2,0);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 
