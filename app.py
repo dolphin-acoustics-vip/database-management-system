@@ -21,6 +21,7 @@ from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
 from routes.routes_contour import routes_contour
 from routes.routes_auth import routes_auth
+from exception_handler import NotFoundException
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_encounter)
@@ -59,6 +60,15 @@ def remove_snapshot_date_from_url(url):
     updated_url = base_url + ('?' + '&'.join(updated_params) if updated_params else '')
     
     return updated_url
+
+@app.route('/reset-snapshot-in-session-with-link', methods=['POST'])
+def reset_snapshot_in_session_with_link():
+    redirect_link = request.form.get('redirect_link')
+    print("I GOT HERE")
+    client_session['snapshot_date'] = None
+    return redirect(remove_snapshot_date_from_url(redirect_link))
+
+
 
 @app.route('/reset-snapshot-in-session')
 def reset_snapshot_in_session():

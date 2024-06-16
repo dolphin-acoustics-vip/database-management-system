@@ -1,5 +1,5 @@
 # Third-party imports
-from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
+from flask import Blueprint, Response, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
@@ -7,6 +7,7 @@ from flask_login import login_user,login_required, current_user, login_manager
 # Local application imports
 from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session
 from models import *
+import exception_handler
 
 routes_encounter = Blueprint('encounter', __name__)
 
@@ -15,7 +16,7 @@ routes_encounter = Blueprint('encounter', __name__)
 def encounter():
     with Session() as session:
         try:
-            encounter_list = session.query(Encounter).join(Species).all()
+            encounter_list = shared_functions.create_system_time_request(session, Encounter, {}, order_by="row_start")
             # If no encounters and no species exist, show an error
             if len(encounter_list) < 1:
                 species_data = session.query(Species).all()
@@ -26,6 +27,7 @@ def encounter():
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
             return redirect(url_for('home', user=current_user))
+
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
 def encounter_new():
@@ -82,21 +84,26 @@ def encounter_view(encounter_id):
     if request.args.get('snapshot_date'):
         save_snapshot_date_to_session(request.args.get('snapshot_date'))
 
-    with Session() as session:
-        encounter = shared_functions.create_system_time_request(session, Encounter, {"id":encounter_id})[0]
-        species = shared_functions.create_system_time_request(session, Species, {"id":encounter.species_id})[0]
-        encounter.species=species
+    try:
+        with Session() as session:
+            encounter = shared_functions.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
+            species = shared_functions.create_system_time_request(session, Species, {"id":encounter.species_id}, one_result=True)
+            encounter.species=species
 
-        #encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
-        #recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
-        
-        recordings = shared_functions.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
-        print("RECORDINGS",recordings)
-        for recording in recordings:
-            print(recording.id,recording.start_time)
-        encounter_history = shared_functions.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
-        
-        return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user, encounter_history=encounter_history)
+            #encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
+            #recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
+            
+            recordings = shared_functions.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
+            if type(recordings) == Response:
+                return recordings
+            
+            encounter_history = shared_functions.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
+            
+            return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user, encounter_history=encounter_history)
+    except exception_handler.NotFoundException as e:
+
+        return shared_functions.page_not_found(e, url_for("encounter.encounter_view", encounter_id=encounter_id, user=current_user))
+    
 
 @routes_encounter.route('/encounter/<uuid:encounter_id>/edit', methods=['GET'])
 def encounter_edit(encounter_id):

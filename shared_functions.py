@@ -1,10 +1,21 @@
 from datetime import datetime
 import uuid
 from flask import session as client_session
+from flask import redirect, url_for, render_template, request
 from db import db
+import exception_handler
+from flask_login import login_user,login_required, current_user, login_manager
 
 
-def create_system_time_request(session, db_object, filters=None, order_by=None,override_snapshot_date=None):
+
+
+def page_not_found(error,redirect):
+    snapshot_date = client_session.get('snapshot_date')
+    return render_template('error.html', error_code=404, error=error, goback_link=redirect, goback_message="Home", snapshot_date=snapshot_date, user=current_user)
+
+
+
+def create_system_time_request(session, db_object, filters=None, order_by=None,override_snapshot_date=None, one_result=False):
     snapshot_date=client_session.get('snapshot_date') if override_snapshot_date is None else override_snapshot_date
     if snapshot_date: query_str="SELECT * FROM {} FOR SYSTEM_TIME AS OF '{}'".format(db_object.__tablename__, snapshot_date)
     else: query_str="SELECT * FROM {}".format(db_object.__tablename__)
@@ -17,15 +28,12 @@ def create_system_time_request(session, db_object, filters=None, order_by=None,o
 
     query = db.text(query_str)
     queried_db_object = session.query(db_object).from_statement(query).all()
-    from models import Recording
+    if one_result:
+        try:
+            queried_db_object = queried_db_object[0]
+        except Exception as e:
+            raise exception_handler.NotFoundException(f"{db_object.__tablename__} not found")
 
-    try:
-        print("\nNEW OBJECT\n")
-        print(query_str)
-        print(len(queried_db_object),queried_db_object[0],queried_db_object[0].row_start)
-        print(queried_db_object[0].start_time)
-    except Exception as e:
-        pass
     return queried_db_object
 
 

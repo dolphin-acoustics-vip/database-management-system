@@ -1,5 +1,6 @@
 from flask import flash
 import sqlalchemy
+from flask import session as client_session
 
 def parse_alchemy_error(error):
     if isinstance(error, sqlalchemy.exc.IntegrityError):
@@ -59,3 +60,8 @@ def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQ
     flash(error_string, 'error')
     session.rollback()
     return error_string
+
+class NotFoundException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+        snapshot_date=client_session.get('snapshot_date')
