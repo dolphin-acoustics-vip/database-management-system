@@ -34,6 +34,31 @@
             </div><br>
         </section>
 
+        <section>
+            <div class="audit-history">
+                <h3>Audit History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>User</th>
+                            <th>View Snapshot</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for encounter in encounter_history %}
+                            <tr>
+                                <td>{{ encounter['row_start'] }}</td>
+                                <td>{{ encounter['action'] }}</td>
+                                <td>{{ encounter['updated_by'].name }}</td>
+                                <td><a href="{{ url_for('encounter.encounter_view', encounter_id=encounter['id'], snapshot_date=encounter['row_start']) }}">HERE</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
         <section id="add-recording">
             <h2>Add Recording</h2>
@@ -52,7 +77,7 @@
 
         <section id="recordings">
             <h2>Recordings</h2>
-            {% if encounter.get_number_of_recordings() > 0 %}
+            {% if recordings|length > 0 %}
             <a href="{{url_for('download_folder', relative_path=encounter.generate_relative_path())}}">Download All</a>
             <table>
                 <tr>

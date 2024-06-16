@@ -26,15 +26,17 @@ def login_post():
         password = request.form['password']
         
         user = session.query(User).filter_by(email=email, password=password).first()
+        print("LOGIN",user,email,password)
         
         if user is None:
             flash('Invalid username or password', 'error')
             return redirect(url_for('auth.login', user=current_user))
         
         login_user(user, remember=False)
+        
                 
 
-    return redirect(url_for('home', user=current_user))
+    return redirect(url_for('home', user=user))
 
 @routes_auth.route('/login', methods=['GET'])
 def login():

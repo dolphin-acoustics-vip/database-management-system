@@ -1,34 +1,28 @@
-<!-- error.html -->
 <!DOCTYPE html>
 <html lang="en">
-{% include 'partials/header.html' %}
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQL Error</title>
-    <link rel="stylesheet" href="../static/css/hero-section.css">
-    <link rel="stylesheet" href="../static/css/general-style.css">
-    <style>
-        .error-body {
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 50px;
-        }
-        .error-h1 {
-            color: #dc3545;
-        }
-        .error-p {
-            color: #6c757d;
-        }
-    </style>
+    <title>Error Page - Not Found</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="outer-div">
-    <h1 class="error-h1">Error</h1>
-    <p class="error-p">Error code: {{ error_code }}</p>
-    <p class="error-p">Error message: {{ error_message }}</p>
-    <a href='{{ goback_link }}'>{{ goback_message }}</a>
-</div>
+    <header>
+        <h1>Error Page - Not Found</h1>
+    </header>
+    <main>
+        <section class="error-message">
+            <h2>Oops! The page you are looking for does not exist.</h2>
+            {% if error_msg %}
+                <div class="extra-info">
+                    <h3>Extra Information:</h3>
+                    <p>{{ error_msg }}</p>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2022 Your Website. All rights reserved.</p>
+    </footer>
 </body>
 </html>

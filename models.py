@@ -483,19 +483,18 @@ class Recording(db.Model):
 
         
 
-    def delete(self, session):        
+    def delete(self, session, keep_file_reference=False):        
         if self.recording_file_id is not None:
             self.recording_file.delete(session)
-            self.recording_file = None  # Remove the reference to the recording file
+            if not keep_file_reference: self.recording_file = None  # Remove the reference to the recording file
         
         if self.selection_table_file_id is not None:
             self.selection_table_file.delete(session)
-            self.selection_table_file = None  # Remove the reference to the selection file
+            if not keep_file_reference: self.selection_table_file = None  # Remove the reference to the selection file
         
-
         selections = session.query(Selection).filter_by(recording_id=self.id).all()
         for selection in selections:
-            selection.delete(session)
+            selection.delete(session, keep_file_reference=keep_file_reference)
 
 
         session.delete(self)
@@ -653,13 +652,13 @@ class Selection(db.Model):
         if self.contour_file is not None:
             self.contour_file.move_file(session,self.generate_full_relative_path()+"." +self.contour_file.extension,root_path)
 
-    def delete(self, session):        
+    def delete(self, session,keep_file_reference):        
         if self.selection_file_id is not None:
             self.selection_file.delete(session)
-            self.selection_file = None  # Remove the reference to the recording file
+            if not keep_file_reference: self.selection_file = None  # Remove the reference to the recording file
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
-            self.contour_file = None
+            if not keep_file_reference: self.contour_file = None
         session.delete(self)
 
 

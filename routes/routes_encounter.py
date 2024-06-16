@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session
 from models import *
 
 routes_encounter = Blueprint('encounter', __name__)
@@ -79,10 +79,24 @@ def encounter_view(encounter_id):
     """
     Route to show the encounter view page.
     """
+    if request.args.get('snapshot_date'):
+        save_snapshot_date_to_session(request.args.get('snapshot_date'))
+
     with Session() as session:
-        encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
-        recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
-        return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user)
+        encounter = shared_functions.create_system_time_request(session, Encounter, {"id":encounter_id})[0]
+        species = shared_functions.create_system_time_request(session, Species, {"id":encounter.species_id})[0]
+        encounter.species=species
+
+        #encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
+        #recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
+        
+        recordings = shared_functions.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
+        print("RECORDINGS",recordings)
+        for recording in recordings:
+            print(recording.id,recording.start_time)
+        encounter_history = shared_functions.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
+        
+        return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user, encounter_history=encounter_history)
 
 @routes_encounter.route('/encounter/<uuid:encounter_id>/edit', methods=['GET'])
 def encounter_edit(encounter_id):

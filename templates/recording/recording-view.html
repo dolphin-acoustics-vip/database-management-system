@@ -16,7 +16,6 @@
             recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
         <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
         <p>Number of contours: {{ recording.get_number_of_contours() }}</p>
-        <p>Start Timestamp: {{ recording.row_start }}</p>
         {% set identifier_heading = "Selection Number" %}
         {% set unique_id = "selection-number"%}
         {% set process_route = "process_selection" %}

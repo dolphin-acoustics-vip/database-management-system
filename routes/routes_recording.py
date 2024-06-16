@@ -176,13 +176,12 @@ def recording_view(encounter_id,recording_id):
     
     if request.args.get('snapshot_date'):
         save_snapshot_date_to_session(request.args.get('snapshot_date'))
-    snapshot_date = get_snapshot_date_from_session()
 
     with Session() as session:
         
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id})
-        recording = recording[0] if len(recording)>0 else None
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id})[0]
         
+
         #recording = query.filter_by(id=recording_id).first()
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id}, order_by="selection_number")
 

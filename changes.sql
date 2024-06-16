@@ -111,7 +111,7 @@ CREATE TABLE `file` (
   `updated_by_id` uuid DEFAULT NULL,
   `duration` int(11) DEFAULT NULL,
   KEY `fk_updated_by_id_file` (`updated_by_id`),
-  CONSTRAINT `fk_updated_by_id_file` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
+  CONSTRAINT `fk_updated_by_id_file` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;

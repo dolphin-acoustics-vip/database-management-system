@@ -12,9 +12,7 @@
     <div class="outer-div">
         <h2>Selection Number: {{ selection.selection_number }}</h1>
         <hr>
-        <p>Test: {{selection.recording.start_time}}</p>
-        <p>Encounter: {{ selection.recording.encounter.encounter_name }}</p>
-        <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording: {{ selection.recording.get_start_time_string() }}</a>
+        <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording</a>
 
         <hr>
         <section>
@@ -43,26 +41,7 @@
             </div>
         </section>
         <hr>
-        <div>
-            {% if selection.getWarnings()|length > 0 and selection.ignore_warnings %}
-                <h3>{{selection.getWarnings()|length}} resolved warning{% if selection.getWarnings()|length > 1 %}s{% endif %} </h3>
-            {% elif selection.getWarnings()|length > 0 and not selection.ignore_warnings %}
-                <h3 style="color:orange">{{selection.getWarnings()|length}} warning{% if selection.getWarnings()|length > 1 %}s{% endif %} </h3>
-            {% else %}
-                <h3>Warnings</h3>
-            {% endif %}
-            {% if selection.getWarnings()|length > 0%}
-                {% for warning in selection.getWarnings() %}
-                {% if selection.ignore_warnings %}
-                    <label style="margin-left:10px; color: black;">{{ warning }} (ignored)</label>
-                {% else %}
-                    <label style="margin-left:10px; color: orange;">{{ warning }}</label>
-                {% endif %}
-                {% endfor %}
-            {% else %}
-                <p>No warnings</p>
-            {% endif %}
-        </div>
+
 
         <hr>
         {% if selection.selection_file %}
