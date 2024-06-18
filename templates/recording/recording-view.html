@@ -20,6 +20,7 @@
         {% set unique_id = "selection-number"%}
         {% set process_route = "process_selection" %}
         {% set insert_route = "selection.selection_insert_bulk" %}
+        {% if current_user.role_id in [1, 2] %}
 
         <section>
             <div class="audit-history">
@@ -46,6 +47,8 @@
                 </table>
             </div>
         </section>
+
+        {% endif %}
 
         <h2>Add selections</h2>
         {% include 'recording/multi-file-upload-template.html' %}

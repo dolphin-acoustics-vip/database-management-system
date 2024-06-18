@@ -1,11 +1,12 @@
 import os
-from flask import Flask, session
+from flask import Flask, session, redirect, render_template
 from flask_sqlalchemy import SQLAlchemy
-from flask import session as client_session
+from flask import session as client_session, request
 from sqlalchemy.orm import joinedload, sessionmaker
 import sqlalchemy
 from flask_login import LoginManager
 import uuid
+from functools import wraps
 from sqlalchemy import event
 from flask_login import login_user,login_required, current_user, login_manager
 
@@ -36,6 +37,7 @@ def save_snapshot_date_to_session(snapshot_date):
 
 # Create a Flask app
 app = Flask(__name__)
+
 app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
 
 # Configure the database connection using SQLAlchemy and MariaDB
@@ -76,9 +78,56 @@ def before_commit(session):
         raise Exception()
 """
 
+def exclude_role_1(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 1:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper
+                   
+def exclude_role_2(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 2:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper
 
-                    
+def exclude_role_3(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 3:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper
 
+def exclude_role_4(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 4:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper 
+
+def require_live_session(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        snapshot_date = client_session.get('snapshot_date')
+        if not snapshot_date:
+            return func(*args, **kwargs)
+        else:
+            # Redirect to a page indicating unauthorized access
+            referrer_url = request.headers.get('Referer')
+            print("REFERER ", referrer_url)
+
+            return render_template("require-live-session.html", user=current_user, original_url=request.url, referrer_url=referrer_url)
+
+    return wrapper
 
 # Setup user login
 login_manager = LoginManager()

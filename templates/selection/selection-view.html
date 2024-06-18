@@ -13,7 +13,7 @@
         <h2>Selection Number: {{ selection.selection_number }}</h1>
         <hr>
         <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording</a>
-
+        {% if current_user.role_id in [1, 2] %}
         <hr>
         <section>
             <div class="audit-history">
@@ -41,6 +41,7 @@
             </div>
         </section>
         <hr>
+        {% endif %}
 
 
         <hr>

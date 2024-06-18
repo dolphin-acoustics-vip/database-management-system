@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, sessionmaker
 from flask_login import LoginManager
 from flask_login import login_user,login_required, current_user, login_manager
+from flask import g
 
 # Local application imports
 from db import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
@@ -45,6 +46,16 @@ def add():
     # rest of your route
 
 '''
+
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+@app.before_request
+def before_request():
+    g.user = current_user
 
 def remove_snapshot_date_from_url(url):
     # Split the URL into base URL and query parameters
@@ -137,13 +148,12 @@ def hello_world():
 
 
 
-@app.route('/home')
+@app.route('/home') 
+@login_required
 def home():
     """
     Route for the home page.
     """
-    print("\n\nCURRENT USER")
-    print(current_user, current_user.is_authenticated)
     return render_template('home.html', user=current_user)
 
 if __name__ == '__main__':

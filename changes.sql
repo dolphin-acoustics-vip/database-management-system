@@ -361,13 +361,15 @@ DROP TABLE IF EXISTS `user`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `user` (
   `id` uuid NOT NULL DEFAULT uuid(),
-  `email` varchar(100) DEFAULT NULL,
+  `login_id` varchar(100) DEFAULT NULL,
   `password` varchar(100) DEFAULT NULL,
   `name` varchar(1000) DEFAULT NULL,
   `role_id` int(11) NOT NULL,
   `is_active` tinyint(1) DEFAULT 1,
+  `expiry` DATE DEFAULT (CURDATE() + INTERVAL 1 YEAR),
+  `is_temporary` BOOLEAN NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `login_id` (`login_id`),
   KEY `role_id` (`role_id`),
   CONSTRAINT `user_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `role` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
@@ -378,8 +380,9 @@ CREATE TABLE `user` (
 --
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES ('b9e03621-3286-46c1-9c2c-429d5c5a6b25','js521@st-andrews.ac.uk','test123','Jamie',1,1);
-INSERT INTO `user` VALUES ('c9e03621-3286-46c1-9c2c-429d5c5a6b25','sullivanj041@gmail.com','test123','Jamie Copy',2,0);
+INSERT INTO `user` (id,login_id,password,name,role_id,is_active) VALUES ('b9e03621-3286-46c1-9c2c-429d5c5a6b25','js521@st-andrews.ac.uk','test123','Jamie',1,1);
+INSERT INTO `user` (id,login_id,password,name,role_id,is_active) VALUES ('c9e03621-3286-46c1-9c2c-429d5c5a6b25','sullivanj041@gmail.com','test123','Jamie Copy',2,1);
+INSERT INTO `user` (id,login_id,password,name,role_id,is_active) VALUES ('d9e03621-3286-46c1-9c2c-429d5c5a6b25','general@gmail.com','test123','General',3,1);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 

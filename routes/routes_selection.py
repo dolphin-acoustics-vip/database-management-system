@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Location application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 
@@ -60,14 +60,16 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
 
 
 @routes_selection.route('/contour_file_delete/<uuid:selection_id>')
+@require_live_session
 def contour_file_delete(selection_id):
     with Session() as session:
         selection_obj = session.query(Selection).filter_by(id=selection_id).first()
         selection_obj.delete_contour_file(session)
         #before_commit(session)
         session.commit()
-        return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id, user=current_user))
+        return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id))
 
+@require_live_session
 def insert_or_update_contour(session, selection_id, file, recording_id):
     selection_obj = session.query(Selection).filter_by(id=selection_id).first()
     contour_file = file
@@ -87,6 +89,7 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
     return selection_obj
 
 @routes_selection.route('/process_contour', methods=["GET"])
+@require_live_session
 def process_contour():
     recording_id = request.args.get('recording_id')
     filename = request.args.get('filename')
@@ -132,6 +135,7 @@ def process_contour():
 
 
 @routes_selection.route('/selection/selection_ignore_warnings/<uuid:selection_id>', methods=['POST'])
+@require_live_session
 def selection_ignore_warnings(selection_id):
     # Retrieve the selection object based on the selection_id
     selection = Selection.query.get(selection_id)
@@ -152,6 +156,7 @@ def selection_ignore_warnings(selection_id):
     
 
 @routes_selection.route('/process_selection', methods=['GET'])
+@require_live_session
 def process_selection():
     """
     Process the selection of a large number of selection files by the user.
@@ -239,6 +244,7 @@ def process_selection():
 
 
 @routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/contour/insert-bulk', methods=['GET', 'POST'])
+@require_live_session
 def contour_insert_bulk(encounter_id, recording_id):
     with Session() as session:
         try:
@@ -266,9 +272,10 @@ def contour_insert_bulk(encounter_id, recording_id):
             session.rollback()
             raise e
             flash(f'Error inserting contour: {e}', 'error')
-    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id, user=current_user))
+    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
 
 @routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
+@require_live_session
 def selection_insert_bulk(encounter_id,recording_id):
     """
     Inserts multiple selection files into the database for a given encounter ID and recording ID.
@@ -333,4 +340,4 @@ def selection_view(selection_id):
         selection_history = shared_functions.create_all_time_request(session, Selection, filters={"id":selection_id}, order_by="row_start")
 
         
-        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history, user=current_user)
+        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history)

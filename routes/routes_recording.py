@@ -10,11 +10,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+
 from models import *
 from exception_handler import *
 
 routes_recording = Blueprint('recording', __name__)
+
 
 def insert_or_update_recording(session, request, encounter_id, recording_id=None):
     """
@@ -80,6 +82,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
 
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/add', methods=['POST'])
+@require_live_session
 def recording_selection_table_add(encounter_id,recording_id):
     """
     Given a selection table file in the POST request (selection-table-file), add it to the recording
@@ -104,12 +107,13 @@ def recording_selection_table_add(encounter_id,recording_id):
             if error_msg != None and error_msg != "":
                 new_file.move_to_trash(session)
                 handle_exception(error_msg, session)
-                return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id, user=current_user))
+                return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
         session.commit()  
     
-    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id, user=current_user))
+    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
  
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/delete', methods=['POST'])
+@require_live_session
 def recording_selection_table_delete(encounter_id, recording_id):
     """
     Delete the selection table file associated with the recording
@@ -134,9 +138,10 @@ def recording_selection_table_delete(encounter_id, recording_id):
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         finally:
-            return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id, user=current_user))
+            return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['POST'])
+@routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['GET'])
+@require_live_session
 def recording_insert(encounter_id):
     """
     Inserts a new recording into the database for a given encounter ID.
@@ -147,12 +152,12 @@ def recording_insert(encounter_id):
             session.add(recording_obj)
             session.commit()
             flash(f'Added recording: {recording_obj.id}', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except SQLAlchemyError as e:
             raise e
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
 @routes_recording.route('/recording/<uuid:recording_id>/get-unresolved-warnings', methods=['GET'])
 def get_number_of_unresolved_warnings(recording_id):
@@ -197,6 +202,7 @@ def recording_view(encounter_id,recording_id):
         return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history)
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
+@require_live_session
 def recording_update(encounter_id, recording_id):
     """
     Updates a recording in the encounter with the specified encounter ID and recording ID.
@@ -207,13 +213,14 @@ def recording_update(encounter_id, recording_id):
             recording_obj.update_call(session)
             session.commit()
             flash(f'Edited recording: {recording_obj.id}', 'success')                
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/delete', methods=['GET'])
+@require_live_session
 def recording_delete(encounter_id,recording_id):
     """
     Function for deleting a recording of a given ID
@@ -224,13 +231,14 @@ def recording_delete(encounter_id,recording_id):
             recording.delete(session)
             session.commit()
             flash(f'Deleted recording: {recording.id}', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/recording-file/<uuid:file_id>/delete',methods=['GET'])
+@require_live_session
 def recording_file_delete(encounter_id,recording_id,file_id):
     """
     A function for deleting a recording file of a given ID
@@ -250,13 +258,14 @@ def recording_file_delete(encounter_id,recording_id,file_id):
             except FileNotFoundError:
                 session.commit()
                 flash(f'Deleted file record but could not find file: {file_path}', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
 @routes_recording.route('/recording/<uuid:recording_id>/recording_delete_selections', methods=['DELETE'])
+@require_live_session
 def recording_delete_selections(recording_id):
     if request.method == 'DELETE':
         data = request.get_json()
@@ -287,6 +296,7 @@ def recording_delete_selections(recording_id):
 
 
 @routes_recording.route('/recording/recording_selection_table_ignore_warnings/<uuid:recording_id>', methods=['POST'])
+@require_live_session
 def recording_selection_table_ignore_warnings(recording_id):
     session = Session()
     data = request.get_json()

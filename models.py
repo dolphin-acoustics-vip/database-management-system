@@ -45,15 +45,37 @@ def clean_directory(root_directory):
 
 
 class User(db.Model, UserMixin):
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True) # primary keys are required by SQLAlchemy
-    email = db.Column(db.String(100), unique=True)
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    login_id = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
     name = db.Column(db.String(1000))
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
     is_active = db.Column(db.Boolean, default=True)
+    is_temporary = db.Column(db.Boolean, default=False)
+    expiry = db.Column(db.DateTime)
     
     role=db.relationship('Role', backref='users', lazy=True)
 
+    def set_login_id(self, value):
+        self.login_id = value
+    
+    def set_role_id(self, value):
+        self.role_id = value
+    
+    def set_expiry(self, value):
+        self.expiry = value
+    
+    def set_password(self, value):
+        self.password = value
+    
+    def set_name(self, value):
+        self.name = value
+    
+    def get_login_id(self):
+        return '' if self.login_id is None else self.login_id
+    
+    def set_is_active(self, value):
+        self.is_active = value
 
     def get_id(self):
         return str(self.id)

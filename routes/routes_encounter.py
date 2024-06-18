@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 
@@ -13,6 +13,7 @@ routes_encounter = Blueprint('encounter', __name__)
 
 
 @routes_encounter.route('/encounter', methods=['GET'])
+@login_required
 def encounter():
     with Session() as session:
         try:
@@ -21,15 +22,19 @@ def encounter():
             if len(encounter_list) < 1:
                 species_data = session.query(Species).all()
                 if len(species_data) < 1:
-                    return render_template('error.html', error_code=404, error_message='No encounter data found. You cannot add encounter data until there are species to add the encounter for.', goback_link='/home', goback_message="Home", user=current_user)
-            return render_template('encounter/encounter.html', encounter_list=encounter_list, user=current_user)
+                    return render_template('error.html', error_code=404, error_message='No encounter data found. You cannot add encounter data until there are species to add the encounter for.', goback_link='/home', goback_message="Home")
+            return render_template('encounter/encounter.html', encounter_list=encounter_list)
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('home', user=current_user))
+            return redirect(url_for('home'))
+
+#@
 
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
+@login_required
+@require_live_session
 def encounter_new():
     """
     Route to show the new encounter page
@@ -38,9 +43,11 @@ def encounter_new():
         data_sources = session.query(DataSource).all()
         species_list = session.query(Species).all()
         recording_platforms = session.query(RecordingPlatform).all()
-        return render_template('encounter/encounter-new.html', species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms, user=current_user)
+        return render_template('encounter/encounter-new.html', species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
 @routes_encounter.route('/encounter/insert', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_insert():
     """
     Inserts a new encounter into the database based on the provided form data.
@@ -69,14 +76,15 @@ def encounter_insert():
             session.add(new_encounter)
             session.commit()
             flash(f'Encounter added: {encounter_name}', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter', user=current_user))
+            return redirect(url_for('encounter.encounter'))
 
 
 @routes_encounter.route('/encounter/<uuid:encounter_id>/view', methods=['GET'])
+@login_required
 def encounter_view(encounter_id):
     """
     Route to show the encounter view page.
@@ -102,10 +110,11 @@ def encounter_view(encounter_id):
             return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user, encounter_history=encounter_history)
     except exception_handler.NotFoundException as e:
 
-        return shared_functions.page_not_found(e, url_for("encounter.encounter_view", encounter_id=encounter_id, user=current_user))
+        return shared_functions.page_not_found(e, url_for("encounter.encounter_view", encounter_id=encounter_id))
     
-
 @routes_encounter.route('/encounter/<uuid:encounter_id>/edit', methods=['GET'])
+@login_required
+@require_live_session
 def encounter_edit(encounter_id):
     """
     Route to show the encounter edit page.
@@ -115,9 +124,12 @@ def encounter_edit(encounter_id):
         species_list = session.query(Species).all()
         data_sources = session.query(DataSource).all()
         recording_platforms = session.query(RecordingPlatform).all()
-        return render_template('encounter/encounter-edit.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms, user=current_user)
+        return render_template('encounter/encounter-edit.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
+
 
 @routes_encounter.route('/encounter/<uuid:encounter_id>/update', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_update(encounter_id):
     with Session() as session:
         try :
@@ -135,13 +147,16 @@ def encounter_update(encounter_id):
             encounter.update_call(session)
             session.commit()
             flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id, user=current_user))
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter', user=current_user))
+            return redirect(url_for('encounter.encounter'))
         
+
 @routes_encounter.route('/encounter/<uuid:encounter_id>/delete', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_delete(encounter_id):
     with Session() as session:
         encounter = session.query(Encounter).filter_by(id=encounter_id).first()
@@ -152,4 +167,4 @@ def encounter_delete(encounter_id):
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-        return redirect(url_for('encounter.encounter', user=current_user))
+        return redirect(url_for('encounter.encounter'))

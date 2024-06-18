@@ -4,22 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
+    <link rel="shortcut icon" href="{{url_for('serve_resource', filename='favicon.ico')}}">
 </head>
 <header class="header-top">
-    <h1 style="padding: 0px 10px">University of St Andrews - Dolphin Acoustics VIP {% if user.is_authenticated %}({{ user.role.name }}){% endif %}</h1>
+    <div class="header">
+        <div class="brand-logo">
+            <a href="{{ url_for('home') }}">
+                <img src="{{ url_for('serve_resource', filename='OCEAN-banner.png') }}" alt="">
+            </a>
+        </div>
+        <div class="brand-title">
+            <p1 class="app-brand-title font-scale-1">
+                OCEAN
+            </p1>
+        </div>
+        <div class="user-message">
+            {% if g.user.is_authenticated %}You are signed in as {{ g.user.name }} ({{g.user.role.name}}){% else %}You are not signed in{% endif %}
+        </div>
+    </div>
     {% if session['snapshot_date'] %}
     <div id="warning-bar" style="background-color: red; color: white; padding: 10px; margin-top: 10px;">
-        Warning: viewing archived date from {{ session['snapshot_date'] }} (<a href="{{ url_for('reset_snapshot_in_session') }}">Exit View</a>)
+        Archive mode: viewing snapshot date {{ session['snapshot_date'] }} (<a href="{{ url_for('reset_snapshot_in_session') }}">Exit View</a>)
     </div>
     {% endif %}
     <nav class="menu">
-        
         <a href="/home" class="menu-item">Home</a>
         
-        {% if user.is_authenticated %}
+        {% if g.user.is_authenticated %}
+
         <a href="/encounter" class="menu-item">Encounters</a>
-        <a href="{{ url_for('admin.admin_dashboard') }}" class="menu-item">Admin</a>
-        <a href="{{ url_for('auth.logout') }}" class="menu-item">Logout ({{ user.name }})</a>
+            {% if g.user.role_id in [1,2] %}
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="menu-item">Admin</a>
+            {% endif %}
+        <a href="{{ url_for('auth.logout') }}" class="menu-item">Logout ({{ g.user.name }})</a>
         {% else %}
         <a href="/login" class="menu-item">Login</a>
         {% endif %}
@@ -49,6 +66,51 @@
 </div>
 
 <style>
+    .font-scale-1 {
+        font-size: 1.2em;
+    }
+
+    .app-brand-title {
+        display: block;
+        margin-left: 7px;
+        border-left: 1px solid #202024;
+        padding-left: 10px;
+        line-height: 1.2;
+        font-weight: normal;
+    }
+
+    
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .brand-logo {
+        display: flex;
+        align-items: center;
+        margin-left: 10px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    .brand-logo img {
+        height: auto;
+        width: 100%;
+        max-width: 150px;
+        margin-right: 10px; /* Adjust the margin as needed */
+    }
+
+    .brand-title {
+        margin-left: 0; /* Align the brand title to the left */
+        margin-top:10px;
+        margin-bottom: 10px;
+    }
+    .user-message {
+        margin-left: auto; /* Align the user message to the right */
+        margin-right:10px;
+    }
+
     .flash-container {
         position: relative;
         width: 100%;
