@@ -2,22 +2,30 @@
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-
+from flask_login import login_user,login_required, current_user, login_manager
+from datetime import datetime, timedelta
 # Local application imports
-from db import Session, parse_alchemy_error
+from db import Session, parse_alchemy_error, require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 
 routes_admin = Blueprint('admin', __name__)
 
 @routes_admin.route('/admin')
+@exclude_role_4
+@exclude_role_3
 def admin():
     """
     A route decorator that redirects to the admin dashboard page.
     """
     return redirect(url_for('admin.admin_dashboard'))
 
+
+
+
 @routes_admin.route('/admin/dashboard')
+@exclude_role_4
+@exclude_role_3
 def admin_dashboard():
     """
     A route for the admin dashboard page.
@@ -29,6 +37,8 @@ def admin_dashboard():
         return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list, species_list=species_list)
 
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/view', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
 def admin_data_source_view(data_source_id):
     """
     Route for viewing a specific data source in the admin panel.
@@ -42,6 +52,9 @@ def admin_data_source_view(data_source_id):
             return redirect(url_for('admin.admin_dashboard'))
         
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/edit', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_data_source_edit(data_source_id):
     """
     Update the data for a data source in the admin panel.
@@ -66,6 +79,9 @@ def admin_data_source_edit(data_source_id):
     return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/data-source/new', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_data_source_new():
     """
     A route for the new data source page.
@@ -73,6 +89,9 @@ def admin_data_source_new():
     return render_template('admin/admin-data-source-new.html', data_source_type_values = DataSource.type.type.enums)
 
 @routes_admin.route('/admin/data-source/insert', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_data_source_insert():
     """
     A route to insert a new data source into the database.
@@ -100,6 +119,9 @@ def admin_data_source_insert():
             return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/delete', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_data_source_delete(data_source_id):
     """
     Delete a data source in the admin panel.
@@ -116,6 +138,8 @@ def admin_data_source_delete(data_source_id):
     return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/view', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
 def admin_recording_platform_view(recording_platform_id):
     """
     A route to display a recording platform in the admin panel.
@@ -129,6 +153,9 @@ def admin_recording_platform_view(recording_platform_id):
             return redirect(url_for('admin.admin_dashboard'))
         
 @routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/edit', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_recording_platform_edit(recording_platform_id):
     """
     Updates a recording platform with the provided form data.
@@ -147,6 +174,9 @@ def admin_recording_platform_edit(recording_platform_id):
             return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/recording-platform/new', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_recording_platform_new():
     """
     A route decorator for creating a new recording platform in the admin panel.
@@ -154,6 +184,9 @@ def admin_recording_platform_new():
     return render_template('admin/admin-recording-platform-new.html')
 
 @routes_admin.route('/admin/recording-platform/insert', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_recording_platform_insert():
     """
     Create a new recording platform with form data and insert it into the database.
@@ -172,6 +205,9 @@ def admin_recording_platform_insert():
             return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/delete', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_recording_platform_delete(recording_platform_id):
     """
     Delete a recording platform in the admin panel.
@@ -188,6 +224,8 @@ def admin_recording_platform_delete(recording_platform_id):
             return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/species/<uuid:species_id>/view', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
 def admin_species_view(species_id):
     """
     Edit and update species data based on the provided species ID.
@@ -202,6 +240,9 @@ def admin_species_view(species_id):
             return redirect(url_for('admin.admin_dashboard'))
     
 @routes_admin.route('/admin/species/<uuid:species_id>/edit', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_species_edit(species_id):
     with Session() as session:
         species_data = session.query(Species).filter_by(id=species_id).first()
@@ -220,7 +261,11 @@ def admin_species_edit(species_id):
             session.rollback()
         return redirect(url_for('admin.admin_dashboard'))
 
+
 @routes_admin.route('/admin/species/<uuid:species_id>/delete', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_species_delete(species_id):
     """
     A function to delete a species from the admin panel by its ID.
@@ -239,10 +284,16 @@ def admin_species_delete(species_id):
 
     
 @routes_admin.route('/admin/species/new', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_species_new():
     return render_template('admin/admin-species-new.html')
 
 @routes_admin.route('/admin/species/insert', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+@require_live_session
 def admin_species_insert():
     with Session() as session:
         species_name = request.form['species_name']
@@ -258,3 +309,112 @@ def admin_species_insert():
             session.rollback()
     return redirect(url_for('admin.admin_dashboard'))
 
+
+
+@routes_admin.route('/admin/user', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+def admin_user():
+    with Session() as session:
+        users = session.query(User).filter_by(is_temporary=0).order_by(User.is_active.desc()).all()
+        temporary_users = session.query(User).filter_by(is_temporary=1).order_by(User.is_active.desc()).all()
+        return render_template('admin/admin-user.html', users=users, temporary_users=temporary_users)
+    
+    
+@routes_admin.route('/admin/user/<uuid:user_id>/view', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+def admin_user_view(user_id):
+    with Session() as session:
+        user = session.query(User).filter_by(id=user_id).first()
+        roles = session.query(Role).all()
+        return render_template('admin/admin-user-view.html', user=user, roles=roles,datetime=datetime)
+    
+    
+def update_or_insert_user(session, user, request, login_id=None, is_temporary=False, role_id=None):
+    if user:
+        user.set_name(request.form['name'])
+        user.set_password(request.form['password'])
+        if role_id:
+            user.set_role_id(role_id)
+        else:
+            user.set_role_id(request.form['role'])
+        user.set_expiry(request.form['expiry'])
+        user.is_temporary = is_temporary
+        if login_id is not None:
+            user.set_login_id(login_id)
+        else:
+            user.set_login_id(request.form['login_id'])
+        is_active = False
+        if 'is_active' in request.form:
+            is_active = True
+        print("SETTING IS ACTIVE", is_active)
+        user.set_is_active(is_active)
+        session.commit()
+        flash('User updated: {}'.format(user.get_login_id()), 'success')
+    else:
+        flash('User with ID {} not found'.format(user.id), 'error')
+        session.rollback()
+    return redirect(url_for('admin.admin_user'))
+    
+@routes_admin.route('/admin/user/<uuid:user_id>/update', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+def admin_user_update(user_id):
+    with Session() as session:
+        user = session.query(User).filter_by(id=user_id).first()
+
+        return update_or_insert_user(session, user, request)
+@routes_admin.route('/admin/user/new', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+def admin_user_new():
+    roles=db.session.query(Role).all()
+    default_date = datetime.now() + timedelta(days=365)
+
+    return render_template('admin/admin-user-new.html',roles=roles,default_date=default_date)    
+
+@routes_admin.route('/admin/user/insert', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+def admin_user_insert():
+    with Session() as session:
+        user = User()
+        session.add(user)
+
+        return update_or_insert_user(session, user, request)
+    
+@routes_admin.route('/admin/user/temporary/new', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+def admin_temporary_user_new():
+    default_date = datetime.now() + timedelta(days=30)
+    return render_template('admin/admin-temporary-user-new.html',default_date=default_date)
+
+@routes_admin.route('/admin/user/temporary/insert', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+def admin_temporary_user_insert():
+    with Session() as session:
+        user = User()
+        session.add(user)
+
+        return update_or_insert_user(session, user, request, login_id=uuid.uuid4(), is_temporary=True, role_id=4)
+
+@routes_admin.route('/admin/temporary-user/<uuid:user_id>/view', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+def admin_temporary_user_view(user_id):
+    with Session() as session:
+        user = session.query(User).filter_by(id=user_id).first()
+        roles = session.query(Role).all()
+        return render_template('admin/admin-temporary-user-view.html', user=user, roles=roles,datetime=datetime)
+
+@routes_admin.route('/admin/temporary-user/<uuid:user_id>/update', methods=['POST'])
+@exclude_role_4
+@exclude_role_3
+def admin_temporary_user_update(user_id):
+    with Session() as session:
+        user = session.query(User).filter_by(id=user_id).first()
+
+        return update_or_insert_user(session, user, request, login_id=user.login_id, is_temporary=True, role_id=4)

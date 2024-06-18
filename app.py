@@ -4,10 +4,14 @@ import zipfile
 
 # Third-party imports
 from flask import (Flask, flash, get_flashed_messages, jsonify, redirect,
-                   render_template, request, send_file, session, url_for,
+                   render_template, request, send_file, url_for,
                    send_from_directory)
+from flask import session as client_session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, sessionmaker
+from flask_login import LoginManager
+from flask_login import login_user,login_required, current_user, login_manager
+from flask import g
 
 # Local application imports
 from db import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
@@ -17,12 +21,15 @@ from routes.routes_encounter import routes_encounter
 from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
 from routes.routes_contour import routes_contour
+from routes.routes_auth import routes_auth
+from exception_handler import NotFoundException
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_encounter)
 app.register_blueprint(routes_recording)
 app.register_blueprint(routes_selection)
 app.register_blueprint(routes_contour)
+app.register_blueprint(routes_auth)
 
 '''
 NOTE: to restrict access to certain routes, add the following to the routes.py file:
@@ -39,6 +46,45 @@ def add():
     # rest of your route
 
 '''
+
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+@app.before_request
+def before_request():
+    g.user = current_user
+
+def remove_snapshot_date_from_url(url):
+    # Split the URL into base URL and query parameters
+    base_url, params = url.split('?', 1) if '?' in url else (url, '')
+    
+    # Split the query parameters into individual parameters
+    param_list = params.split('&')
+    
+    # Remove the snapshot_date parameter
+    updated_params = [param for param in param_list if not param.startswith('snapshot_date=')]
+    
+    # Reconstruct the URL without the snapshot_date parameter
+    updated_url = base_url + ('?' + '&'.join(updated_params) if updated_params else '')
+    
+    return updated_url
+
+@app.route('/reset-snapshot-in-session-with-link', methods=['POST'])
+def reset_snapshot_in_session_with_link():
+    redirect_link = request.form.get('redirect_link')
+    print("I GOT HERE")
+    client_session['snapshot_date'] = None
+    return redirect(remove_snapshot_date_from_url(redirect_link))
+
+
+
+@app.route('/reset-snapshot-in-session')
+def reset_snapshot_in_session():
+    client_session['snapshot_date']=None
+    return redirect(remove_snapshot_date_from_url(request.referrer))
 
 @app.route('/resources/<path:filename>')
 def serve_resource(filename):
@@ -96,14 +142,19 @@ def hello_world():
     """
     Redirect user from root to home directory.
     """
-    return redirect(url_for('home'))
 
-@app.route('/home')
+    return redirect(url_for('home', user=current_user))
+
+
+
+
+@app.route('/home') 
+@login_required
 def home():
     """
     Route for the home page.
     """
-    return render_template('home.html')
+    return render_template('home.html', user=current_user)
 
 if __name__ == '__main__':
     app.run(debug=True)

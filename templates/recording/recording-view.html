@@ -11,16 +11,44 @@
 <body>
     <div class="outer-div">
         <h2>Recording Summary</h2>
-        <p>Start date: {{ recording.get_start_time_string() }}</p>
+        <p>Start date: {{ recording.start_time }}</p>
         <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
             recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
         <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
         <p>Number of contours: {{ recording.get_number_of_contours() }}</p>
-        <p id="unresolved-warning-count">Unresolved warnings: {{ recording.get_number_of_unresolved_warnings() }}</p>
         {% set identifier_heading = "Selection Number" %}
         {% set unique_id = "selection-number"%}
         {% set process_route = "process_selection" %}
         {% set insert_route = "selection.selection_insert_bulk" %}
+        {% if current_user.role_id in [1, 2] %}
+
+        <section>
+            <div class="audit-history">
+                <h3>Audit History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>User</th>
+                            <th>View Snapshot</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for recording in recording_history %}
+                            <tr>
+                                <td>{{ recording['row_start'] }}</td>
+                                <td>{{ recording['action'] }}</td>
+                                <td>{{ recording['updated_by'].name }}</td>
+                                <td><a href="{{ url_for('recording.recording_view', encounter_id=recording['encounter_id'], recording_id=recording['id'], snapshot_date=recording['row_start']) }}" >HERE</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        {% endif %}
 
         <h2>Add selections</h2>
         {% include 'recording/multi-file-upload-template.html' %}
@@ -51,39 +79,6 @@
             <button type="submit">Upload</button>
         </form>
         {% endif %}
-        {% if valid_selections_table_error_msg=="" and missing_selections|length > 0%}
-        <p>The following selection numbers are missing based on the selection table provided:</p>
-        <table id="missing-selection-table">
-            <thead>
-                <tr>
-                    <th
-                        style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orange;{% endif %}">
-                        Selection Number ({%if recording.ignore_selection_table_warnings
-                        %}Resolved{%else%}Unresolved{%endif%})</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for selection in missing_selections %}
-                <tr
-                    style="{% if recording.ignore_selection_table_warnings %}color: black;{% else %}color: orange;{% endif %}">
-                    <td>{{ selection.selection_number }}</td>
-                </tr>
-                {% endfor %}
-
-            </tbody>
-        </table>
-        <form action="return false;" method="post">
-            <button style="width: 100%" type="submit" class="ignore-table-button" data-recording-id="{{ recording.id }}"
-                value={% if recording.ignore_selection_table_warnings %}1{% else %}0{% endif %}>{% if
-                recording.ignore_selection_table_warnings %}Flag{% else %}Resolve{% endif %}</button>
-        </form>
-        {% elif valid_selections_table_error_msg=="" and missing_selections|length == 0%}
-        <p style="color: green;">All selections from the selection table are present.</p>
-        {% else %}
-        <p style="color: red;">{{valid_selections_table_error_msg}}</p>
-        {% endif %}
-
-
 
         <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
         {% if selections|length > 0 %}
@@ -95,8 +90,6 @@
                 <th>Selection</th>
                 <th>Annotation</th>
                 <th>Contour</th>
-                <th>Warnings</th>
-                <th>Resolve Warnings</th>
             </tr>
             <form id="deleteForm" onsubmit="return false;">
                 {% for selection in selections %}
@@ -115,30 +108,13 @@
                         {% endif %}
                     </td>
                     <td>
-                        <label>{{ selection.contoured }}</label>
+                        <label>{{ selection.annotation }}</label>
                     </td>
                     <td>
                         {% if selection.contour_file %}
                         <a
                             href="{{ url_for('download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
                         <a href="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}">Delete</a>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% for warning in selection.getWarnings() %}
-                        <label id="warning-{{ selection.id }}"
-                            style="color: {% if selection.ignore_warnings %}black{% else %}orange{% endif %}">{{ warning
-                            }}</label>
-                        {% endfor %}
-                    </td>
-                    <td>
-                        {%if selection.getWarnings()|length > 0%}
-                        <form method="post" onclick="return false;">
-                            <button style="width: 100%" type="submit" class="ignore-button"
-                                data-selection-id="{{ selection.id }}" value={% if selection.ignore_warnings
-                                %}1{%else%}0{%endif%}>{% if selection.ignore_warnings %}Flag{% else %}Resolve{% endif
-                                %}</button>
-                        </form>
                         {% endif %}
                     </td>
                 </tr>
@@ -176,6 +152,7 @@
         }
     }
 
+    /*
     function updateNumberOfUnresolvedWarnings(numberOfUnresolvedWarnings) {
         document.getElementById('unresolved-warning-count').textContent = 'Unresolved warnings: ' + numberOfUnresolvedWarnings;
         if (numberOfUnresolvedWarnings > 0) {
@@ -185,7 +162,8 @@
         }
     }
 
-
+    */
+    /*
     var ignoreButtons = document.querySelectorAll('.ignore-button');
 
     ignoreButtons.forEach(function (button) {
@@ -252,7 +230,8 @@
             ignore_selection_table_warnings: button.value === '1' ? false : true
         }));
     });
-
+    */
+    /*
     function updateWarningCount() {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', '/recording/{{recording.id}}/get-unresolved-warnings', true);
@@ -270,6 +249,7 @@
 
 
     updateWarningCount();
+    */
 
 
 

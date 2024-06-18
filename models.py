@@ -1,13 +1,21 @@
 # Standard library imports
 import os, uuid
 from datetime import datetime
+import shared_functions
+
+
 
 # Third-party imports
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.event import listens_for
+from flask_login import UserMixin
+from sqlalchemy.sql import func
+from sqlalchemy import event
+
 
 # Local application imports
 from db import db, FILE_SPACE_PATH
+
 
 
 
@@ -35,6 +43,47 @@ def clean_directory(root_directory):
             if not os.listdir(dir_path):
                 os.rmdir(dir_path)
 
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    login_id = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    name = db.Column(db.String(1000))
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    is_active = db.Column(db.Boolean, default=True)
+    is_temporary = db.Column(db.Boolean, default=False)
+    expiry = db.Column(db.DateTime)
+    
+    role=db.relationship('Role', backref='users', lazy=True)
+
+    def set_login_id(self, value):
+        self.login_id = value
+    
+    def set_role_id(self, value):
+        self.role_id = value
+    
+    def set_expiry(self, value):
+        self.expiry = value
+    
+    def set_password(self, value):
+        self.password = value
+    
+    def set_name(self, value):
+        self.name = value
+    
+    def get_login_id(self):
+        return '' if self.login_id is None else self.login_id
+    
+    def set_is_active(self, value):
+        self.is_active = value
+
+    def get_id(self):
+        return str(self.id)
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+
 class Species(db.Model):
     __tablename__ = 'species'
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -42,6 +91,8 @@ class Species(db.Model):
     species_name = db.Column(db.String(100), nullable=False, unique=True)
     genus_name = db.Column(db.String(100))
     common_name = db.Column(db.String(100))
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
     def update_call(self,session):
         encounters = session.query(Encounter).filter_by(species=self).all()
@@ -83,6 +134,8 @@ class Encounter(db.Model):
     data_source = db.relationship("DataSource")
     recording_platform = db.relationship("RecordingPlatform")
 
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     __table_args__ = (
         db.UniqueConstraint('encounter_name', 'location'),
     )
@@ -109,7 +162,6 @@ class Encounter(db.Model):
     def delete(self,session):
         recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
         for recording in recordings:
-            print("delete recording",recording.id)
             recording.delete(session)
         session.delete(self)
 
@@ -179,13 +231,15 @@ class File(db.Model):
     path = db.Column(db.String, nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     uploaded_date = db.Column(db.DateTime)
-    uploaded_by = db.Column(db.String(100))
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
 
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
+
     def delete(self, session):
-        self.move_to_trash()
-        session.delete(self)
+        self.move_to_trash(session)
+        #session.delete(self)
     
     def update_call(self,session):
         pass
@@ -230,22 +284,22 @@ class File(db.Model):
     def set_uploaded_by(self, value):
         self.uploaded_by = value
 
-    def move_to_trash(self):
+    def move_to_trash(self,session):
         """
         Moves the file to the trash folder.
 
         This function moves the file to the trash folder by renaming the file and adding a unique identifier to its name.
         TODO: keep a record of deleted file metadata
         """
+        
         trash_folder = 'trash'
         unique_name = str(uuid.uuid4())
         os.makedirs(trash_folder, exist_ok=True)
-        file_path = os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
         file_name = self.filename
-        file_name_with_unique = file_name + "-" + unique_name
-        trash_file_path = os.path.join(trash_folder, file_name_with_unique) + "." + self.extension
-        if os.path.exists(trash_folder) and os.path.exists(file_path):
-            os.rename(file_path, trash_file_path)
+        trash_file_path = os.path.join(trash_folder,os.path.join(self.get_path(),unique_name + '_' + file_name + '.' + self.extension))
+        
+        self.move_file(session, trash_file_path, FILE_SPACE_PATH)
+
 
     def move_file(self, session, new_relative_file_path, root_path):
         """
@@ -270,7 +324,8 @@ class File(db.Model):
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
-            os.rename(current_relative_file_path, new_relative_file_path_with_root)
+            if os.path.exists(current_relative_file_path):
+                os.rename(current_relative_file_path, new_relative_file_path_with_root)
             try:
                 session.commit()
             except Exception as e:
@@ -290,9 +345,18 @@ class File(db.Model):
             if not os.path.samefile(new_relative_file_path_with_root, current_relative_file_path):
                 raise IOError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
             return False
-        
-        
 
+"""
+class Audit(db.Model):
+    __tablename__ = 'audit'
+
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    created_at = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()")
+    updated_at = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()", onupdate="current_timestamp()")
+    action = db.Column(db.String(50), nullable=False)
+
+"""
+    
 class Recording(db.Model):
     __tablename__ = 'recording'
 
@@ -303,36 +367,32 @@ class Recording(db.Model):
     selection_table_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
     encounter_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('encounter.id'), nullable=False)
     ignore_selection_table_warnings = db.Column(db.Boolean, default=False)
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
 
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
-    
-    
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
+    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+    #row_end = db.Column(db.DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    #valid_to = Column(DateTime, server_default=func.inf())
     __table_args__ = (
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
-    def get_number_of_unresolved_warnings(self):
-        counter = 0
-        selections = db.session.query(Selection).filter_by(recording_id=self.id).all()
-        for selection in selections:
-            if selection.ignore_warnings == False and len(selection.getWarnings())>0:
-                counter += 1
-                
-        missing_selections, error_msg = self.validate_selection_table(db.session)
-        if not self.ignore_selection_table_warnings:
-            for selection in missing_selections:
-                counter += 1
-        print("Unresolved",counter)
-        return counter
+    def set_user_id(self, user_id):
+        self.updated_by_id = user_id
+
+
 
     def get_number_of_selections(self):
-        selections = db.session.query(Selection).filter_by(recording_id=self.id).all()
+        selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         return len(selections)
 
     def get_number_of_contours(self):
+        #selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
+
         contours = db.session.query(Selection).filter_by(recording_id=self.id).filter(Selection.contour_file != None).all()
         return len(contours)
 
@@ -371,6 +431,7 @@ class Recording(db.Model):
             else:
                 raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
             # Define the expected column names and data types
+            '''
             expected_columns = {
                 'Selection': int,
                 'View': object,
@@ -383,7 +444,7 @@ class Recording(db.Model):
                 'Delta Freq (Hz)': float,
                 'Avg Power Density (dB FS/Hz)': float,
                 'Annotation': object,
-                'Contoured': object
+                'annotation': object
             }
 
             # Check that the columns match the expected names and types
@@ -392,72 +453,51 @@ class Recording(db.Model):
                     raise ValueError(f"Missing column: {column}")
                 if df[column].dtype != dtype:
                     raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
-
+            '''
             # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
             if not df['Annotation'].isin(['Y', 'M', 'N']).all():
-                raise ValueError("Invalid values in 'Contoured' column: expected 'Y' or 'N'")
+                raise ValueError("Invalid values in 'annotation' column: expected 'Y' or 'N'")
 
             return df
 
         return pd.DataFrame()
 
-    def get_selection_table_row(self, selection_number):
-        st_df = self.load_selection_table_data()
-        return st_df.loc[st_df['Selection'] == selection_number]
-
-    def reset_all_selections_unresolved_warnings(self,session):
-        print("reset_all_selections_unresolved_warnings")
-        selections = session.query(Selection).filter_by(recording_id=self.id).all()
-        for selection in selections:
-            selection.ignore_warnings = False
-
-    def selection_exists_in_selection_table(self, selection_number):
-        
-        st_df = self.load_selection_table_data()
-        if not st_df.empty:
-            return selection_number in st_df.Selection.to_list()
-
     def validate_selection_table(self, session, custom_file=None):
-        try:  
+        try:
             st_df = self.load_selection_table_data(custom_file=custom_file)
             if st_df.empty:
-                self.set_all_cross_referenced(session)
                 return [], "The Selection Table does not exist"
-            self.cross_reference_selections(session, st_df)
-            missing_selections = self.find_missing_selections(session, st_df)
+            self.upload_selection_table_rows(session, st_df)
+            #missing_selections = self.find_missing_selections(session, st_df)
             session.commit()
-            return missing_selections, ""
+            #return missing_selections, ""
+            return ""
         except Exception as e:
-            self.set_all_cross_referenced(session)
-            return [], "The Selection Table provided is invalid: " + str(e)
+            raise e
+            return "The Selection Table provided is invalid: " + str(e)
             
-        return [], "The Selection Table does not exist"
+        return "The Selection Table does not exist"
 
-        
-    def set_all_cross_referenced(self, session):
-        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
-        for selection in selections:
-            selection.setCrossReferencedFalse(session)
-        
-        
-    def cross_reference_selections(self,session,st_df):
-        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+    def upload_selection_table_rows(self, session, st_df):
         selection_table_selection_numbers = st_df.Selection.to_list()
-        for selection in selections:
-            if selection.selection_number not in selection_table_selection_numbers:
-                selection.setCrossReferencedFalse(session)  
-            elif selection.selection_number in selection_table_selection_numbers:
-                selection.setCrossReferencedTrue(session, st_df.loc[st_df['Selection'] == selection.selection_number, 'Contoured'].values[0])
-
+        for selection_number in selection_table_selection_numbers:
+            selection = session.query(Selection).filter_by(recording_id=self.id, selection_number=selection_number).first()
+            if selection is None:
+                new_selection = Selection(recording_id=self.id, selection_number=selection_number)
+                session.add(new_selection)
+                new_selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
+            else:
+                selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
+        session.commit()
+    
 
     def find_missing_selections(self, session, st_df):
-        selections = session.query(Selection).filter_by(recording_id=self.id).order_by(Selection.selection_number).all()
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         missing_selections = []
         selection_numbers = [selection.selection_number for selection in selections]
         if self.selection_table_file != None:
             # Validate files exist for all selections within the Selection Table
             selections_array = sorted(st_df['Selection'].to_list())
-            print(selections_array)
             for selection_num in selections_array:
                 if selection_num not in selection_numbers:
                     missing_selections.append({"selection_number":selection_num})
@@ -465,19 +505,18 @@ class Recording(db.Model):
 
         
 
-    def delete(self, session):        
+    def delete(self, session, keep_file_reference=False):        
         if self.recording_file_id is not None:
             self.recording_file.delete(session)
-            self.recording_file = None  # Remove the reference to the recording file
+            if not keep_file_reference: self.recording_file = None  # Remove the reference to the recording file
         
         if self.selection_table_file_id is not None:
             self.selection_table_file.delete(session)
-            self.selection_table_file = None  # Remove the reference to the selection file
+            if not keep_file_reference: self.selection_table_file = None  # Remove the reference to the selection file
         
-
         selections = session.query(Selection).filter_by(recording_id=self.id).all()
         for selection in selections:
-            selection.delete(session)
+            selection.delete(session, keep_file_reference=keep_file_reference)
 
 
         session.delete(self)
@@ -556,7 +595,14 @@ class Recording(db.Model):
             raise ValueError("Duration must be an integer")
         self.duration = value
     
+"""
 
+class RecordingAudit(Audit, Recording, db.Model):
+    __tablename__ = 'recording_audit'
+
+    record_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
+    record = db.relationship("Recording", foreign_keys=[record_id])
+"""
 class Selection(db.Model):
     __tablename__ = 'selection'
 
@@ -565,14 +611,26 @@ class Selection(db.Model):
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
-    cross_referenced = db.Column(db.Boolean, nullable=False, default=False)
-    contoured = db.Column(db.String, nullable=False)
-    ignore_warnings = db.Column(db.Boolean, nullable=False, default=False)
-    
+    annotation = db.Column(db.String, nullable=False)
+    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+
+    ### Selection Table data ###
+    view = db.Column(db.String)
+    channel = db.Column(db.Integer)
+    begin_time = db.Column(db.Float)
+    end_time = db.Column(db.Float)
+    low_frequency = db.Column(db.Float)
+    high_frequency = db.Column(db.Float)
+    delta_time = db.Column(db.Float)
+    delta_frequency = db.Column(db.Float)
+    average_power = db.Column(db.Float)
+
     contour_file = db.relationship("File", foreign_keys=[contour_file_id])
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
     
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
 
     __table_args__ = (
@@ -583,42 +641,29 @@ class Selection(db.Model):
 
     def getWarnings(self):
         warnings = []
-        if self.contour_file and self.contoured=="N":
+        if self.contour_file and self.annotation=="N":
             warnings.append("Contour file exists but annotated 'N'.")
-        elif not self.contour_file and self.contoured=="Y" or self.contoured=="M":
-            warnings.append(f"Selection annotated '{self.contoured}' but no contour file.")
+        elif not self.contour_file and self.annotation=="Y" or self.annotation=="M":
+            warnings.append(f"Selection annotated '{self.annotation}' but no contour file.")
         if not self.recording.selection_table_file:
             warnings.append("No Selection Table file.")
-        elif self.get_selection_table_row() == {}:
-            warnings.append("No row in Selection Table.")
-        print(warnings)
+        ## ADD CHECK THAT SELECTION TABLE HAS BEEN UPLOADED
         return warnings
 
-    def setCrossReferencedTrue(self, session, contoured):
-        self.cross_referenced = True
-        self.contoured = contoured
+
+    def upload_selection_table_data(self, session, st_df):
+        if st_df.iloc[0,0]==self.selection_number:
+            self.view = st_df.iloc[0, 1]
+            self.channel = st_df.iloc[0, 2]
+            self.begin_time = st_df.iloc[0, 3]
+            self.end_time = st_df.iloc[0, 4]
+            self.low_frequency = st_df.iloc[0, 5]
+            self.high_frequency = st_df.iloc[0, 6]
+            self.delta_time = st_df.iloc[0, 7]
+            self.delta_frequency = st_df.iloc[0, 8]
+            self.average_power = st_df.iloc[0, 9]
+            self.annotation = st_df.iloc[0, 10]
         session.commit()
-        
-    def setCrossReferencedFalse(self, session):
-        self.cross_referenced = False
-        self.contoured=None
-        session.commit()
-
-
-    def get_selection_table_row(self) -> dict:
-        """
-        Get the row from the Selection Table for this selection. If there exists no
-        row, return an empty dictionary.
-        """
-        row_dict = {}
-        row = self.recording.get_selection_table_row(self.selection_number)
-        if not row.empty:
-            first_row = row.iloc[0]
-            for column, value in first_row.items():
-                row_dict[column] = value
-        return row_dict
-
-
 
     def update_call(self, session):
         self.move_file(session,FILE_SPACE_PATH)
@@ -629,13 +674,13 @@ class Selection(db.Model):
         if self.contour_file is not None:
             self.contour_file.move_file(session,self.generate_full_relative_path()+"." +self.contour_file.extension,root_path)
 
-    def delete(self, session):        
+    def delete(self, session,keep_file_reference):        
         if self.selection_file_id is not None:
             self.selection_file.delete(session)
-            self.selection_file = None  # Remove the reference to the recording file
+            if not keep_file_reference: self.selection_file = None  # Remove the reference to the recording file
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
-            self.contour_file = None
+            if not keep_file_reference: self.contour_file = None
         session.delete(self)
 
 
@@ -643,7 +688,6 @@ class Selection(db.Model):
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
             self.contour_file = None
-            self.ignore_warnings=False
         
 
     def generate_filename(self):
@@ -677,6 +721,8 @@ class DataSource(db.Model):
     notes = db.Column(db.Text)
     type = db.Column(db.Enum('person', 'organisation'))
 
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<DataSource %r>' % self.name
     
@@ -687,6 +733,7 @@ class RecordingPlatform(db.Model):
 
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
     name = db.Column(db.String(100), unique=True, nullable=False)
-
+    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name

@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
 # Location application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 
 routes_contour = Blueprint('contour', __name__)

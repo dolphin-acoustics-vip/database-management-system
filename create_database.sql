@@ -105,6 +105,59 @@ CREATE TABLE `recording` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+
+
+CREATE TABLE `recording_audit` (
+  `id` uuid NOT NULL DEFAULT uuid(),
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `action` varchar(50) NOT NULL,
+  `record_id` uuid NOT NULL,
+  `start_time_old` datetime DEFAULT NULL,
+  `start_time_new` datetime DEFAULT NULL,
+  `duration_old` int(11) DEFAULT NULL,
+  `duration_new` int(11) DEFAULT NULL,
+  `recording_file_id_old` uuid DEFAULT NULL,
+  `recording_file_id_new` uuid DEFAULT NULL,
+  `selection_table_file_id_old` uuid DEFAULT NULL,
+  `selection_table_file_id_new` uuid DEFAULT NULL,
+  `encounter_id_old` uuid DEFAULT NULL,
+  `encounter_id_new` uuid DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_record_id` (`record_id`),
+  CONSTRAINT `fk_record_id` FOREIGN KEY (`record_id`) REFERENCES `recording` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+DELIMITER //
+CREATE TRIGGER recording_audit_trigger
+AFTER INSERT ON recording
+FOR EACH ROW
+BEGIN
+  INSERT INTO recording_audit (created_at, updated_at, action, record_id, start_time_new, duration_new, recording_file_id_new, selection_table_file_id_new, encounter_id_new)
+  VALUES ( UTC_TIMESTAMP(), UTC_TIMESTAMP(), 'CREATE', NEW.id, NEW.start_time, NEW.duration, NEW.recording_file_id, NEW.selection_table_file_id, NEW.encounter_id);
+END;
+//
+
+DELIMITER //
+CREATE TRIGGER recording_update_audit_trigger
+AFTER UPDATE ON recording
+FOR EACH ROW
+BEGIN
+  INSERT INTO recording_audit (created_at, updated_at, action, record_id, start_time_old, start_time_new, duration_old, duration_new, recording_file_id_old, recording_file_id_new, selection_table_file_id_old, selection_table_file_id_new, encounter_id_old, encounter_id_new)
+  VALUES ( UTC_TIMESTAMP(),  UTC_TIMESTAMP(), 'UPDATE', OLD.id, OLD.start_time, NEW.start_time, OLD.duration, NEW.duration, OLD.recording_file_id, NEW.recording_file_id, OLD.selection_table_file_id, NEW.selection_table_file_id, OLD.encounter_id, NEW.encounter_id);
+END;
+//
+
+DELIMITER //
+CREATE TRIGGER recording_delete_audit_trigger
+AFTER DELETE ON recording
+FOR EACH ROW
+BEGIN
+  INSERT INTO recording_audit (created_at, updated_at, action, record_id, start_time_old, duration_old, recording_file_id_old, selection_table_file_id_old, encounter_id_old)
+  VALUES ( UTC_TIMESTAMP(),  UTC_TIMESTAMP(), 'DELETE', OLD.id, OLD.start_time, OLD.duration, OLD.recording_file_id, OLD.selection_table_file_id, OLD.encounter_id);
+END;
+//
+
 --
 -- Table structure for table `recording_platform`
 --

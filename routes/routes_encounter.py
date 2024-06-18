@@ -1,20 +1,23 @@
 # Third-party imports
-from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
+from flask import Blueprint, Response, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
+from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error
+from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
+import exception_handler
 
 routes_encounter = Blueprint('encounter', __name__)
 
 
 @routes_encounter.route('/encounter', methods=['GET'])
+@login_required
 def encounter():
     with Session() as session:
         try:
-            encounter_list = session.query(Encounter).join(Species).all()
+            encounter_list = shared_functions.create_system_time_request(session, Encounter, {}, order_by="row_start")
             # If no encounters and no species exist, show an error
             if len(encounter_list) < 1:
                 species_data = session.query(Species).all()
@@ -24,9 +27,14 @@ def encounter():
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('home.home'))
+            return redirect(url_for('home'))
+
+#@
+
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
+@login_required
+@require_live_session
 def encounter_new():
     """
     Route to show the new encounter page
@@ -38,6 +46,8 @@ def encounter_new():
         return render_template('encounter/encounter-new.html', species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
 @routes_encounter.route('/encounter/insert', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_insert():
     """
     Inserts a new encounter into the database based on the provided form data.
@@ -74,17 +84,37 @@ def encounter_insert():
 
 
 @routes_encounter.route('/encounter/<uuid:encounter_id>/view', methods=['GET'])
+@login_required
 def encounter_view(encounter_id):
     """
     Route to show the encounter view page.
     """
-    print(encounter_id)
-    with Session() as session:
-        encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
-        recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
-        return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY)
+    if request.args.get('snapshot_date'):
+        save_snapshot_date_to_session(request.args.get('snapshot_date'))
 
+    try:
+        with Session() as session:
+            encounter = shared_functions.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
+            species = shared_functions.create_system_time_request(session, Species, {"id":encounter.species_id}, one_result=True)
+            encounter.species=species
+
+            #encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
+            #recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
+            
+            recordings = shared_functions.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
+            if type(recordings) == Response:
+                return recordings
+            
+            encounter_history = shared_functions.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
+            
+            return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user, encounter_history=encounter_history)
+    except exception_handler.NotFoundException as e:
+
+        return shared_functions.page_not_found(e, url_for("encounter.encounter_view", encounter_id=encounter_id))
+    
 @routes_encounter.route('/encounter/<uuid:encounter_id>/edit', methods=['GET'])
+@login_required
+@require_live_session
 def encounter_edit(encounter_id):
     """
     Route to show the encounter edit page.
@@ -96,7 +126,10 @@ def encounter_edit(encounter_id):
         recording_platforms = session.query(RecordingPlatform).all()
         return render_template('encounter/encounter-edit.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
+
 @routes_encounter.route('/encounter/<uuid:encounter_id>/update', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_update(encounter_id):
     with Session() as session:
         try :
@@ -120,7 +153,10 @@ def encounter_update(encounter_id):
             session.rollback()
             return redirect(url_for('encounter.encounter'))
         
+
 @routes_encounter.route('/encounter/<uuid:encounter_id>/delete', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_delete(encounter_id):
     with Session() as session:
         encounter = session.query(Encounter).filter_by(id=encounter_id).first()

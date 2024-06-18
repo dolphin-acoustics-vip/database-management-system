@@ -1,16 +1,15 @@
 import os
-from flask import Flask
+from flask import Flask, session, redirect, render_template
 from flask_sqlalchemy import SQLAlchemy
+from flask import session as client_session, request
 from sqlalchemy.orm import joinedload, sessionmaker
 import sqlalchemy
+from flask_login import LoginManager
+import uuid
+from functools import wraps
+from sqlalchemy import event
+from flask_login import login_user,login_required, current_user, login_manager
 
-# Create a Flask app
-app = Flask(__name__)
-app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
-
-# Configure the database connection using SQLAlchemy and MariaDB
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Define the file space folder and get the Google API key from a file
 FILE_SPACE_PATH = ''
@@ -22,6 +21,30 @@ if os.path.exists('google_api_key.txt'):
     with open('google_api_key.txt', 'r') as f:
         GOOGLE_API_KEY = f.read()
 
+
+def get_snapshot_date_from_session():
+    """
+    Gets the snapshot date from the session.
+    """
+    return client_session.get('snapshot_date')
+
+def save_snapshot_date_to_session(snapshot_date):
+    """
+    Saves the snapshot date to the session.
+    """
+    client_session['snapshot_date'] = snapshot_date
+
+
+# Create a Flask app
+app = Flask(__name__)
+
+app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
+
+# Configure the database connection using SQLAlchemy and MariaDB
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
 # Initialize the SQLAlchemy database
 db = SQLAlchemy(session_options={"autoflush": False})
 db.init_app(app)
@@ -30,6 +53,94 @@ db.init_app(app)
 with app.app_context():
     engine = db.get_engine()
     Session = sessionmaker(bind=engine, autoflush=False)
+    @event.listens_for(Session, 'before_commit')
+    def before_commit(session):
+        for obj in session.dirty.union(session.new):
+            print("CATCHING BEFORE COMMIT",obj.__class__.__name__)
+            if obj.__class__.__name__ == 'Recording' or obj.__class__.__name__ == 'Encounter' or obj.__class__.__name__ == 'File' or obj.__class__.__name__ == 'RecordingPlatform' or obj.__class__.__name__ == 'DataSource' or obj.__class__.__name__ == 'Selection' or obj.__class__.__name__ == 'Species':
+                obj.updated_by_id = current_user.id
+            elif obj.__class__.__name__ == 'Selection':
+                print("UPDATING SELECTION",current_user.id)
+                print(obj)
+                obj.updated_by_id = current_user.id
+"""
+def before_commit(session):
+    
+    for obj in session.dirty:
+        print("CATCHING BEFORE COMMIT",obj.__class__.__name__)
+        if obj.__class__.__name__ == 'Recording':
+            obj.updated_by_id = current_user.id
+        elif obj.__class__.__name__ == 'Selection':
+            print("UPDATING SELECTION",current_user.id)
+            print(obj)
+            obj.updated_by_id = current_user.id
+        session.commit()
+        raise Exception()
+"""
+
+def exclude_role_1(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 1:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper
+                   
+def exclude_role_2(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 2:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper
+
+def exclude_role_3(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 3:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper
+
+def exclude_role_4(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role_id != 4:
+            return func(*args, **kwargs)
+        else:
+            return render_template("unauthorized.html", user=current_user)
+    return wrapper 
+
+def require_live_session(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        snapshot_date = client_session.get('snapshot_date')
+        if not snapshot_date:
+            return func(*args, **kwargs)
+        else:
+            # Redirect to a page indicating unauthorized access
+            referrer_url = request.headers.get('Referer')
+            print("REFERER ", referrer_url)
+
+            return render_template("require-live-session.html", user=current_user, original_url=request.url, referrer_url=referrer_url)
+
+    return wrapper
+
+# Setup user login
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    from models import User
+    # since the user_id is just the primary key of our user table, use it in the query for the user
+    return User.query.get(uuid.UUID(user_id))
+
+
 
 def parse_alchemy_error(error):
     """
