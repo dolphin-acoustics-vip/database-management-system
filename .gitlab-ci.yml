@@ -1,0 +1,9 @@
+image: python:bullseye
+
+stages:
+  - deploy-test
+
+deploy-test:
+  stage: deploy-test
+  script:
+    - echo "The pipeline is running"
