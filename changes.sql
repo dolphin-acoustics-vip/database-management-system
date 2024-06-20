@@ -247,7 +247,7 @@ CREATE TABLE `selection` (
   `freq_median` float DEFAULT NULL,
   `freq_center` float DEFAULT NULL,
   `freq_relbw` float DEFAULT NULL,
-  `freq_maxminration` float DEFAULT NULL,
+  `freq_maxminratio` float DEFAULT NULL,
   `freq_begendratio` float DEFAULT NULL,
   `freq_quarter1` float DEFAULT NULL,
   `freq_quarter2` float DEFAULT NULL,
