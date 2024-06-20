@@ -18,7 +18,7 @@
 # third party libraries
 import pandas as pd
 import os
-from models import Selection
+from selection_test import Selection
 
 
 class ContourDataUnit:
@@ -37,7 +37,7 @@ class ContourDataUnit:
 
 
 class ContourFile:
-    data_units = []
+    contour_rows = []
     
     def __init__(self, file=None):
         if file: self.insert_from_file(file)
@@ -70,4 +70,24 @@ class ContourFile:
                 raise ValueError(f"Incorrect data type for column '{column}' in '{file.name}': expected {dtype}, got {df[column].dtype}")
         
         for index, row in df.iterrows():
-            self.data_units.append(ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
+            self.contour_rows.append(ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
+
+    def calculate_statistics(self, selection: Selection):
+        """
+        Calculate contour statistics using the data in contour_rows. The contour stats
+        are stored in the selection object (in the Database).
+        
+        Args:
+            selection (Selection): The selection object to store the contour statistics in.
+        """
+        
+        selection.freq_max = max(self.contour_rows, key=lambda x: x.peak_frequency).peak_frequency
+        selection.freq_min = min(self.contour_rows, key=lambda x: x.peak_frequency).peak_frequency
+        
+
+        
+        
+        
+        
+        
+        
