@@ -1,7 +1,7 @@
 class Selection:
 
-    freq_max: float
-    freq_min: float
+    freq_max: float # DONE
+    freq_min: float # DONE
     duration: float
     freq_begin: float
     freq_end: float
