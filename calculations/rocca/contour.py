@@ -15,13 +15,59 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
-class Contour:
-    time_milliseconds: float
+# third party libraries
+import pandas as pd
+import os
+from models import Selection
+
+
+class ContourDataUnit:
+    time_milliseconds: int
     peak_frequency: float
     duty_cycle: float
     energy: float
     window_RMS: float
     
-    def __init(self):
-        pass
+    def __init__(self, time_milliseconds, peak_frequency, duty_cycle, energy, window_RMS):
+        self.time_milliseconds = time_milliseconds
+        self.peak_frequency = peak_frequency
+        self.duty_cycle = duty_cycle
+        self.energy = energy
+        self.window_RMS = window_RMS
+
+
+class ContourFile:
+    data_units = []
     
+    def __init__(self, file=None):
+        if file: self.insert_from_file(file)
+
+    def insert_from_file(self, file):        
+        extension = os.path.splitext(file.name)[1].lower()
+        if extension == '.csv':
+            df = pd.read_csv(file)
+        elif extension == '.xlsx':
+            df = pd.read_excel(file)
+        else:
+            raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
+        
+        # check columns and datatypes
+        expected_columns = {
+            'Time [ms]': int,
+            'Peak Frequency [Hz]': float,
+            'Duty Cycle': float,
+            'Energy': float,
+            'WindowRMS': float
+        }
+        
+        # remove whitespace from headers        
+        df = df.rename(columns=lambda x: x.strip())
+        
+        for column, dtype in expected_columns.items():
+            if column not in df.columns:
+                raise ValueError(f"Missing column in '{file.name}': {column}")
+            if df[column].dtype != dtype:
+                raise ValueError(f"Incorrect data type for column '{column}' in '{file.name}': expected {dtype}, got {df[column].dtype}")
+        
+        for index, row in df.iterrows():
+            self.data_units.append(ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))

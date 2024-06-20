@@ -140,7 +140,7 @@ def recording_selection_table_delete(encounter_id, recording_id):
         finally:
             return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['GET'])
+@routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['POST'])
 @require_live_session
 def recording_insert(encounter_id):
     """
