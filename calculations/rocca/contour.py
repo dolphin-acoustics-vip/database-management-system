@@ -19,9 +19,20 @@
 import pandas as pd
 import os
 from selection_test import Selection
+from enum import Enum
 
-
+class Slope(Enum):
+    DOWN=-1
+    FLAT=0
+    UP=1
+    
+class Sweep(Enum):
+    DOWN=-1
+    FLAT=0
+    UP=1
 class ContourDataUnit:
+
+    
     time_milliseconds: int
     peak_frequency: float
     duty_cycle: float
@@ -29,9 +40,9 @@ class ContourDataUnit:
     window_RMS: float
     
     # calculated values
-    sweep = 0                          # upsweep=1, downsweep=-1, horiz=0
+    sweep = None                      # upsweep=1, downsweep=-1, horiz=0
     step = 0                           # step up=1, step down=2, no step=0
-    slope = 0.0                        # slope of current unit, compared to prev
+    slope = None                      # slope of current unit, compared to prev
     
     def __init__(self, time_milliseconds, peak_frequency, duty_cycle, energy, window_RMS):
         self.time_milliseconds = time_milliseconds
@@ -39,7 +50,15 @@ class ContourDataUnit:
         self.duty_cycle = duty_cycle
         self.energy = energy
         self.window_RMS = window_RMS
+    
+    def time_seconds(self):
+        return self.time_milliseconds / 1000
 
+    def set_slope(self, value: Slope):
+        self.slope = value
+    
+    def set_sweep(self, value: Sweep):
+        self.sweep = value
 
 class ContourFile:
     contour_rows = []
@@ -85,10 +104,188 @@ class ContourFile:
         Args:
             selection (Selection): The selection object to store the contour statistics in.
         """
+        from decimal import Decimal
+
+        import numpy as np
         
         num_points = len(self.contour_rows)
-        print(num_points)
+              
+                
+        # create arrays of all times and frequencies as well as their differences
+        times = [row.time_seconds() for row in self.contour_rows]
+        frequencies = [row.peak_frequency for row in self.contour_rows]
+
+        slope_sum = 0
+        slope_abs_sum = 0
+        slope_pos_counter = 0
+        slope_pos_sum = 0
+        slope_neg_counter = 0
+        slope_neg_sum = 0
+        num_sweeps_up = 0
+        num_sweeps_up_flat = 0
+        num_sweeps_up_down = 0
+        num_sweeps_down = 0
+        num_sweeps_down_flat = 0
+        num_sweeps_down_up = 0
+        num_sweeps_flat = 0
+        num_sweeps_flat_down = 0
+        num_sweeps_flat_up = 0
+        sweep_up_count = 0
+        sweep_down_count = 0
+        sweep_flat_count = 0
+        for i, contour in enumerate(self.contour_rows):
+            slope = 0
+            if i > 0:
+                time_diff = contour.time_milliseconds - self.contour_rows[i-1].time_milliseconds
+                freq_diff = contour.peak_frequency - self.contour_rows[i-1].peak_frequency
+                
+                # Evaluate sweep (pass the first two rows as sweep depends on a 2-unit moving average)
+                # UP-UP, UP-FLAT, FLAT-UP, FLAT-FLAT -> sweep is UP
+                # DOWN-DOWN, DOWN-FLAT, FLAT-DOWN, FLAT-FLAT -> sweep is DOWN
+                # FLAT-FLAT -> sweep is FLAT
+                # NOTE: this logic does not really seem to flow...
+                if i > 1:
+                    freq_diff_prev = self.contour_rows[i-1].peak_frequency - self.contour_rows[i-2].peak_frequency
+                    contour.set_sweep(self.contour_rows[i-1].sweep)
+                    if freq_diff >= 0 and freq_diff_prev >= 0:
+                        sweep_up_count += 1
+                        contour.set_sweep(Sweep.UP)
+                    if freq_diff <= 0 and freq_diff_prev <= 0:
+                        sweep_down_count += 1
+                        contour.set_sweep(Sweep.DOWN)
+                    if freq_diff == 0 and freq_diff_prev == 0:
+                        sweep_flat_count += 1
+                        contour.set_sweep(Sweep.FLAT)
+                    
+                    # calculate the number of sweeps in the contour
+                    # Sweeps are viewed in pairs (UPUP, DOWNUP, UPDOWN etc.)
+                    # over the last two units (rows)
+                    prev_contour = self.contour_rows[i-1]
+                    if contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.UP:
+                        num_sweeps_up += 1
+                    elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.UP:
+                        num_sweeps_up_flat += 1
+                    elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.UP:
+                        num_sweeps_up_down += 1
+                    elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.DOWN:
+                        num_sweeps_down += 1
+                    elif contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.DOWN:
+                        num_sweeps_down_up += 1
+                    elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.DOWN:
+                        num_sweeps_down_flat += 1
+                    elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.FLAT:
+                        num_sweeps_flat += 1
+                    elif contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.FLAT:
+                        num_sweeps_flat_up += 1
+                    elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.FLAT:
+                        num_sweeps_flat_down += 1                        
+                        
+                # calculate the slope of each row in the contour
+                # Slopes differ from sweeps as they only take into account the
+                # one-step frequency difference rather than two.
+                if time_diff > 0:
+                    slope = freq_diff / time_diff
+                    slope_sum += slope
+                    slope_abs_sum += abs(slope)
+                    if slope > 0:
+                        slope_pos_sum += slope
+                        slope_pos_counter += 1
+                    elif slope < 0:
+                        slope_neg_sum += slope
+                        slope_neg_counter += 1
+                if freq_diff > 0:
+                    contour.set_slope(Slope.UP)
+                elif freq_diff < 0:
+                    contour.set_slope(Slope.DOWN)
+                else:
+                    contour.set_slope(Slope.FLAT)
+            contour.slope = slope
         
+        # determine sweep up, down, and flat percentages
+        sweep_count = sweep_up_count + sweep_down_count + sweep_flat_count
+        selection.freq_sweepuppercent = sweep_up_count / sweep_count
+        selection.freq_sweepdownpercent = sweep_down_count / sweep_count
+        selection.freq_sweepflatpercent = sweep_flat_count / sweep_count
+        
+        # assign the two-unit sweep count values from above
+        selection.num_sweepsdownflat = num_sweeps_down_flat
+        selection.num_sweepsdownup = num_sweeps_down_up
+        selection.num_sweepsflatdown = num_sweeps_flat_down
+        selection.num_sweepsflatup = num_sweeps_flat_up
+        selection.num_sweepsupdown = num_sweeps_up_down
+        selection.num_sweepsupflat = num_sweeps_up_flat
+        
+        print("Down-Flat:",selection.num_sweepsdownflat)
+        print("Down-Up:",selection.num_sweepsdownup)
+        print("Flat-Down:",selection.num_sweepsflatdown)
+        print("Flat-Up:",selection.num_sweepsflatup)
+        print("Up-Down:",selection.num_sweepsupdown)
+        print("Up-Flat:",selection.num_sweepsupflat)
+        
+        print("Sweep up percentage:",sweep_up_count,sweep_up_perc)
+        print("Sweep down percentage:",sweep_down_count,sweep_down_perc)
+        print("Sweep flat percentage",sweep_flat_count,sweep_flat_perc)
+        
+        if slope_pos_counter > 0:
+            selection.freq_posslopemean = (slope_pos_sum / slope_pos_counter)*1000
+        if slope_neg_counter > 0:
+            selection.freq_negslopemean = (slope_neg_sum / slope_neg_counter)*1000
+            selection.freq_sloperatio = selection.freq_posslopemean / selection.freq_negslopemean
+        if num_points > 0:
+            selection.freq_slopemean = (slope_sum / (num_points-1))*1000
+            selection.freq_absslopemean = (slope_abs_sum / (num_points-1))*1000
+        
+        # calculate beginning slope as an average of the first three non-zero slopes,
+        # skipping the first row as the slope will always be zero
+        beg_slope_avg = (self.contour_rows[1].slope + self.contour_rows[2].slope + self.contour_rows[3].slope)/3
+        if beg_slope_avg > 0:
+            selection.freq_begsweep = Slope.UP
+            selection.freq_begup = True
+            selection.freq_begdown = False
+        elif beg_slope_avg < 0:
+            selection.freq_begsweep = Slope.DOWN
+            selection.freq_begup = False
+            selection.freq_begdown = True
+        else:
+            selection.freq_begsweep = Slope.FLAT
+            selection.freq_begup = False
+            selection.freq_begdown = False
+        
+        end_slope_avg = (self.contour_rows[-1].slope + self.contour_rows[-2].slope + self.contour_rows[-3].slope)/3
+        if end_slope_avg > 0:
+            selection.freq_endsweep = Slope.UP
+            selection.freq_endup = True
+            selection.freq_enddown = False
+        elif end_slope_avg < 0:
+            selection.freq_endsweep = Slope.DOWN
+            selection.freq_endup = False
+            selection.freq_enddown = True
+        else:
+            selection.freq_endsweep = Slope.FLAT
+            selection.freq_endup = False
+            selection.freq_enddown = False
+        
+        
+        
+        
+        
+        print("Begin sweep: ", selection.freq_begsweep)
+        print("Begin up", selection.freq_begup)
+        print("Begin down", selection.freq_begdown)
+        
+        print("End sweep:", selection.freq_endsweep)
+        print("End up:", selection.freq_endup)
+        print("End down", selection.freq_enddown)
+        
+        # duration is the difference between the first and last times
+        selection.duration = times[-1] - times[0]
+
+        
+            
+        print("Mean slope: ", selection.freq_slopemean)
+        print("Mean absolute slope: ", selection.freq_absslopemean)
+        print("Mean positive slope: ", selection.freq_posslopemean)
+        print("Mean negative slope: ", selection.freq_negslopemean)
         ### frequency statistics ###
         
         # maximum frequency is the maximum peak_frequency in the contour_rows

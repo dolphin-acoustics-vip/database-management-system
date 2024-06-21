@@ -3,50 +3,50 @@ class Selection:
     freq_max: float # DONE
     freq_min: float # DONE
     duration: float
-    freq_begin: float
-    freq_end: float
-    freq_range: float
+    freq_begin: float # DONE
+    freq_end: float # DONE
+    freq_range: float # DONE
     dc_mean: float
     dc_standarddeviation: float
-    freq_mean: float
-    freq_standarddeviation: float
-    freq_median: float
-    freq_center: float
-    freq_relbw: float
-    freq_maxminratio: float
-    freq_begendratio: float
-    freq_quarter1: float
-    freq_quarter2: float
-    freq_quarter3: float
-    freq_spread: float
+    freq_mean: float # DONE
+    freq_standarddeviation: float # DONE
+    freq_median: float # DONE
+    freq_center: float # DONE
+    freq_relbw: float # DONE
+    freq_maxminratio: float # DONE
+    freq_begendratio: float # DONE
+    freq_quarter1: float # DONE
+    freq_quarter2: float # DONE
+    freq_quarter3: float # DONE
+    freq_spread: float # DONE
     dc_quarter1mean: float
     dc_quarter2mean: float
     dc_quarter3mean: float
     dc_quarter4mean: float
     freq_cofm: float
-    freq_stepup: int
-    freq_stepdown: int
-    freq_numsteps: int
-    freq_slopemean: float
-    freq_absslopemean: float
-    freq_posslopemean: float
-    freq_negslopemean: float
-    freq_sloperatio: float
-    freq_begsweep: int
-    freq_begup: int
-    freq_begdown: int
-    freq_endsweep: int
-    freq_endup: int
-    freq_enddown: int
-    num_sweepsupdown: int
-    num_sweepsdownup: int
-    num_sweepsupflat: int
-    num_sweepsdownflat: int
-    num_sweepsflatup: int
-    num_sweepsflatdown: int
-    freq_sweepuppercent: float
-    freq_sweepdownpercent: float
-    freq_sweepflatpercent: float
+    freq_stepup: int # DONE
+    freq_stepdown: int # DONE
+    freq_numsteps: int # DONE
+    freq_slopemean: float # DONE
+    freq_absslopemean: float # DONE
+    freq_posslopemean: float # DONE
+    freq_negslopemean: float # DONE
+    freq_sloperatio: float # DONE
+    freq_begsweep: int # DONE
+    freq_begup: int # DONE
+    freq_begdown: int # DONE
+    freq_endsweep: int # DONE - DISREP
+    freq_endup: int # DONE
+    freq_enddown: int # DONE
+    num_sweepsupdown: int # DONE
+    num_sweepsdownup: int # DONE
+    num_sweepsupflat: int # DONE
+    num_sweepsdownflat: int # DONE
+    num_sweepsflatup: int # DONE
+    num_sweepsflatdown: int # DONE
+    freq_sweepuppercent: float # DONE
+    freq_sweepdownpercent: float # DONE
+    freq_sweepflatpercent: float # DONE
     num_inflections: int
     inflection_maxdelta: float
     inflection_mindelta: float
