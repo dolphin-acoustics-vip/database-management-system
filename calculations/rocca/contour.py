@@ -222,9 +222,9 @@ class ContourFile:
         print("Up-Down:",selection.num_sweepsupdown)
         print("Up-Flat:",selection.num_sweepsupflat)
         
-        print("Sweep up percentage:",sweep_up_count,sweep_up_perc)
-        print("Sweep down percentage:",sweep_down_count,sweep_down_perc)
-        print("Sweep flat percentage",sweep_flat_count,sweep_flat_perc)
+        print("Sweep up percentage:",sweep_up_count,selection.freq_sweepuppercent)
+        print("Sweep down percentage:",sweep_down_count,selection.freq_sweepdownpercent)
+        print("Sweep flat percentage",sweep_flat_count,selection.freq_sweepflatpercent)
         
         if slope_pos_counter > 0:
             selection.freq_posslopemean = (slope_pos_sum / slope_pos_counter)*1000
