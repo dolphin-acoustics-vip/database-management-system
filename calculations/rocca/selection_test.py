@@ -47,7 +47,7 @@ class Selection:
     freq_sweepuppercent: float # DONE
     freq_sweepdownpercent: float # DONE
     freq_sweepflatpercent: float # DONE
-    num_inflections: int
+    num_inflections: int # DONE
     inflection_maxdelta: float
     inflection_mindelta: float
     inflection_maxmindelta: float

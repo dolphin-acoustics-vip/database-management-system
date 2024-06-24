@@ -121,29 +121,13 @@ class ContourFile:
         slope_pos_sum = 0
         slope_neg_counter = 0
         slope_neg_sum = 0
-        num_sweeps_up = 0
-        num_sweeps_up_flat = 0
-        num_sweeps_up_down = 0
-        num_sweeps_down = 0
-        num_sweeps_down_flat = 0
-        num_sweeps_down_up = 0
-        num_sweeps_flat = 0
-        num_sweeps_flat_down = 0
-        num_sweeps_flat_up = 0
-        sweep_up_count = 0
-        sweep_down_count = 0
-        sweep_flat_count = 0
+        
         for i, contour in enumerate(self.contour_rows):
             slope = 0
             if i > 0:
                 time_diff = contour.time_milliseconds - self.contour_rows[i-1].time_milliseconds
                 freq_diff = contour.peak_frequency - self.contour_rows[i-1].peak_frequency
-                
-                # Evaluate sweep (pass the first two rows as sweep depends on a 2-unit moving average)
-                # UP-UP, UP-FLAT, FLAT-UP, FLAT-FLAT -> sweep is UP
-                # DOWN-DOWN, DOWN-FLAT, FLAT-DOWN, FLAT-FLAT -> sweep is DOWN
-                # FLAT-FLAT -> sweep is FLAT
-                # NOTE: this logic does not really seem to flow...
+                """
                 if i > 1:
                     freq_diff_prev = self.contour_rows[i-1].peak_frequency - self.contour_rows[i-2].peak_frequency
                     contour.set_sweep(self.contour_rows[i-1].sweep)
@@ -156,29 +140,32 @@ class ContourFile:
                     if freq_diff == 0 and freq_diff_prev == 0:
                         sweep_flat_count += 1
                         contour.set_sweep(Sweep.FLAT)
+                
+                # Evaluate sweep (pass the first two rows as sweep depends on a 2-unit moving average)
+                # UP-UP, UP-FLAT, FLAT-UP, FLAT-FLAT -> sweep is UP
+                # DOWN-DOWN, DOWN-FLAT, FLAT-DOWN, FLAT-FLAT -> sweep is DOWN
+                # FLAT-FLAT -> sweep is FLAT
+                # NOTE: this logic does not really seem to flow...
+                if i > 1:
+                    freq_diff_prev = self.contour_rows[i-1].peak_frequency - self.contour_rows[i-2].peak_frequency
                     
-                    # calculate the number of sweeps in the contour
-                    # Sweeps are viewed in pairs (UPUP, DOWNUP, UPDOWN etc.)
-                    # over the last two units (rows)
-                    prev_contour = self.contour_rows[i-1]
-                    if contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.UP:
-                        num_sweeps_up += 1
-                    elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.UP:
-                        num_sweeps_up_flat += 1
-                    elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.UP:
-                        num_sweeps_up_down += 1
-                    elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.DOWN:
-                        num_sweeps_down += 1
-                    elif contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.DOWN:
-                        num_sweeps_down_up += 1
-                    elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.DOWN:
-                        num_sweeps_down_flat += 1
-                    elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.FLAT:
-                        num_sweeps_flat += 1
-                    elif contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.FLAT:
-                        num_sweeps_flat_up += 1
-                    elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.FLAT:
-                        num_sweeps_flat_down += 1                        
+                    self.contour_rows[i-1].set_sweep(last_sweep)
+                    if (self.contour_rows[i-2].peak_frequency <= self.contour_rows[i-1].peak_frequency) and (self.contour_rows[i-1].peak_frequency <= self.contour_rows[i].peak_frequency):
+                        sweep_up_count += 1
+                        self.contour_rows[i-1].set_sweep(Sweep.UP)
+                        last_sweep = Sweep.UP
+                    if (self.contour_rows[i-2].peak_frequency >= self.contour_rows[i-1].peak_frequency) and (self.contour_rows[i-1].peak_frequency >= self.contour_rows[i].peak_frequency):
+                        sweep_down_count += 1
+                        self.contour_rows[i-1].set_sweep(Sweep.DOWN)
+                        last_sweep = Sweep.DOWN
+                    if (self.contour_rows[i-2].peak_frequency == self.contour_rows[i-1].peak_frequency) and (self.contour_rows[i-1].peak_frequency == self.contour_rows[i].peak_frequency):
+                        sweep_flat_count += 1
+                        self.contour_rows[i-1].set_sweep(Sweep.FLAT)
+                        last_sweep = Sweep.FLAT
+                    
+                    
+
+                """
                         
                 # calculate the slope of each row in the contour
                 # Slopes differ from sweeps as they only take into account the
@@ -201,11 +188,173 @@ class ContourFile:
                     contour.set_slope(Slope.FLAT)
             contour.slope = slope
         
+        """
+        i = 2
+        direction = self.contour_rows[1].sweep
+        while i < len(self.contour_rows):
+            print(self.contour_rows[i].sweep)
+            # calculate the number of sweeps in the contour
+            # Sweeps are viewed in pairs (UPUP, DOWNUP, UPDOWN etc.)
+            # over the last two units (rows)
+            contour = self.contour_rows[i]
+            prev_contour = self.contour_rows[i-1]
+            if contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.UP:
+                num_sweeps_up += 1
+            elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.UP:
+                num_sweeps_up_flat += 1
+            elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.UP:
+                num_sweeps_up_down += 1
+            elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.DOWN:
+                num_sweeps_down += 1
+            elif contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.DOWN:
+                num_sweeps_down_up += 1
+            elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.DOWN:
+                num_sweeps_down_flat += 1
+            elif contour.sweep == Sweep.FLAT and prev_contour.sweep == Sweep.FLAT:
+                num_sweeps_flat += 1
+            elif contour.sweep == Sweep.UP and prev_contour.sweep == Sweep.FLAT:
+                num_sweeps_flat_up += 1
+            elif contour.sweep == Sweep.DOWN and prev_contour.sweep == Sweep.FLAT:
+                num_sweeps_flat_down += 1   
+                                        
+                
+
+            elif (direction == Sweep.UP and contour.sweep == Sweep.DOWN) or (direction == Sweep.DOWN and contour.sweep == Sweep.UP):
+                num_inflections += 1
+                direction = contour.sweep
+                inflection_time_array.append(contour.time_milliseconds)
+                if num_inflections > 1:
+                    inflection_diff_array.append(inflection_time_array[-1] - inflection_time_array[-2])
+            elif (direction == Sweep.FLAT):
+                direction = contour.sweep 
+            i += 1
+        
+        
+        
+        
+        """
+        
+        
+        num_sweeps_up = 0
+        num_sweeps_up_flat = 0
+        num_sweeps_up_down = 0
+        num_sweeps_down = 0
+        num_sweeps_down_flat = 0
+        num_sweeps_down_up = 0
+        num_sweeps_flat = 0
+        num_sweeps_flat_down = 0
+        num_sweeps_flat_up = 0
+        sweep_up_count = 0
+        sweep_down_count = 0
+        sweep_flat_count = 0
+        num_inflections = 0
+        inflection_diff_array = []
+        inflection_time_array = []
+        
+        
+        last_sweep = Sweep.UP
+        
+        i = 0
+        while i < len(self.contour_rows):
+            contour = self.contour_rows[i]
+            
+            if i == 0:
+                contour.sweep = last_sweep
+            elif i > 0:
+                prev_contour = self.contour_rows[i-1]
+                prev_contour.sweep = last_sweep
+                if i > 1:
+                    # two previous contours
+                    prev2_contour = self.contour_rows[i-2]
+                    
+                    prev_contour.sweep = last_sweep
+                    if (prev2_contour.peak_frequency <= prev_contour.peak_frequency) and (prev_contour.peak_frequency <= contour.peak_frequency):
+                        prev_contour.sweep = Sweep.UP
+                        sweep_up_count += 1
+                        #print("SET UP")
+                        last_sweep = Sweep.UP
+                    
+                    if (prev2_contour.peak_frequency >= prev_contour.peak_frequency) and (prev_contour.peak_frequency >= contour.peak_frequency):
+                        prev_contour.sweep = Sweep.DOWN
+                        sweep_down_count += 1
+                        #print("SET DOWN")
+                        last_sweep = Sweep.DOWN
+                    
+                    if (prev2_contour.peak_frequency == prev_contour.peak_frequency) and (prev_contour.peak_frequency == contour.peak_frequency):
+                        prev_contour.sweep = Sweep.FLAT
+                        sweep_flat_count += 1
+                        #print("SET FLAT")
+                        last_sweep = Sweep.FLAT
+                    
+                    print(prev_contour.sweep)
+                    print()
+            i += 1
+            
+        curr_sweep = Sweep.FLAT
+        prev_sweep = Sweep.FLAT
+        direction = self.contour_rows[1].sweep
+    
+        num_inflections = 0
+        inflection_time_array = []
+        i = 2
+        while i < len(self.contour_rows):
+            contour = self.contour_rows[i]
+            prev_contour = self.contour_rows[i-1]
+            
+            curr_sweep = contour.sweep
+            prev_sweep = prev_contour.sweep
+            
+            if (prev_sweep == Sweep.UP and curr_sweep == Sweep.DOWN):
+                num_sweeps_up_down += 1
+            elif (prev_sweep == Sweep.DOWN and curr_sweep == Sweep.UP):
+                num_sweeps_down_up += 1
+            elif (prev_sweep == Sweep.DOWN and curr_sweep == Sweep.FLAT):
+                num_sweeps_down_flat += 1
+            elif (prev_sweep == Sweep.FLAT and curr_sweep == Sweep.DOWN):
+                num_sweeps_flat_down += 1
+            elif (prev_sweep == Sweep.FLAT and curr_sweep == Sweep.UP):
+                num_sweeps_flat_up += 1
+            elif prev_sweep == Sweep.UP and curr_sweep == Sweep.FLAT:
+                num_sweeps_up_flat += 1
+            i += 1
+
+            
+            if (curr_sweep == Sweep.UP and direction == Sweep.DOWN) or (curr_sweep == Sweep.DOWN and direction == Sweep.UP):
+                direction = curr_sweep
+                num_inflections += 1
+                inflection_time_array.append(contour.time_milliseconds)
+            elif (direction == Sweep.FLAT):
+                direction = curr_sweep
+        
+        count = 0
+
+        inflection_delta_array = []   
+        total_time = 0  
+        if num_inflections > 1:
+            inflection_time_array.sort()
+            small_array = []
+            final_inflection_time = inflection_time_array[-1]
+            while count < len(inflection_time_array)-1:
+                inflection_delta_array.append((inflection_time_array[count+1] - inflection_time_array[count])/1000)
+                total_time += inflection_delta_array[-1]
+                count += 1
+                
+        if count > 1:
+            print("Average",(total_time / count))
+        
+        
+        
+        print("Number of inflections",num_inflections)
+        print(inflection_time_array)
+        print(inflection_delta_array)
+        
+        
         # determine sweep up, down, and flat percentages
         sweep_count = sweep_up_count + sweep_down_count + sweep_flat_count
         selection.freq_sweepuppercent = sweep_up_count / sweep_count
         selection.freq_sweepdownpercent = sweep_down_count / sweep_count
         selection.freq_sweepflatpercent = sweep_flat_count / sweep_count
+        
         
         # assign the two-unit sweep count values from above
         selection.num_sweepsdownflat = num_sweeps_down_flat
@@ -215,13 +364,16 @@ class ContourFile:
         selection.num_sweepsupdown = num_sweeps_up_down
         selection.num_sweepsupflat = num_sweeps_up_flat
         
-        print("Down-Flat:",selection.num_sweepsdownflat)
-        print("Down-Up:",selection.num_sweepsdownup)
-        print("Flat-Down:",selection.num_sweepsflatdown)
-        print("Flat-Up:",selection.num_sweepsflatup)
-        print("Up-Down:",selection.num_sweepsupdown)
-        print("Up-Flat:",selection.num_sweepsupflat)
         
+        
+        
+        print("Down-Flat:",num_sweeps_down_flat)
+        print("Down-Up:",num_sweeps_down_up)
+        print("Flat-Down:",num_sweeps_flat_down)
+        print("Flat-Up:",num_sweeps_flat_up)
+        print("Up-Down:",num_sweeps_up_down)
+        print("Up-Flat:",num_sweeps_up_flat)
+
         print("Sweep up percentage:",sweep_up_count,selection.freq_sweepuppercent)
         print("Sweep down percentage:",sweep_down_count,selection.freq_sweepdownpercent)
         print("Sweep flat percentage",sweep_flat_count,selection.freq_sweepflatpercent)
