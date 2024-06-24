@@ -31,60 +31,39 @@ app.register_blueprint(routes_selection)
 app.register_blueprint(routes_contour)
 app.register_blueprint(routes_auth)
 
-'''
-NOTE: to restrict access to certain routes, add the following to the routes.py file:
-https://stackoverflow.com/questions/67806765/how-can-i-make-specific-routes-accessible-only-for-specific-users-in-flask 
-
-from flask_login import current_user
-# use the suggested pattern to login user then..
-
-@users.route('/add', methods=['GET', 'POST'])
-@login_required
-def add():
-    if not current_user.is_admin:
-        abort(403)
-    # rest of your route
-
-'''
-
-
 @app.route('/favicon.ico')
 def favicon():
+    """For the Web App's favicon"""
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.before_request
 def before_request():
+    """
+    Before each webapp request this function will be called. It will store user information in the `g` object
+    which can then be accessed by the HTML templates.
+    """
     g.user = current_user
-
-def remove_snapshot_date_from_url(url):
-    # Split the URL into base URL and query parameters
-    base_url, params = url.split('?', 1) if '?' in url else (url, '')
-    
-    # Split the query parameters into individual parameters
-    param_list = params.split('&')
-    
-    # Remove the snapshot_date parameter
-    updated_params = [param for param in param_list if not param.startswith('snapshot_date=')]
-    
-    # Reconstruct the URL without the snapshot_date parameter
-    updated_url = base_url + ('?' + '&'.join(updated_params) if updated_params else '')
-    
-    return updated_url
 
 @app.route('/reset-snapshot-in-session-with-link', methods=['POST'])
 def reset_snapshot_in_session_with_link():
+    """
+    Remove the snapshot date from the session, therefore exiting out of archive mode. 
+    After the snapshot date has been removed, redirect the user to a link provided
+    in a form element with the POST request submission, redirect_link.
+    """
     redirect_link = request.form.get('redirect_link')
-    print("I GOT HERE")
     client_session['snapshot_date'] = None
-    return redirect(remove_snapshot_date_from_url(redirect_link))
+    return redirect(redirect_link)
 
-
-
-@app.route('/reset-snapshot-in-session')
+@app.route('/reset-snapshot-in-session', methods=['POST'])
 def reset_snapshot_in_session():
+    """
+    Remove the snapshot date from the session, therefore exiting out of archive mode.
+    Once complete redirect the user back to the page that they were on.
+    """
     client_session['snapshot_date']=None
-    return redirect(remove_snapshot_date_from_url(request.referrer))
+    return redirect(request.referrer)
 
 @app.route('/resources/<path:filename>')
 def serve_resource(filename):
@@ -100,15 +79,18 @@ def serve_style(filename):
     """
     return send_from_directory('static/css', filename)
 
-def get_file_path(relative_path):
-    if relative_path != "":
-        return os.path.join(FILE_SPACE_PATH,relative_path)
-    else:
-        return None
+# def get_file_path(relative_path):
+#     if relative_path != "":
+#         return os.path.join(FILE_SPACE_PATH,relative_path)
+#     else:
+#         return None
 
+# TODO: download folder should no longer be used. Rather a bulk download should
+# collect various individual files and zip them together (not an entire folder)
 @app.route('/download-folder/<path:relative_path>')
 def download_folder(relative_path):
     """
+    DEPRACATED
     Download files from a specified folder and send them as a zip file for download.
     """
     if relative_path != "":
@@ -131,7 +113,7 @@ def download_folder(relative_path):
 @app.route('/download-file/<path:relative_path>')
 def download_file(relative_path):
     """
-    Download a file from the 'uploads' directory and send it for download.
+    Download a file from the FILE_SPACE_PATH.
     """
     if relative_path != "":
         file_path = os.path.join(FILE_SPACE_PATH, relative_path)
@@ -142,11 +124,7 @@ def hello_world():
     """
     Redirect user from root to home directory.
     """
-
     return redirect(url_for('home', user=current_user))
-
-
-
 
 @app.route('/home') 
 @login_required
