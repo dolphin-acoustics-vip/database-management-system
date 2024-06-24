@@ -45,7 +45,27 @@ def before_request():
     """
     g.user = current_user
 
-@app.route('/reset-snapshot-in-session-with-link', methods=['POST'])
+def remove_snapshot_date_from_url(url):
+    """
+    Remove the argument snapshot_date from a url parameter. This works well
+    to exit out of archive mode so that the argument is no longer passed to
+    new requests.
+    """
+    # Split the URL into base URL and query parameters
+    base_url, params = url.split('?', 1) if '?' in url else (url, '')
+    
+    # Split the query parameters into individual parameters
+    param_list = params.split('&')
+    
+    # Remove the snapshot_date parameter
+    updated_params = [param for param in param_list if not param.startswith('snapshot_date=')]
+    
+    # Reconstruct the URL without the snapshot_date parameter
+    updated_url = base_url + ('?' + '&'.join(updated_params) if updated_params else '')
+    
+    return updated_url
+
+@app.route('/reset-snapshot-in-session-with-link', methods=['GET','POST'])
 def reset_snapshot_in_session_with_link():
     """
     Remove the snapshot date from the session, therefore exiting out of archive mode. 
@@ -54,16 +74,16 @@ def reset_snapshot_in_session_with_link():
     """
     redirect_link = request.form.get('redirect_link')
     client_session['snapshot_date'] = None
-    return redirect(redirect_link)
+    return redirect(remove_snapshot_date_from_url(redirect_link))
 
-@app.route('/reset-snapshot-in-session', methods=['POST'])
+@app.route('/reset-snapshot-in-session', methods=['GET','POST'])
 def reset_snapshot_in_session():
     """
     Remove the snapshot date from the session, therefore exiting out of archive mode.
     Once complete redirect the user back to the page that they were on.
     """
     client_session['snapshot_date']=None
-    return redirect(request.referrer)
+    return redirect(remove_snapshot_date_from_url(request.referrer))
 
 @app.route('/resources/<path:filename>')
 def serve_resource(filename):
