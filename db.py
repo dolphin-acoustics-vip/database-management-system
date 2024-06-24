@@ -1,14 +1,11 @@
-import os
-from flask import Flask, session, redirect, render_template
+# Standard library imports
+import os, uuid
+from flask import Flask, session, redirect, render_template, session as client_session, request
 from flask_sqlalchemy import SQLAlchemy
-from flask import session as client_session, request
 from sqlalchemy.orm import joinedload, sessionmaker
 import sqlalchemy
-from flask_login import LoginManager
-import uuid
+from flask_login import LoginManager, login_user, login_required,  current_user, login_manager
 from functools import wraps
-from sqlalchemy import event
-from flask_login import login_user,login_required, current_user, login_manager
 
 
 # Define the file space folder and get the Google API key from a file
@@ -16,6 +13,8 @@ FILE_SPACE_PATH = ''
 if os.path.exists('file_space_path.txt'):
     with open('file_space_path.txt', 'r') as f:
         FILE_SPACE_PATH = f.read()
+
+# TODO: remove
 GOOGLE_API_KEY = ''
 if os.path.exists('google_api_key.txt'):
     with open('google_api_key.txt', 'r') as f:
@@ -38,12 +37,12 @@ def save_snapshot_date_to_session(snapshot_date):
 # Create a Flask app
 app = Flask(__name__)
 
+# TODO: use an actual secret key
 app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
 
 # Configure the database connection using SQLAlchemy and MariaDB
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 
 # Initialize the SQLAlchemy database
 db = SQLAlchemy(session_options={"autoflush": False})
@@ -53,30 +52,23 @@ db.init_app(app)
 with app.app_context():
     engine = db.get_engine()
     Session = sessionmaker(bind=engine, autoflush=False)
-    @event.listens_for(Session, 'before_commit')
-    def before_commit(session):
+    
+    @sqlalchemy.event.listens_for(Session, 'before_commit')
+    def before_commit(session: sessionmaker):
+        """
+        Catch the session.commit command from all areas of the program to add logged in user data to the row(s)
+        being committed in the database. This method will go through all UPDATE and INSERT commands in a 
+        session and will only add user data to the tables that have a column for it.
+        """
+        # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
         for obj in session.dirty.union(session.new):
-            print("CATCHING BEFORE COMMIT",obj.__class__.__name__)
             if obj.__class__.__name__ == 'Recording' or obj.__class__.__name__ == 'Encounter' or obj.__class__.__name__ == 'File' or obj.__class__.__name__ == 'RecordingPlatform' or obj.__class__.__name__ == 'DataSource' or obj.__class__.__name__ == 'Selection' or obj.__class__.__name__ == 'Species':
                 obj.updated_by_id = current_user.id
-            elif obj.__class__.__name__ == 'Selection':
-                print("UPDATING SELECTION",current_user.id)
-                print(obj)
-                obj.updated_by_id = current_user.id
-"""
-def before_commit(session):
-    
-    for obj in session.dirty:
-        print("CATCHING BEFORE COMMIT",obj.__class__.__name__)
-        if obj.__class__.__name__ == 'Recording':
-            obj.updated_by_id = current_user.id
-        elif obj.__class__.__name__ == 'Selection':
-            print("UPDATING SELECTION",current_user.id)
-            print(obj)
-            obj.updated_by_id = current_user.id
-        session.commit()
-        raise Exception()
-"""
+
+
+
+# A number of annotations that can be applied to flask route methods to restrict access to certain
+# user access level permissions.
 
 def exclude_role_1(func):
     @wraps(func)
@@ -115,44 +107,45 @@ def exclude_role_4(func):
     return wrapper 
 
 def require_live_session(func):
+    """
+    An annotation to restrict access to a particular route whenever the user views the program in an 
+    archive mode. This method should be used on all methods which complete INSERT or UPDATE operations
+    on the database, as these must only ever be done in live view.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
+        # If snapshot_date exists in session cookies then the program is in archive mode
         snapshot_date = client_session.get('snapshot_date')
         if not snapshot_date:
             return func(*args, **kwargs)
         else:
             # Redirect to a page indicating unauthorized access
             referrer_url = request.headers.get('Referer')
-            print("REFERER ", referrer_url)
-
             return render_template("require-live-session.html", user=current_user, original_url=request.url, referrer_url=referrer_url)
-
     return wrapper
 
 # Setup user login
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.init_app(app)
-
 @login_manager.user_loader
-def load_user(user_id):
+def load_user(user_id: str):
+    """
+    Retrieve the user relation for the database for a particular user_id. Return value is an 
+    instance of the User class, or None if the user_id is not found.
+    """
     from models import User
-    # since the user_id is just the primary key of our user table, use it in the query for the user
+    # Since the user_id is just the primary key of the user table, use it in the query for the user
     return User.query.get(uuid.UUID(user_id))
 
-
-
-def parse_alchemy_error(error):
+def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError) -> str:
     """
-    Parse SQLAlchemy errors and return a human-readable error messages.
-
-    Parameters:
-    error (sqlalchemy.exc.Error): The SQLAlchemy error to be parsed.
-
-    Returns:
-    A human-readable error message based on the type of SQLAlchemy error.
+    Parse SQLAlchemy errors and return a human-readable message which can be displayed in the UI
+    where necessary. This method can parse database errors such as illegal duplicates, null values,
+    foreign key constraints, operational errors, and programming errors. Where an error is
+    unrecognised, the default sqlalchemy error message is returned with a prefix
     """
-    if isinstance(error, sqlalchemy.exc.IntegrityError):
+    if isinstance(error, sqlalchemy.exc.IntegrityError, sqlalchemy.exc.ProgrammingError, sqlalchemy.exc.OperationalError):
         error_message = str(error)
         if "cannot be null" in error_message:
             column_name = error_message.split("Column '")[1].split("' cannot be null")[0]
