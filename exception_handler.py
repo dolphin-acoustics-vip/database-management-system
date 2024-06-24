@@ -42,14 +42,12 @@ def handle_exception(exception: Exception | str, session=None) -> None:
 
 def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQLAlchemyError) -> None:
     """
-    Handle the SQLAlchemy exception and rollback the session.
+    Parse SQLAlchemy errors and return a human-readable message which can be displayed in the UI
+    where necessary. This method can parse database errors such as illegal duplicates, null values,
+    foreign key constraints, operational errors, and programming errors. Where an error is
+    unrecognised, the default sqlalchemy error message is returned with a prefix.
     
-    Parameters:
-    - session: SQLAlchemy session
-    - sqlAlchemy_exception: SQLAlchemy exception
-    
-    Returns:
-    - string: Parsed error message
+    This method will also roll back the changes in the session.
     """
     if isinstance(sqlAlchemy_exception, sqlalchemy.exc.IntegrityError):
         error_string = parse_alchemy_error(sqlAlchemy_exception)
