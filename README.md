@@ -18,6 +18,8 @@ The Web App has been developed on, and for, a Lunix based system (Debian 12). It
 - All Python libraries in [requirements.txt](requirements.txt)
 - MariaDB 11.3.2 from [here](https://mariadb.org/download/?t=mariadb&p=mariadb&r=11.3.2&os=windows&cpu=x86_64&pkg=msi&mirror=heanet-ltd)
 
+Note: MariaDB version **must** be of the stated version. Tables use the UUID package which is not available in some versions of maria db. See [here](https://mariadb.com/kb/en/installing-mariadb-deb-files/).
+
 ## Project description
 The DBMS was developed to store data with its metadata in a homogenised system that could be easily interacted with by members of the Project (the Team). Certain functionalities of the DBMS include:
 - storage of raw audio recordings (wav)
