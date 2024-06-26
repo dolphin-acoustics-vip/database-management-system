@@ -20,6 +20,8 @@ The Web App has been developed on, and for, a Lunix based system (Debian 12). It
 
 Note: MariaDB version **must** be of the stated version. Tables use the UUID package which is not available in some versions of maria db. See [here](https://mariadb.com/kb/en/installing-mariadb-deb-files/).
 
+Note: mysqlclient must have its dependencies installed before pip3 installing itself. See [here](https://pypi.org/project/mysqlclient/)
+
 ## Project description
 The DBMS was developed to store data with its metadata in a homogenised system that could be easily interacted with by members of the Project (the Team). Certain functionalities of the DBMS include:
 - storage of raw audio recordings (wav)
