@@ -252,48 +252,46 @@ class ContourFile:
         inflection_time_array = []
         
         
-        last_sweep = Sweep.UP
+        last_sweep = Sweep.FLAT
         
+
+
         i = 0
         while i < len(self.contour_rows):
             contour = self.contour_rows[i]
             
-            if i == 0:
-                contour.sweep = last_sweep
-            elif i > 0:
+            if i > 0:
+                
                 prev_contour = self.contour_rows[i-1]
                 prev_contour.sweep = last_sweep
                 if i > 1:
                     # two previous contours
                     prev2_contour = self.contour_rows[i-2]
                     
-                    prev_contour.sweep = last_sweep
                     if (prev2_contour.peak_frequency <= prev_contour.peak_frequency) and (prev_contour.peak_frequency <= contour.peak_frequency):
                         prev_contour.sweep = Sweep.UP
                         sweep_up_count += 1
-                        #print("SET UP")
                         last_sweep = Sweep.UP
                     
                     if (prev2_contour.peak_frequency >= prev_contour.peak_frequency) and (prev_contour.peak_frequency >= contour.peak_frequency):
                         prev_contour.sweep = Sweep.DOWN
                         sweep_down_count += 1
-                        #print("SET DOWN")
                         last_sweep = Sweep.DOWN
                     
                     if (prev2_contour.peak_frequency == prev_contour.peak_frequency) and (prev_contour.peak_frequency == contour.peak_frequency):
                         prev_contour.sweep = Sweep.FLAT
                         sweep_flat_count += 1
-                        #print("SET FLAT")
                         last_sweep = Sweep.FLAT
                     
-                    print(prev_contour.sweep)
-                    print()
             i += 1
             
         curr_sweep = Sweep.FLAT
         prev_sweep = Sweep.FLAT
-        direction = self.contour_rows[1].sweep
+        direction = self.contour_rows[0].sweep
     
+        for i,contour in enumerate(self.contour_rows):
+            print(i+1,contour.sweep, contour.time_milliseconds)
+
         num_inflections = 0
         inflection_time_array = []
         i = 2
@@ -318,7 +316,7 @@ class ContourFile:
                 num_sweeps_up_flat += 1
             i += 1
 
-            
+            if curr_sweep == None: curr_sweep = Sweep.DOWN
             if (curr_sweep == Sweep.UP and direction == Sweep.DOWN) or (curr_sweep == Sweep.DOWN and direction == Sweep.UP):
                 direction = curr_sweep
                 num_inflections += 1
@@ -335,7 +333,7 @@ class ContourFile:
             small_array = []
             final_inflection_time = inflection_time_array[-1]
             while count < len(inflection_time_array)-1:
-                inflection_delta_array.append((inflection_time_array[count+1] - inflection_time_array[count])/1000)
+                inflection_delta_array.append((inflection_time_array[count+1] - inflection_time_array[count]))
                 total_time += inflection_delta_array[-1]
                 count += 1
                 
