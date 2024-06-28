@@ -174,10 +174,35 @@ class ContourFile:
         curr_sweep = Sweep.FLAT
         prev_sweep = Sweep.FLAT
 
+        dc_quarter_sum = 0
+        dc_quarter_count = 0
 
         i = 0
         while i < len(self.contour_rows):
             contour = self.contour_rows[i]
+            
+            # Calculating the quarter means of the duty cycle. For example, the 
+            # quarter1mean is the mean of the first quarter of the duty cycles 
+            # in the contour
+            dc_quarter_sum += contour.duty_cycle
+            dc_quarter_count += 1
+            if i == len(self.contour_rows) // 4:
+                selection.dc_quarter1mean = dc_quarter_sum / dc_quarter_count
+                dc_quarter_sum = 0
+                dc_quarter_count = 0
+            if i == len(self.contour_rows) // 2:
+                selection.dc_quarter2mean = dc_quarter_sum / dc_quarter_count
+                dc_quarter_sum = 0
+                dc_quarter_count = 0
+            if i == 3 * len(self.contour_rows) // 4:
+                selection.dc_quarter3mean = dc_quarter_sum / dc_quarter_count
+                dc_quarter_sum = 0
+                dc_quarter_count = 0
+            if i == len(self.contour_rows) - 1:
+                selection.dc_quarter4mean = dc_quarter_sum / dc_quarter_count
+                dc_quarter_sum = 0
+                dc_quarter_count = 0
+
             
             # Calculate the Sweep for each row in the contour (except for the first and last).
             # Sweep is calculated by looking at the slope of the previous and next rows. If either
@@ -259,6 +284,7 @@ class ContourFile:
 
 
             i += 1
+        
 
 
         
@@ -362,6 +388,26 @@ class ContourFile:
         print("Mean negative slope: ", selection.freq_negslopemean)
         ### frequency statistics ###
         
+        selection.dc_mean = pd.Series([row.duty_cycle for row in self.contour_rows]).mean()
+        selection.dc_standarddeviation = pd.Series([row.duty_cycle for row in self.contour_rows]).std()
+
+
+        num_points = len(self.contour_rows)
+        dc_quarter_sum = [0.0, 0.0, 0.0, 0.0]
+        dc_quarter_count = [0, 0, 0, 0]
+
+        dc_quarter1mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if i < num_points // 4) / (num_points // 4)
+        dc_quarter2mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if num_points // 4 <= i < num_points // 2) / (num_points // 4)
+        dc_quarter3mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if num_points // 2 <= i < 3 * num_points // 4) / (num_points // 4)
+        dc_quarter4mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if 3 * num_points // 4 <= i < num_points) / (num_points // 4)
+
+        print("Mean duty cycle: ", selection.dc_mean)
+        print("Standard deviation: ", selection.dc_standarddeviation)
+        print("Quarter 1 mean: ", selection.dc_quarter1mean)
+        print("Quarter 2 mean: ", selection.dc_quarter2mean)
+        print("Quarter 3 mean: ", selection.dc_quarter3mean)
+        print("Quarter 4 mean: ", selection.dc_quarter4mean)
+
         # maximum frequency is the maximum peak_frequency in the contour_rows
         selection.freq_max = max(self.contour_rows, key=lambda x: x.peak_frequency).peak_frequency
         # minimum frequency is the minimum peak_frequency in the contour_rows

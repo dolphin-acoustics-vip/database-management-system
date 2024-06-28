@@ -6,8 +6,8 @@ class Selection:
     freq_begin: float # DONE
     freq_end: float # DONE
     freq_range: float # DONE
-    dc_mean: float
-    dc_standarddeviation: float
+    dc_mean: float # DONE
+    dc_standarddeviation: float # DONE
     freq_mean: float # DONE
     freq_standarddeviation: float # DONE
     freq_median: float # DONE
@@ -19,10 +19,10 @@ class Selection:
     freq_quarter2: float # DONE
     freq_quarter3: float # DONE
     freq_spread: float # DONE
-    dc_quarter1mean: float
-    dc_quarter2mean: float
-    dc_quarter3mean: float
-    dc_quarter4mean: float
+    dc_quarter1mean: float # DONE
+    dc_quarter2mean: float # DONE
+    dc_quarter3mean: float # DONE
+    dc_quarter4mean: float # DONE
     freq_cofm: float
     freq_stepup: int # DONE
     freq_stepdown: int # DONE
@@ -35,7 +35,7 @@ class Selection:
     freq_begsweep: int # DONE
     freq_begup: int # DONE
     freq_begdown: int # DONE
-    freq_endsweep: int # DONE - DISREP
+    freq_endsweep: int # DONE
     freq_endup: int # DONE
     freq_enddown: int # DONE
     num_sweepsupdown: int # DONE
