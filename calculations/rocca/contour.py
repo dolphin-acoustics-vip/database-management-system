@@ -248,7 +248,7 @@ class ContourFile:
         sweep_down_count = 0
         sweep_flat_count = 0
         num_inflections = 0
-        inflection_diff_array = []
+        inflection_delta_array = []
         inflection_time_array = []
         
         
@@ -256,6 +256,7 @@ class ContourFile:
         
         curr_sweep = Sweep.FLAT
         prev_sweep = Sweep.FLAT
+
 
         i = 0
         while i < len(self.contour_rows):
@@ -312,48 +313,32 @@ class ContourFile:
                 elif prev_sweep == Sweep.UP and curr_sweep == Sweep.FLAT:
                     num_sweeps_up_flat += 1
             
+            # Calculate the inflection characteristics. This involves comparing
+            # the current sweep of a row to the previous row's sweep, and determining
+            # whether the characteristic breaks an upward or a downward trend. This
+            # trend is stored in the direction variable, and only changes in the case
+            # of an UP-DOWN or DOWN-UP trend. The calculation is only started at i=2
+            # as the first sweep variable is meant simply to set the direction (at i=1).
+            if i == 1:
+                direction = self.contour_rows[1].sweep
+            elif i > 1:
+                if curr_sweep == None: curr_sweep = Sweep.DOWN
+                if (curr_sweep == Sweep.UP and direction == Sweep.DOWN) or (curr_sweep == Sweep.DOWN and direction == Sweep.UP):
+                    direction = curr_sweep
+                    num_inflections += 1
+                    inflection_time_array.append(contour.time_milliseconds)
+
+                    # Store the difference of the newly calculated inflection time with that of the previous inflection time
+                    # if it exists in a new array. 
+                    if num_inflections > 1:
+                        inflection_delta_array.append((inflection_time_array[-1] - inflection_time_array[-2])/1000)
+                elif (direction == Sweep.FLAT):
+                    direction = curr_sweep
+
+
             i += 1
 
 
-            
-        curr_sweep = Sweep.FLAT
-        prev_sweep = Sweep.FLAT
-        direction = self.contour_rows[1].sweep
-    
-        num_inflections = 0
-        inflection_time_array = []
-        i = 2
-        while i < len(self.contour_rows):
-            contour = self.contour_rows[i]
-            prev_contour = self.contour_rows[i-1]
-
-            i += 1
-
-            if curr_sweep == None: curr_sweep = Sweep.DOWN
-            if (curr_sweep == Sweep.UP and direction == Sweep.DOWN) or (curr_sweep == Sweep.DOWN and direction == Sweep.UP):
-                direction = curr_sweep
-                num_inflections += 1
-                inflection_time_array.append(contour.time_milliseconds)
-            elif (direction == Sweep.FLAT):
-                direction = curr_sweep
-        
-        count = 0
-
-        inflection_delta_array = []   
-        total_time = 0  
-        if num_inflections > 1:
-            inflection_time_array.sort()
-            small_array = []
-            final_inflection_time = inflection_time_array[-1]
-            while count < len(inflection_time_array)-1:
-                inflection_delta_array.append((inflection_time_array[count+1] - inflection_time_array[count]))
-                total_time += inflection_delta_array[-1]
-                count += 1
-                
-        if count > 1:
-            print("Average",(total_time / count))
-        
-        
         
         print("Number of inflections",num_inflections)
         print(inflection_time_array)
