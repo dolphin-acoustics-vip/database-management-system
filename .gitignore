@@ -2,6 +2,7 @@
 /webapp/
 /trash/
 /venv/
+/calculations/rocca/test_data/*
 /filespace/
 /routes/__pycache__/
 __pycache__/
