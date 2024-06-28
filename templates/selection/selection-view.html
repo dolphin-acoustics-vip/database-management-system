@@ -117,6 +117,20 @@
         {% endif %}
         <hr>
 
+        <table>
+            <tr><td>Selection Number</td></tr>
+            <tr><td>{{ selection_dict.selection_number }}</td></tr>
+            <tr>
+                <th>Attribute</th>
+                <th>Value</th>
+            </tr>
+            {% for attr_name, attr_value in selection_dict.items() %}
+                <tr>
+                    <td>{{ attr_name }}</td>
+                    <td>{{ attr_value }}</td>
+                </tr>
+            {% endfor %}
+        </table>
 
     </div>
 

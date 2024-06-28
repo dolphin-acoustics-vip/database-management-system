@@ -9,7 +9,10 @@ import uuid
 from functools import wraps
 from sqlalchemy import event
 from flask_login import login_user,login_required, current_user, login_manager
+from jinja2 import Environment
 
+env = Environment()
+env.globals['getattr'] = getattr
 
 # Define the file space folder and get the Google API key from a file
 FILE_SPACE_PATH = ''

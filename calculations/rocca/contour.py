@@ -18,7 +18,6 @@
 # third party libraries
 import pandas as pd
 import os
-from selection_test import Selection
 from enum import Enum
 
 class Slope(Enum):
@@ -69,15 +68,17 @@ class ContourDataUnit:
 class ContourFile:
     contour_rows = []
     
-    def __init__(self, file=None):
-        if file: self.insert_from_file(file)
+    def __init__(self, file_path=None):
+        if file_path: self.insert_from_file(file_path)
 
-    def insert_from_file(self, file):        
-        extension = os.path.splitext(file.name)[1].lower()
+    def insert_from_file(self, file_path):   
+             
+        extension = os.path.splitext(file_path)[-1].lower()
+        print(file_path, extension)
         if extension == '.csv':
-            df = pd.read_csv(file)
+            df = pd.read_csv(file_path)
         elif extension == '.xlsx':
-            df = pd.read_excel(file)
+            df = pd.read_excel(file_path)
         else:
             raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
         
@@ -102,7 +103,7 @@ class ContourFile:
         for index, row in df.iterrows():
             self.contour_rows.append(ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
 
-    def calculate_statistics(self, selection: Selection):
+    def calculate_statistics(self, selection):
         """
         Calculate contour statistics using the data in contour_rows. The contour stats
         are stored in the selection object (in the Database).
@@ -310,7 +311,11 @@ class ContourFile:
             selection.inflection_mindelta = inflection_delta_array[0]
             selection.inflection_maxmindelta = selection.inflection_maxdelta / selection.inflection_mindelta
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
-            selection.inflection_standarddeviationdelta = pd.Series(inflection_delta_array).std()
+
+            if len(inflection_delta_array) > 1:
+                selection.inflection_standarddeviationdelta = pd.Series(inflection_delta_array).std()
+            else:
+                selection.inflection_standarddeviationdelta = 0
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
             selection.inflection_mediandelta = pd.Series(inflection_delta_array).median()
         else:
@@ -319,6 +324,7 @@ class ContourFile:
             selection.inflection_maxmindelta = 0
             selection.inflection_meandelta = 0
             selection.inflection_standarddeviationdelta = 0
+
             selection.inflection_mediandelta = 0
             selection.inflection_duration = 0
         selection.inflection_duration = num_inflections/selection.duration
@@ -351,15 +357,15 @@ class ContourFile:
         # skipping the first row as the slope will always be zero
         beg_slope_avg = (self.contour_rows[1].slope + self.contour_rows[2].slope + self.contour_rows[3].slope)/3
         if beg_slope_avg > 0:
-            selection.freq_begsweep = Slope.UP
+            selection.freq_begsweep = Slope.UP.value
             selection.freq_begup = True
             selection.freq_begdown = False
         elif beg_slope_avg < 0:
-            selection.freq_begsweep = Slope.DOWN
+            selection.freq_begsweep = Slope.DOWN.value
             selection.freq_begup = False
             selection.freq_begdown = True
         else:
-            selection.freq_begsweep = Slope.FLAT
+            selection.freq_begsweep = Slope.FLAT.value
             selection.freq_begup = False
             selection.freq_begdown = False
         
@@ -369,15 +375,15 @@ class ContourFile:
         # end_slope_avg = (self.contour_rows[-1].slope + self.contour_rows[-2].slope + self.contour_rows[-3].slope)/3
         end_slope_avg = (self.contour_rows[-4].slope + self.contour_rows[-3].slope + self.contour_rows[-2].slope)/3
         if end_slope_avg > 0:
-            selection.freq_endsweep = Slope.UP
+            selection.freq_endsweep = Slope.UP.value
             selection.freq_endup = True
             selection.freq_enddown = False
         elif end_slope_avg < 0:
-            selection.freq_endsweep = Slope.DOWN
+            selection.freq_endsweep = Slope.DOWN.value
             selection.freq_endup = False
             selection.freq_enddown = True
         else:
-            selection.freq_endsweep = Slope.FLAT
+            selection.freq_endsweep = Slope.FLAT.value
             selection.freq_endup = False
             selection.freq_enddown = False
         
@@ -433,3 +439,5 @@ class ContourFile:
         for i in range(6, num_points, 3):
             freq_cofm += abs(self.contour_rows[i].peak_frequency - self.contour_rows[i - 3].peak_frequency)
         selection.freq_cofm = freq_cofm / 1000
+
+        selection.num_inflections = num_inflections

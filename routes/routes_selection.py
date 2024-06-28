@@ -82,9 +82,12 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
         if "File already exists" in str(e):
             raise IOError (f"Contour {selection_id} for this recording already exists in the database.")
         raise e
-    new_file.set_uploaded_date(datetime.now())
-    new_file.set_uploaded_by("User 1")
     selection_obj.contour_file = new_file
+
+    import calculations.rocca.contour as contour_code
+    contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
+    contour_file_obj.calculate_statistics(selection_obj)
+
     session.add(new_file)
     return selection_obj
 
@@ -339,5 +342,62 @@ def selection_view(selection_id):
         selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
         selection_history = shared_functions.create_all_time_request(session, Selection, filters={"id":selection_id}, order_by="row_start")
 
-        
-        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history)
+        selection_dict = {
+            'freq_max': selection.freq_max,
+            'freq_min': selection.freq_min,
+            'duration': selection.duration,
+            'freq_begin': selection.freq_begin,
+            'freq_end': selection.freq_end,
+            'freq_range': selection.freq_range,
+            'dc_mean': selection.dc_mean,
+            'dc_standarddeviation': selection.dc_standarddeviation,
+            'freq_mean': selection.freq_mean,
+            'freq_standarddeviation': selection.freq_standarddeviation,
+            'freq_median': selection.freq_median,
+            'freq_center': selection.freq_center,
+            'freq_relbw': selection.freq_relbw,
+            'freq_maxminratio': selection.freq_maxminratio,
+            'freq_begendratio': selection.freq_begendratio,
+            'freq_quarter1': selection.freq_quarter1,
+            'freq_quarter2': selection.freq_quarter2,
+            'freq_quarter3': selection.freq_quarter3,
+            'freq_spread': selection.freq_spread,
+            'dc_quarter1mean': selection.dc_quarter1mean,
+            'dc_quarter2mean': selection.dc_quarter2mean,
+            'dc_quarter3mean': selection.dc_quarter3mean,
+            'dc_quarter4mean': selection.dc_quarter4mean,
+            'freq_cofm': selection.freq_cofm,
+            'freq_stepup': selection.freq_stepup,
+            'freq_stepdown': selection.freq_stepdown,
+            'freq_numsteps': selection.freq_numsteps,
+            'freq_slopemean': selection.freq_slopemean,
+            'freq_absslopemean': selection.freq_absslopemean,
+            'freq_posslopemean': selection.freq_posslopemean,
+            'freq_negslopemean': selection.freq_negslopemean,
+            'freq_sloperatio': selection.freq_sloperatio,
+            'freq_begsweep': selection.freq_begsweep,
+            'freq_begup': selection.freq_begup,
+            'freq_begdown': selection.freq_begdown,
+            'freq_endsweep': selection.freq_endsweep,
+            'freq_endup': selection.freq_endup,
+            'freq_enddown': selection.freq_enddown,
+            'num_sweepsupdown': selection.num_sweepsupdown,
+            'num_sweepsdownup': selection.num_sweepsdownup,
+            'num_sweepsupflat': selection.num_sweepsupflat,
+            'num_sweepsdownflat': selection.num_sweepsdownflat,
+            'num_sweepsflatup': selection.num_sweepsflatup,
+            'num_sweepsflatdown': selection.num_sweepsflatdown,
+            'freq_sweepuppercent': selection.freq_sweepuppercent,
+            'freq_sweepdownpercent': selection.freq_sweepdownpercent,
+            'freq_sweepflatpercent': selection.freq_sweepflatpercent,
+            'num_inflections': selection.num_inflections,
+            'inflection_maxdelta': selection.inflection_maxdelta,
+            'inflection_mindelta': selection.inflection_mindelta,
+            'inflection_maxmindelta': selection.inflection_maxmindelta,
+            'inflection_meandelta': selection.inflection_meandelta,
+            'inflection_standarddeviationdelta': selection.inflection_standarddeviationdelta,
+            'inflection_mediandelta': selection.inflection_mediandelta,
+            'inflection_duration': selection.inflection_duration,
+            'step_duration': selection.step_duration,
+            }
+        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict)
