@@ -169,6 +169,9 @@ class ContourFile:
         inflection_time_array = []
         
         
+        selection.duration = (self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds)/1000
+        print("Duration: ", selection.duration)
+
         last_sweep = Sweep.FLAT
         
         curr_sweep = Sweep.FLAT

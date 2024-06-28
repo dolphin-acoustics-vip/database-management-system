@@ -2,7 +2,7 @@ class Selection:
 
     freq_max: float # DONE
     freq_min: float # DONE
-    duration: float
+    duration: float # DONE
     freq_begin: float # DONE
     freq_end: float # DONE
     freq_range: float # DONE
