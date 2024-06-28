@@ -56,22 +56,6 @@ class Selection:
     inflection_standarddeviationdelta: float # DONE
     inflection_duration: float # DONE
     step_duration: float # DONE
-    freq_peak: float
-    bw3db: float
-    bw3dblow: float
-    bw3dbhigh: float
-    bw10db: float
-    bw10dblow: float
-    bw10dbhigh: float
-    rms_signal: float
-    rms_noise: float
-    snr: float
-    num_crossings: int
-    sweep_rate: float
-    mean_timezc: float
-    median_timezc: float
-    variance_timezc: float
-    whale_train: int
 
     def __init__(self):
         pass

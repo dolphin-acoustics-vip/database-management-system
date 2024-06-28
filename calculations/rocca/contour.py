@@ -110,16 +110,11 @@ class ContourFile:
         Args:
             selection (Selection): The selection object to store the contour statistics in.
         """
-        from decimal import Decimal
 
-        import numpy as np
-        
+
         num_points = len(self.contour_rows)
-              
                 
-        # create arrays of all times and frequencies as well as their differences
-        times = [row.time_seconds() for row in self.contour_rows]
-        frequencies = [row.peak_frequency for row in self.contour_rows]
+        self.contour_rows.sort(key=lambda row: row.time_milliseconds)
 
         slope_sum = 0
         slope_abs_sum = 0
@@ -163,16 +158,14 @@ class ContourFile:
 
             contour.slope = slope
         
-       
+        selection.duration = (self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds)/1000
+
         
         
-        num_sweeps_up = 0
         num_sweeps_up_flat = 0
         num_sweeps_up_down = 0
-        num_sweeps_down = 0
         num_sweeps_down_flat = 0
         num_sweeps_down_up = 0
-        num_sweeps_flat = 0
         num_sweeps_flat_down = 0
         num_sweeps_flat_up = 0
         sweep_up_count = 0
@@ -182,20 +175,13 @@ class ContourFile:
         inflection_delta_array = []
         inflection_time_array = []
         
-        
-        selection.duration = (self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds)/1000
-        print("Duration: ", selection.duration)
-
+        # variables referenced and modified during the loop below
         last_sweep = Sweep.FLAT
-        
-        curr_sweep = Sweep.FLAT
-        prev_sweep = Sweep.FLAT
-
         dc_quarter_sum = 0
         dc_quarter_count = 0
 
         i = 0
-        while i < len(self.contour_rows):
+        while i < num_points:
             contour = self.contour_rows[i]
             
             # Calculating the quarter means of the duty cycle. For example, the 
@@ -203,19 +189,19 @@ class ContourFile:
             # in the contour
             dc_quarter_sum += contour.duty_cycle
             dc_quarter_count += 1
-            if i == len(self.contour_rows) // 4:
+            if i == num_points // 4:
                 selection.dc_quarter1mean = dc_quarter_sum / dc_quarter_count
                 dc_quarter_sum = 0
                 dc_quarter_count = 0
-            if i == len(self.contour_rows) // 2:
+            if i == num_points // 2:
                 selection.dc_quarter2mean = dc_quarter_sum / dc_quarter_count
                 dc_quarter_sum = 0
                 dc_quarter_count = 0
-            if i == 3 * len(self.contour_rows) // 4:
+            if i == 3 * num_points // 4:
                 selection.dc_quarter3mean = dc_quarter_sum / dc_quarter_count
                 dc_quarter_sum = 0
                 dc_quarter_count = 0
-            if i == len(self.contour_rows) - 1:
+            if i == num_points - 1:
                 selection.dc_quarter4mean = dc_quarter_sum / dc_quarter_count
                 dc_quarter_sum = 0
                 dc_quarter_count = 0
@@ -243,7 +229,7 @@ class ContourFile:
             # If both slopes are equal, the sweep is marked as FLAT. As this calculation loops
             # through through all rows, the first and last must be left as None (i.e. not given
             # a sweep) as they are the start and end of the contour.
-            if i > 0 and i < len(self.contour_rows) - 1:
+            if i > 0 and i < num_points - 1:
                 
                 prev_contour = self.contour_rows[i-1]
                 next_contour = self.contour_rows[i+1]
@@ -270,7 +256,7 @@ class ContourFile:
             # whether the characteristic resembles UP-DOWN, DOWN-UP, DOWN-FLAT, FLAT-DOWN,
             # FLAT-UP, or UP-FLAT. This calculation merely increments counters for each
             # of the aforementioned.
-            if i > 1 and i < len(self.contour_rows):
+            if i > 1 and i < num_points:
                 curr_sweep = contour.sweep
                 prev_sweep = self.contour_rows[i-1].sweep
 
@@ -336,20 +322,6 @@ class ContourFile:
             selection.inflection_mediandelta = 0
             selection.inflection_duration = 0
         selection.inflection_duration = num_inflections/selection.duration
-
-        print("Inflection Delta Array", inflection_delta_array)
-        print("Inflection max delta:", selection.inflection_maxdelta)
-        print("Inflection min delta:", selection.inflection_mindelta)
-        print("Inflection max min delta:", selection.inflection_maxmindelta)
-        print("Inflection mean delta:", selection.inflection_meandelta) 
-        print("Inflection median delta:", selection.inflection_mediandelta)
-        print("Inflection duration:", selection.inflection_duration)
-
-        
-        print("Number of inflections",num_inflections)
-        print(inflection_time_array)
-        print(inflection_delta_array)
-        
         
         # determine sweep up, down, and flat percentages
         sweep_count = sweep_up_count + sweep_down_count + sweep_flat_count
@@ -365,20 +337,6 @@ class ContourFile:
         selection.num_sweepsflatup = num_sweeps_flat_up
         selection.num_sweepsupdown = num_sweeps_up_down
         selection.num_sweepsupflat = num_sweeps_up_flat
-        
-        
-        
-        
-        print("Down-Flat:",num_sweeps_down_flat)
-        print("Down-Up:",num_sweeps_down_up)
-        print("Flat-Down:",num_sweeps_flat_down)
-        print("Flat-Up:",num_sweeps_flat_up)
-        print("Up-Down:",num_sweeps_up_down)
-        print("Up-Flat:",num_sweeps_up_flat)
-
-        print("Sweep up percentage:",sweep_up_count,selection.freq_sweepuppercent)
-        print("Sweep down percentage:",sweep_down_count,selection.freq_sweepdownpercent)
-        print("Sweep flat percentage",sweep_flat_count,selection.freq_sweepflatpercent)
         
         if slope_pos_counter > 0:
             selection.freq_posslopemean = (slope_pos_sum / slope_pos_counter)*1000
@@ -423,48 +381,14 @@ class ContourFile:
             selection.freq_endup = False
             selection.freq_enddown = False
         
-        
-        
-        
-        
-        print("Begin sweep: ", selection.freq_begsweep)
-        print("Begin up", selection.freq_begup)
-        print("Begin down", selection.freq_begdown)
-        
-        print("End sweep:", selection.freq_endsweep)
-        print("End up:", selection.freq_endup)
-        print("End down", selection.freq_enddown)
-        
         # duration is the difference between the first and last times
-        selection.duration = times[-1] - times[0]
+        selection.duration = self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds
 
-        
-            
-        print("Mean slope: ", selection.freq_slopemean)
-        print("Mean absolute slope: ", selection.freq_absslopemean)
-        print("Mean positive slope: ", selection.freq_posslopemean)
-        print("Mean negative slope: ", selection.freq_negslopemean)
-        ### frequency statistics ###
-        
         selection.dc_mean = pd.Series([row.duty_cycle for row in self.contour_rows]).mean()
         selection.dc_standarddeviation = pd.Series([row.duty_cycle for row in self.contour_rows]).std()
 
-
-        num_points = len(self.contour_rows)
         dc_quarter_sum = [0.0, 0.0, 0.0, 0.0]
         dc_quarter_count = [0, 0, 0, 0]
-
-        dc_quarter1mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if i < num_points // 4) / (num_points // 4)
-        dc_quarter2mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if num_points // 4 <= i < num_points // 2) / (num_points // 4)
-        dc_quarter3mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if num_points // 2 <= i < 3 * num_points // 4) / (num_points // 4)
-        dc_quarter4mean = sum(row.duty_cycle for i, row in enumerate(self.contour_rows) if 3 * num_points // 4 <= i < num_points) / (num_points // 4)
-
-        print("Mean duty cycle: ", selection.dc_mean)
-        print("Standard deviation: ", selection.dc_standarddeviation)
-        print("Quarter 1 mean: ", selection.dc_quarter1mean)
-        print("Quarter 2 mean: ", selection.dc_quarter2mean)
-        print("Quarter 3 mean: ", selection.dc_quarter3mean)
-        print("Quarter 4 mean: ", selection.dc_quarter4mean)
 
         # maximum frequency is the maximum peak_frequency in the contour_rows
         selection.freq_max = max(self.contour_rows, key=lambda x: x.peak_frequency).peak_frequency
@@ -496,55 +420,16 @@ class ContourFile:
         selection.freq_quarter2 = self.contour_rows[int(num_points/2)].peak_frequency
         # frequency quarter 3 is the peak_frequency at three quarters of the duration
         selection.freq_quarter3 = self.contour_rows[3*int(num_points/4)].peak_frequency
-        ## UNUSED - calculating percentiles for the frequency
-        freq_quartile1 = pd.Series([row.peak_frequency for row in self.contour_rows]).quantile(0.25)
-        freq_quartile2 = pd.Series([row.peak_frequency for row in self.contour_rows]).quantile(0.5)
-        freq_quartile3 = pd.Series([row.peak_frequency for row in self.contour_rows]).quantile(0.75)
         # frequency spread is the difference between the third and first quartiles
-        selection.freq_spread = freq_quartile3 - freq_quartile1
+        selection.freq_spread = pd.Series([row.peak_frequency for row in self.contour_rows]).quantile(0.75) - pd.Series([row.peak_frequency for row in self.contour_rows]).quantile(0.25)
         
-        frequencies = [row.peak_frequency for row in self.contour_rows]
-        
-        #selection.freq_stepup = sum(frequencies[i] < frequencies[i+1] for i in range(len(frequencies)-1))
-        #selection.freq_stepdown = sum(frequencies[i] > frequencies[i+1] for i in range(len(frequencies)-1))
+        # step calculations (freq_stepup and freq_stepdown are incremented during the loop above)
         selection.freq_numsteps = freq_stepup + freq_stepdown
-
         selection.freq_stepup = freq_stepup
         selection.freq_stepdown = freq_stepdown
-
-        selection.step_duration = selection.freq_numsteps / selection.duration
-
-        print("Step duration: ", selection.step_duration)
-       
+        selection.step_duration = selection.freq_numsteps / selection.duration       
 
         freq_cofm = 0.0
         for i in range(6, num_points, 3):
             freq_cofm += abs(self.contour_rows[i].peak_frequency - self.contour_rows[i - 3].peak_frequency)
         selection.freq_cofm = freq_cofm / 1000
-
-        print("COFM: ", selection.freq_cofm)
-        
-
-        
-        print("Frequency statistics calculated.")
-        print("Frequency max:", selection.freq_max)
-        print("Frequency min:", selection.freq_min)
-        print("Frequency range:", selection.freq_range)
-        print("Frequency median:", selection.freq_median)
-        print("Frequency center:", selection.freq_center)
-        print("Frequency relative bandwidth:", selection.freq_relbw)
-        print("Frequency max-min ratio:", selection.freq_maxminratio)
-        print("Frequency beginning:", selection.freq_begin)
-        print("Frequency ending:", selection.freq_end)
-        print("Frequency beginning/ending ratio:", selection.freq_begendratio)
-        print("Frequency mean:", selection.freq_mean)
-        print("Frequency standard deviation:", selection.freq_standarddeviation)
-        print("Frequency quartiles:", selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3)
-        print("Frequency spread:", selection.freq_spread)
-        print("Frequency step up:", selection.freq_stepup)
-        print("Frequency step down:", selection.freq_stepdown)
-        
-        
-        
-        
-        
