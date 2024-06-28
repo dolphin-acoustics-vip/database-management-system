@@ -288,7 +288,33 @@ class ContourFile:
 
             i += 1
         
+        # Inflection delta array calculations
+        if num_inflections > 0:
+            inflection_delta_array.sort()
+            selection.inflection_maxdelta = inflection_delta_array[-1]
+            selection.inflection_mindelta = inflection_delta_array[0]
+            selection.inflection_maxmindelta = selection.inflection_maxdelta / selection.inflection_mindelta
+            selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
+            selection.inflection_standarddeviationdelta = pd.Series(inflection_delta_array).std()
+            selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
+            selection.inflection_mediandelta = pd.Series(inflection_delta_array).median()
+        else:
+            selection.inflection_maxdelta = 0
+            selection.inflection_mindelta = 0
+            selection.inflection_maxmindelta = 0
+            selection.inflection_meandelta = 0
+            selection.inflection_standarddeviationdelta = 0
+            selection.inflection_mediandelta = 0
+            selection.inflection_duration = 0
+        selection.inflection_duration = num_inflections/selection.duration
 
+        print("Inflection Delta Array", inflection_delta_array)
+        print("Inflection max delta:", selection.inflection_maxdelta)
+        print("Inflection min delta:", selection.inflection_mindelta)
+        print("Inflection max min delta:", selection.inflection_maxmindelta)
+        print("Inflection mean delta:", selection.inflection_meandelta) 
+        print("Inflection median delta:", selection.inflection_mediandelta)
+        print("Inflection duration:", selection.inflection_duration)
 
         
         print("Number of inflections",num_inflections)
@@ -453,8 +479,18 @@ class ContourFile:
         selection.freq_stepup = sum(frequencies[i] < frequencies[i+1] for i in range(len(frequencies)-1))
         selection.freq_stepdown = sum(frequencies[i] > frequencies[i+1] for i in range(len(frequencies)-1))
         selection.freq_numsteps = selection.freq_stepup + selection.freq_stepdown
+
+        selection.step_duration = selection.freq_numsteps / selection.duration
+
+        print("Step duration: ", selection.step_duration)
        
-       
+
+        freq_cofm = 0.0
+        for i in range(6, num_points, 3):
+            freq_cofm += abs(self.contour_rows[i].peak_frequency - self.contour_rows[i - 3].peak_frequency)
+        selection.freq_cofm = freq_cofm / 1000
+
+        print("COFM: ", selection.freq_cofm)
         
 
         

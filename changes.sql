@@ -287,6 +287,7 @@ CREATE TABLE `selection` (
   `inflection_maxmindelta` float DEFAULT NULL,
   `inflection_meandelta` float DEFAULT NULL,
   `inflection_standarddeviationdelta` float DEFAULT NULL,
+  `inflection_mediandelta` float DEFAULT NULL,
   `inflection_duration` float DEFAULT NULL,
   `step_duration` float DEFAULT NULL,
   `freq_peak` float DEFAULT NULL,

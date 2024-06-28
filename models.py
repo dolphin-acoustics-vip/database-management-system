@@ -677,6 +677,7 @@ class Selection(db.Model):
     inflection_maxdelta = db.Column(db.Float, nullable=True, default=None)
     inflection_mindelta = db.Column(db.Float, nullable=True, default=None)
     inflection_maxmindelta = db.Column(db.Float, nullable=True, default=None)
+    inflection_mediandelta = db.Column(db.Float, nullable=True, default=None)
     inflection_meandelta = db.Column(db.Float, nullable=True, default=None)
     inflection_standarddeviationdelta = db.Column(db.Float, nullable=True, default=None)
     inflection_duration = db.Column(db.Float, nullable=True, default=None)

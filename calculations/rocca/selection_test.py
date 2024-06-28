@@ -48,13 +48,14 @@ class Selection:
     freq_sweepdownpercent: float # DONE
     freq_sweepflatpercent: float # DONE
     num_inflections: int # DONE
-    inflection_maxdelta: float
-    inflection_mindelta: float
-    inflection_maxmindelta: float
-    inflection_meandelta: float
-    inflection_standarddeviationdelta: float
-    inflection_duration: float
-    step_duration: float
+    inflection_maxdelta: float # DONE
+    inflection_mindelta: float # DONE
+    inflection_maxmindelta: float # DONE
+    inflection_meandelta: float # DONE
+    inflection_mediandelta: float # DONE
+    inflection_standarddeviationdelta: float # DONE
+    inflection_duration: float # DONE
+    step_duration: float # DONE
     freq_peak: float
     bw3db: float
     bw3dblow: float
