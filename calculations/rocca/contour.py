@@ -22,14 +22,20 @@ from selection_test import Selection
 from enum import Enum
 
 class Slope(Enum):
-    DOWN=-1
-    FLAT=0
-    UP=1
+    DOWN=0
+    FLAT=1
+    UP=2
     
 class Sweep(Enum):
-    DOWN=-1
-    FLAT=0
-    UP=1
+    DOWN=0
+    FLAT=1
+    UP=2
+
+class Step(Enum):
+    DOWN=0
+    FLAT=1
+    UP=2
+
 class ContourDataUnit:
 
     
@@ -40,9 +46,9 @@ class ContourDataUnit:
     window_RMS: float
     
     # calculated values
-    sweep = None                      # upsweep=1, downsweep=-1, horiz=0
-    step = 0                           # step up=1, step down=2, no step=0
-    slope = None                      # slope of current unit, compared to prev
+    sweep = Sweep.FLAT                      # upsweep=1, downsweep=-1, horiz=0
+    step = Step.FLAT                          # step up=1, step down=2, no step=0
+    slope = Slope.FLAT                      # slope of current unit, compared to prev
     
     def __init__(self, time_milliseconds, peak_frequency, duty_cycle, energy, window_RMS):
         self.time_milliseconds = time_milliseconds
@@ -121,6 +127,11 @@ class ContourFile:
         slope_pos_sum = 0
         slope_neg_counter = 0
         slope_neg_sum = 0
+
+        freq_stepup = 0
+        freq_stepdown = 0
+
+        step_sensitivity = 11
         
         for i, contour in enumerate(self.contour_rows):
             slope = 0
@@ -147,6 +158,9 @@ class ContourFile:
                     contour.set_slope(Slope.DOWN)
                 else:
                     contour.set_slope(Slope.FLAT)
+                
+
+
             contour.slope = slope
         
        
@@ -207,6 +221,21 @@ class ContourFile:
                 dc_quarter_count = 0
 
             
+            # Calculate frequency step up and step down counts. A step up occurs when
+            # the frequency increases and a step down occurs when the frequency decreases.
+            # However, two (or more) consecutive increases or decreases are counted as a 
+            # single step, rather than two or more separate steps.
+            if i > 1:
+                prev_contour = self.contour_rows[i-1]
+                if (prev_contour.step == Step.FLAT) and (contour.peak_frequency >= prev_contour.peak_frequency*(1+step_sensitivity/100)):
+                    contour.step = Step.UP
+                    freq_stepup += 1
+                elif (prev_contour.step == Step.FLAT) and (contour.peak_frequency <= prev_contour.peak_frequency*(1-step_sensitivity/100)):
+                    contour.step = Step.DOWN
+                    freq_stepdown += 1
+                else:
+                    contour.step = Step.FLAT
+
             # Calculate the Sweep for each row in the contour (except for the first and last).
             # Sweep is calculated by looking at the slope of the previous and next rows. If either
             # slopes are positive or negative, the contour is marked as UP or DOWN respectively.
@@ -289,7 +318,7 @@ class ContourFile:
             i += 1
         
         # Inflection delta array calculations
-        if num_inflections > 0:
+        if num_inflections > 1:
             inflection_delta_array.sort()
             selection.inflection_maxdelta = inflection_delta_array[-1]
             selection.inflection_mindelta = inflection_delta_array[0]
@@ -476,9 +505,12 @@ class ContourFile:
         
         frequencies = [row.peak_frequency for row in self.contour_rows]
         
-        selection.freq_stepup = sum(frequencies[i] < frequencies[i+1] for i in range(len(frequencies)-1))
-        selection.freq_stepdown = sum(frequencies[i] > frequencies[i+1] for i in range(len(frequencies)-1))
-        selection.freq_numsteps = selection.freq_stepup + selection.freq_stepdown
+        #selection.freq_stepup = sum(frequencies[i] < frequencies[i+1] for i in range(len(frequencies)-1))
+        #selection.freq_stepdown = sum(frequencies[i] > frequencies[i+1] for i in range(len(frequencies)-1))
+        selection.freq_numsteps = freq_stepup + freq_stepdown
+
+        selection.freq_stepup = freq_stepup
+        selection.freq_stepdown = freq_stepdown
 
         selection.step_duration = selection.freq_numsteps / selection.duration
 
