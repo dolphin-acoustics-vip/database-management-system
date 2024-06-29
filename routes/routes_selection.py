@@ -8,6 +8,7 @@ from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,rende
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
+import calculations.rocca.contour as contour_code
 
 # Location application imports
 from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
@@ -84,8 +85,8 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
         raise e
     selection_obj.contour_file = new_file
 
-    import calculations.rocca.contour as contour_code
     contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
+    print(contour_file_obj)
     contour_file_obj.calculate_statistics(selection_obj)
 
     session.add(new_file)

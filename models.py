@@ -708,6 +708,63 @@ class Selection(db.Model):
         ## ADD CHECK THAT SELECTION TABLE HAS BEEN UPLOADED
         return warnings
 
+    def reset_contour_stats(self):
+        self.freq_max = None
+        self.freq_min = None
+        self.duration = None
+        self.freq_begin = None
+        self.freq_end = None
+        self.freq_range = None
+        self.dc_mean = None
+        self.dc_standarddeviation = None
+        self.freq_mean = None
+        self.freq_standarddeviation = None
+        self.freq_median = None
+        self.freq_center = None
+        self.freq_relbw = None
+        self.freq_maxminratio = None
+        self.freq_begendratio = None
+        self.freq_quarter1 = None
+        self.freq_quarter2 = None
+        self.freq_quarter3 = None
+        self.freq_spread = None
+        self.dc_quarter1mean = None
+        self.dc_quarter2mean = None
+        self.dc_quarter3mean = None
+        self.dc_quarter4mean = None
+        self.freq_cofm = None
+        self.freq_stepup = None
+        self.freq_stepdown = None
+        self.freq_numsteps = None
+        self.freq_slopemean = None
+        self.freq_absslopemean = None
+        self.freq_posslopemean = None
+        self.freq_negslopemean = None
+        self.freq_sloperatio = None
+        self.freq_begsweep = None
+        self.freq_begup = None
+        self.freq_begdown = None
+        self.freq_endsweep = None
+        self.freq_endup = None
+        self.freq_enddown = None
+        self.num_sweepsupdown = None
+        self.num_sweepsdownup = None
+        self.num_sweepsupflat = None
+        self.num_sweepsdownflat = None
+        self.num_sweepsflatup = None
+        self.num_sweepsflatdown = None
+        self.freq_sweepuppercent = None
+        self.freq_sweepdownpercent = None
+        self.freq_sweepflatpercent = None
+        self.num_inflections = None
+        self.inflection_maxdelta = None
+        self.inflection_mindelta = None
+        self.inflection_maxmindelta = None
+        self.inflection_mediandelta = None
+        self.inflection_meandelta = None
+        self.inflection_standarddeviationdelta = None
+        self.inflection_duration = None
+        self.step_duration = None
 
     def upload_selection_table_data(self, session, st_df):
         if st_df.iloc[0,0]==self.selection_number:
@@ -732,7 +789,7 @@ class Selection(db.Model):
         if self.contour_file is not None:
             self.contour_file.move_file(session,self.generate_full_relative_path()+"." +self.contour_file.extension,root_path)
 
-    def delete(self, session,keep_file_reference):        
+    def delete(self, session,keep_file_reference=True):        
         if self.selection_file_id is not None:
             self.selection_file.delete(session)
             if not keep_file_reference: self.selection_file = None  # Remove the reference to the recording file

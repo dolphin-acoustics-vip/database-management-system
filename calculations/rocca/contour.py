@@ -20,52 +20,50 @@ import pandas as pd
 import os
 from enum import Enum
 
-class Slope(Enum):
-    DOWN=0
-    FLAT=1
-    UP=2
-    
-class Sweep(Enum):
-    DOWN=0
-    FLAT=1
-    UP=2
-
-class Step(Enum):
-    DOWN=0
-    FLAT=1
-    UP=2
-
-class ContourDataUnit:
-
-    
-    time_milliseconds: int
-    peak_frequency: float
-    duty_cycle: float
-    energy: float
-    window_RMS: float
-    
-    # calculated values
-    sweep = Sweep.FLAT                      # upsweep=1, downsweep=-1, horiz=0
-    step = Step.FLAT                          # step up=1, step down=2, no step=0
-    slope = Slope.FLAT                      # slope of current unit, compared to prev
-    
-    def __init__(self, time_milliseconds, peak_frequency, duty_cycle, energy, window_RMS):
-        self.time_milliseconds = time_milliseconds
-        self.peak_frequency = peak_frequency
-        self.duty_cycle = duty_cycle
-        self.energy = energy
-        self.window_RMS = window_RMS
-    
-    def time_seconds(self):
-        return self.time_milliseconds / 1000
-
-    def set_slope(self, value: Slope):
-        self.slope = value
-    
-    def set_sweep(self, value: Sweep):
-        self.sweep = value
-
 class ContourFile:
+
+
+    class Slope(Enum):
+        DOWN=0
+        FLAT=1
+        UP=2
+        
+    class Sweep(Enum):
+        DOWN=0
+        FLAT=1
+        UP=2
+
+    class Step(Enum):
+        DOWN=0
+        FLAT=1
+        UP=2
+
+    class ContourDataUnit:
+
+
+        
+
+        def __init__(self, time_milliseconds, peak_frequency, duty_cycle, energy, window_RMS):
+            self.time_milliseconds = time_milliseconds
+            self.peak_frequency = peak_frequency
+            self.duty_cycle = duty_cycle
+            self.energy = energy
+            self.window_RMS = window_RMS
+
+            self.sweep = ContourFile.Sweep.FLAT
+            self.step = ContourFile.Step.FLAT
+            self.slope = ContourFile.Slope.FLAT
+        
+        def time_seconds(self):
+            return self.time_milliseconds / 1000
+
+        def set_slope(self, value):
+            self.slope = value
+        
+        def set_sweep(self, value):
+            self.sweep = value
+
+
     contour_rows = []
     
     def __init__(self, file_path=None):
@@ -82,6 +80,7 @@ class ContourFile:
         else:
             raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
         
+        print(df)
         # check columns and datatypes
         expected_columns = {
             'Time [ms]': int,
@@ -96,12 +95,13 @@ class ContourFile:
         
         for column, dtype in expected_columns.items():
             if column not in df.columns:
-                raise ValueError(f"Missing column in '{file.name}': {column}")
+                raise ValueError(f"Missing column in '{file_path}': {column}")
             if df[column].dtype != dtype:
-                raise ValueError(f"Incorrect data type for column '{column}' in '{file.name}': expected {dtype}, got {df[column].dtype}")
+                raise ValueError(f"Incorrect data type for column '{column}' in '{file_path}': expected {dtype}, got {df[column].dtype}")
         
         for index, row in df.iterrows():
-            self.contour_rows.append(ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
+            self.contour_rows.append(self.ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
+
 
     def calculate_statistics(self, selection):
         """
@@ -112,6 +112,7 @@ class ContourFile:
             selection (Selection): The selection object to store the contour statistics in.
         """
 
+        selection.reset_contour_stats()
 
         num_points = len(self.contour_rows)
                 
@@ -149,11 +150,11 @@ class ContourFile:
                         slope_neg_sum += slope
                         slope_neg_counter += 1
                 if freq_diff > 0:
-                    contour.set_slope(Slope.UP)
+                    contour.set_slope(self.Slope.UP)
                 elif freq_diff < 0:
-                    contour.set_slope(Slope.DOWN)
+                    contour.set_slope(self.Slope.DOWN)
                 else:
-                    contour.set_slope(Slope.FLAT)
+                    contour.set_slope(self.Slope.FLAT)
                 
 
 
@@ -177,7 +178,7 @@ class ContourFile:
         inflection_time_array = []
         
         # variables referenced and modified during the loop below
-        last_sweep = Sweep.FLAT
+        last_sweep = self.Sweep.FLAT
         dc_quarter_sum = 0
         dc_quarter_count = 0
 
@@ -214,14 +215,14 @@ class ContourFile:
             # single step, rather than two or more separate steps.
             if i > 1:
                 prev_contour = self.contour_rows[i-1]
-                if (prev_contour.step == Step.FLAT) and (contour.peak_frequency >= prev_contour.peak_frequency*(1+step_sensitivity/100)):
-                    contour.step = Step.UP
+                if (prev_contour.step == self.Step.FLAT) and (contour.peak_frequency >= prev_contour.peak_frequency*(1+step_sensitivity/100)):
+                    contour.step = self.Step.UP
                     freq_stepup += 1
-                elif (prev_contour.step == Step.FLAT) and (contour.peak_frequency <= prev_contour.peak_frequency*(1-step_sensitivity/100)):
-                    contour.step = Step.DOWN
+                elif (prev_contour.step == self.Step.FLAT) and (contour.peak_frequency <= prev_contour.peak_frequency*(1-step_sensitivity/100)):
+                    contour.step = self.Step.DOWN
                     freq_stepdown += 1
                 else:
-                    contour.step = Step.FLAT
+                    contour.step = self.Step.FLAT
 
             # Calculate the Sweep for each row in the contour (except for the first and last).
             # Sweep is calculated by looking at the slope of the previous and next rows. If either
@@ -238,17 +239,17 @@ class ContourFile:
                 # This catches UP-UP, FLAT-UP, UP-FLAT, and FLAT-FLAT (the latter is overridden in the final if statement below)
                 if (prev_contour.peak_frequency <= contour.peak_frequency) and (contour.peak_frequency <= next_contour.peak_frequency):
                     sweep_up_count += 1
-                    last_sweep = Sweep.UP
+                    last_sweep = self.Sweep.UP
                 
                 # This catches DOWN-DOWN, FLAT-DOWN, DOWN-FLAT, and FLAT-FLAT (the latter is overridden in the if statement below)
                 if (prev_contour.peak_frequency >= contour.peak_frequency) and (contour.peak_frequency >= next_contour.peak_frequency):
                     sweep_down_count += 1
-                    last_sweep = Sweep.DOWN
+                    last_sweep = self.Sweep.DOWN
                 
                 # This catches and overrides FLAT-FLAT
                 if (prev_contour.peak_frequency == contour.peak_frequency) and (contour.peak_frequency == next_contour.peak_frequency):
                     sweep_flat_count += 1
-                    last_sweep = Sweep.FLAT  
+                    last_sweep = self.Sweep.FLAT  
 
                 contour.sweep = last_sweep                  
             
@@ -261,17 +262,17 @@ class ContourFile:
                 curr_sweep = contour.sweep
                 prev_sweep = self.contour_rows[i-1].sweep
 
-                if (prev_sweep == Sweep.UP and curr_sweep == Sweep.DOWN):
+                if (prev_sweep == self.Sweep.UP and curr_sweep == self.Sweep.DOWN):
                     num_sweeps_up_down += 1
-                elif (prev_sweep == Sweep.DOWN and curr_sweep == Sweep.UP):
+                elif (prev_sweep == self.Sweep.DOWN and curr_sweep == self.Sweep.UP):
                     num_sweeps_down_up += 1
-                elif (prev_sweep == Sweep.DOWN and curr_sweep == Sweep.FLAT):
+                elif (prev_sweep == self.Sweep.DOWN and curr_sweep == self.Sweep.FLAT):
                     num_sweeps_down_flat += 1
-                elif (prev_sweep == Sweep.FLAT and curr_sweep == Sweep.DOWN):
+                elif (prev_sweep == self.Sweep.FLAT and curr_sweep == self.Sweep.DOWN):
                     num_sweeps_flat_down += 1
-                elif (prev_sweep == Sweep.FLAT and curr_sweep == Sweep.UP):
+                elif (prev_sweep == self.Sweep.FLAT and curr_sweep == self.Sweep.UP):
                     num_sweeps_flat_up += 1
-                elif prev_sweep == Sweep.UP and curr_sweep == Sweep.FLAT:
+                elif prev_sweep == self.Sweep.UP and curr_sweep == self.Sweep.FLAT:
                     num_sweeps_up_flat += 1
             
             # Calculate the inflection characteristics. This involves comparing
@@ -286,10 +287,10 @@ class ContourFile:
                 # NOTE: the following line exists due to a bug in the legacy Java code, meaning an inflection is calculated
                 # in the final row of the contour when the direction is UP. This is because the Java code considered the
                 # final element, which was not actually calculated due to the nature of the sweep calculation, to have a
-                # downward sweep. The logic in this program is correct, however the bug has been manufactured to maintain
+                # downward Sweep The logic in this program is correct, however the bug has been manufactured to maintain
                 # legacy categorisation algorithms.
-                if curr_sweep == None: curr_sweep = Sweep.DOWN
-                if (curr_sweep == Sweep.UP and direction == Sweep.DOWN) or (curr_sweep == Sweep.DOWN and direction == Sweep.UP):
+                if i == num_points-1: curr_sweep = self.Sweep.DOWN
+                if (curr_sweep == self.Sweep.UP and direction == self.Sweep.DOWN) or (curr_sweep == self.Sweep.DOWN and direction == self.Sweep.UP):
                     direction = curr_sweep
                     num_inflections += 1
                     inflection_time_array.append(contour.time_milliseconds)
@@ -298,17 +299,20 @@ class ContourFile:
                     # if it exists in a new array. 
                     if num_inflections > 1:
                         inflection_delta_array.append((inflection_time_array[-1] - inflection_time_array[-2])/1000)
-                elif (direction == Sweep.FLAT):
+                elif (direction == self.Sweep.FLAT):
                     direction = curr_sweep
 
 
             i += 1
-        
+        print(num_inflections)
+        print(inflection_time_array)
+
         # Inflection delta array calculations
         if num_inflections > 1:
             inflection_delta_array.sort()
             selection.inflection_maxdelta = inflection_delta_array[-1]
             selection.inflection_mindelta = inflection_delta_array[0]
+            print(inflection_delta_array)
             selection.inflection_maxmindelta = selection.inflection_maxdelta / selection.inflection_mindelta
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
 
@@ -332,7 +336,7 @@ class ContourFile:
         # determine sweep up, down, and flat percentages
         sweep_count = sweep_up_count + sweep_down_count + sweep_flat_count
         selection.freq_sweepuppercent = sweep_up_count / sweep_count
-        selection.freq_sweepdownpercent = sweep_down_count / sweep_count
+        selection.freq_sweepdowmpercent = sweep_down_count / sweep_count
         selection.freq_sweepflatpercent = sweep_flat_count / sweep_count
         
         
@@ -357,15 +361,15 @@ class ContourFile:
         # skipping the first row as the slope will always be zero
         beg_slope_avg = (self.contour_rows[1].slope + self.contour_rows[2].slope + self.contour_rows[3].slope)/3
         if beg_slope_avg > 0:
-            selection.freq_begsweep = Slope.UP.value
+            selection.freq_begsweep = self.Slope.UP.value
             selection.freq_begup = True
             selection.freq_begdown = False
         elif beg_slope_avg < 0:
-            selection.freq_begsweep = Slope.DOWN.value
+            selection.freq_begsweep = self.Slope.DOWN.value
             selection.freq_begup = False
             selection.freq_begdown = True
         else:
-            selection.freq_begsweep = Slope.FLAT.value
+            selection.freq_begsweep = self.Slope.FLAT.value
             selection.freq_begup = False
             selection.freq_begdown = False
         
@@ -375,15 +379,15 @@ class ContourFile:
         # end_slope_avg = (self.contour_rows[-1].slope + self.contour_rows[-2].slope + self.contour_rows[-3].slope)/3
         end_slope_avg = (self.contour_rows[-4].slope + self.contour_rows[-3].slope + self.contour_rows[-2].slope)/3
         if end_slope_avg > 0:
-            selection.freq_endsweep = Slope.UP.value
+            selection.freq_endsweep = self.Slope.UP.value
             selection.freq_endup = True
             selection.freq_enddown = False
         elif end_slope_avg < 0:
-            selection.freq_endsweep = Slope.DOWN.value
+            selection.freq_endsweep = self.Slope.DOWN.value
             selection.freq_endup = False
             selection.freq_enddown = True
         else:
-            selection.freq_endsweep = Slope.FLAT.value
+            selection.freq_endsweep = self.Slope.FLAT.value
             selection.freq_endup = False
             selection.freq_enddown = False
         
