@@ -46,7 +46,7 @@ class ContourFile:
             self.energy = energy
             self.window_RMS = window_RMS
 
-            self.sweep = ContourFile.Sweep.FLAT
+            self.sweep = None
             self.step = ContourFile.Step.FLAT
             self.slope = ContourFile.Slope.FLAT
         
@@ -155,7 +155,7 @@ class ContourFile:
 
             contour.slope = slope
         
-        selection.duration = (self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds)/1000
+        selection.duration = (self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds) / 1000
 
         
         
@@ -246,8 +246,13 @@ class ContourFile:
                     sweep_flat_count += 1
                     last_sweep = self.Sweep.FLAT  
 
-                contour.sweep = last_sweep                  
-            
+                contour.sweep = last_sweep
+            # The following if statement is to maintain a the legacy categorisation algorithms
+            # historically using the Java code. The Java code has an error where the last row
+            # is by default considered a DOWN sweep (even if this is not the case). This has 
+            # knock-on effects to other parameters in the Contour Statistics.
+            if i == num_points - 1:
+                contour.sweep = self.Sweep.DOWN
             # Calculate the sweep comparison characteristics. This involves comparing
             # the current sweep of a row to the previous row's sweep, and determining
             # whether the characteristic resembles UP-DOWN, DOWN-UP, DOWN-FLAT, FLAT-DOWN,
@@ -330,9 +335,9 @@ class ContourFile:
         
         # determine sweep up, down, and flat percentages
         sweep_count = sweep_up_count + sweep_down_count + sweep_flat_count
-        selection.freq_sweepuppercent = (sweep_up_count / sweep_count)/100
-        selection.freq_sweepdownpercent = (sweep_down_count / sweep_count)/100
-        selection.freq_sweepflatpercent = (sweep_flat_count / sweep_count)/100
+        selection.freq_sweepuppercent = (sweep_up_count / sweep_count) * 100
+        selection.freq_sweepdownpercent = (sweep_down_count / sweep_count) * 100
+        selection.freq_sweepflatpercent = (sweep_flat_count / sweep_count) * 100
         
         
         # assign the two-unit sweep count values from above
@@ -386,8 +391,6 @@ class ContourFile:
             selection.freq_endup = False
             selection.freq_enddown = False
         
-        # duration is the difference between the first and last times
-        selection.duration = self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds
 
         selection.dc_mean = pd.Series([row.duty_cycle for row in self.contour_rows]).mean()
         selection.dc_standarddeviation = pd.Series([row.duty_cycle for row in self.contour_rows]).std()
@@ -414,7 +417,8 @@ class ContourFile:
         # ending frequency is the last peak_frequency in the contour_rows
         selection.freq_end = self.contour_rows[-1].peak_frequency
         # beginning-end ratio is the beginning frequency divided by the ending frequency
-        selection.freq_begendratio = selection.freq_end / selection.freq_begin
+        selection.freq_begendratio = selection.freq_begin / selection.freq_end
+        print("Begin end ratio", selection.freq_begendratio)
         # frequency mean is the average of all peak_frequencies in the contour_rows
         selection.freq_mean = pd.Series([row.peak_frequency for row in self.contour_rows]).mean()
         # frequency standard deviation is the standard deviation of all peak_frequencies in the contour_rows
@@ -437,6 +441,6 @@ class ContourFile:
         freq_cofm = 0.0
         for i in range(6, num_points, 3):
             freq_cofm += abs(self.contour_rows[i].peak_frequency - self.contour_rows[i - 3].peak_frequency)
-        selection.freq_cofm = freq_cofm / 1000
+        selection.freq_cofm = freq_cofm / 10000
 
         selection.num_inflections = num_inflections
