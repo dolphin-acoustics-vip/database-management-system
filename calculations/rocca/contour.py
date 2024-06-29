@@ -299,15 +299,13 @@ class ContourFile:
 
 
             i += 1
-        print(num_inflections)
-        print(inflection_time_array)
+
 
         # Inflection delta array calculations
         if num_inflections > 1:
             inflection_delta_array.sort()
             selection.inflection_maxdelta = inflection_delta_array[-1]
             selection.inflection_mindelta = inflection_delta_array[0]
-            print(inflection_delta_array)
             if selection.inflection_mindelta != 0:
                 selection.inflection_maxmindelta = selection.inflection_maxdelta / selection.inflection_mindelta
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
@@ -318,6 +316,8 @@ class ContourFile:
                 selection.inflection_standarddeviationdelta = 0
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
             selection.inflection_mediandelta = pd.Series(inflection_delta_array).median()
+            selection.inflection_duration = num_inflections/selection.duration
+
         else:
             selection.inflection_maxdelta = 0
             selection.inflection_mindelta = 0
@@ -327,13 +327,12 @@ class ContourFile:
 
             selection.inflection_mediandelta = 0
             selection.inflection_duration = 0
-        selection.inflection_duration = num_inflections/selection.duration
         
         # determine sweep up, down, and flat percentages
         sweep_count = sweep_up_count + sweep_down_count + sweep_flat_count
-        selection.freq_sweepuppercent = sweep_up_count / sweep_count
-        selection.freq_sweepdowmpercent = sweep_down_count / sweep_count
-        selection.freq_sweepflatpercent = sweep_flat_count / sweep_count
+        selection.freq_sweepuppercent = (sweep_up_count / sweep_count)/100
+        selection.freq_sweepdownpercent = (sweep_down_count / sweep_count)/100
+        selection.freq_sweepflatpercent = (sweep_flat_count / sweep_count)/100
         
         
         # assign the two-unit sweep count values from above
