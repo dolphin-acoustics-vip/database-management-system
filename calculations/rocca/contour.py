@@ -39,10 +39,6 @@ class ContourFile:
         UP=2
 
     class ContourDataUnit:
-
-
-        
-
         def __init__(self, time_milliseconds, peak_frequency, duty_cycle, energy, window_RMS):
             self.time_milliseconds = time_milliseconds
             self.peak_frequency = peak_frequency
@@ -64,7 +60,6 @@ class ContourFile:
             self.sweep = value
 
 
-    contour_rows = []
     
     def __init__(self, file_path=None):
         if file_path: self.insert_from_file(file_path)
@@ -98,7 +93,7 @@ class ContourFile:
                 raise ValueError(f"Missing column in '{file_path}': {column}")
             if df[column].dtype != dtype:
                 raise ValueError(f"Incorrect data type for column '{column}' in '{file_path}': expected {dtype}, got {df[column].dtype}")
-        
+        self.contour_rows = []
         for index, row in df.iterrows():
             self.contour_rows.append(self.ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
 
@@ -313,7 +308,8 @@ class ContourFile:
             selection.inflection_maxdelta = inflection_delta_array[-1]
             selection.inflection_mindelta = inflection_delta_array[0]
             print(inflection_delta_array)
-            selection.inflection_maxmindelta = selection.inflection_maxdelta / selection.inflection_mindelta
+            if selection.inflection_mindelta != 0:
+                selection.inflection_maxmindelta = selection.inflection_maxdelta / selection.inflection_mindelta
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
 
             if len(inflection_delta_array) > 1:
