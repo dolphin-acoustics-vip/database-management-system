@@ -109,28 +109,27 @@ class ContourFile:
 
         selection.reset_contour_stats()
 
-        num_points = len(self.contour_rows)
-                
+        # Sort all CSV rows by the time in the first column
+        # Note the rows should already be sorted on the inputted data
         self.contour_rows.sort(key=lambda row: row.time_milliseconds)
 
+        # Number of data points in the CSV file
+        num_points = len(self.contour_rows)
+        # Length of recording based on first and last row
+        selection.duration = (self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds) / 1000
+
+        # Counter values for slope statistics calculated
+        # in the rows below
         slope_sum = 0
         slope_abs_sum = 0
         slope_pos_counter = 0
         slope_pos_sum = 0
         slope_neg_counter = 0
         slope_neg_sum = 0
-
-        freq_stepup = 0
-        freq_stepdown = 0
-
-        step_sensitivity = 11
-        
         for i, contour in enumerate(self.contour_rows):
-            slope = 0
             if i > 0:
                 time_diff = contour.time_milliseconds - self.contour_rows[i-1].time_milliseconds
                 freq_diff = contour.peak_frequency - self.contour_rows[i-1].peak_frequency
-                        
                 # calculate the slope of each row in the contour
                 # Slopes differ from sweeps as they only take into account the
                 # one-step frequency difference rather than two.
@@ -150,15 +149,15 @@ class ContourFile:
                     contour.set_slope(self.Slope.DOWN)
                 else:
                     contour.set_slope(self.Slope.FLAT)
-                
-
-
-            contour.slope = slope
+            else:
+                # Default slope value is DOWN
+                contour.set_slope(self.Slope.DOWN)
         
-        selection.duration = (self.contour_rows[-1].time_milliseconds - self.contour_rows[0].time_milliseconds) / 1000
 
-        
-        
+        # See calculations in loop below to understand meaning of these variables
+        step_sensitivity = 11
+        freq_stepup = 0
+        freq_stepdown = 0
         num_sweeps_up_flat = 0
         num_sweeps_up_down = 0
         num_sweeps_down_flat = 0
@@ -171,8 +170,6 @@ class ContourFile:
         num_inflections = 0
         inflection_delta_array = []
         inflection_time_array = []
-        
-        # variables referenced and modified during the loop below
         last_sweep = self.Sweep.FLAT
         dc_quarter_sum = 0
         dc_quarter_count = 0
@@ -207,7 +204,8 @@ class ContourFile:
             # Calculate frequency step up and step down counts. A step up occurs when
             # the frequency increases and a step down occurs when the frequency decreases.
             # However, two (or more) consecutive increases or decreases are counted as a 
-            # single step, rather than two or more separate steps.
+            # single step, rather than two or more separate steps. Step sensitivity is used
+            # to scale the difference in peak_frequency needed to count as a step.
             if i > 1:
                 prev_contour = self.contour_rows[i-1]
                 if (prev_contour.step == self.Step.FLAT) and (contour.peak_frequency >= prev_contour.peak_frequency*(1+step_sensitivity/100)):
@@ -305,16 +303,17 @@ class ContourFile:
 
             i += 1
 
+        selection.num_inflections = num_inflections
 
-        # Inflection delta array calculations
+        # Calculations based on the list of inflection delta values
         if num_inflections > 1:
             inflection_delta_array.sort()
+            # Max and min are first and last of sorted list
             selection.inflection_maxdelta = inflection_delta_array[-1]
             selection.inflection_mindelta = inflection_delta_array[0]
             if selection.inflection_mindelta != 0:
                 selection.inflection_maxmindelta = selection.inflection_maxdelta / selection.inflection_mindelta
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
-
             if len(inflection_delta_array) > 1:
                 selection.inflection_standarddeviationdelta = pd.Series(inflection_delta_array).std()
             else:
@@ -322,14 +321,13 @@ class ContourFile:
             selection.inflection_meandelta = sum(inflection_delta_array)/len(inflection_delta_array)
             selection.inflection_mediandelta = pd.Series(inflection_delta_array).median()
             selection.inflection_duration = num_inflections/selection.duration
-
         else:
+            # Default values
             selection.inflection_maxdelta = 0
             selection.inflection_mindelta = 0
             selection.inflection_maxmindelta = 0
             selection.inflection_meandelta = 0
             selection.inflection_standarddeviationdelta = 0
-
             selection.inflection_mediandelta = 0
             selection.inflection_duration = 0
         
@@ -339,7 +337,6 @@ class ContourFile:
         selection.freq_sweepdownpercent = (sweep_down_count / sweep_count) * 100
         selection.freq_sweepflatpercent = (sweep_flat_count / sweep_count) * 100
         
-        
         # assign the two-unit sweep count values from above
         selection.num_sweepsdownflat = num_sweeps_down_flat
         selection.num_sweepsdownup = num_sweeps_down_up
@@ -348,6 +345,13 @@ class ContourFile:
         selection.num_sweepsupdown = num_sweeps_up_down
         selection.num_sweepsupflat = num_sweeps_up_flat
         
+        # Slope summary calculations
+        selection.freq_sloperatio = 0
+        selection.freq_slopemean = 0
+        selection.freq_negslopemean = 0
+        selection.freq_posslopemean = 0
+        selection.freq_negslopemean = 0
+        selection.freq_absslopemean = 0
         if slope_pos_counter > 0:
             selection.freq_posslopemean = (slope_pos_sum / slope_pos_counter)*1000
         if slope_neg_counter > 0:
@@ -359,7 +363,7 @@ class ContourFile:
         
         # calculate beginning slope as an average of the first three non-zero slopes,
         # skipping the first row as the slope will always be zero
-        beg_slope_avg = (self.contour_rows[1].slope + self.contour_rows[2].slope + self.contour_rows[3].slope)/3
+        beg_slope_avg = (self.contour_rows[1].slope.value + self.contour_rows[2].slope.value + self.contour_rows[3].slope.value)/3
         if beg_slope_avg > 0:
             selection.freq_begsweep = self.Slope.UP.value
             selection.freq_begup = True
@@ -377,7 +381,7 @@ class ContourFile:
         # maintain the legacy algorithm. In the original Java code, the end sweep was calculated using the second, 
         # third, and fourth last slopes, rather than the last, second, and third last.
         # end_slope_avg = (self.contour_rows[-1].slope + self.contour_rows[-2].slope + self.contour_rows[-3].slope)/3
-        end_slope_avg = (self.contour_rows[-4].slope + self.contour_rows[-3].slope + self.contour_rows[-2].slope)/3
+        end_slope_avg = (self.contour_rows[-4].slope.value + self.contour_rows[-3].slope.value + self.contour_rows[-2].slope.value)/3
         if end_slope_avg > 0:
             selection.freq_endsweep = self.Slope.UP.value
             selection.freq_endup = True
@@ -418,7 +422,6 @@ class ContourFile:
         selection.freq_end = self.contour_rows[-1].peak_frequency
         # beginning-end ratio is the beginning frequency divided by the ending frequency
         selection.freq_begendratio = selection.freq_begin / selection.freq_end
-        print("Begin end ratio", selection.freq_begendratio)
         # frequency mean is the average of all peak_frequencies in the contour_rows
         selection.freq_mean = pd.Series([row.peak_frequency for row in self.contour_rows]).mean()
         # frequency standard deviation is the standard deviation of all peak_frequencies in the contour_rows
@@ -438,9 +441,9 @@ class ContourFile:
         selection.freq_stepdown = freq_stepdown
         selection.step_duration = selection.freq_numsteps / selection.duration       
 
+        # Calculate the Coefficient of Frequency Modulation (COFM)
         freq_cofm = 0.0
         for i in range(6, num_points, 3):
             freq_cofm += abs(self.contour_rows[i].peak_frequency - self.contour_rows[i - 3].peak_frequency)
         selection.freq_cofm = freq_cofm / 10000
 
-        selection.num_inflections = num_inflections
