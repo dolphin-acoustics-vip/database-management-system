@@ -357,3 +357,17 @@ def extract_date():
         date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
         date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
     return jsonify(date=date)
+
+@routes_recording.route('/assign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+def assign_recording(user_id, recording_id):
+    with Session() as session:
+        try:
+            new_assignment = Assignment()
+            new_assignment.user_id = user_id
+            new_assignment.recording_id = recording_id
+            session.add(new_assignment)
+            session.commit()
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
+        return redirect(url_for('home'))
+            

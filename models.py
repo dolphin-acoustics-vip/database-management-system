@@ -852,3 +852,12 @@ class RecordingPlatform(db.Model):
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name
+    
+class Assignment(db.Model):
+    __tablename__ = 'assignment'
+    
+    user_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'), primary_key=True, nullable=False)
+    recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), primary_key=True, nullable=False)
+    
+    user = db.relationship("User", foreign_keys=[user_id])
+    recording = db.relationship("Recording", foreign_keys=[recording_id])

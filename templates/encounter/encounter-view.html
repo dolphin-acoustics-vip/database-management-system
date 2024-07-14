@@ -136,6 +136,7 @@
                             INOP
                         </td>
                         <td>
+                            <button type="button" onclick="window.location.href='{{ url_for('recording.assign_recording', user_id=g.user.id, recording_id=recording.id)}}'">Test User Assignment</button>
                             <button style="width:100%" type="button" onclick="window.location.href='{{ url_for('recording.recording_view', encounter_id=encounter.id, recording_id=recording.id) }}'">View Selections</button><br>
                             {% if current_user.role_id in [1, 2] %}
                             <button style="width: 100%" type="submit">Update</button>
