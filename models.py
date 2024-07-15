@@ -612,6 +612,7 @@ class Selection(db.Model):
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     annotation = db.Column(db.String, nullable=False)
+    traced = db.Column(db.Boolean, nullable=True, default=None)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
 
     ### Selection Table data ###
@@ -696,6 +697,9 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+
+    #def auto_populate_contoured(self):
+    #    if self.annotation == "Y"
 
     def getWarnings(self):
         warnings = []

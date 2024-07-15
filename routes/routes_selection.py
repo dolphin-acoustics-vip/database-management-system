@@ -84,6 +84,7 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
             raise IOError (f"Contour {selection_id} for this recording already exists in the database.")
         raise e
     selection_obj.contour_file = new_file
+    selection_obj.auto_populate_contoured()
 
     contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
     contour_file_obj.calculate_statistics(selection_obj)

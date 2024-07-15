@@ -234,6 +234,7 @@ CREATE TABLE `selection` (
   `delta_frequency` double DEFAULT NULL,
   `average_power` double DEFAULT NULL,
   `annotation` varchar(10) DEFAULT NULL,
+  `traced` boolean DEFAULT NULL,
   `freq_max` double DEFAULT NULL,
   `freq_min` double DEFAULT NULL,
   `duration` double DEFAULT NULL,
@@ -382,3 +383,12 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2024-06-12 10:26:08
+
+DROP TABLE IF EXISTS `assignment`;
+CREATE TABLE `assignment` (
+  `user_id` uuid NOT NULL,
+  `recording_id` uuid NOT NULL,
+  CONSTRAINT `user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
+  CONSTRAINT `recording_id_fk` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`),
+  PRIMARY KEY (`user_id`,`recording_id`)
+);

@@ -90,6 +90,7 @@
                 <th>Selection</th>
                 <th>Annotation</th>
                 <th>Contour</th>
+                <th>Confirmation</th>
             </tr>
             <form id="deleteForm" onsubmit="return false;">
                 {% for selection in selections %}
@@ -116,6 +117,42 @@
                             href="{{ url_for('download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
                         <a href="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}">Delete</a>
                         {% endif %}
+                    </td>
+                    <td>
+                        {% if selection.contour_file %}
+                            {% if selection.traced == None %}
+                                {% if selection.annotation == "N" %}
+                                    <p1>Contour uploaded but annotation N</p1><br>
+                                    <button>Confirm correct</button>
+                                {% elif selection.annotation == "M" %}
+                                    <p1>Contour uploaded but annotation M</p1><br>
+                                    <button>Confirm correct</button>
+                                {% elif selection.annotation == None %}
+                                    <p1>No annotation but contour uploaded</p1><br>
+                                    <button>Confirm correct</button>
+                                {% endif %}
+                            {% elif selection.traced == True %}
+                                <p1>Contour confirmed</p1><br>
+                                <button>Flag issue</button>
+                            {% else %}
+                                <p1>No contour confirmed</p1><br>
+                                <button>Flag issue</button>
+                            {% endif %}
+                        {% elif not selection.contour_file %}
+                            {% if selection.annotation == "Y" %}
+                                <p1>Contour not uploaded but annotation Y</p1><br>
+                                <button>Confirm correct</button>
+                            {% elif selection.annotation == "M" %}
+                                <p1>Contour not uploaded but annotation M</p1><br>
+                                <button>Confirm correct</button>
+                            {% elif selection.annotation == None %}
+                                <p1>No annotation and contour not uploaded</p1><br>
+                                <button>Confirm correct</button>
+                            {% endif %}
+                        {% endif %}
+                        
+                                
+
                     </td>
                 </tr>
                 {% endfor %}
