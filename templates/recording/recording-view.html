@@ -6,6 +6,21 @@
     <title>View Selections</title>
     <link rel="stylesheet" href="../../../../static/css/hero-section.css">
     <link rel="stylesheet" href="../../../../static/css/general-style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .user-item {
+          cursor: pointer;
+          background-color: whitesmoke;
+          padding-inline: 5px;
+          padding-top: 7px;
+          padding-bottom: 7px;
+          border-radius: 1px;
+          border-color: black;
+        }
+        .user-item.selected {
+          outline: 2px solid blue;
+        }
+      </style>
 </head>
 
 <body>
@@ -21,6 +36,23 @@
         {% set process_route = "process_selection" %}
         {% set insert_route = "selection.selection_insert_bulk" %}
         {% if current_user.role_id in [1, 2] %}
+        
+        <form action="/recording/{{recording.id}}/extract_selection_stats" method="get">
+            <button type="submit">Download Contour Stats</button>
+        </form>
+
+        <h3 style="margin-top: 20px;">Assign Users</h3>
+        <p>Start typing and then select from the dropdown.</p>
+        <input type="text" style="width: 100%" id="search-input" placeholder="Search users">
+        <div class="user-dropdown" id="user-dropdown" data-recording-id="{{recording.id}}"></div><br>
+        <table>
+            {% for assigned_user in assigned_users %}
+            <tr>
+                <td style="color: gray;">{{assigned_user.user.name}} ({{assigned_user.user.login_id}})</td>
+                <td><button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="removeAssignment()">Remove</button></td>
+            </tr>
+            {% endfor %}
+        </table>
 
         <section>
             <div class="audit-history">
@@ -119,13 +151,19 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if selection.contoured == None %}
+                        <div class="selection-row" data-selection-id="{{selection.id}}">
+                        
+                        {% if selection.traced == None %}
                             {% if selection.contour_file %}
-                                <button type="button">Confirm File Upload</button>
+                            <button type="button" style="width: 100%" class="confirm-file-upload">Confirm File Upload</button>
                             {% else %}
-                                <button type="button"">Confirm No File Upload</button>
+                            <button type="button" style="width: 100%" class="confirm-no-file-upload">Confirm No File Upload</button>
                             {% endif %}
+                            <p id="traced-status-label" hidden>Confirmed</p>
+                        {% else %}
+                            <p id="traced-status-label">Confirmed</p>
                         {% endif %}
+                    </div>
                         
                                 
 
@@ -143,6 +181,133 @@
 </body>
 
 <script>
+
+removeAssignment = function() {
+    var xhr = new XMLHttpRequest();
+    const recordingId = event.target.closest('.user-row').dataset.recordingId;
+    const userId = event.target.closest('.user-row').dataset.userId
+    xhr.open('GET', '/unassign_recording/' + userId + '/' + recordingId, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function () {
+        window.location.href = window.location.href;
+    }
+    xhr.send();
+}
+
+$(document).ready(function() {
+      $('#search-input').on('input', function() {
+        var searchTerm = $(this).val();
+        if (searchTerm.length > 0) {
+          $.ajax({
+            url: '/api/users',
+            method: 'GET',
+            data: {
+              search: searchTerm
+            },
+            success: function(response) {
+              var users = response.users;
+              var dropdown = $('#user-dropdown');
+              dropdown.empty();
+              users.forEach(function(user) {
+                var userItem = $('<div>').addClass('user-item').text(user.name + " (" + user.login_id + ")");
+                userItem.on('click', function() {
+                  $('.user-item').removeClass('selected');
+                  $(this).addClass('selected');
+                });
+                userItem.on('dblclick', function() {
+                    console.log(" DOUBLE BLOCK")
+                    var xhr = new XMLHttpRequest();
+                    const recordingId = event.target.closest('.user-dropdown').dataset.recordingId;
+                    xhr.open('GET', '/assign_recording/' + user.id + '/' + recordingId, true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.onload = function () {
+                    console.log(xhr)
+                    if (xhr.status === 200) {
+                        var response = JSON.parse(xhr.responseText);
+                        console.log("completed")
+                        window.location.href = window.location.href;
+                    }
+                }
+                xhr.send();
+                });
+                dropdown.append(userItem);
+              });
+            }
+          });
+        } else {
+          $('#user-dropdown').empty();
+        }
+      });
+    });   
+
+const selectionRows = document.querySelectorAll('.selection-row');
+
+selectionRows.forEach(row => {
+    row.addEventListener('click', event => {
+        console.log("Click")
+        if (event.target.classList.contains('confirm-file-upload')) {
+
+            event.target.disabled=true
+            event.target.innerHTML="Loading..."
+
+            const selectionId = event.target.closest('.selection-row').dataset.selectionId;
+            fetch(`/selection/${selectionId}/confirm_contour_upload`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    // Any data you want to send to the server
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const label = event.target.closest('.selection-row').querySelector('#traced-status-label');
+                    label.hidden = false;
+                    event.target.hidden = true
+                } else {
+                    // Handle error case
+                    // Display error message or perform any other action
+                }
+            })
+            .catch(error => {
+                // Handle error case
+                // Display error message or perform any other action
+            });
+        } else if (event.target.classList.contains('confirm-no-file-upload')) {
+            event.target.innerHTML="Loading..."
+            event.target.disabled=true
+            
+            const selectionId = event.target.closest('.selection-row').dataset.selectionId;
+            fetch(`/selection/${selectionId}/confirm_no_contour_upload`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    // Any data you want to send to the server
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const label = event.target.closest('.selection-row').querySelector('#traced-status-label');
+                    label.hidden = false;
+                    event.target.hidden = true
+                } else {
+                    // Handle error case
+                    // Display error message or perform any other action
+                }
+            })
+            .catch(error => {
+                // Handle error case
+                // Display error message or perform any other action
+            });
+        }
+    });
+});
+
     /**
      * Toggles the selection of all rows based on the state of the "Select All" checkbox.
      */

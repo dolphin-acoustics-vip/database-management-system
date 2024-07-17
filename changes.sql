@@ -233,7 +233,7 @@ CREATE TABLE `selection` (
   `delta_time` double DEFAULT NULL,
   `delta_frequency` double DEFAULT NULL,
   `average_power` double DEFAULT NULL,
-  `annotation` varchar(10) DEFAULT NULL,
+  `annotation` varchar(10) DEFAULT NULL,  
   `traced` boolean DEFAULT NULL,
   `freq_max` double DEFAULT NULL,
   `freq_min` double DEFAULT NULL,
@@ -391,4 +391,4 @@ CREATE TABLE `assignment` (
   CONSTRAINT `user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `recording_id_fk` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`),
   PRIMARY KEY (`user_id`,`recording_id`)
-);
+) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;

@@ -455,7 +455,7 @@ class Recording(db.Model):
                     raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
             '''
             # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
-            if not df['Annotation'].isin(['Y', 'M', 'N']).all():
+            if not df['Annotation'].isin(['y','m','n','Y', 'M', 'N']).all():
                 raise ValueError("Invalid values in 'annotation' column: expected 'Y' or 'N'")
 
             return df
@@ -595,6 +595,17 @@ class Recording(db.Model):
             raise ValueError("Duration must be an integer")
         self.duration = value
     
+    def update_selection_traced_status(self,session):
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        for selection in selections:
+            selection.update_traced_status()
+    
+    def reset_selection_table_values(self,session):
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        for selection in selections:
+            selection.reset_selection_table_values(session)
+
+    
 """
 
 class RecordingAudit(Audit, Recording, db.Model):
@@ -611,7 +622,6 @@ class Selection(db.Model):
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
-    annotation = db.Column(db.String, nullable=False)
     traced = db.Column(db.Boolean, nullable=True, default=None)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
 
@@ -625,6 +635,7 @@ class Selection(db.Model):
     delta_time = db.Column(db.Float)
     delta_frequency = db.Column(db.Float)
     average_power = db.Column(db.Float)
+    annotation = db.Column(db.String, nullable=False)
 
     ### Contour Statistics data ###
     freq_max = db.Column(db.Float, nullable=True, default=None)
@@ -700,6 +711,25 @@ class Selection(db.Model):
 
     #def auto_populate_contoured(self):
     #    if self.annotation == "Y"
+    def reset_selection_table_values(self, session):
+        self.view = None
+        self.channel = None
+        self.begin_time = None
+        self.end_time = None
+        self.low_frequency = None
+        self.high_frequency = None
+        self.delta_time = None
+        self.delta_frequency = None
+        self.average_power = None
+        self.annotation = None
+
+    def update_traced_status(self):
+        if self.contour_file and self.annotation == "Y":
+            self.traced = True
+        elif not self.contour_file and self.annotation == "N":
+            self.traced = False
+        else:
+            self.traced = None
 
     def getWarnings(self):
         warnings = []
@@ -781,7 +811,8 @@ class Selection(db.Model):
             self.delta_time = st_df.iloc[0, 7]
             self.delta_frequency = st_df.iloc[0, 8]
             self.average_power = st_df.iloc[0, 9]
-            self.annotation = st_df.iloc[0, 10]
+            self.annotation = st_df.iloc[0, 10].upper()
+            
         session.commit()
 
     def update_call(self, session):

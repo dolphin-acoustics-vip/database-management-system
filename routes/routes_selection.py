@@ -66,6 +66,7 @@ def contour_file_delete(selection_id):
     with Session() as session:
         selection_obj = session.query(Selection).filter_by(id=selection_id).first()
         selection_obj.delete_contour_file(session)
+        selection_obj.update_traced_status()
         #before_commit(session)
         session.commit()
         return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id))
@@ -84,7 +85,7 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
             raise IOError (f"Contour {selection_id} for this recording already exists in the database.")
         raise e
     selection_obj.contour_file = new_file
-    selection_obj.auto_populate_contoured()
+    selection_obj.update_traced_status()
 
     contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
     contour_file_obj.calculate_statistics(selection_obj)
@@ -402,3 +403,40 @@ def selection_view(selection_id):
             'step_duration': selection.step_duration,
             }
         return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict)
+
+@routes_selection.route('/selection/<uuid:selection_id>/confirm_contour_upload', methods=['POST'])
+def confirm_contour_upload(selection_id):
+    with Session() as session:
+        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
+        selection.traced = True
+        session.commit()
+        return jsonify({'success': True})
+
+@routes_selection.route('/selection/<uuid:selection_id>/confirm_no_contour_upload', methods=['POST'])
+def confirm_no_contour_upload(selection_id):
+    with Session() as session:
+        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
+        selection.traced = False
+        session.commit()
+        return jsonify({'success': True})
+    
+
+import csv
+from flask import Response
+from io import StringIO
+
+@routes_selection.route('/recording/<uuid:recording_id>/extract_selection_stats', methods=['GET'])
+def extract_selection_stats(recording_id):
+    with Session() as session:
+        selections = session.query(Selection).filter(Selection.recording_id == recording_id).all()
+        recording = session.query(Recording).filter(Recording.id == recording_id).first()
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['SELECTIONNUMBER','FREQMAX', 'FREQMIN', 'DURATION', 'FREQBEG', 'FREQEND', 'FREQRANGE', 'DCMEAN', 'DCSTDDEV', 'FREQMEAN', 'FREQSTDDEV', 'FREQMEDIAN', 'FREQCENTER', 'FREQRELBW', 'FREQMAXMINRATIO', 'FREQBEGENDRATIO', 'FREQQUARTER1', 'FREQQUARTER2', 'FREQQUARTER3', 'FREQSPREAD', 'DCQUARTER1MEAN', 'DCQUARTER2MEAN', 'DCQUARTER3MEAN', 'DCQUARTER4MEAN', 'FREQCOFM', 'FREQSTEPUP', 'FREQSTEPDOWN', 'FREQNUMSTEPS', 'FREQSLOPEMEAN', 'FREQABSSLOPEMEAN', 'FREQPOSSLOPEMEAN', 'FREQNEGSLOPEMEAN', 'FREQSLOPERATIO', 'FREQBEGSWEEP', 'FREQBEGUP', 'FREQBEGDWN', 'FREQENDSWEEP', 'FREQENDUP', 'FREQENDDWN', 'NUMSWEEPSUPDWN', 'NUMSWEEPSDWNUP', 'NUMSWEEPSUPFLAT', 'NUMSWEEPSDWNFLAT', 'NUMSWEEPSFLATUP', 'NUMSWEEPSFLATDWN', 'FREQSWEEPUPPERCENT', 'FREQSWEEPDWNPERCENT', 'FREQSWEEPFLATPERCENT', 'NUMINFLECTIONS', 'INFLMAXDELTA', 'INFLMINDELTA', 'INFLMAXMINDELTA', 'INFLMEANDELTA', 'INFLSTDDEVDELTA', 'INFLMEDIANDELTA', 'INFLDUR', 'STEPDUR', 'FREQPEAK'])
+        
+        for selection in selections:
+            if selection.traced:
+                writer.writerow([selection.selection_number, selection.freq_max, selection.freq_min, selection.duration, selection.freq_begin, selection.freq_end, selection.freq_range, selection.dc_mean, selection.dc_standarddeviation, selection.freq_mean, selection.freq_standarddeviation, selection.freq_median, selection.freq_center, selection.freq_relbw, selection.freq_maxminratio, selection.freq_begendratio, selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3, selection.freq_spread, selection.dc_quarter1mean, selection.dc_quarter2mean, selection.dc_quarter3mean, selection.dc_quarter4mean, selection.freq_cofm, selection.freq_stepup, selection.freq_stepdown, selection.freq_numsteps, selection.freq_slopemean, selection.freq_absslopemean, selection.freq_posslopemean, selection.freq_negslopemean, selection.freq_sloperatio, selection.freq_begsweep, selection.freq_begup, selection.freq_begdown, selection.freq_endsweep, selection.freq_endup, selection.freq_enddown, selection.num_sweepsupdown, selection.num_sweepsdownup, selection.num_sweepsupflat, selection.num_sweepsdownflat, selection.num_sweepsflatup, selection.num_sweepsflatdown, selection.freq_sweepuppercent, selection.freq_sweepdownpercent, selection.freq_sweepflatpercent, selection.num_inflections, selection.inflection_maxdelta, selection.inflection_mindelta, selection.inflection_maxmindelta, selection.inflection_meandelta, selection.inflection_standarddeviationdelta, selection.inflection_mediandelta, selection.inflection_duration, selection.step_duration, selection.view])
+        
+        output.seek(0)
+        return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename=ContourStats-{recording.get_start_time_string()}.csv'})

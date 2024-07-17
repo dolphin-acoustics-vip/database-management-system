@@ -107,7 +107,18 @@ def encounter_view(encounter_id):
             
             encounter_history = shared_functions.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
             
-            return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user, encounter_history=encounter_history)
+            assignments = shared_functions.create_system_time_request(session, Assignment, {"user_id":current_user.id})
+            assignment_recording_ids = [assignment.recording_id for assignment in assignments if assignment.recording_id]
+            
+            # Filter assigned recordings
+            assigned_recordings = [recording for recording in recordings if recording.id in assignment_recording_ids]
+
+            # Filter unassigned recordings
+            unassigned_recordings = [recording for recording in recordings if recording.id not in assignment_recording_ids]
+            
+            recordings.sort(key=lambda x: assignment_recording_ids.index(x.id) if x.id in assignment_recording_ids else len(assignment_recording_ids))
+
+            return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY, user=current_user, encounter_history=encounter_history, assignment_recording_ids=assignment_recording_ids,assigned_recordings=assigned_recordings,unassigned_recordings=unassigned_recordings)
     except exception_handler.NotFoundException as e:
 
         return shared_functions.page_not_found(e, url_for("encounter.encounter_view", encounter_id=encounter_id))

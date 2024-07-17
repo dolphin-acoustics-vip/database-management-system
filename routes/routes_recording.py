@@ -108,6 +108,8 @@ def recording_selection_table_add(encounter_id,recording_id):
                 new_file.move_to_trash(session)
                 handle_exception(error_msg, session)
                 return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+            recording.update_selection_traced_status(session)
+
         session.commit()  
     
     return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
@@ -120,23 +122,25 @@ def recording_selection_table_delete(encounter_id, recording_id):
     """
     with Session() as session:
         try:
-            print("I GOT HERE")
             recording = session.query(Recording).filter_by(id=recording_id).first()
             recording.selection_table_file=None
             file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
             try:
-                print("TRYING",recording,recording.selection_table_file)
                 # All manually resolved warnings will be reset to 'unresolved' (forcing
                 # them to be re-validated after the selection table is deleted)
+                recording.reset_selection_table_values(session)
+                recording.update_selection_traced_status(session)
+
                 session.commit()
                 flash(f'Deleted Selection Table', 'success')
                 file.move_to_trash()
             except FileNotFoundError:
-                print("ERROR")
                 session.commit()
                 flash(f'Deleted Selection Table', 'success')
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
+        except Exception as e:
+            print(e)
         finally:
             return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
 
@@ -174,6 +178,7 @@ def get_number_of_unresolved_warnings(recording_id):
     
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/view', methods=['GET'])
+@login_required
 def recording_view(encounter_id,recording_id):
     """
     Renders the recording view page for a specific encounter and recording.
@@ -190,6 +195,7 @@ def recording_view(encounter_id,recording_id):
         #recording = query.filter_by(id=recording_id).first()
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id}, order_by="selection_number")
 
+        assigned_users = shared_functions.create_system_time_request(session, Assignment, {"recording_id":recording_id})
         
         #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
         from sqlalchemy.sql import select
@@ -199,7 +205,7 @@ def recording_view(encounter_id,recording_id):
 
         recording_history = shared_functions.create_all_time_request(session, Recording, filters={"id":recording_id}, order_by="row_start")
         
-        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history)
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users)
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
 @require_live_session
@@ -369,5 +375,15 @@ def assign_recording(user_id, recording_id):
             session.commit()
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
-        return redirect(url_for('home'))
+        return jsonify(success=True)
             
+
+@routes_recording.route('/unassign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+def unassign_recording(user_id, recording_id):
+    with Session() as session:
+        try:
+            session.query(Assignment).filter_by(user_id=user_id, recording_id=recording_id).delete()
+            session.commit()
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
+        return jsonify(success=True)
