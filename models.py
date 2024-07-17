@@ -724,9 +724,9 @@ class Selection(db.Model):
         self.annotation = None
 
     def update_traced_status(self):
-        if self.contour_file and self.annotation == "Y":
+        if self.contour_file and (self.annotation == "Y" or self.annotation == "M"):
             self.traced = True
-        elif not self.contour_file and self.annotation == "N":
+        elif not self.contour_file and (self.annotation == "N" or self.annotation == "M"):
             self.traced = False
         else:
             self.traced = None
