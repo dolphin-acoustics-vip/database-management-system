@@ -88,7 +88,7 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
     selection_obj.update_traced_status()
 
     contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
-    contour_file_obj.calculate_statistics(selection_obj)
+    contour_file_obj.calculate_statistics(session, selection_obj)
 
     session.add(new_file)
     return selection_obj

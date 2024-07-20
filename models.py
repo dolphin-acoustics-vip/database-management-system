@@ -2,7 +2,8 @@
 import os, uuid
 from datetime import datetime
 import shared_functions
-
+import scipy.io
+import numpy as np
 
 
 # Third-party imports
@@ -255,8 +256,25 @@ class File(db.Model):
     
     def get_full_absolute_path(self):
         return os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
+
+    def insert_path_and_filename_file_already_in_place(self, new_path, new_filename, new_extension):
+        self.path=new_path
+        self.filename=new_filename
+        self.extension=new_extension
     
     def insert_path_and_filename(self, file, new_path, new_filename, root_path):
+        """
+        Updates the path, filename, and extension of the file. If the file already exists in the specified location, raises an IOError.
+        
+        Parameters:
+            file: The file object to be saved.
+            new_path: The new path for the file.
+            new_filename: The new filename for the file.
+            root_path: The root path where the file will be saved.
+
+        Returns:
+            None
+        """
         self.path = new_path
         self.filename = new_filename  # filename without extension
 
@@ -300,6 +318,8 @@ class File(db.Model):
         
         self.move_file(session, trash_file_path, FILE_SPACE_PATH)
 
+    def delete_file(self, session):
+        os.path.remove(self.get_full_absolute_path())
 
     def move_file(self, session, new_relative_file_path, root_path):
         """
@@ -622,6 +642,7 @@ class Selection(db.Model):
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
+    ctr_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     traced = db.Column(db.Boolean, nullable=True, default=None)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
 
@@ -698,6 +719,7 @@ class Selection(db.Model):
     contour_file = db.relationship("File", foreign_keys=[contour_file_id])
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
+    ctr_file = db.relationship("File", foreign_keys=[ctr_file_id])
     
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
@@ -741,6 +763,25 @@ class Selection(db.Model):
             warnings.append("No Selection Table file.")
         ## ADD CHECK THAT SELECTION TABLE HAS BEEN UPLOADED
         return warnings
+
+    def generate_ctr_file_name(self):
+        return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}.ctr"
+
+    def generate_ctr_file(self, session, contour_rows):
+        if self.ctr_file:
+            self.ctr_file.move_to_trash(session )
+            self.ctr_file = None
+            
+
+        # Create a dictionary to store the data in the .ctr format
+        mat_data = {'freqContour': np.array([unit.peak_frequency for unit in contour_rows])}
+        # Save the data to a MATLAB file
+        scipy.io.savemat(os.path.join(FILE_SPACE_PATH, os.path.join(os.path.join(self.generate_relative_path(), self.generate_ctr_file_name()))), mat_data)
+        file_obj = File()
+        file_obj.insert_path_and_filename_file_already_in_place(self.generate_relative_path(),self.generate_ctr_file_name().split(".")[0], self.generate_ctr_file_name().split(".")[-1])
+        session.add(file_obj)
+        self.ctr_file = file_obj
+
 
     def reset_contour_stats(self):
         self.freq_max = None
@@ -831,6 +872,9 @@ class Selection(db.Model):
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
             if not keep_file_reference: self.contour_file = None
+        if self.ctr_file_id is not None:
+            self.ctr_file.delete(session)
+            if not keep_file_reference: self.ctr_file = None
         session.delete(self)
 
 

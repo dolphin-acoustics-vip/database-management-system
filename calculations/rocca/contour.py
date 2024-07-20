@@ -98,7 +98,7 @@ class ContourFile:
             self.contour_rows.append(self.ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
 
 
-    def calculate_statistics(self, selection):
+    def calculate_statistics(self, session, selection):
         """
         Calculate contour statistics using the data in contour_rows. The contour stats
         are stored in the selection object (in the Database).
@@ -447,3 +447,5 @@ class ContourFile:
             freq_cofm += abs(self.contour_rows[i].peak_frequency - self.contour_rows[i - 3].peak_frequency)
         selection.freq_cofm = freq_cofm / 10000
 
+
+        selection.generate_ctr_file(session, self.contour_rows)

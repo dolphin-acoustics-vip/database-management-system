@@ -401,7 +401,7 @@ def recalculate_contour_statistics(recording_id):
                 if selection.contour_file != None:
                     counter += 1
                     contour_file_obj = contour_code.ContourFile(selection.contour_file.get_full_absolute_path())
-                    contour_file_obj.calculate_statistics(selection)
+                    contour_file_obj.calculate_statistics(session, selection)
             session.commit()
             flash(f'Recalculated {counter} contour statistics', 'success')
         except Exception as e:
