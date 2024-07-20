@@ -364,11 +364,11 @@ class ContourFile:
         # calculate beginning slope as an average of the first three non-zero slopes,
         # skipping the first row as the slope will always be zero
         beg_slope_avg = (self.contour_rows[1].slope.value + self.contour_rows[2].slope.value + self.contour_rows[3].slope.value)/3
-        if beg_slope_avg > 0:
+        if beg_slope_avg > self.Slope.FLAT.value:
             selection.freq_begsweep = self.Slope.UP.value
             selection.freq_begup = True
             selection.freq_begdown = False
-        elif beg_slope_avg < 0:
+        elif beg_slope_avg < self.Slope.FLAT.value:
             selection.freq_begsweep = self.Slope.DOWN.value
             selection.freq_begup = False
             selection.freq_begdown = True
@@ -382,11 +382,11 @@ class ContourFile:
         # third, and fourth last slopes, rather than the last, second, and third last.
         # end_slope_avg = (self.contour_rows[-1].slope + self.contour_rows[-2].slope + self.contour_rows[-3].slope)/3
         end_slope_avg = (self.contour_rows[-4].slope.value + self.contour_rows[-3].slope.value + self.contour_rows[-2].slope.value)/3
-        if end_slope_avg > 0:
+        if end_slope_avg > self.Slope.FLAT.value:
             selection.freq_endsweep = self.Slope.UP.value
             selection.freq_endup = True
             selection.freq_enddown = False
-        elif end_slope_avg < 0:
+        elif end_slope_avg < self.Slope.FLAT.value:
             selection.freq_endsweep = self.Slope.DOWN.value
             selection.freq_endup = False
             selection.freq_enddown = True

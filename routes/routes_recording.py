@@ -387,3 +387,23 @@ def unassign_recording(user_id, recording_id):
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
         return jsonify(success=True)
+
+@routes_recording.route('/recording/<uuid:recording_id>/recalculate-contour-statistics', methods=['GET'])
+def recalculate_contour_statistics(recording_id):
+    counter = 0
+    with Session() as session:
+        try:
+            import calculations.rocca.contour as contour_code
+            selections = session.query(Selection).filter_by(recording_id=recording_id).all()
+            for selection in selections:
+                
+                selection.reset_contour_stats()
+                if selection.contour_file != None:
+                    counter += 1
+                    contour_file_obj = contour_code.ContourFile(selection.contour_file.get_full_absolute_path())
+                    contour_file_obj.calculate_statistics(selection)
+            session.commit()
+            flash(f'Recalculated {counter} contour statistics', 'success')
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
+        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=selection.recording.encounter_id))
