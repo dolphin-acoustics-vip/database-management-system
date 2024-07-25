@@ -312,7 +312,6 @@ def selection_insert_bulk(encounter_id,recording_id):
                     else:
                         insert_or_update_selection(session,ids[i], file, recording_id)
                     #before_commit(session)
-                    raise SQLAlchemyError
                     session.commit()
                     counter += 1
                 except SQLAlchemyError as e:

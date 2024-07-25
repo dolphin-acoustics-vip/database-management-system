@@ -89,29 +89,33 @@ def recording_selection_table_add(encounter_id,recording_id):
     after validation. 
     """
     with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
-        # If a selection file has been given, add it to the Recording object
-        if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
-            selection_table_file = request.files['selection-table-file'] # required in the POST request
-            # Generate the destination filename and filepath for the selection table
-            new_selection_table_filename = recording.generate_selection_table_filename()
-            new_relative_path = recording.generate_relative_path()
-            new_file = File()
-            new_file.insert_path_and_filename(selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
-            new_file.set_uploaded_date = datetime.now()
-            new_file.set_uploaded_by("User 1") # TODO: change
-            session.add(new_file)
-            recording.selection_table_file = new_file 
-            # Validate the selection table - if invalid then delete the selection table file
-            error_msg = recording.validate_selection_table(session)
-            if error_msg != None and error_msg != "":
-                new_file.move_to_trash(session)
-                handle_exception(error_msg, session)
-                return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
-            recording.update_selection_traced_status(session)
+        try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            # If a selection file has been given, add it to the Recording object
+            if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
+                selection_table_file = request.files['selection-table-file'] # required in the POST request
+                # Generate the destination filename and filepath for the selection table
+                new_selection_table_filename = recording.generate_selection_table_filename()
+                new_relative_path = recording.generate_relative_path()
+                new_file = File()
+                new_file.insert_path_and_filename(selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
+                session.add(new_file)
+                recording.selection_table_file = new_file 
+                # Validate the selection table - if invalid then delete the selection table file
+                error_msg = recording.validate_selection_table(session)
+                if error_msg != None and error_msg != "":
+                    new_file.move_to_trash(session)
+                    handle_exception(error_msg, session)
+                    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+                recording.update_selection_traced_status(session)
 
-        session.commit()  
-    
+            session.commit()  
+        except SQLAlchemyError as e:
+            handle_sqlalchemy_exception(session, e)
+        except IOError as e:
+            handle_sqlalchemy_exception(session, e)
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
     return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
  
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/delete', methods=['POST'])
@@ -123,24 +127,18 @@ def recording_selection_table_delete(encounter_id, recording_id):
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
-            recording.selection_table_file=None
             file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
-            try:
-                # All manually resolved warnings will be reset to 'unresolved' (forcing
-                # them to be re-validated after the selection table is deleted)
-                recording.reset_selection_table_values(session)
-                recording.update_selection_traced_status(session)
 
-                session.commit()
-                flash(f'Deleted Selection Table', 'success')
-                file.move_to_trash()
-            except FileNotFoundError:
-                session.commit()
-                flash(f'Deleted Selection Table', 'success')
+            recording.reset_selection_table_values(session)
+            recording.update_selection_traced_status(session)
+            file.move_to_trash(session)
+            recording.selection_table_file = None
+            session.commit()
+            flash(f'Deleted Selection Table', 'success')
         except SQLAlchemyError as e:
             handle_sqlalchemy_exception(session, e)
         except Exception as e:
-            print(e)
+            handle_sqlalchemy_exception(session, e)
         finally:
             return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
 

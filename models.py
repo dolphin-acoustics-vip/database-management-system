@@ -349,7 +349,7 @@ class File(db.Model):
         """
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
         current_relative_file_path = os.path.join(root_path, self.get_full_relative_path())
-
+        renamed = False
         # make the directory of the new_relative_file_path_with_root
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
@@ -362,11 +362,13 @@ class File(db.Model):
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
             if os.path.exists(current_relative_file_path):
                 os.rename(current_relative_file_path, new_relative_file_path_with_root)
+                renamed = True
             try:
                 session.commit()
             except Exception as e:
                 try:
-                    os.rename(new_relative_file_path_with_root,current_relative_file_path)
+                    if renamed:
+                        os.rename(new_relative_file_path_with_root,current_relative_file_path)
                 except Exception:
                     pass
             
@@ -490,9 +492,6 @@ class Recording(db.Model):
                 if df[column].dtype != dtype:
                     raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
             '''
-            # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
-            if not df['Annotation'].isin(['y','m','n','Y', 'M', 'N']).all():
-                raise ValueError("Invalid values in 'annotation' column: expected 'Y' or 'N'")
 
             return df
 
@@ -887,6 +886,9 @@ class Selection(db.Model):
             self.delta_frequency = st_df.iloc[0, 8]
             self.average_power = st_df.iloc[0, 9]
             self.annotation = st_df.iloc[0, 10].upper()
+
+            if self.annotation != "Y" and self.annotation != "N" and self.annotation != "M":
+                self.annotation = "M"
             
         session.commit()
 
