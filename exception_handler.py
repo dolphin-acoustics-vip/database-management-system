@@ -51,11 +51,25 @@ def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQ
     Returns:
     - string: Parsed error message
     """
+    from models import File
+
     if isinstance(sqlAlchemy_exception, sqlalchemy.exc.IntegrityError):
         error_string = parse_alchemy_error(sqlAlchemy_exception)
     else:
         error_string = str(sqlAlchemy_exception)
 
+    # Access the newly added File objects
+    new_file_objects = [obj for obj in session.new if isinstance(obj, File)]
+    
+    # Access the modified File objects
+    dirty_file_objects = [obj for obj in session.dirty if isinstance(obj, File)]
+
+    #new_file_objects.extend(dirty_file_objects)
+
+    print("DIRTY FILE OBJECTS", dirty_file_objects)
+    print("NEW FILE OBJECTS", new_file_objects)
+    for file_object in new_file_objects:
+        file_object.rollback(session)
 
     flash(error_string, 'error')
     session.rollback()

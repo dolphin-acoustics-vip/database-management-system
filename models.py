@@ -238,6 +238,20 @@ class File(db.Model):
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
+
+    def rollback(self, session):
+        """
+        Rollback the changes made to the File object in the session by removing the file from the file system.
+
+        Parameters:
+            session (Session): The SQLAlchemy session object.
+
+        Returns:
+            None
+        """
+        if self in session.new:
+            os.remove(self.get_full_absolute_path())
+
     def delete(self, session):
         self.move_to_trash(session)
         #session.delete(self)
@@ -282,6 +296,8 @@ class File(db.Model):
         if not os.path.exists(os.path.join(root_path, self.get_full_relative_path())):
             os.makedirs(os.path.join(root_path, self.get_path()), exist_ok=True)
             file.save(os.path.join(root_path, self.get_full_relative_path()))
+            self.file_inserted=True
+        
         else:
             raise IOError(f"File already exists in location {os.path.join(root_path, self.get_full_relative_path())}. Cannot overwrite.")
             
