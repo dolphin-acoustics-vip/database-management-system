@@ -59,14 +59,14 @@ def encounter_insert():
     longitude = request.form['longitude-start']
     data_source = request.form['data_source']
     recording_platform = request.form['recording_platform']
-    origin = request.form['origin']
+    origin = request.form['cruise']
     notes = request.form['notes']
     with Session() as session:
         try:
             new_encounter = Encounter()
             new_encounter.set_encounter_name(encounter_name)
             new_encounter.set_location(location)
-            new_encounter.set_origin(origin)
+            new_encounter.set_cruise(origin)
             new_encounter.set_notes(notes)
             new_encounter.set_species_id(species_id)
             new_encounter.set_latitude(latitude)
@@ -149,7 +149,7 @@ def encounter_update(encounter_id):
             encounter.set_encounter_name(request.form['encounter_name'])
             encounter.set_location(request.form['location'])
             encounter.set_species_id(request.form['species'])
-            encounter.set_origin(request.form['origin'])
+            encounter.set_cruise(request.form['cruise'])
             encounter.set_latitude(request.form['latitude-start'])
             encounter.set_longitude(request.form['longitude-start'])
             encounter.set_data_source_id(request.form['data_source'])

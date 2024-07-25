@@ -124,7 +124,7 @@ class Encounter(db.Model):
     encounter_name = db.Column(db.String(100), nullable=False)
     location = db.Column(db.String(100), nullable=False)
     species_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('species.id'), nullable=False)
-    origin = db.Column(db.String(100))
+    cruise = db.Column(db.String(100))
     latitude = db.Column(db.String(20))
     longitude = db.Column(db.String(20))
     data_source_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('data_source.id'), nullable=False)
@@ -199,11 +199,11 @@ class Encounter(db.Model):
     def set_location(self, value):
         self.location = None if value.strip() == '' else value.strip()
 
-    def get_origin(self):
-        return '' if self.origin is None else self.origin
+    def get_cruise(self):
+        return '' if self.cruise is None else self.cruise
 
-    def set_origin(self, value):
-        self.origin = None if value.strip() == '' else value.strip()
+    def set_cruise(self, value):
+        self.cruise = None if value.strip() == '' else value.strip()
 
     def get_notes(self):
         return '' if self.notes is None else self.notes
@@ -643,8 +643,10 @@ class Selection(db.Model):
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     ctr_file_id = db.Column(db.String, db.ForeignKey('file.id'))
+    sampling_rate = db.Column(db.Float, nullable=False)
     traced = db.Column(db.Boolean, nullable=True, default=None)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+
 
     ### Selection Table data ###
     view = db.Column(db.String)
@@ -730,6 +732,12 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+    def calculate_sampling_rate(self, session):
+        if self.selection_file:
+            import wave
+            with wave.open(self.selection_file.get_full_absolute_path(), "rb") as wave_file:
+                self.sampling_rate = wave_file.getframerate()
+                
 
     #def auto_populate_contoured(self):
     #    if self.annotation == "Y"
