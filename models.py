@@ -768,13 +768,23 @@ class Selection(db.Model):
         return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}.ctr"
 
     def generate_ctr_file(self, session, contour_rows):
+        def find_most_common_difference(arr):
+            differences = []
+            for i in range(len(arr) - 1):
+                differences.append(arr[i + 1] - arr[i])
+            most_common_difference = max(set(differences), key=differences.count)
+            return most_common_difference
+
+
+        
         if self.ctr_file:
             self.ctr_file.move_to_trash(session )
             self.ctr_file = None
             
-
+        temp_res = find_most_common_difference([unit.time_milliseconds for unit in contour_rows])/1000
+        ctr_length = temp_res*len(contour_rows)
         # Create a dictionary to store the data in the .ctr format
-        mat_data = {'freqContour': np.array([unit.peak_frequency for unit in contour_rows])}
+        mat_data = {'tempRes':temp_res,'freqContour': np.array([unit.peak_frequency for unit in contour_rows]),'ctrLength':ctr_length}
         # Save the data to a MATLAB file
         scipy.io.savemat(os.path.join(FILE_SPACE_PATH, os.path.join(os.path.join(self.generate_relative_path(), self.generate_ctr_file_name()))), mat_data)
         file_obj = File()
