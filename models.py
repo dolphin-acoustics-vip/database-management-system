@@ -238,20 +238,6 @@ class File(db.Model):
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
-
-    def rollback(self, session):
-        """
-        Rollback the changes made to the File object in the session by removing the file from the file system.
-
-        Parameters:
-            session (Session): The SQLAlchemy session object.
-
-        Returns:
-            None
-        """
-        if self in session.new:
-            os.remove(self.get_full_absolute_path())
-
     def delete(self, session):
         self.move_to_trash(session)
         #session.delete(self)
@@ -270,15 +256,39 @@ class File(db.Model):
     
     def get_full_absolute_path(self):
         return os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
+    
+    def get_absolute_directory(self):
+        return os.path.join(FILE_SPACE_PATH, self.path)
 
     def insert_path_and_filename_file_already_in_place(self, new_path, new_filename, new_extension):
         self.path=new_path
         self.filename=new_filename
         self.extension=new_extension
     
+
+    def rename_loose_file(self,loose_file_directory, loose_file_name, loose_file_extension):
+        import re
+        loose_file_path = os.path.join(FILE_SPACE_PATH,loose_file_directory, loose_file_name + '.' + loose_file_extension)
+        if os.path.exists(loose_file_path):
+            # Find the highest suffix integer in the existing filenames
+            suffix_regex = re.compile(r'Dupl(\d+)_{}\.{}'.format(re.escape(loose_file_name), re.escape(loose_file_extension)))
+            highest_suffix = 0
+            for existing_file in os.listdir(os.path.dirname(loose_file_path)):
+                match = suffix_regex.search(existing_file)
+                if match:
+                    suffix = int(match.group(1))
+                    highest_suffix = max(highest_suffix, suffix)
+            
+            # Increment the suffix and generate a new filename
+            new_suffix = highest_suffix + 1
+            new_filename = f"Dupl{new_suffix}_{loose_file_name}"
+            new_path = os.path.join(os.path.dirname(loose_file_path), new_filename + '.' + loose_file_extension)
+            os.rename(loose_file_path, new_path)
+
+    
     def insert_path_and_filename(self, file, new_path, new_filename, root_path):
         """
-        Updates the path, filename, and extension of the file. If the file already exists in the specified location, raises an IOError.
+        Updates the path, filename, and extension of the file. If the file already exists in the specified location, renames the existing file with a unique suffix.
         
         Parameters:
             file: The file object to be saved.
@@ -289,18 +299,22 @@ class File(db.Model):
         Returns:
             None
         """
-        self.path = new_path
-        self.filename = new_filename  # filename without extension
-
-        self.extension = file.filename.split('.')[-1]
-        if not os.path.exists(os.path.join(root_path, self.get_full_relative_path())):
-            os.makedirs(os.path.join(root_path, self.get_path()), exist_ok=True)
-            file.save(os.path.join(root_path, self.get_full_relative_path()))
-            self.file_inserted=True
-        
-        else:
-            raise IOError(f"File already exists in location {os.path.join(root_path, self.get_full_relative_path())}. Cannot overwrite.")
+        try:
+            import re
+            self.path = new_path
+            self.filename = new_filename  # filename without extension
+            self.extension = file.filename.split('.')[-1]
             
+            destination_path = os.path.join(root_path, self.get_full_relative_path())
+                
+            self.rename_loose_file(self.path, self.filename, self.extension)
+            os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
+            file.save(destination_path)
+        except Exception as e:
+            print(e)
+            raise e
+    
+    
     def update_path_and_filename(self, new_path, new_filename,root_path):
 
         self.path = new_path
@@ -349,7 +363,7 @@ class File(db.Model):
         """
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
         current_relative_file_path = os.path.join(root_path, self.get_full_relative_path())
-        renamed = False
+
         # make the directory of the new_relative_file_path_with_root
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
@@ -360,17 +374,11 @@ class File(db.Model):
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
-            if os.path.exists(current_relative_file_path):
-                os.rename(current_relative_file_path, new_relative_file_path_with_root)
-                renamed = True
-            try:
-                session.commit()
-            except Exception as e:
-                try:
-                    if renamed:
-                        os.rename(new_relative_file_path_with_root,current_relative_file_path)
-                except Exception:
-                    pass
+            
+            self.rename_loose_file(self.path, self.filename, self.extension)
+            os.rename(current_relative_file_path, new_relative_file_path_with_root)
+            session.commit()
+ 
             
             parent_dir = os.path.dirname(current_relative_file_path)
 
@@ -492,6 +500,9 @@ class Recording(db.Model):
                 if df[column].dtype != dtype:
                     raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
             '''
+            # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
+            if not df['Annotation'].isin(['y','m','n','Y', 'M', 'N']).all():
+                raise ValueError("Invalid values in 'annotation' column: expected 'Y' or 'N'")
 
             return df
 
@@ -886,9 +897,6 @@ class Selection(db.Model):
             self.delta_frequency = st_df.iloc[0, 8]
             self.average_power = st_df.iloc[0, 9]
             self.annotation = st_df.iloc[0, 10].upper()
-
-            if self.annotation != "Y" and self.annotation != "N" and self.annotation != "M":
-                self.annotation = "M"
             
         session.commit()
 
