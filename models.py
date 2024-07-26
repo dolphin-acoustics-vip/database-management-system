@@ -4,6 +4,7 @@ from datetime import datetime
 import shared_functions
 import scipy.io
 import numpy as np
+import pandas as pd
 
 
 # Third-party imports
@@ -238,6 +239,17 @@ class File(db.Model):
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
+    def rollback(self, session):
+        """
+        Rollback the changes made to the File object in the session by removing the file from the file system.
+        Parameters:
+            session (Session): The SQLAlchemy session object.
+        Returns:
+            None
+        """
+        if self in session.new:
+            os.remove(self.get_full_absolute_path())
+
     def delete(self, session):
         self.move_to_trash(session)
         #session.delete(self)
@@ -457,7 +469,6 @@ class Recording(db.Model):
             
 
     def load_selection_table_data(self,custom_file=None):
-        import pandas as pd
         
         if self.selection_table_file is not None or custom_file is not None:
             if custom_file:
@@ -471,12 +482,16 @@ class Recording(db.Model):
             if file_extension == '.csv':
                 # Read the CSV file into a pandas DataFrame
                 df = pd.read_csv(file_path)
+            elif file_extension == '.txt':
+                # Read the text file into a pandas DataFrame
+                df = pd.read_csv(file_path, sep='\t')
             elif file_extension == '.xlsx':
                 # Read the Excel file into a pandas DataFrame
                 df = pd.read_excel(file_path)
             else:
-                raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
+                raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file.")
             # Define the expected column names and data types
+            
             '''
             expected_columns = {
                 'Selection': int,
@@ -886,17 +901,39 @@ class Selection(db.Model):
         self.step_duration = None
 
     def upload_selection_table_data(self, session, st_df):
-        if st_df.iloc[0,0]==self.selection_number:
-            self.view = st_df.iloc[0, 1]
-            self.channel = st_df.iloc[0, 2]
-            self.begin_time = st_df.iloc[0, 3]
-            self.end_time = st_df.iloc[0, 4]
-            self.low_frequency = st_df.iloc[0, 5]
-            self.high_frequency = st_df.iloc[0, 6]
-            self.delta_time = st_df.iloc[0, 7]
-            self.delta_frequency = st_df.iloc[0, 8]
-            self.average_power = st_df.iloc[0, 9]
-            self.annotation = st_df.iloc[0, 10].upper()
+        # Find the index of the 'Selection' column
+        selection_index = st_df.columns.get_loc('Selection')
+        
+        # Find the index of the 'Annotation' column
+        annotation_index = st_df.columns.get_loc('Annotation')
+        
+        if pd.isna(selection_index) or pd.isna(annotation_index):
+            raise ValueError("Missing required columns: 'Selection' or 'Annotation'")
+
+        # Get the values for the 'Selection' and 'Annotation' columns
+        selection_number = st_df.iloc[0, selection_index]
+        annotation = st_df.iloc[0, annotation_index].upper()
+        
+        if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
+            self.annotation = annotation.upper()
+        else:
+            self.annotation = "M"
+
+        # Check if the selection number matches the expected value
+        if selection_number != self.selection_number:
+            raise ValueError("Invalid selection number")
+
+        # Set the other fields based on the available columns
+        self.view = st_df.iloc[0, st_df.columns.get_loc('View')] if 'View' in st_df.columns else ""
+        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')] if 'Channel' in st_df.columns else ""
+        self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')] if 'Begin Time (s)' in st_df.columns else 0
+        self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')] if 'End Time (s)' in st_df.columns else 0
+        self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')] if 'Low Freq (Hz)' in st_df.columns else 0
+        self.high_frequency = st_df.iloc[0, st_df.columns.get_loc('High Freq (Hz)')] if 'High Freq (Hz)' in st_df.columns else 0
+        self.delta_time = st_df.iloc[0, st_df.columns.get_loc('Delta Time (s)')] if 'Delta Time (s)' in st_df.columns else 0
+        self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else 0
+        self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else 0
+
             
         session.commit()
 

@@ -104,8 +104,10 @@
             method="post">
             <button type="submit">Delete</button>
         </form>
-        <a
-            href="{{url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path())}}">Download</a>
+        
+        <a href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download TXT</a>
+        <a href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download CSV</a>
+
         {% else %}
         <form
             action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"

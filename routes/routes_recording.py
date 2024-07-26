@@ -118,6 +118,54 @@ def recording_selection_table_add(encounter_id,recording_id):
             handle_sqlalchemy_exception(session, e)
     return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
  
+import csv
+from flask import Response
+from io import StringIO
+@routes_recording.route('/export-selection-table/<uuid:recording_id>/<export_format>')
+def export_selection_table(recording_id, export_format):
+    """
+    Export the selection table of a recording to a CSV or TSV file.
+    """
+    headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
+
+    with Session() as session:
+        selections = session.query(Selection).filter_by(recording_id=recording_id).all()
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        encounter = session.query(Encounter).filter_by(id=recording.encounter_id).first()
+        csv_data = StringIO()
+        if export_format == 'csv':
+            writer = csv.writer(csv_data, delimiter=',')
+        else:
+            writer = csv.writer(csv_data, delimiter='\t')
+        writer.writerow(headers)
+        for selection in selections:
+            writer.writerow([
+                selection.id,
+                selection.view,
+                selection.channel,
+                selection.begin_time,
+                selection.end_time,
+                selection.low_frequency,
+                selection.high_frequency,
+                selection.delta_time,
+                selection.delta_frequency,
+                selection.average_power,
+                selection.annotation
+            ])
+
+        csv_data.seek(0)
+
+        if export_format == 'csv':
+            mimetype = 'text/csv'
+            file_name = f'selection-table-{encounter.encounter_name}-rec-{recording.get_start_time_string()}.csv'
+        else:
+            mimetype = 'text/plain'
+            file_name = f'selection-table-{encounter.encounter_name}-rec-{recording.get_start_time_string()}.txt'
+
+        response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
+        return response
+
+
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/delete', methods=['POST'])
 @require_live_session
 def recording_selection_table_delete(encounter_id, recording_id):
