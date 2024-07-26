@@ -7,8 +7,6 @@
     <tr>
         <th>Start Time</th>
         <th>Recording File</th>
-        <th>Selection File</th>
-        <th>Warnings</th>
         <th>Actions</th>
     </tr>
     {% for recording in recordings %}
@@ -43,27 +41,12 @@
                 {% endif %}
             </td>
             {% endif %}
-            {% if recording.selection_table_file != None %}
-            <td>
-                <a href="{{ url_for('download_file', relative_path=recording.selection_table_file.get_full_relative_path()) }}">Download</a><br>
-                <a href="{{ url_for('recording.check_selection_table', encounter_id=encounter.id, recording_id=recording.id) }}">Check</a>
-            </td>
-            {% else %}
-            <td>
-                <label for="selection_table_file" class="btn">Add file: </label>
-                <input style="width: 100%" type="file" id="selection_table_file" name="selection_table_file"><br>
-            </td>
-            {% endif %}
-            <td>
-                INOP
-            </td>
             <td>
                 <button style="width:100%" type="button" onclick="window.location.href='{{ url_for('recording.recording_view', encounter_id=encounter.id, recording_id=recording.id) }}'">View Selections</button><br>
                 {% if current_user.role_id in [1, 2] %}
                 <button style="width: 100%" type="submit">Update</button>
                 <button style="width: 100%" type="button" onclick="return confirm('Are you sure you want to delete this recording?') ? window.location.href='{{ url_for("recording.recording_delete", encounter_id=encounter.id, recording_id=recording.id) }}':false;">Delete</button><br>
                 {% endif %}
-                <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path())}}">Download All</a><br>
             </td>
 
         </form>
@@ -99,12 +82,12 @@
                 {% endif %}
                 <p>Encounter: {{ encounter.encounter_name }}</p>
                 <p>Location: {{ encounter.location }}</p>
+                <p>Cruise: {% if encounter.origin %}{{ encounter.origin }} {% else %}Not entered{% endif %}</p>
                 <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
                 <h3>Other details</h3>
-                <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
-                <p>Cruise: {% if encounter.origin %}{{ encounter.origin }} {% else %}Not entered{% endif %}</p>
                 <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {%else %}Not entered{% endif %}</p>
                 <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{%endif %}</p>
+                <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
             </div>
             <h4 id="encounter-coordinate-message">Interactive map view of the encounter coordinates</h4>
             <div id="outer-map" hidden>
