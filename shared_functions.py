@@ -13,6 +13,39 @@ def page_not_found(error,redirect):
     snapshot_date = client_session.get('snapshot_date')
     return render_template('error.html', error_code=404, error=error, goback_link=redirect, goback_message="Home", snapshot_date=snapshot_date, user=current_user)
 
+def create_system_time_between_request(session, db_object, start_date, end_date, filters=None, order_by=None):
+    from models import User
+
+    query_str="SELECT *,row_start,row_end FROM {} FOR SYSTEM_TIME BETWEEN '{}' AND '{}'".format(db_object.__tablename__, start_date, end_date)
+    if filters:
+        filter_str = " AND ".join(["{} = '{}'".format(key, value) for key, value in filters.items()])
+        query_str += " WHERE " + filter_str
+
+    if order_by:
+        query_str += " ORDER BY " + order_by
+
+    
+    query = db.text(query_str)
+    print(query)
+    result = session.execute(query)
+    
+    # Fetch all results
+    records = result.fetchall()
+
+    # Create a list of dictionaries with column names as keys
+    recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
+
+    for recording_history_item in recording_history:
+        if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
+            recording_history_item['updated_by'] = session.query(User).filter_by(id=uuid.UUID(recording_history_item['updated_by_id'])).first()  
+        else:
+            recording_history_item['updated_by'] = None 
+    # Sort the data by 'row_start' dates
+    recording_history.sort(key=lambda x: x['row_start'])
+    
+
+
+    return recording_history
 
 
 def create_system_time_request(session, db_object, filters=None, order_by=None,override_snapshot_date=None, one_result=False):

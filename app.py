@@ -22,6 +22,7 @@ from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
 from routes.routes_contour import routes_contour
 from routes.routes_auth import routes_auth
+from routes.routes_datahub import routes_datahub
 from exception_handler import NotFoundException
 
 app.register_blueprint(routes_admin)
@@ -30,6 +31,7 @@ app.register_blueprint(routes_recording)
 app.register_blueprint(routes_selection)
 app.register_blueprint(routes_contour)
 app.register_blueprint(routes_auth)
+app.register_blueprint(routes_datahub)
 
 @app.route('/favicon.ico')
 def favicon():

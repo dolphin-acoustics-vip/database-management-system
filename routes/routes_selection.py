@@ -37,8 +37,8 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
         selection_obj = Selection()
     selection_obj.recording = recording
     session.add(selection_obj)
-    selection_obj.ignore_warnings=False
     selection_obj.set_selection_number(selection_number)
+    session.commit()
     selection_file = file
     selection_filename = selection_obj.generate_filename()
     selection_relative_path = selection_obj.generate_relative_path()
@@ -58,6 +58,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     selection_obj.calculate_sampling_rate(session)
     selection_obj.selection_file_id = new_file.id
     session.add(new_file)
+    session.commit()
     return selection_obj
 
 
