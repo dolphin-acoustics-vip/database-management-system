@@ -31,7 +31,7 @@
 {% if original_url %}
     <form action="{{ url_for('reset_snapshot_in_session_with_link') }}" method="post" style="padding-top: 10px">
         <input type="hidden" name="redirect_link" value="{{ original_url }}">
-        <a href="#" onclick="this.closest('form').submit(); return false;">Exit archive and continue</a>
+        <a href="#" onclick="this.closest('form').submit();">Exit archive and continue</a>
     </form>
 {% endif %}
 
