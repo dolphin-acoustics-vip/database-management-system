@@ -529,9 +529,7 @@ class Recording(db.Model):
             if st_df.empty:
                 return [], "The Selection Table does not exist"
             self.upload_selection_table_rows(session, st_df)
-            #missing_selections = self.find_missing_selections(session, st_df)
-            session.commit()
-            #return missing_selections, ""
+
             return ""
         except Exception as e:
             raise e

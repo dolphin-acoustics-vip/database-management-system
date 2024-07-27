@@ -11,7 +11,9 @@
 <body>
     <div class="outer-div">
         <h1>Encounters</h2>
+        {% if current_user.role_id in [1, 2] %}
         <a href="{{ url_for('encounter.encounter_new') }}" style="width:300px; margin-bottom: 10px"><button>Add New Encounter</button></a><br>
+        {% endif %}
         {% if encounter_list %}
         <div style="margin-top: 10px; margin-bottom: 5px;">
             <label for="sort-select">Filter (any column):</label>

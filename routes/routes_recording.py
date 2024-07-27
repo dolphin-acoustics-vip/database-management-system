@@ -108,6 +108,7 @@ def recording_selection_table_add(encounter_id,recording_id):
                     handle_exception(error_msg, session)
                     return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
                 recording.update_selection_traced_status(session)
+                session.commit()
 
             session.commit()  
         except SQLAlchemyError as e:

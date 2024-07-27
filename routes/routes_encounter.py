@@ -17,7 +17,7 @@ routes_encounter = Blueprint('encounter', __name__)
 def encounter():
     with Session() as session:
         try:
-            encounter_list = shared_functions.create_system_time_request(session, Encounter, {}, order_by="row_start")
+            encounter_list = shared_functions.create_system_time_request(session, Encounter, {}, order_by="row_start DESC")
             # If no encounters and no species exist, show an error
             if len(encounter_list) < 1:
                 species_data = session.query(Species).all()
