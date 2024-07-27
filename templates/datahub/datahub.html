@@ -14,6 +14,8 @@
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.js.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+
     <script>
         $(document).ready(function() {
             getStatistics();
@@ -74,17 +76,18 @@
             var endDateString = utcEndDate.toISOString().substring(0, 19);
             console.log(startDateString, endDateString)
             getSelectionStatistics(startDateString, endDateString);
+            $('#statistics-between-title').text('Statistics Between ' + startDateString + ' and ' + endDateString);
         }
     </script>
 </head>
 
 <body>
-    <div class="statistic-box" id="selection-box">
-        <h2>Selections</h2>
-    </div>
-    <div class="statistic-box" id="statistic2-box"></div>
+
+    <h2>Statistics As At xxx</h2>
+
     <div class="statistic-box" id="statistic3-box"></div>
-    <!-- Add more statistic boxes as needed -->
+
+    <h2 id="statistics-between-title">Statistics Between </h2>
 
     <label for="start-date">Start Date:</label>
     <input type="datetime-local" name="start-date" id="start-date"/>
@@ -93,6 +96,113 @@
     <input type="datetime-local" name="end-date" id="end-date" />
 
     <button onclick="getStatistics()">Get Statistics</button>
+    
+    <div class="statistic-box" id="selection-box">
+        <h2>Selections</h2>
+    </div>
+    <div class="statistic-box" id="statistic2-box"></div>
+    <div class="statistic-box" id="statistic3-box"></div>
+    <!-- Add more statistic boxes as needed -->
+
+    <h2>User Stats</h2>
+
+    {% from 'partials/search-dropdown.html' import recording_table %}
+    {{ recording_table() }}
+
+    <div class="statistic-box" id="user-statistics-box"></div>
+
+    <div class="statistic-box" id="user-statistics-box"></div>
+
+    <canvas id="user-statistics-box-canvas" width="400" height="200"></canvas>
+
 </body>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    function onUserSelectionDropdownComplete(response) {
+
+        var now = new Date();
+        var utcStartDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000 - (7 * 24 * 60 * 60 * 1000));
+        var utcEndDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        console.log(utcStartDate, utcEndDate);
+
+        // Export the start and end dates to strings in the format '2024-07-27T04:15:00.000' without the 'Z'
+        var startDateString = utcStartDate.toISOString().substring(0, 19);
+        var endDateString = utcEndDate.toISOString().substring(0, 19);
+        console.log(startDateString, endDateString);
+
+
+        //getSelectionStatistics(startDateString, endDateString);
+        $('#statistics-between-title').text('Statistics Between ' + startDateString + ' and ' + endDateString);
+        // Make AJAX request to the route
+        $.ajax({
+                url: '/datahub/get-user-statistics',
+                method: 'GET',
+                data: {
+                    start_date: startDateString,
+                    end_date: endDateString,
+                    user_id: response
+                },
+                success: function(response) {
+                    // Create a table and populate it with the statistics
+                    var table = $('<table>').addClass('statistics-table');
+                    var thead = $('<thead>').appendTo(table);
+                    var tbody = $('<tbody>').appendTo(table);
+
+                    // Create table header row
+                    var headerRow = $('<tr>').appendTo(thead);
+                    $('<th>').text('Statistic').appendTo(headerRow);
+                    $('<th>').text('Value').appendTo(headerRow);
+
+                    // Create table body rows
+                    for (var key in response) {
+                        var row = $('<tr>').appendTo(tbody);
+                        $('<td>').text(key).appendTo(row);
+                        $('<td>').text(response[key]).appendTo(row);
+                    }
+
+                    // Replace the content of the selection box with the table
+                    $('#user-statistics-box').empty().append(table);
+
+                    console.log(response.selFileUploadsPerUser)
+                    var ctx = document.getElementById('user-statistics-box-canvas').getContext('2d');
+                    var chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: response.selFileUploadsPerUser.map(item => item.date.toLocaleString('en-US', { hour: false, minute: false, hour12: false })),
+                            datasets: [{
+                                label: 'Selection File Uploads',
+                                data: response.selFileUploadsPerUser.map(item => item.count),
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                xAxes: [{
+                                    ticks: {
+                                        beginAtZero: true,
+                                        // Set the stepSize to control the interval between x-axis labels
+                                        stepSize: 1
+                                    }
+                                }],
+                                yAxes: [{
+                                    ticks: {
+                                        beginAtZero: true
+                                    }
+                                }]
+                            }
+                        }
+                    });
+                },
+                error: function(error) {
+                    // Handle error
+                    $('#user-statistics-box').html('Error: ' + error.responseText);
+                }
+            });    
+        }
+
+</script>
 
 </html>
