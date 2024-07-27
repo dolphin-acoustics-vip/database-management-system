@@ -2,7 +2,9 @@
 import os, uuid
 from datetime import datetime
 import shared_functions
-
+import scipy.io
+import numpy as np
+import pandas as pd
 
 
 # Third-party imports
@@ -123,7 +125,7 @@ class Encounter(db.Model):
     encounter_name = db.Column(db.String(100), nullable=False)
     location = db.Column(db.String(100), nullable=False)
     species_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('species.id'), nullable=False)
-    origin = db.Column(db.String(100))
+    cruise = db.Column(db.String(100))
     latitude = db.Column(db.String(20))
     longitude = db.Column(db.String(20))
     data_source_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('data_source.id'), nullable=False)
@@ -198,11 +200,11 @@ class Encounter(db.Model):
     def set_location(self, value):
         self.location = None if value.strip() == '' else value.strip()
 
-    def get_origin(self):
-        return '' if self.origin is None else self.origin
+    def get_cruise(self):
+        return '' if self.cruise is None else self.cruise
 
-    def set_origin(self, value):
-        self.origin = None if value.strip() == '' else value.strip()
+    def set_cruise(self, value):
+        self.cruise = None if value.strip() == '' else value.strip()
 
     def get_notes(self):
         return '' if self.notes is None else self.notes
@@ -237,6 +239,17 @@ class File(db.Model):
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
+    def rollback(self, session):
+        """
+        Rollback the changes made to the File object in the session by removing the file from the file system.
+        Parameters:
+            session (Session): The SQLAlchemy session object.
+        Returns:
+            None
+        """
+        if self in session.new:
+            os.remove(self.get_full_absolute_path())
+
     def delete(self, session):
         self.move_to_trash(session)
         #session.delete(self)
@@ -256,17 +269,64 @@ class File(db.Model):
     def get_full_absolute_path(self):
         return os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
     
-    def insert_path_and_filename(self, file, new_path, new_filename, root_path):
-        self.path = new_path
-        self.filename = new_filename  # filename without extension
+    def get_absolute_directory(self):
+        return os.path.join(FILE_SPACE_PATH, self.path)
 
-        self.extension = file.filename.split('.')[-1]
-        if not os.path.exists(os.path.join(root_path, self.get_full_relative_path())):
-            os.makedirs(os.path.join(root_path, self.get_path()), exist_ok=True)
-            file.save(os.path.join(root_path, self.get_full_relative_path()))
-        else:
-            raise IOError(f"File already exists in location {os.path.join(root_path, self.get_full_relative_path())}. Cannot overwrite.")
+    def insert_path_and_filename_file_already_in_place(self, new_path, new_filename, new_extension):
+        self.path=new_path
+        self.filename=new_filename
+        self.extension=new_extension
+    
+
+    def rename_loose_file(self,loose_file_directory, loose_file_name, loose_file_extension):
+        import re
+        loose_file_path = os.path.join(FILE_SPACE_PATH,loose_file_directory, loose_file_name + '.' + loose_file_extension)
+        if os.path.exists(loose_file_path):
+            # Find the highest suffix integer in the existing filenames
+            suffix_regex = re.compile(r'Dupl(\d+)_{}\.{}'.format(re.escape(loose_file_name), re.escape(loose_file_extension)))
+            highest_suffix = 0
+            for existing_file in os.listdir(os.path.dirname(loose_file_path)):
+                match = suffix_regex.search(existing_file)
+                if match:
+                    suffix = int(match.group(1))
+                    highest_suffix = max(highest_suffix, suffix)
             
+            # Increment the suffix and generate a new filename
+            new_suffix = highest_suffix + 1
+            new_filename = f"Dupl{new_suffix}_{loose_file_name}"
+            new_path = os.path.join(os.path.dirname(loose_file_path), new_filename + '.' + loose_file_extension)
+            os.rename(loose_file_path, new_path)
+
+    
+    def insert_path_and_filename(self, file, new_path, new_filename, root_path):
+        """
+        Updates the path, filename, and extension of the file. If the file already exists in the specified location, renames the existing file with a unique suffix.
+        
+        Parameters:
+            file: The file object to be saved.
+            new_path: The new path for the file.
+            new_filename: The new filename for the file.
+            root_path: The root path where the file will be saved.
+
+        Returns:
+            None
+        """
+        try:
+            import re
+            self.path = new_path
+            self.filename = new_filename  # filename without extension
+            self.extension = file.filename.split('.')[-1]
+            
+            destination_path = os.path.join(root_path, self.get_full_relative_path())
+                
+            self.rename_loose_file(self.path, self.filename, self.extension)
+            os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
+            file.save(destination_path)
+        except Exception as e:
+            print(e)
+            raise e
+    
+    
     def update_path_and_filename(self, new_path, new_filename,root_path):
 
         self.path = new_path
@@ -300,6 +360,8 @@ class File(db.Model):
         
         self.move_file(session, trash_file_path, FILE_SPACE_PATH)
 
+    def delete_file(self, session):
+        os.path.remove(self.get_full_absolute_path())
 
     def move_file(self, session, new_relative_file_path, root_path):
         """
@@ -324,15 +386,11 @@ class File(db.Model):
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
-            if os.path.exists(current_relative_file_path):
-                os.rename(current_relative_file_path, new_relative_file_path_with_root)
-            try:
-                session.commit()
-            except Exception as e:
-                try:
-                    os.rename(new_relative_file_path_with_root,current_relative_file_path)
-                except Exception:
-                    pass
+            
+            self.rename_loose_file(self.path, self.filename, self.extension)
+            os.rename(current_relative_file_path, new_relative_file_path_with_root)
+            session.commit()
+ 
             
             parent_dir = os.path.dirname(current_relative_file_path)
 
@@ -411,7 +469,6 @@ class Recording(db.Model):
             
 
     def load_selection_table_data(self,custom_file=None):
-        import pandas as pd
         
         if self.selection_table_file is not None or custom_file is not None:
             if custom_file:
@@ -425,12 +482,16 @@ class Recording(db.Model):
             if file_extension == '.csv':
                 # Read the CSV file into a pandas DataFrame
                 df = pd.read_csv(file_path)
+            elif file_extension == '.txt':
+                # Read the text file into a pandas DataFrame
+                df = pd.read_csv(file_path, sep='\t')
             elif file_extension == '.xlsx':
                 # Read the Excel file into a pandas DataFrame
                 df = pd.read_excel(file_path)
             else:
-                raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
+                raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file.")
             # Define the expected column names and data types
+            
             '''
             expected_columns = {
                 'Selection': int,
@@ -455,7 +516,7 @@ class Recording(db.Model):
                     raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
             '''
             # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
-            if not df['Annotation'].isin(['Y', 'M', 'N']).all():
+            if not df['Annotation'].isin(['y','m','n','Y', 'M', 'N']).all():
                 raise ValueError("Invalid values in 'annotation' column: expected 'Y' or 'N'")
 
             return df
@@ -468,9 +529,7 @@ class Recording(db.Model):
             if st_df.empty:
                 return [], "The Selection Table does not exist"
             self.upload_selection_table_rows(session, st_df)
-            #missing_selections = self.find_missing_selections(session, st_df)
-            session.commit()
-            #return missing_selections, ""
+
             return ""
         except Exception as e:
             raise e
@@ -595,6 +654,17 @@ class Recording(db.Model):
             raise ValueError("Duration must be an integer")
         self.duration = value
     
+    def update_selection_traced_status(self,session):
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        for selection in selections:
+            selection.update_traced_status()
+    
+    def reset_selection_table_values(self,session):
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        for selection in selections:
+            selection.reset_selection_table_values(session)
+
+    
 """
 
 class RecordingAudit(Audit, Recording, db.Model):
@@ -611,8 +681,11 @@ class Selection(db.Model):
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
-    annotation = db.Column(db.String, nullable=False)
+    ctr_file_id = db.Column(db.String, db.ForeignKey('file.id'))
+    sampling_rate = db.Column(db.Float, nullable=False)
+    traced = db.Column(db.Boolean, nullable=True, default=None)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+
 
     ### Selection Table data ###
     view = db.Column(db.String)
@@ -624,10 +697,70 @@ class Selection(db.Model):
     delta_time = db.Column(db.Float)
     delta_frequency = db.Column(db.Float)
     average_power = db.Column(db.Float)
+    annotation = db.Column(db.String, nullable=False)
 
+    ### Contour Statistics data ###
+    freq_max = db.Column(db.Float, nullable=True, default=None)
+    freq_min = db.Column(db.Float, nullable=True, default=None)
+    duration = db.Column(db.Float, nullable=True, default=None)
+    freq_begin = db.Column(db.Float, nullable=True, default=None)
+    freq_end = db.Column(db.Float, nullable=True, default=None)
+    freq_range = db.Column(db.Float, nullable=True, default=None)
+    dc_mean = db.Column(db.Float, nullable=True, default=None)
+    dc_standarddeviation = db.Column(db.Float, nullable=True, default=None)
+    freq_mean = db.Column(db.Float, nullable=True, default=None)
+    freq_standarddeviation = db.Column(db.Float, nullable=True, default=None)
+    freq_median = db.Column(db.Float, nullable=True, default=None)
+    freq_center = db.Column(db.Float, nullable=True, default=None)
+    freq_relbw = db.Column(db.Float, nullable=True, default=None)
+    freq_maxminratio = db.Column(db.Float, nullable=True, default=None)
+    freq_begendratio = db.Column(db.Float, nullable=True, default=None)
+    freq_quarter1 = db.Column(db.Float, nullable=True, default=None)
+    freq_quarter2 = db.Column(db.Float, nullable=True, default=None)
+    freq_quarter3 = db.Column(db.Float, nullable=True, default=None)
+    freq_spread = db.Column(db.Float, nullable=True, default=None)
+    dc_quarter1mean = db.Column(db.Float, nullable=True, default=None)
+    dc_quarter2mean = db.Column(db.Float, nullable=True, default=None)
+    dc_quarter3mean = db.Column(db.Float, nullable=True, default=None)
+    dc_quarter4mean = db.Column(db.Float, nullable=True, default=None)
+    freq_cofm = db.Column(db.Float, nullable=True, default=None)
+    freq_stepup = db.Column(db.Integer, nullable=True, default=None)
+    freq_stepdown = db.Column(db.Integer, nullable=True, default=None)
+    freq_numsteps = db.Column(db.Integer, nullable=True, default=None)
+    freq_slopemean = db.Column(db.Float, nullable=True, default=None)
+    freq_absslopemean = db.Column(db.Float, nullable=True, default=None)
+    freq_posslopemean = db.Column(db.Float, nullable=True, default=None)
+    freq_negslopemean = db.Column(db.Float, nullable=True, default=None)
+    freq_sloperatio = db.Column(db.Float, nullable=True, default=None)
+    freq_begsweep = db.Column(db.Integer, nullable=True, default=None)
+    freq_begup = db.Column(db.Integer, nullable=True, default=None)
+    freq_begdown = db.Column(db.Integer, nullable=True, default=None)
+    freq_endsweep = db.Column(db.Integer, nullable=True, default=None)
+    freq_endup = db.Column(db.Integer, nullable=True, default=None)
+    freq_enddown = db.Column(db.Integer, nullable=True, default=None)
+    num_sweepsupdown = db.Column(db.Integer, nullable=True, default=None)
+    num_sweepsdownup = db.Column(db.Integer, nullable=True, default=None)
+    num_sweepsupflat = db.Column(db.Integer, nullable=True, default=None)
+    num_sweepsdownflat = db.Column(db.Integer, nullable=True, default=None)
+    num_sweepsflatup = db.Column(db.Integer, nullable=True, default=None)
+    num_sweepsflatdown = db.Column(db.Integer, nullable=True, default=None)
+    freq_sweepuppercent = db.Column(db.Float, nullable=True, default=None)
+    freq_sweepdownpercent = db.Column(db.Float, nullable=True, default=None)
+    freq_sweepflatpercent = db.Column(db.Float, nullable=True, default=None)
+    num_inflections = db.Column(db.Integer, nullable=True, default=None)
+    inflection_maxdelta = db.Column(db.Float, nullable=True, default=None)
+    inflection_mindelta = db.Column(db.Float, nullable=True, default=None)
+    inflection_maxmindelta = db.Column(db.Float, nullable=True, default=None)
+    inflection_mediandelta = db.Column(db.Float, nullable=True, default=None)
+    inflection_meandelta = db.Column(db.Float, nullable=True, default=None)
+    inflection_standarddeviationdelta = db.Column(db.Float, nullable=True, default=None)
+    inflection_duration = db.Column(db.Float, nullable=True, default=None)
+    step_duration = db.Column(db.Float, nullable=True, default=None)
+    
     contour_file = db.relationship("File", foreign_keys=[contour_file_id])
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
+    ctr_file = db.relationship("File", foreign_keys=[ctr_file_id])
     
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
@@ -638,6 +771,34 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+    def calculate_sampling_rate(self, session):
+        if self.selection_file:
+            import wave
+            with wave.open(self.selection_file.get_full_absolute_path(), "rb") as wave_file:
+                self.sampling_rate = wave_file.getframerate()
+                
+
+    #def auto_populate_contoured(self):
+    #    if self.annotation == "Y"
+    def reset_selection_table_values(self, session):
+        self.view = None
+        self.channel = None
+        self.begin_time = None
+        self.end_time = None
+        self.low_frequency = None
+        self.high_frequency = None
+        self.delta_time = None
+        self.delta_frequency = None
+        self.average_power = None
+        self.annotation = None
+
+    def update_traced_status(self):
+        if self.contour_file and (self.annotation == "Y" or self.annotation == "M"):
+            self.traced = True
+        elif not self.contour_file and (self.annotation == "N" or self.annotation == "M"):
+            self.traced = False
+        else:
+            self.traced = None
 
     def getWarnings(self):
         warnings = []
@@ -650,19 +811,128 @@ class Selection(db.Model):
         ## ADD CHECK THAT SELECTION TABLE HAS BEEN UPLOADED
         return warnings
 
+    def generate_ctr_file_name(self):
+        return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}.ctr"
+
+    def generate_ctr_file(self, session, contour_rows):
+        def find_most_common_difference(arr):
+            differences = []
+            for i in range(len(arr) - 1):
+                differences.append(arr[i + 1] - arr[i])
+            most_common_difference = max(set(differences), key=differences.count)
+            return most_common_difference
+
+
+        
+        if self.ctr_file:
+            self.ctr_file.move_to_trash(session )
+            self.ctr_file = None
+            
+        temp_res = find_most_common_difference([unit.time_milliseconds for unit in contour_rows])/1000
+        ctr_length = temp_res*len(contour_rows)
+        # Create a dictionary to store the data in the .ctr format
+        mat_data = {'tempRes':temp_res,'freqContour': np.array([unit.peak_frequency for unit in contour_rows]),'ctrLength':ctr_length}
+        # Save the data to a MATLAB file
+        scipy.io.savemat(os.path.join(FILE_SPACE_PATH, os.path.join(os.path.join(self.generate_relative_path(), self.generate_ctr_file_name()))), mat_data)
+        file_obj = File()
+        file_obj.insert_path_and_filename_file_already_in_place(self.generate_relative_path(),self.generate_ctr_file_name().split(".")[0], self.generate_ctr_file_name().split(".")[-1])
+        session.add(file_obj)
+        self.ctr_file = file_obj
+
+
+    def reset_contour_stats(self):
+        self.freq_max = None
+        self.freq_min = None
+        self.duration = None
+        self.freq_begin = None
+        self.freq_end = None
+        self.freq_range = None
+        self.dc_mean = None
+        self.dc_standarddeviation = None
+        self.freq_mean = None
+        self.freq_standarddeviation = None
+        self.freq_median = None
+        self.freq_center = None
+        self.freq_relbw = None
+        self.freq_maxminratio = None
+        self.freq_begendratio = None
+        self.freq_quarter1 = None
+        self.freq_quarter2 = None
+        self.freq_quarter3 = None
+        self.freq_spread = None
+        self.dc_quarter1mean = None
+        self.dc_quarter2mean = None
+        self.dc_quarter3mean = None
+        self.dc_quarter4mean = None
+        self.freq_cofm = None
+        self.freq_stepup = None
+        self.freq_stepdown = None
+        self.freq_numsteps = None
+        self.freq_slopemean = None
+        self.freq_absslopemean = None
+        self.freq_posslopemean = None
+        self.freq_negslopemean = None
+        self.freq_sloperatio = None
+        self.freq_begsweep = None
+        self.freq_begup = None
+        self.freq_begdown = None
+        self.freq_endsweep = None
+        self.freq_endup = None
+        self.freq_enddown = None
+        self.num_sweepsupdown = None
+        self.num_sweepsdownup = None
+        self.num_sweepsupflat = None
+        self.num_sweepsdownflat = None
+        self.num_sweepsflatup = None
+        self.num_sweepsflatdown = None
+        self.freq_sweepuppercent = None
+        self.freq_sweepdownpercent = None
+        self.freq_sweepflatpercent = None
+        self.num_inflections = None
+        self.inflection_maxdelta = None
+        self.inflection_mindelta = None
+        self.inflection_maxmindelta = None
+        self.inflection_mediandelta = None
+        self.inflection_meandelta = None
+        self.inflection_standarddeviationdelta = None
+        self.inflection_duration = None
+        self.step_duration = None
 
     def upload_selection_table_data(self, session, st_df):
-        if st_df.iloc[0,0]==self.selection_number:
-            self.view = st_df.iloc[0, 1]
-            self.channel = st_df.iloc[0, 2]
-            self.begin_time = st_df.iloc[0, 3]
-            self.end_time = st_df.iloc[0, 4]
-            self.low_frequency = st_df.iloc[0, 5]
-            self.high_frequency = st_df.iloc[0, 6]
-            self.delta_time = st_df.iloc[0, 7]
-            self.delta_frequency = st_df.iloc[0, 8]
-            self.average_power = st_df.iloc[0, 9]
-            self.annotation = st_df.iloc[0, 10]
+        # Find the index of the 'Selection' column
+        selection_index = st_df.columns.get_loc('Selection')
+        
+        # Find the index of the 'Annotation' column
+        annotation_index = st_df.columns.get_loc('Annotation')
+        
+        if pd.isna(selection_index) or pd.isna(annotation_index):
+            raise ValueError("Missing required columns: 'Selection' or 'Annotation'")
+
+        # Get the values for the 'Selection' and 'Annotation' columns
+        selection_number = st_df.iloc[0, selection_index]
+        annotation = st_df.iloc[0, annotation_index].upper()
+        
+        if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
+            self.annotation = annotation.upper()
+        else:
+            self.annotation = "M"
+
+        # Check if the selection number matches the expected value
+        if selection_number != self.selection_number:
+            raise ValueError("Invalid selection number")
+
+        # Set the other fields based on the available columns
+        self.view = st_df.iloc[0, st_df.columns.get_loc('View')] if 'View' in st_df.columns else ""
+        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')] if 'Channel' in st_df.columns else ""
+        self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')] if 'Begin Time (s)' in st_df.columns else 0
+        self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')] if 'End Time (s)' in st_df.columns else 0
+        self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')] if 'Low Freq (Hz)' in st_df.columns else 0
+        self.high_frequency = st_df.iloc[0, st_df.columns.get_loc('High Freq (Hz)')] if 'High Freq (Hz)' in st_df.columns else 0
+        self.delta_time = st_df.iloc[0, st_df.columns.get_loc('Delta Time (s)')] if 'Delta Time (s)' in st_df.columns else 0
+        self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else 0
+        self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else 0
+
+            
         session.commit()
 
     def update_call(self, session):
@@ -674,13 +944,16 @@ class Selection(db.Model):
         if self.contour_file is not None:
             self.contour_file.move_file(session,self.generate_full_relative_path()+"." +self.contour_file.extension,root_path)
 
-    def delete(self, session,keep_file_reference):        
+    def delete(self, session,keep_file_reference=True):        
         if self.selection_file_id is not None:
             self.selection_file.delete(session)
             if not keep_file_reference: self.selection_file = None  # Remove the reference to the recording file
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
             if not keep_file_reference: self.contour_file = None
+        if self.ctr_file_id is not None:
+            self.ctr_file.delete(session)
+            if not keep_file_reference: self.ctr_file = None
         session.delete(self)
 
 
@@ -737,3 +1010,12 @@ class RecordingPlatform(db.Model):
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name
+    
+class Assignment(db.Model):
+    __tablename__ = 'assignment'
+    
+    user_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'), primary_key=True, nullable=False)
+    recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), primary_key=True, nullable=False)
+    
+    user = db.relationship("User", foreign_keys=[user_id])
+    recording = db.relationship("Recording", foreign_keys=[recording_id])

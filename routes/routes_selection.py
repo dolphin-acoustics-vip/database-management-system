@@ -8,6 +8,7 @@ from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,rende
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
+import calculations.rocca.contour as contour_code
 
 # Location application imports
 from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
@@ -54,6 +55,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     new_file.set_uploaded_date(datetime.now())
     new_file.set_uploaded_by("User 1")
     selection_obj.selection_file = new_file
+    selection_obj.calculate_sampling_rate(session)
     selection_obj.selection_file_id = new_file.id
     session.add(new_file)
     return selection_obj
@@ -65,6 +67,7 @@ def contour_file_delete(selection_id):
     with Session() as session:
         selection_obj = session.query(Selection).filter_by(id=selection_id).first()
         selection_obj.delete_contour_file(session)
+        selection_obj.update_traced_status()
         #before_commit(session)
         session.commit()
         return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id))
@@ -82,9 +85,12 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
         if "File already exists" in str(e):
             raise IOError (f"Contour {selection_id} for this recording already exists in the database.")
         raise e
-    new_file.set_uploaded_date(datetime.now())
-    new_file.set_uploaded_by("User 1")
     selection_obj.contour_file = new_file
+    selection_obj.update_traced_status()
+
+    contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
+    contour_file_obj.calculate_statistics(session, selection_obj)
+
     session.add(new_file)
     return selection_obj
 
@@ -312,6 +318,8 @@ def selection_insert_bulk(encounter_id,recording_id):
                     handle_sqlalchemy_exception(session, e)
                 except IOError as e:
                     handle_sqlalchemy_exception(session, e)
+                except Exception as e:
+                    handle_sqlalchemy_exception(session, e)
             #before_commit(session)
             session.commit()
             flash(f'Added {counter} selections', 'success')
@@ -339,5 +347,101 @@ def selection_view(selection_id):
         selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
         selection_history = shared_functions.create_all_time_request(session, Selection, filters={"id":selection_id}, order_by="row_start")
 
+        selection_dict = {
+            'freq_max': selection.freq_max,
+            'freq_min': selection.freq_min,
+            'duration': selection.duration,
+            'freq_begin': selection.freq_begin,
+            'freq_end': selection.freq_end,
+            'freq_range': selection.freq_range,
+            'dc_mean': selection.dc_mean,
+            'dc_standarddeviation': selection.dc_standarddeviation,
+            'freq_mean': selection.freq_mean,
+            'freq_standarddeviation': selection.freq_standarddeviation,
+            'freq_median': selection.freq_median,
+            'freq_center': selection.freq_center,
+            'freq_relbw': selection.freq_relbw,
+            'freq_maxminratio': selection.freq_maxminratio,
+            'freq_begendratio': selection.freq_begendratio,
+            'freq_quarter1': selection.freq_quarter1,
+            'freq_quarter2': selection.freq_quarter2,
+            'freq_quarter3': selection.freq_quarter3,
+            'freq_spread': selection.freq_spread,
+            'dc_quarter1mean': selection.dc_quarter1mean,
+            'dc_quarter2mean': selection.dc_quarter2mean,
+            'dc_quarter3mean': selection.dc_quarter3mean,
+            'dc_quarter4mean': selection.dc_quarter4mean,
+            'freq_cofm': selection.freq_cofm,
+            'freq_stepup': selection.freq_stepup,
+            'freq_stepdown': selection.freq_stepdown,
+            'freq_numsteps': selection.freq_numsteps,
+            'freq_slopemean': selection.freq_slopemean,
+            'freq_absslopemean': selection.freq_absslopemean,
+            'freq_posslopemean': selection.freq_posslopemean,
+            'freq_negslopemean': selection.freq_negslopemean,
+            'freq_sloperatio': selection.freq_sloperatio,
+            'freq_begsweep': selection.freq_begsweep,
+            'freq_begup': selection.freq_begup,
+            'freq_begdown': selection.freq_begdown,
+            'freq_endsweep': selection.freq_endsweep,
+            'freq_endup': selection.freq_endup,
+            'freq_enddown': selection.freq_enddown,
+            'num_sweepsupdown': selection.num_sweepsupdown,
+            'num_sweepsdownup': selection.num_sweepsdownup,
+            'num_sweepsupflat': selection.num_sweepsupflat,
+            'num_sweepsdownflat': selection.num_sweepsdownflat,
+            'num_sweepsflatup': selection.num_sweepsflatup,
+            'num_sweepsflatdown': selection.num_sweepsflatdown,
+            'freq_sweepuppercent': selection.freq_sweepuppercent,
+            'freq_sweepdownpercent': selection.freq_sweepdownpercent,
+            'freq_sweepflatpercent': selection.freq_sweepflatpercent,
+            'num_inflections': selection.num_inflections,
+            'inflection_maxdelta': selection.inflection_maxdelta,
+            'inflection_mindelta': selection.inflection_mindelta,
+            'inflection_maxmindelta': selection.inflection_maxmindelta,
+            'inflection_meandelta': selection.inflection_meandelta,
+            'inflection_standarddeviationdelta': selection.inflection_standarddeviationdelta,
+            'inflection_mediandelta': selection.inflection_mediandelta,
+            'inflection_duration': selection.inflection_duration,
+            'step_duration': selection.step_duration,
+            }
+        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict)
+
+@routes_selection.route('/selection/<uuid:selection_id>/confirm_contour_upload', methods=['POST'])
+def confirm_contour_upload(selection_id):
+    with Session() as session:
+        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
+        selection.traced = True
+        session.commit()
+        return jsonify({'success': True})
+
+@routes_selection.route('/selection/<uuid:selection_id>/confirm_no_contour_upload', methods=['POST'])
+def confirm_no_contour_upload(selection_id):
+    with Session() as session:
+        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
+        selection.traced = False
+        session.commit()
+        return jsonify({'success': True})
+    
+
+import csv
+from flask import Response
+from io import StringIO
+
+@routes_selection.route('/recording/<uuid:recording_id>/extract_selection_stats', methods=['GET'])
+def extract_selection_stats(recording_id):
+    with Session() as session:
+        selections = session.query(Selection).filter(Selection.recording_id == recording_id).all()
+        recording = session.query(Recording).filter(Recording.id == recording_id).first()
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Encounter','Location','Cruise','Recording','Species','SamplingRate','SELECTIONNUMBER','FREQMAX', 'FREQMIN', 'DURATION', 'FREQBEG', 'FREQEND', 'FREQRANGE', 'DCMEAN', 'DCSTDDEV', 'FREQMEAN', 'FREQSTDDEV', 'FREQMEDIAN', 'FREQCENTER', 'FREQRELBW', 'FREQMAXMINRATIO', 'FREQBEGENDRATIO', 'FREQQUARTER1', 'FREQQUARTER2', 'FREQQUARTER3', 'FREQSPREAD', 'DCQUARTER1MEAN', 'DCQUARTER2MEAN', 'DCQUARTER3MEAN', 'DCQUARTER4MEAN', 'FREQCOFM', 'FREQSTEPUP', 'FREQSTEPDOWN', 'FREQNUMSTEPS', 'FREQSLOPEMEAN', 'FREQABSSLOPEMEAN', 'FREQPOSSLOPEMEAN', 'FREQNEGSLOPEMEAN', 'FREQSLOPERATIO', 'FREQBEGSWEEP', 'FREQBEGUP', 'FREQBEGDWN', 'FREQENDSWEEP', 'FREQENDUP', 'FREQENDDWN', 'NUMSWEEPSUPDWN', 'NUMSWEEPSDWNUP', 'NUMSWEEPSUPFLAT', 'NUMSWEEPSDWNFLAT', 'NUMSWEEPSFLATUP', 'NUMSWEEPSFLATDWN', 'FREQSWEEPUPPERCENT', 'FREQSWEEPDWNPERCENT', 'FREQSWEEPFLATPERCENT', 'NUMINFLECTIONS', 'INFLMAXDELTA', 'INFLMINDELTA', 'INFLMAXMINDELTA', 'INFLMEANDELTA', 'INFLSTDDEVDELTA', 'INFLMEDIANDELTA', 'INFLDUR', 'STEPDUR'])
         
-        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history)
+
+        for selection in selections:
+            if selection.traced:
+
+                writer.writerow([selection.recording.encounter.encounter_name, selection.recording.encounter.location, selection.recording.encounter.cruise, selection.recording.get_start_time_string(), selection.recording.encounter.species.species_name, selection.sampling_rate,  selection.selection_number, selection.freq_max, selection.freq_min, selection.duration, selection.freq_begin, selection.freq_end, selection.freq_range, selection.dc_mean, selection.dc_standarddeviation, selection.freq_mean, selection.freq_standarddeviation, selection.freq_median, selection.freq_center, selection.freq_relbw, selection.freq_maxminratio, selection.freq_begendratio, selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3, selection.freq_spread, selection.dc_quarter1mean, selection.dc_quarter2mean, selection.dc_quarter3mean, selection.dc_quarter4mean, selection.freq_cofm, selection.freq_stepup, selection.freq_stepdown, selection.freq_numsteps, selection.freq_slopemean, selection.freq_absslopemean, selection.freq_posslopemean, selection.freq_negslopemean, selection.freq_sloperatio, selection.freq_begsweep, selection.freq_begup, selection.freq_begdown, selection.freq_endsweep, selection.freq_endup, selection.freq_enddown, selection.num_sweepsupdown, selection.num_sweepsdownup, selection.num_sweepsupflat, selection.num_sweepsdownflat, selection.num_sweepsflatup, selection.num_sweepsflatdown, selection.freq_sweepuppercent, selection.freq_sweepdownpercent, selection.freq_sweepflatpercent, selection.num_inflections, selection.inflection_maxdelta, selection.inflection_mindelta, selection.inflection_maxmindelta, selection.inflection_meandelta, selection.inflection_standarddeviationdelta, selection.inflection_mediandelta, selection.inflection_duration, selection.step_duration])
+        
+        output.seek(0)
+        return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename=ContourStats-{recording.get_start_time_string()}.csv'})

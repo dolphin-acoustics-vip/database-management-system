@@ -89,29 +89,84 @@ def recording_selection_table_add(encounter_id,recording_id):
     after validation. 
     """
     with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
-        # If a selection file has been given, add it to the Recording object
-        if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
-            selection_table_file = request.files['selection-table-file'] # required in the POST request
-            # Generate the destination filename and filepath for the selection table
-            new_selection_table_filename = recording.generate_selection_table_filename()
-            new_relative_path = recording.generate_relative_path()
-            new_file = File()
-            new_file.insert_path_and_filename(selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
-            new_file.set_uploaded_date = datetime.now()
-            new_file.set_uploaded_by("User 1") # TODO: change
-            session.add(new_file)
-            recording.selection_table_file = new_file 
-            # Validate the selection table - if invalid then delete the selection table file
-            error_msg = recording.validate_selection_table(session)
-            if error_msg != None and error_msg != "":
-                new_file.move_to_trash(session)
-                handle_exception(error_msg, session)
-                return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
-        session.commit()  
-    
+        try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            # If a selection file has been given, add it to the Recording object
+            if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
+                selection_table_file = request.files['selection-table-file'] # required in the POST request
+                # Generate the destination filename and filepath for the selection table
+                new_selection_table_filename = recording.generate_selection_table_filename()
+                new_relative_path = recording.generate_relative_path()
+                new_file = File()
+                new_file.insert_path_and_filename(selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
+                session.add(new_file)
+                recording.selection_table_file = new_file 
+                # Validate the selection table - if invalid then delete the selection table file
+                error_msg = recording.validate_selection_table(session)
+                if error_msg != None and error_msg != "":
+                    new_file.move_to_trash(session)
+                    handle_exception(error_msg, session)
+                    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+                recording.update_selection_traced_status(session)
+                session.commit()
+
+            session.commit()  
+        except SQLAlchemyError as e:
+            handle_sqlalchemy_exception(session, e)
+        except IOError as e:
+            handle_sqlalchemy_exception(session, e)
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
     return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
  
+import csv
+from flask import Response
+from io import StringIO
+@routes_recording.route('/export-selection-table/<uuid:recording_id>/<export_format>')
+def export_selection_table(recording_id, export_format):
+    """
+    Export the selection table of a recording to a CSV or TSV file.
+    """
+    headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
+
+    with Session() as session:
+        selections = session.query(Selection).filter_by(recording_id=recording_id).all()
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        encounter = session.query(Encounter).filter_by(id=recording.encounter_id).first()
+        csv_data = StringIO()
+        if export_format == 'csv':
+            writer = csv.writer(csv_data, delimiter=',')
+        else:
+            writer = csv.writer(csv_data, delimiter='\t')
+        writer.writerow(headers)
+        for selection in selections:
+            writer.writerow([
+                selection.id,
+                selection.view,
+                selection.channel,
+                selection.begin_time,
+                selection.end_time,
+                selection.low_frequency,
+                selection.high_frequency,
+                selection.delta_time,
+                selection.delta_frequency,
+                selection.average_power,
+                selection.annotation
+            ])
+
+        csv_data.seek(0)
+
+        if export_format == 'csv':
+            mimetype = 'text/csv'
+            file_name = f'selection-table-{encounter.encounter_name}-rec-{recording.get_start_time_string()}.csv'
+        else:
+            mimetype = 'text/plain'
+            file_name = f'selection-table-{encounter.encounter_name}-rec-{recording.get_start_time_string()}.txt'
+
+        response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
+        return response
+
+
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/delete', methods=['POST'])
 @require_live_session
 def recording_selection_table_delete(encounter_id, recording_id):
@@ -120,27 +175,23 @@ def recording_selection_table_delete(encounter_id, recording_id):
     """
     with Session() as session:
         try:
-            print("I GOT HERE")
             recording = session.query(Recording).filter_by(id=recording_id).first()
-            recording.selection_table_file=None
             file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
-            try:
-                print("TRYING",recording,recording.selection_table_file)
-                # All manually resolved warnings will be reset to 'unresolved' (forcing
-                # them to be re-validated after the selection table is deleted)
-                session.commit()
-                flash(f'Deleted Selection Table', 'success')
-                file.move_to_trash()
-            except FileNotFoundError:
-                print("ERROR")
-                session.commit()
-                flash(f'Deleted Selection Table', 'success')
+
+            recording.reset_selection_table_values(session)
+            recording.update_selection_traced_status(session)
+            file.move_to_trash(session)
+            recording.selection_table_file = None
+            session.commit()
+            flash(f'Deleted Selection Table', 'success')
         except SQLAlchemyError as e:
+            handle_sqlalchemy_exception(session, e)
+        except Exception as e:
             handle_sqlalchemy_exception(session, e)
         finally:
             return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['GET'])
+@routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['POST'])
 @require_live_session
 def recording_insert(encounter_id):
     """
@@ -174,6 +225,7 @@ def get_number_of_unresolved_warnings(recording_id):
     
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/view', methods=['GET'])
+@login_required
 def recording_view(encounter_id,recording_id):
     """
     Renders the recording view page for a specific encounter and recording.
@@ -190,6 +242,7 @@ def recording_view(encounter_id,recording_id):
         #recording = query.filter_by(id=recording_id).first()
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id}, order_by="selection_number")
 
+        assigned_users = shared_functions.create_system_time_request(session, Assignment, {"recording_id":recording_id})
         
         #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
         from sqlalchemy.sql import select
@@ -199,7 +252,7 @@ def recording_view(encounter_id,recording_id):
 
         recording_history = shared_functions.create_all_time_request(session, Recording, filters={"id":recording_id}, order_by="row_start")
         
-        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history)
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users)
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
 @require_live_session
@@ -357,3 +410,47 @@ def extract_date():
         date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
         date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
     return jsonify(date=date)
+
+@routes_recording.route('/assign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+def assign_recording(user_id, recording_id):
+    with Session() as session:
+        try:
+            new_assignment = Assignment()
+            new_assignment.user_id = user_id
+            new_assignment.recording_id = recording_id
+            session.add(new_assignment)
+            session.commit()
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
+        return jsonify(success=True)
+            
+
+@routes_recording.route('/unassign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+def unassign_recording(user_id, recording_id):
+    with Session() as session:
+        try:
+            session.query(Assignment).filter_by(user_id=user_id, recording_id=recording_id).delete()
+            session.commit()
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
+        return jsonify(success=True)
+
+@routes_recording.route('/recording/<uuid:recording_id>/recalculate-contour-statistics', methods=['GET'])
+def recalculate_contour_statistics(recording_id):
+    counter = 0
+    with Session() as session:
+        try:
+            import calculations.rocca.contour as contour_code
+            selections = session.query(Selection).filter_by(recording_id=recording_id).all()
+            for selection in selections:
+                
+                selection.reset_contour_stats()
+                if selection.contour_file != None:
+                    counter += 1
+                    contour_file_obj = contour_code.ContourFile(selection.contour_file.get_full_absolute_path())
+                    contour_file_obj.calculate_statistics(session, selection)
+            session.commit()
+            flash(f'Recalculated {counter} contour statistics', 'success')
+        except Exception as e:
+            handle_sqlalchemy_exception(session, e)
+        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=selection.recording.encounter_id))

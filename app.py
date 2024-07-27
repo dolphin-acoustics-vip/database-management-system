@@ -146,6 +146,17 @@ def hello_world():
     """
     return redirect(url_for('home', user=current_user))
 
+@app.route('/api/users')
+def search_users():
+    """
+    API endpoint to search users based on the search term.
+    """
+    search_term = request.args.get('search')
+    with Session() as session:
+        users = session.query(User).filter(User.name.ilike(f'%{search_term}%'), User.is_temporary == False).all()
+        user_list = [{'id': user.id, 'name': user.name, 'login_id': user.login_id} for user in users]
+        return jsonify({'users': user_list})
+
 @app.route('/home') 
 @login_required
 def home():
