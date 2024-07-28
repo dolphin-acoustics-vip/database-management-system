@@ -8,201 +8,546 @@
     <link rel="stylesheet" href="../../../../static/css/general-style.css">
     <style>
         .statistic-box {
-            border: 1px solid #ccc;
+            border: 2px solid #ccc;
             padding: 10px;
             margin-bottom: 10px;
+            border-radius: 10px;
         }
+
     </style>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.js.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <script>
-        $(document).ready(function() {
-            getStatistics();
-        });
-
-        function getSelectionStatistics(startDate, endDate) {
-            // Make AJAX request to the route
-            $.ajax({
-                url: '/datahub/get-number-new-selections',
-                method: 'GET',
-                data: {
-                    start_date: startDate,
-                    end_date: endDate
-                },
-                success: function(response) {
-                    // Create a table and populate it with the statistics
-                    var table = $('<table>').addClass('statistics-table');
-                    var thead = $('<thead>').appendTo(table);
-                    var tbody = $('<tbody>').appendTo(table);
-
-                    // Create table header row
-                    var headerRow = $('<tr>').appendTo(thead);
-                    $('<th>').text('Statistic').appendTo(headerRow);
-                    $('<th>').text('Value').appendTo(headerRow);
-
-                    // Create table body rows
-                    for (var key in response) {
-                        var row = $('<tr>').appendTo(tbody);
-                        $('<td>').text(key).appendTo(row);
-                        $('<td>').text(response[key]).appendTo(row);
-                    }
-
-                    // Replace the content of the selection box with the table
-                    $('#selection-box').empty().append(table);
-                },
-                error: function(error) {
-                    // Handle error
-                    $('#selection-box').html('Error: ' + error.responseText);
-                }
-            });
-        }
-
-
-        function getStatistics() {
-            // Show loading message or icon
-            $('.statistic-box').html('Loading...');
-
-            // Get the selected start and end dates
-            var startDate = new Date($('#start-date').val());
-            var endDate = new Date($('#end-date').val());
-
-            // Convert the start and end dates to UTC
-            var utcStartDate = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000);
-            var utcEndDate = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000);
-            console.log(utcStartDate, utcEndDate)
-            // Export the start and end dates to strings in the format '2024-07-27T04:15:00.000' without the 'Z'
-            var startDateString = utcStartDate.toISOString().substring(0, 19);
-            var endDateString = utcEndDate.toISOString().substring(0, 19);
-            console.log(startDateString, endDateString)
-            getSelectionStatistics(startDateString, endDateString);
-            $('#statistics-between-title').text('Statistics Between ' + startDateString + ' and ' + endDateString);
-        }
-    </script>
 </head>
 
 <body>
 
-    <h2>Statistics As At xxx</h2>
+    <div class="outer-div">
 
-    <div class="statistic-box" id="statistic3-box"></div>
+        <h1>Data Hub</h1>
 
-    <h2 id="statistics-between-title">Statistics Between </h2>
+        <button id="clear-all-filters" class="btn btn-primary" onclick="refreshPage()">Refresh</button>
 
-    <label for="start-date">Start Date:</label>
-    <input type="datetime-local" name="start-date" id="start-date"/>
+        <h4 for="date-dropdown">Date range</h4>
+        <select id="date-dropdown">
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+            <option value="180">6 months</option>
+            <option value="365">1 year</option>
+            <option value="custom">Custom</option>
+        </select>
 
-    <label for="end-date">End Date:</label>
-    <input type="datetime-local" name="end-date" id="end-date" />
+        <div id="custom-date-container" style="display: none;">
+            <label for="custom-start-date">Date:</label>
+            <input type="datetime-local" id="custom-start-date" step="1">
+        </div>
+        
+        <h4 id="species-select-title">Select individual species</h4>
+        <style>
+            .form-check {
+              display: flex;
+              align-items: center;
+              justify-content: flex-start;
+            }
+          
+            .form-check-label {
+              margin-left: 0.5rem;
+            }
+            .form-check-input {
+                padding: 0%;
+                margin: 0%;
+                width: 30px;
+            }
+          </style>
+          
+          {% for species in species_list %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="species-checkbox-{{ species.id }}" value="{{ species.id }}" onclick="onSpeciesCheckboxClick()">
+            <label class="form-check-label" for="species-checkbox-{{ species.id }}">
+              {{ species.get_species_name() }}
+            </label>
+          </div>
+        {% endfor %}
 
-    <button onclick="getStatistics()">Get Statistics</button>
-    
-    <div class="statistic-box" id="selection-box">
-        <h2>Selections</h2>
+          
+        <h4>User filter</h4>
+
+        {% from 'partials/search-dropdown.html' import recording_table %}
+        {{ recording_table() }}
+        <button id="clear-user-filter-button" hidden onclick="clearUserFilter()">Clear User Filter</button>
+        <section style="padding-bottom: 20px; display: none;" id="user-statistics-section">
+            <h2 id="user-statistics-title">User Statistics</h2>
+            <p id="user-statistics-date-range-title"></p>
+            <div class="statistic-box" id="user-statistics-box">
+            </div>
+            <div class="statistic-box" id="user-graph1-box">
+                <h3>Number of Uploaded Recording Contributions</h3>
+                <canvas id="user-statistics-chart" style="width:100%; height: 300px;"></canvas>
+            </div>
+        </section>
+
+        <h2 id="statistics-title-text">All Statistics</h2>
+        <p id="statistics-date-range-title"></p>
+        <div class="statistic-box" id="selection-statistics-box">
+            <h3>Selection Statistics</h3>
+        </div>
+        <div class="statistic-box" id="selection-traced-statistics-box">
+
+            </div>
+        <div class="statistic-box" id="selection-graph1-box">
+            <h3>Number of Uploaded Selection and Contour File Contributions</h3>
+            <canvas id="selection-statistics-chart" style="width:100%; height: 300px;"></canvas>
+        </div>
+        <div class="statistic-box" id="selection-graph2-box">
+            <h3>Species Aggregate Traces</h3>
+            <canvas id="selection-species-aggregate-chart" style="width:100%; height: 300px;">
+              <!-- Your table content here -->
+            </canvas>
+          </div>
+        <div style="display: flex; flex-direction: row;">
+            <div class="statistic-box" style="margin-right: 1%; width: 49%; height: auto;" id="selection-graph2-box">
+                <h3>Selection File Contributions by User</h3>
+                <div id="selection-file-contributions-table-box">
+                  <!-- Your table content here -->
+                </div>
+              </div>
+        
+        <div class="statistic-box" style="margin-left: 1%; width: 49%; height: auto;" id="selection-graph3-box">
+            <h3>Contour File Contributions by User</h3>
+            <div id="contour-file-contributions-table-box">
+
+            </div>
+
+        </div>
     </div>
-    <div class="statistic-box" id="statistic2-box"></div>
-    <div class="statistic-box" id="statistic3-box"></div>
-    <!-- Add more statistic boxes as needed -->
 
-    <h2>User Stats</h2>
 
-    {% from 'partials/search-dropdown.html' import recording_table %}
-    {{ recording_table() }}
+        
+    </div>
 
-    <div class="statistic-box" id="user-statistics-box"></div>
-
-    <div class="statistic-box" id="user-statistics-box"></div>
-
-    <canvas id="user-statistics-box-canvas" width="400" height="200"></canvas>
 
 </body>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    function onUserSelectionDropdownComplete(response) {
+function generateColors(numColors) {
+  const colors = [
+    'rgba(255, 99, 132, 0.6)',
+    'rgba(75, 192, 192, 0.6)',
+    'rgba(255, 205, 86, 0.6)',
+    'rgba(54, 162, 235, 0.6)',
+    'rgba(255, 159, 64, 0.6)',
+    'rgba(75, 192, 192, 0.6)',
+    'rgba(153, 102, 255, 0.6)',
+    'rgba(255, 159, 64, 0.6)',
+    'rgba(255, 99, 132, 0.6)',
+    'rgba(54, 162, 235, 0.6)'
+  ];
 
-        var now = new Date();
-        var utcStartDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000 - (7 * 24 * 60 * 60 * 1000));
-        var utcEndDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-        console.log(utcStartDate, utcEndDate);
+  const selectedColors = [];
+
+  for (let i = 0; i < numColors; i++) {
+    const colorIndex = i % colors.length;
+    selectedColors.push(colors[colorIndex]);
+  }
+
+  return selectedColors;
+}
+
+    async function updateLineChartData(chart, chartID, labels, datas) {
+        // Update the chart data and labels
+        const colors = generateColors(datas.length);
+
+        datasets = []
+            for (var i = 0; i < datas.length; i++) {
+                datasets.push({
+                    label: datas[i].label,
+                    data: datas[i].data,
+                    backgroundColor: colors[i],
+                    borderColor: colors[i],
+                    borderWidth: 1
+                })
+            }
+        if (chart) {
+            chart.data.labels = labels;
+            chart.data.datasets = datasets
+            
+            chart.update();
+            return chart
+        } else {
+            var ctx = document.getElementById(chartID).getContext('2d');
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            return chart
+        }
+    }
+
+// Function to fetch and update the chart data
+    async function updateBarChartData(chart, chartID, labels, datas) {
+        // Update the chart data and labels
+        if (chart) {
+            chart.data.labels = labels;
+            for (var i=0 ; i < datas.length; i++) {
+                for (var j=0; j < chart.data.datasets.length; j++) {
+                    if (chart.data.datasets[j].label === datas[i].label) {
+                        chart.data.datasets[j].data = datas[i].data;
+                    }
+                }
+            }
+            chart.update();
+            return chart
+        } else {
+            var ctx = document.getElementById(chartID).getContext('2d');
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            const colors = generateColors(datas.length);
+            datasets = []
+            for (var i = 0; i < datas.length; i++) {
+                datasets.push({
+                    label: datas[i].label,
+                    data: datas[i].data,
+                    backgroundColor: colors[i],
+                    borderColor: colors[i],
+                    borderWidth: 1
+                })
+            }
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {}
+            });
+
+            return chart;
+        }
+    }
+
+    function clearUserFilter() {
+        userFilterId = null
+        refreshPage();
+        clearUserDropdownInput(); // method from macro for user selection dropdown
+        $("#clear-user-filter-button").hide()
+    }
+
+    async function updatePieChartData(chart, chartID, labels, datas) {
+        // Update the chart data and labels
+        if (chart) {
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = datas;
+            chart.update();
+        } else {
+            var ctx = document.getElementById(chartID).getContext('2d');
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            const colors = generateColors(datas.length);
+            chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: datas,
+                        backgroundColor: colors
+                    }]
+
+                },
+                options: {
+                    responsive: true,
+                    legend: {
+                        display: false
+                    }
+                }
+            });
+        }
+        return chart
+    }
+</script>
+<script>
+    var selectionAndContourStatisticsChart;
+    var selectionStatisticsByUserChart;
+    var speciesCompleteCounterAggregateChart;
+    var contourStatisticsByUserChart;
+    var StartDateTime = null;
+    var dayCount = null
+    var userFilterId = null;
+    const dropdown = document.getElementById('date-dropdown');
+    const customDateContainer = document.getElementById('custom-date-container');
+    const customStartDateTime = document.getElementById('custom-start-date');
+
+    var species_filter = null
+
+    function onSpeciesCheckboxClick() {
+  const checkboxes = document.querySelectorAll('.form-check-input');
+  const allChecked = Array.from(checkboxes).every((checkbox) => checkbox.checked);
+
+
+  const checkedSpeciesIds = Array.from(checkboxes)
+    .filter((checkbox) => checkbox.checked && checkbox.value !== 'on')
+    .map((checkbox) => checkbox.value);
+  
+    species_filter = checkedSpeciesIds.join(',');
+    if (checkedSpeciesIds.length === 0) {
+        species_filter = null
+        $('#species-select-title').text('Select Species to filter (currently no filter)')
+    } else {
+        $('#species-select-title').text('Select Species to filter (currently ' + checkedSpeciesIds.length + ' selected)')
+    }
+    refreshPage();
+}
+
+    $(document).ready(function () {
+        onSpeciesCheckboxClick()
+    });
+
+    async function getPageStatistics(user_only = false) {
+        $('#statistics-title-text').text("Loading Statistics...")
+        if (StartDateTime === null) {
+            // if no selection in the dropdown, assign the default value 7
+            dropdown.value = "7";
+            await StartDateTimeDropdownSelection();
+        }
+            $('#selection-statistics-box').empty()
+
+            console.log(species_filter)
+        $('#selection-file-contributions-table-box').empty()
+        $('#contour-file-contributions-table-box').empty()
+        $.ajax({
+            url: '/datahub/get-statistics',
+            type: 'GET',
+            data: { start_date_time: StartDateTime, user_id: userFilterId, day_count: dayCount, species_filter: species_filter },
+            success: function (result) {
+                console.log(result)
+                console.log(result.user_name, result.user_name != null)
+                if (result.user_name != null) {
+                    $('#statistics-title-text').text("Statistics for " + result.user_name + " (" + result.user_login_id + "), since " + result.dayCount + " day" + (result.dayCount > 1 ? "s" : "") + " ago")
+                } else {
+                    $('#statistics-title-text').text("Statistics since " + result.dayCount + " day" + (result.dayCount > 1 ? "s" : "") + " ago")
+                }
+                updateBarChartData(selectionAndContourStatisticsChart, 'selection-statistics-chart', result.selectionAndContourStatisticsChartLabels, result.selectionAndContourStatisticsChartData).then(function (updated_chart) {
+                    selectionAndContourStatisticsChart = updated_chart
+                })
+                updateLineChartData(speciesCompleteCounterAggregateChart, 'selection-species-aggregate-chart', result.selectionAndContourStatisticsChartLabels,result.speciesCompleteCounterAggregateRecord).then(function (updated_chart) {
+                    speciesCompleteCounterAggregateChart = updated_chart
+                })
+                // updatePieChartData(selectionStatisticsByUserChart, 'myChart2', result.selectionStatisticsByUserChartLabels, result.selectionStatisticsByUserChartData).then(function (updated_chart) {
+                //     selectionStatisticsByUserChart = updated_chart
+                //     selectionStatisticsByUserChart.update()
+
+                // })
+                // updatePieChartData(contourStatisticsByUserChart, 'myChart3', result.contourStatisticsByUserChartLabels, result.contourStatisticsByUserChartData).then(function (updated_chart) {
+                //     contourStatisticsByUserChart = updated_chart
+                //     console.log(contourStatisticsByUserChart)
+                //     contourStatisticsByUserChart.update()
+                //})
+                updateSelectionStatistics(result)
+                $('#statistics-date-range-title').text("From " + result.startDateTime + " until " + result.endDateTime)
+
+            }
+        });
+    
+        
+        // if (userFilterId !== null) {
+        //     $('#user-statistics-box').empty()
+        //     $.ajax({
+        //         url: '/datahub/get-statistics',
+        //         type: 'GET',
+        //         data: { start_date_time: StartDateTime, user_id: userFilterId, day_count: dayCount, species_filter: species_filter },
+        //         success: function (result) {
+        //             updateSelectionStatisticsForUser(result)
+        //             $('#user-statistics-date-range-title').text("From " + result.startDateTime + " until " + result.endDateTime)
+
+        //         }
+        //     });
+        // }
+
+        
+    }
+
+    async function onUserSelectionDropdownComplete(response) {
+        userFilterId = response
+        await refreshPage(user_only=true)
+        $("#clear-user-filter-button").show()
+
+        
+    }
+
+    var userStatisticsChart;
+    function updateSelectionStatisticsForUser(response) {
+        
+        
+        updateBarChartData(userStatisticsChart, 'user-statistics-chart', response.selectionAndContourStatisticsChartLabels, response.selectionAndContourStatisticsChartData).then(function (updated_chart) {
+            userStatisticsChart = updated_chart
+        })
+
+        $('#user-statistics-title').text("Statistics for " + response.user_name + " (" + response.user_login_id + ")")
+
+        table = createTable(['Statistic', 'Value'])
+        tbody = table.find('tbody')
+        addStatisticsTableRow(tbody, ['Selections uploaded', response.numSelectionFileUploads])
+        addStatisticsTableRow(tbody, ['Selections uploaded', response.numCtrFileUploads])
+
+        addStatisticsTableRow(tbody, ['Selections uploaded (lifetime)', response.numSelectionFiles])
+        addStatisticsTableRow(tbody, ['Contours uploaded (lifetime)', response.numCtrFiles])
+
+        addStatisticsTableRow(tbody, ['Annotation rejection rate', response.annotationRejectionRate + "%"])
+        addStatisticsTableRow(tbody, ['Selections abandoned for less than a week', response.abandonedLessWeekSelectionCount])
+        addStatisticsTableRow(tbody, ['Selections abandoned for more than a week', response.abandonedPlusWeekSelectionCount])
+
+        // Replace the content of the selection box with the table
+        $('#user-statistics-box').empty().append(table);
+
+    }
+
+
+
+    /*
+    The following code is for the processing and calculation of the startDate value.
+    This is processed either through a selection in a dropdown in the HTML code
+    if a certain number of days/months/years, or a custom DateTime input field.
+
+    */
+
+    function getLocalDateString(date) {
+        // Convert the date to a string in local time
+        // This is instead of the .toISOString() method which returns the date in UTC ('Zulu') time
+
+        var utcStartDateTime = new Date(date - date.getTimezoneOffset() * 60000);
 
         // Export the start and end dates to strings in the format '2024-07-27T04:15:00.000' without the 'Z'
-        var startDateString = utcStartDate.toISOString().substring(0, 19);
-        var endDateString = utcEndDate.toISOString().substring(0, 19);
-        console.log(startDateString, endDateString);
+        var StartDateTimeString = utcStartDateTime.toISOString().substring(0, 19);
+
+        return StartDateTimeString
+    }
 
 
-        //getSelectionStatistics(startDateString, endDateString);
-        $('#statistics-between-title').text('Statistics Between ' + startDateString + ' and ' + endDateString);
-        // Make AJAX request to the route
-        $.ajax({
-                url: '/datahub/get-user-statistics',
-                method: 'GET',
-                data: {
-                    start_date: startDateString,
-                    end_date: endDateString,
-                    user_id: response
-                },
-                success: function(response) {
-                    // Create a table and populate it with the statistics
-                    var table = $('<table>').addClass('statistics-table');
-                    var thead = $('<thead>').appendTo(table);
-                    var tbody = $('<tbody>').appendTo(table);
 
-                    // Create table header row
-                    var headerRow = $('<tr>').appendTo(thead);
-                    $('<th>').text('Statistic').appendTo(headerRow);
-                    $('<th>').text('Value').appendTo(headerRow);
 
-                    // Create table body rows
-                    for (var key in response) {
-                        var row = $('<tr>').appendTo(tbody);
-                        $('<td>').text(key).appendTo(row);
-                        $('<td>').text(response[key]).appendTo(row);
-                    }
+    document.addEventListener('DOMContentLoaded', function () {
+        dropdown.addEventListener('change', StartDateTimeDropdownSelection);
+        StartDateTimeDropdownSelection();
+        
+    });
 
-                    // Replace the content of the selection box with the table
-                    $('#user-statistics-box').empty().append(table);
+    function refreshPage(user_only=false) {
+        if (user_only === false){
+            $('#selection-statistics-box').empty();
+        }
+        
 
-                    console.log(response.selFileUploadsPerUser)
-                    var ctx = document.getElementById('user-statistics-box-canvas').getContext('2d');
-                    var chart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: response.selFileUploadsPerUser.map(item => item.date.toLocaleString('en-US', { hour: false, minute: false, hour12: false })),
-                            datasets: [{
-                                label: 'Selection File Uploads',
-                                data: response.selFileUploadsPerUser.map(item => item.count),
-                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                                borderColor: 'rgba(75, 192, 192, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            scales: {
-                                xAxes: [{
-                                    ticks: {
-                                        beginAtZero: true,
-                                        // Set the stepSize to control the interval between x-axis labels
-                                        stepSize: 1
-                                    }
-                                }],
-                                yAxes: [{
-                                    ticks: {
-                                        beginAtZero: true
-                                    }
-                                }]
-                            }
-                        }
-                    });
-                },
-                error: function(error) {
-                    // Handle error
-                    $('#user-statistics-box').html('Error: ' + error.responseText);
-                }
-            });    
+        getPageStatistics(user_only=user_only);
+
+    }
+
+    async function StartDateTimeDropdownSelection() {
+        // Get the selected option for StartDateTimeTime
+        const selectedOption = dropdown.options[dropdown.selectedIndex].value;
+
+        if (selectedOption === 'custom') {
+            customDateContainer.style.display = 'block';
+        } else {
+            customDateContainer.style.display = 'none';
+
+            const today = new Date();
+            const daysAgo = parseInt(selectedOption);
+            const date = new Date(today.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
+
+            // Store the date in a JavaScript variable
+            StartDateTime = await getLocalDateString(date);
+            dayCount = daysAgo
+            refreshPage()
+
+        }
+    }
+
+    customStartDateTime.addEventListener('change', async function () {
+        const customStartDateTimeValue = customStartDateTime.value;
+
+        if (customStartDateTimeValue) {
+            const date = new Date(customStartDateTimeValue);
+            console.log(StartDateTime)
+            // Store the date in a JavaScript variable
+            StartDateTime = await getLocalDateString(date);
+            dayCount = null
+            refreshPage()
+        }
+    });
+
+    function createTable(headers) {
+
+        var table = $('<table>').addClass('statistics-table');
+        var thead = $('<thead>').appendTo(table);
+        var tbody = $('<tbody>').appendTo(table);
+        
+            // Create table header row
+        var headerRow = $('<tr>').appendTo(thead);
+        for (var i = 0; i < headers.length; i++) {
+            $('<th>').text(headers[i]).appendTo(headerRow);
         }
 
-</script>
+        return table
 
-</html>
+    }
+
+    function addStatisticsTableRow(tbody, data) {
+        var row = $('<tr>').appendTo(tbody);
+        for (var i = 0; i < data.length; i++) {
+            var col = $('<td>').text(data[i]).appendTo(row);
+        }
+    }
+
+
+
+    function updateSelectionStatistics(data) {
+        $('#selection-traced-statistics-box').empty()
+        table = createTable(['Statistic', 'Value'])
+        tbody = table.find('tbody')
+        addStatisticsTableRow(tbody, ['Selections uploaded', data.numSelectionFileUploads])
+        addStatisticsTableRow(tbody, ['Contours uploaded', data.numCtrFileUploads])
+        
+        addStatisticsTableRow(tbody, ['Annotation rejection rate', data.annotationRejectionRate + "%"])
+        addStatisticsTableRow(tbody, ['Selections abandoned for less than a week', data.abandonedLessWeekSelectionCount])
+        addStatisticsTableRow(tbody, ['Selections abandoned for more than a week', data.abandonedPlusWeekSelectionCount])
+        
+        // Replace the content of the selection box with the table
+        $('#selection-statistics-box').empty().append(table);
+
+        selectionFileUserStatisticsTable = createTable(['User', 'Login ID', 'Selection Contributions'])
+        for (var i = 0; i < data.selectionContributionsByUser.length; i++) {
+            user_data = data.selectionContributionsByUser[i][1]
+            addStatisticsTableRow(selectionFileUserStatisticsTable.find('tbody'), [user_data.name, user_data.login_id, user_data.contributions])
+        }
+        $('#selection-file-contributions-table-box').empty().append(selectionFileUserStatisticsTable);
+
+        contourFileUserStatisticsTable = createTable(['User', 'Login ID', 'Contour Contributions'])
+        for (var i = 0; i < data.contourContributionsByUser.length; i++) {
+            user_data = data.contourContributionsByUser[i][1]
+            addStatisticsTableRow(contourFileUserStatisticsTable.find('tbody'), [user_data.name, user_data.login_id, user_data.contributions])
+        }
+        $('#contour-file-contributions-table-box').empty().append(contourFileUserStatisticsTable);
+
+
+        tracedTable = createTable(['Species', 'Traced'])
+        tracedTbody = tracedTable.find('tbody')
+        for (species in data.speciesCompleteCounter) {
+            addStatisticsTableRow(tracedTbody, [data.speciesCompleteCounter[species].species_name, data.speciesCompleteCounter[species].complete])
+        }
+        addStatisticsTableRow(tracedTbody, ['TOTAL', data.completeCounter])
+        $('#selection-traced-statistics-box').append($('<h3>').text('Traced Contours'))
+        $('#selection-traced-statistics-box').append(tracedTable);
+
+    }
+</script>

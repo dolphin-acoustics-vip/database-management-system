@@ -961,6 +961,7 @@ class Selection(db.Model):
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
             self.contour_file = None
+            
         
 
     def generate_filename(self):

@@ -50,6 +50,8 @@
                 });
                 userItem.on('click', function () {
                   var userId = $(this).data('user-id');
+                  dropdown.empty();
+                  $('#search-input').val(user.login_id);
                   onUserSelectionDropdownComplete(userId)
                 });
                 userItem.data('user-id', user.id);
@@ -62,5 +64,9 @@
         }
       });
     });
+
+    function clearUserDropdownInput() {
+      $('#search-input').val('');
+    }
   </script>
 {% endmacro %}

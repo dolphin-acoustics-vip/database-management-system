@@ -7,6 +7,7 @@ from flask import (Flask, flash, get_flashed_messages, jsonify, redirect,
                    render_template, request, send_file, url_for,
                    send_from_directory)
 from flask import session as client_session
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, sessionmaker
 from flask_login import LoginManager
@@ -155,7 +156,13 @@ def search_users():
     """
     search_term = request.args.get('search')
     with Session() as session:
-        users = session.query(User).filter(User.name.ilike(f'%{search_term}%'), User.is_temporary == False).all()
+        users = session.query(User).filter(
+            or_(
+                User.name.ilike(f'%{search_term}%'),
+                User.login_id.ilike(f'%{search_term}%')
+            ),
+            User.is_temporary == False
+        ).all()
         user_list = [{'id': user.id, 'name': user.name, 'login_id': user.login_id} for user in users]
         return jsonify({'users': user_list})
 
