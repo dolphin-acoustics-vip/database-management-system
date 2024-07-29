@@ -426,7 +426,7 @@ class Recording(db.Model):
     encounter_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('encounter.id'), nullable=False)
     ignore_selection_table_warnings = db.Column(db.Boolean, default=False)
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
-
+    created_datetime = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()")
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
@@ -1017,6 +1017,12 @@ class Assignment(db.Model):
     
     user_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'), primary_key=True, nullable=False)
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), primary_key=True, nullable=False)
-    
+    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
     user = db.relationship("User", foreign_keys=[user_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
+    created_datetime = db.Column(db.DateTime, server_default=func.current_timestamp())
+    completed_flag = db.Column(db.Boolean, default=False)
+
+
+    def is_complete(self):
+        return "Yes" if self.completed_flag else "No"

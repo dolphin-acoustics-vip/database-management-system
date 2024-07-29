@@ -34,6 +34,7 @@
 
         <a href="/encounter" class="menu-item">Encounters</a>
         <a href="{{url_for('datahub.datahub_view')}}" class="menu-item">Data Hub</a>
+        <a href="{{ url_for('healthcentre.healthcentre_view') }}" class="menu-item">Health Centre</a>
             {% if g.user.role_id in [1,2] %}
             <a href="{{ url_for('admin.admin_dashboard') }}" class="menu-item">Admin</a>
             {% endif %}

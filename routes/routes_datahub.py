@@ -95,31 +95,13 @@ def get_statistics():
 
 
     
-    columns = "sel.id, sel.row_start sel_row_start, sel.created_datetime sel_created_datetime, sel.selection_number, sel.row_start, sel.row_end, sel.selection_file_id, sel.contour_file_id, sel.annotation, sel.traced, sel.updated_by_id sel_updated_by_id, sel_file.filename sel_file_filename, sel_file.upload_datetime sel_file_upload_datetime, sel_file.updated_by_id sel_file_updated_by_id, contour_file.filename contour_file_filename, contour_file.upload_datetime contour_file_upload_datetime, contour_file.updated_by_id contour_file_updated_by_id, sel_file_user.id sel_file_user_id, sel_file_user.login_id sel_file_user_login_id, sel_file_user.name sel_file_user_name, contour_file_user.id contour_file_user_id, contour_file_user.name contour_file_user_name, contour_file_user.login_id contour_file_user_login_id, sp.id sp_id, sp.species_name species_name"
-    joins = "LEFT JOIN file AS sel_file ON sel_file.id = sel.selection_file_id LEFT JOIN file AS contour_file ON contour_file.id = sel.contour_file_id LEFT JOIN user AS sel_file_user ON sel_file.updated_by_id = sel_file_user.id LEFT JOIN user AS contour_file_user ON contour_file.updated_by_id = contour_file_user.id LEFT JOIN recording AS rec ON sel.recording_id = rec.id LEFT JOIN encounter AS enc ON rec.encounter_id = enc.id LEFT JOIN species AS sp ON enc.species_id = sp.id"
     with Session() as session:
-        if snapshot_date: query_str="SELECT {} FROM {} FOR SYSTEM_TIME AS OF '{}' AS sel".format(columns, Selection.__tablename__, snapshot_date)
-        else: query_str="SELECT {} FROM {} AS sel".format(columns, Selection.__tablename__)
-        query_str += " {}".format(joins)
-        next_clause = "WHERE"
-        if user_id: 
-            query_str += " WHERE sel_file.updated_by_id = '{}' OR contour_file.updated_by_id = '{}' OR sel.updated_by_id = '{}'".format(user_id, user_id, user_id)
+
+        records = shared_functions.get_system_time_request_with_joins(session, user_id=user_id, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
+        if user_id:
             user = session.query(User).filter_by(id=uuid.UUID(user_id)).first()
             statistics_dict['user_name'] = user.name
             statistics_dict['user_login_id'] = user.login_id
-
-            next_clause = "AND"
-        if species_filter_str is not None and species_filter_str != '':
-            species_filter = species_filter_str.split(",")
-            species_filter_str = ", ".join("'" + item + "'" for item in species_filter)
-            query_str += " {} sp.id IN ({})".format(next_clause, species_filter_str)
-        query = db.text(query_str)
-        result = session.execute(query)
-        # Fetch all results
-        records_raw = result.fetchall()
-        # Create a list of dictionaries with column names as keys
-        records = [{column: value for column, value in zip(result.keys(), record)} for record in records_raw]
-        
         
         num_selection_files = 0
         num_selection_file_uploads = 0
@@ -297,64 +279,76 @@ def get_statistics():
 
         return jsonify(statistics_dict)
 
-@routes_datahub.route('/datahub/get-number-new-selections', methods=['GET'])
-def get_number_new_selections():
-    data_response = {'numSelections':0,'ctrFileUploads': 0, 'selFileUploads': 0, 'traceSuccessRate': 0, 'numAnnotationsY': 0, 'numAnnotationsN': 0, 'numAnnotationsM': 0, 'numAnnotationsNone': 0}
+
+@routes_datahub.route('/datahub/get-recording-statistics', methods=['GET'])
+def get_assignment_statistics():
+    recording_statistics = {'unassigned_recordings': [], 'assigned_recordings': []}
+
+    snapshot_date=client_session.get('snapshot_date')
+    snapshot_date_datetime = datetime.strptime(snapshot_date, "%Y-%m-%d %H:%M:%S.%f") if snapshot_date else None       
+    if snapshot_date_datetime is None:
+        snapshot_date_datetime = datetime.now()
+
+    species_filter_str = request.args.get('species_filter')
+
+
+    start_date_time = request.args.get('start_date_time')
+    start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
+    day_count = request.args.get('day_count')
+    if day_count is not None and day_count.isdigit():
+        start_date_time = snapshot_date_datetime - timedelta(days=int(day_count)-1)
+    end_date_time = snapshot_date_datetime
+    assigned_user_id = request.args.get('assigned_user_id')
+    start_date_time = request.args.get('start_date_time')
+
     
-    number_of_selections = 0
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
     with Session() as session:
-        selections = shared_functions.create_system_time_between_request(session, Selection, start_date, end_date, order_by="id,row_start")
 
-        prev_selection = selections[0]
-        traced = False
-        for selection in selections:
-            if selection['id'] != prev_selection['id']:
-                data_response['numSelections'] += 1
-            else:
-                if prev_selection['contour_file_id'] == None and selection['contour_file_id'] != None:
-                    data_response['ctrFileUploads'] += 1
-                if prev_selection['selection_file_id'] == None and selection['selection_file_id'] != None:
-                    data_response['selFileUploads'] += 1
-                annotation=selection['annotation']
-            prev_selection = selection
+        records = shared_functions.get_system_time_request_recording(session, species_filter_str=species_filter_str, assigned_user_id=assigned_user_id, created_date_filter=start_date_time, override_snapshot_date=snapshot_date)
+        #if user_id:
+        #    user = session.query(User).filter_by(id=uuid.UUID(user_id)).first()
+        #    statistics_dict['user_name'] = user.name
+        #   statistics_dict['user_login_id'] = user.login_id
 
+        number_recordings = 0
+        number_assigned_recordings = 0
+        number_unassigned_recordings = 0
+        number_completed_assignments = 0
+        number_inprogress_assignments = 0
 
+        all_species = session.query(Species).all()
+        species_specific_data = {str(species.id): {'species_name': species.species_name, 'recordings': 0, 'assigned_recordings': 0, 'unassigned_recordings': 0, 'completed_assignments': 0, 'inprogress_assignments': 0, 'traced_count': 0} for species in all_species}
 
+        assigned_recordings = []
+        unassigned_recordings = []
 
-        return jsonify(data_response)
-
-@routes_datahub.route('/datahub/get-user-statistics', methods=['GET'])
-def get_user_statistics():
-    data_response = {'ctrFileUploads':0, 'selFileUploads': 0, 'selFileUploadsPerUser': [], 'ctrFileUploadsPerUser': []}
-    user_id = request.args.get('user_id')  # Get the data from the query parameters
-    print(user_id)
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    with Session() as session:
-        selections = shared_functions.create_system_time_between_request(session, Selection, start_date, end_date, order_by="id,row_start")
-        prev_selection = selections[0]
-        for selection in selections:
-            #print(selection['id'])
-            if selection['id'] == "3bbc10c7-4bd2-11ef-884e-00155d6e2a0e":
-                #print("U GIOT HGERE")
-                #print(selection['id'], prev_selection['id'])
-                pass
-            if selection['id'] != prev_selection['id']:
-                pass
-            else:
-                #print(selection['updated_by_id'], user_id)
-                if selection['updated_by_id'] == user_id:
-                    #print("I GOT HERE")
-                    if prev_selection['contour_file_id'] is None and selection['contour_file_id'] is not None:
-                        data_response['ctrFileUploads'] += 1
-                        data_response['ctrFileUploadsPerUser'].append({'date': selection['row_start'], 'count': 1})
-                    if prev_selection['selection_file_id'] is None and selection['selection_file_id'] is not None:
-                        data_response['selFileUploads'] += 1
-                        data_response['selFileUploadsPerUser'].append({'date': selection['row_start'], 'count': 1})
-
-            prev_selection=selection
+        if assigned_user_id:
+            user = session.query(User).filter_by(id=uuid.UUID(assigned_user_id)).first()
+            recording_statistics['assigned_user_name'] = user.name
+            recording_statistics['assigned_user_login_id'] = user.login_id
+        processed_recordings = []
+        for recording in records:
+            recording['recording_route'] = url_for('recording.recording_view', recording_id=recording['id'], encounter_id=recording['enc_id'])
+            processed_recordings.append(recording['id'])
             
-                    
-    return jsonify(data_response)
+            if recording['sp_id'] in species_specific_data:
+                species_specific_data[recording['sp_id']]['recordings'] += 1
+                if recording['assignment_user_login_id'] is not None:
+                    assigned_recordings.append(recording)
+                    species_specific_data[recording['sp_id']]['assigned_recordings'] += 1
+                    if recording['assignment_completed_flag'] == True:
+                        species_specific_data[recording['sp_id']]['completed_assignments'] += 1
+                    elif recording['assignment_completed_flag'] == False:
+                        species_specific_data[recording['sp_id']]['inprogress_assignments'] += 1
+                else:
+                    unassigned_recordings.append(recording)
+                    species_specific_data[recording['sp_id']]['unassigned_recordings'] += 1
+                species_specific_data[recording['sp_id']]['traced_count'] += recording['traced_count']
+        recording_statistics['unassigned_recordings'] = sorted(unassigned_recordings, key=lambda x: x['created_datetime'], reverse=True)
+        
+        
+        recording_statistics['assigned_recordings'] = sorted(assigned_recordings, key=lambda x: (-(x['traced_count']==0 and x['assignment_completed_flag']==True), x['assignment_completed_flag'], x['created_datetime']))
+        for sp_id in species_specific_data:
+            species_specific_data[sp_id]['completion_rate'] = round((species_specific_data[sp_id]['completed_assignments'] / species_specific_data[sp_id]['assigned_recordings']) * 100, 0) if species_specific_data[sp_id]['recordings'] > 0 else 0
+
+        return jsonify(species_statistics=species_specific_data, recording_statistics=recording_statistics)

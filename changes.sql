@@ -396,6 +396,8 @@ DROP TABLE IF EXISTS `assignment`;
 CREATE TABLE `assignment` (
   `user_id` uuid NOT NULL,
   `recording_id` uuid NOT NULL,
+  `created_datetime` timestamp NOT NULL DEFAULT NOW(),
+  `completed_flag` tinyint(1) NOT NULL DEFAULT 0,	
   CONSTRAINT `user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `recording_id_fk` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`),
   PRIMARY KEY (`user_id`,`recording_id`)

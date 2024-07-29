@@ -24,6 +24,7 @@ from routes.routes_selection import routes_selection
 from routes.routes_contour import routes_contour
 from routes.routes_auth import routes_auth
 from routes.routes_datahub import routes_datahub
+from routes.routes_healthcentre import routes_healthcentre
 from exception_handler import NotFoundException
 
 app.register_blueprint(routes_admin)
@@ -33,6 +34,7 @@ app.register_blueprint(routes_selection)
 app.register_blueprint(routes_contour)
 app.register_blueprint(routes_auth)
 app.register_blueprint(routes_datahub)
+app.register_blueprint(routes_healthcentre)
 
 @app.route('/favicon.ico')
 def favicon():
@@ -172,7 +174,20 @@ def home():
     """
     Route for the home page.
     """
-    return render_template('home.html', user=current_user)
+
+    with Session() as session:
+        result = session.query(Recording, Assignment). \
+            join(Assignment, Assignment.recording_id == Recording.id). \
+            filter(Assignment.user_id == current_user.id). \
+            order_by(Assignment.completed_flag). \
+            order_by(Assignment.created_datetime.desc()). \
+            all()
+
+        
+
+        recordings = [{'recording': recording, 'assignment': assignment} for recording, assignment in result]
+
+        return render_template('home.html', user=current_user, recordings=recordings)
 
 if __name__ == '__main__':
     app.run(debug=True)

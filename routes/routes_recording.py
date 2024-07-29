@@ -80,7 +80,6 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
 
 
 
-
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/add', methods=['POST'])
 @require_live_session
 def recording_selection_table_add(encounter_id,recording_id):
@@ -244,6 +243,8 @@ def recording_view(encounter_id,recording_id):
 
         assigned_users = shared_functions.create_system_time_request(session, Assignment, {"recording_id":recording_id})
         
+        logged_in_user_assigned = shared_functions.create_system_time_request(session, Assignment, {"user_id":current_user.id,"recording_id":recording_id})
+        logged_in_user_assigned = logged_in_user_assigned[0] if len(logged_in_user_assigned) > 0 else None
         #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
         from sqlalchemy.sql import select
         # Retrieve the historical records of a row
@@ -252,7 +253,28 @@ def recording_view(encounter_id,recording_id):
 
         recording_history = shared_functions.create_all_time_request(session, Recording, filters={"id":recording_id}, order_by="row_start")
         
-        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users)
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned)
+
+@routes_recording.route('/recording/<uuid:recording_id>/unflag-as-completed', methods=['GET'])
+def unflag_as_complete(recording_id):
+    with Session() as session:
+        assignment = session.query(Assignment).filter_by(recording_id=recording_id).filter_by(user_id=current_user.id).first()
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        if assignment is not None:
+            assignment.completed_flag = False
+        session.commit()
+        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
+
+@routes_recording.route('/recording/<uuid:recording_id>/flag-as-completed', methods=['GET'])
+def flag_as_complete(recording_id):
+    with Session() as session:
+        assignment = session.query(Assignment).filter_by(recording_id=recording_id).filter_by(user_id=current_user.id).first()
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+
+        if assignment is not None:
+            assignment.completed_flag = True
+        session.commit()
+        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
 @require_live_session

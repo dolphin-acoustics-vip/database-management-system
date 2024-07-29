@@ -1,0 +1,87 @@
+{% macro days_ago_selector() %}
+
+<h4 for="date-dropdown">Date range</h4>
+<select id="date-dropdown">
+    <option value="7">7 days</option>
+    <option value="30">30 days</option>
+    <option value="60">60 days</option>
+    <option value="90">90 days</option>
+    <option value="180">6 months</option>
+    <option value="365">1 year</option>
+    <option value="custom">Custom</option>
+</select>
+
+<div id="custom-date-container" style="display: none;">
+    <label for="custom-start-date">Date:</label>
+    <input type="datetime-local" id="custom-start-date" step="1">
+</div>
+
+
+<script>
+
+const dropdown = document.getElementById('date-dropdown');
+    const customDateContainer = document.getElementById('custom-date-container');
+    const customStartDateTime = document.getElementById('custom-start-date');
+    /*
+    The following code is for the processing and calculation of the startDate value.
+    This is processed either through a selection in a dropdown in the HTML code
+    if a certain number of days/months/years, or a custom DateTime input field.
+
+    */
+
+    function getLocalDateString(date) {
+        // Convert the date to a string in local time
+        // This is instead of the .toISOString() method which returns the date in UTC ('Zulu') time
+
+        var utcStartDateTime = new Date(date - date.getTimezoneOffset() * 60000);
+
+        // Export the start and end dates to strings in the format '2024-07-27T04:15:00.000' without the 'Z'
+        var StartDateTimeString = utcStartDateTime.toISOString().substring(0, 19);
+
+        return StartDateTimeString
+    }
+
+
+    async function StartDateTimeDropdownSelection() {
+        // Get the selected option for StartDateTimeTime
+        const selectedOption = dropdown.options[dropdown.selectedIndex].value;
+
+        if (selectedOption === 'custom') {
+            customDateContainer.style.display = 'block';
+        } else {
+            customDateContainer.style.display = 'none';
+
+            const today = new Date();
+            const daysAgo = parseInt(selectedOption);
+            const date = new Date(today.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
+
+            // Store the date in a JavaScript variable
+            StartDateTime = await getLocalDateString(date);
+            dayCount = daysAgo
+            daysAgoSelectorComplete(StartDateTime, dayCount)
+
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        dropdown.addEventListener('change', StartDateTimeDropdownSelection);
+        StartDateTimeDropdownSelection();
+        
+    });
+    customStartDateTime.addEventListener('change', async function () {
+        const customStartDateTimeValue = customStartDateTime.value;
+
+        if (customStartDateTimeValue) {
+            const date = new Date(customStartDateTimeValue);
+            console.log(StartDateTime)
+            // Store the date in a JavaScript variable
+            StartDateTime = await getLocalDateString(date);
+            dayCount = null
+            daysAgoSelectorComplete(StartDateTime, dayCount)
+        }
+    });
+
+
+</script>
+
+{% endmacro %}

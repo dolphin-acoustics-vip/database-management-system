@@ -26,6 +26,24 @@
 <body>
     <div class="outer-div">
         <h2>Recording Summary</h2>
+        {% if logged_in_user_assigned %}
+        {% if logged_in_user_assigned.completed_flag %}
+        <p1>Assignment Status: COMPLETE</p1>
+        <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="get">
+            <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
+        </form>
+        {% else %}
+        <p1>Assignment Status: IN PROGRESS</p1>
+
+        <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="get">
+        
+            <button type="submit" id="flag-as-complete-button"
+                onclick="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}">Flag as Complete</button>
+        </form>
+        {% endif %}
+        {% else %}
+        <p1>Assignment Status: NOT ASSIGNED TO CURRENT USER</p1>
+        {% endif %}
         <p>Start date: {{ recording.start_time }}</p>
         <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
             recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
