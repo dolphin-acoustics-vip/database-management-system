@@ -429,20 +429,35 @@ import csv
 from flask import Response
 from io import StringIO
 
+def write_contour_stats(selections, filename):
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Encounter','Location','Cruise','Recording','Species','SamplingRate','SELECTIONNUMBER','FREQMAX', 'FREQMIN', 'DURATION', 'FREQBEG', 'FREQEND', 'FREQRANGE', 'DCMEAN', 'DCSTDDEV', 'FREQMEAN', 'FREQSTDDEV', 'FREQMEDIAN', 'FREQCENTER', 'FREQRELBW', 'FREQMAXMINRATIO', 'FREQBEGENDRATIO', 'FREQQUARTER1', 'FREQQUARTER2', 'FREQQUARTER3', 'FREQSPREAD', 'DCQUARTER1MEAN', 'DCQUARTER2MEAN', 'DCQUARTER3MEAN', 'DCQUARTER4MEAN', 'FREQCOFM', 'FREQSTEPUP', 'FREQSTEPDOWN', 'FREQNUMSTEPS', 'FREQSLOPEMEAN', 'FREQABSSLOPEMEAN', 'FREQPOSSLOPEMEAN', 'FREQNEGSLOPEMEAN', 'FREQSLOPERATIO', 'FREQBEGSWEEP', 'FREQBEGUP', 'FREQBEGDWN', 'FREQENDSWEEP', 'FREQENDUP', 'FREQENDDWN', 'NUMSWEEPSUPDWN', 'NUMSWEEPSDWNUP', 'NUMSWEEPSUPFLAT', 'NUMSWEEPSDWNFLAT', 'NUMSWEEPSFLATUP', 'NUMSWEEPSFLATDWN', 'FREQSWEEPUPPERCENT', 'FREQSWEEPDWNPERCENT', 'FREQSWEEPFLATPERCENT', 'NUMINFLECTIONS', 'INFLMAXDELTA', 'INFLMINDELTA', 'INFLMAXMINDELTA', 'INFLMEANDELTA', 'INFLSTDDEVDELTA', 'INFLMEDIANDELTA', 'INFLDUR', 'STEPDUR'])
+        
+    for selection in selections:
+        if selection.traced:
+            writer.writerow([selection.recording.encounter.encounter_name, selection.recording.encounter.location, selection.recording.encounter.cruise, selection.recording.get_start_time_string(), selection.recording.encounter.species.species_name, selection.sampling_rate,  selection.selection_number, selection.freq_max, selection.freq_min, selection.duration, selection.freq_begin, selection.freq_end, selection.freq_range, selection.dc_mean, selection.dc_standarddeviation, selection.freq_mean, selection.freq_standarddeviation, selection.freq_median, selection.freq_center, selection.freq_relbw, selection.freq_maxminratio, selection.freq_begendratio, selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3, selection.freq_spread, selection.dc_quarter1mean, selection.dc_quarter2mean, selection.dc_quarter3mean, selection.dc_quarter4mean, selection.freq_cofm, selection.freq_stepup, selection.freq_stepdown, selection.freq_numsteps, selection.freq_slopemean, selection.freq_absslopemean, selection.freq_posslopemean, selection.freq_negslopemean, selection.freq_sloperatio, selection.freq_begsweep, selection.freq_begup, selection.freq_begdown, selection.freq_endsweep, selection.freq_endup, selection.freq_enddown, selection.num_sweepsupdown, selection.num_sweepsdownup, selection.num_sweepsupflat, selection.num_sweepsdownflat, selection.num_sweepsflatup, selection.num_sweepsflatdown, selection.freq_sweepuppercent, selection.freq_sweepdownpercent, selection.freq_sweepflatpercent, selection.num_inflections, selection.inflection_maxdelta, selection.inflection_mindelta, selection.inflection_maxmindelta, selection.inflection_meandelta, selection.inflection_standarddeviationdelta, selection.inflection_mediandelta, selection.inflection_duration, selection.step_duration])
+    
+    output.seek(0)
+    return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    
 @routes_selection.route('/recording/<uuid:recording_id>/extract_selection_stats', methods=['GET'])
 def extract_selection_stats(recording_id):
     with Session() as session:
         selections = session.query(Selection).filter(Selection.recording_id == recording_id).all()
         recording = session.query(Recording).filter(Recording.id == recording_id).first()
-        output = StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Encounter','Location','Cruise','Recording','Species','SamplingRate','SELECTIONNUMBER','FREQMAX', 'FREQMIN', 'DURATION', 'FREQBEG', 'FREQEND', 'FREQRANGE', 'DCMEAN', 'DCSTDDEV', 'FREQMEAN', 'FREQSTDDEV', 'FREQMEDIAN', 'FREQCENTER', 'FREQRELBW', 'FREQMAXMINRATIO', 'FREQBEGENDRATIO', 'FREQQUARTER1', 'FREQQUARTER2', 'FREQQUARTER3', 'FREQSPREAD', 'DCQUARTER1MEAN', 'DCQUARTER2MEAN', 'DCQUARTER3MEAN', 'DCQUARTER4MEAN', 'FREQCOFM', 'FREQSTEPUP', 'FREQSTEPDOWN', 'FREQNUMSTEPS', 'FREQSLOPEMEAN', 'FREQABSSLOPEMEAN', 'FREQPOSSLOPEMEAN', 'FREQNEGSLOPEMEAN', 'FREQSLOPERATIO', 'FREQBEGSWEEP', 'FREQBEGUP', 'FREQBEGDWN', 'FREQENDSWEEP', 'FREQENDUP', 'FREQENDDWN', 'NUMSWEEPSUPDWN', 'NUMSWEEPSDWNUP', 'NUMSWEEPSUPFLAT', 'NUMSWEEPSDWNFLAT', 'NUMSWEEPSFLATUP', 'NUMSWEEPSFLATDWN', 'FREQSWEEPUPPERCENT', 'FREQSWEEPDWNPERCENT', 'FREQSWEEPFLATPERCENT', 'NUMINFLECTIONS', 'INFLMAXDELTA', 'INFLMINDELTA', 'INFLMAXMINDELTA', 'INFLMEANDELTA', 'INFLSTDDEVDELTA', 'INFLMEDIANDELTA', 'INFLDUR', 'STEPDUR'])
-        
 
-        for selection in selections:
-            if selection.traced:
+        return write_contour_stats(selections, filename=f"ContourStats-{recording.get_start_time_string()}.csv")
 
-                writer.writerow([selection.recording.encounter.encounter_name, selection.recording.encounter.location, selection.recording.encounter.cruise, selection.recording.get_start_time_string(), selection.recording.encounter.species.species_name, selection.sampling_rate,  selection.selection_number, selection.freq_max, selection.freq_min, selection.duration, selection.freq_begin, selection.freq_end, selection.freq_range, selection.dc_mean, selection.dc_standarddeviation, selection.freq_mean, selection.freq_standarddeviation, selection.freq_median, selection.freq_center, selection.freq_relbw, selection.freq_maxminratio, selection.freq_begendratio, selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3, selection.freq_spread, selection.dc_quarter1mean, selection.dc_quarter2mean, selection.dc_quarter3mean, selection.dc_quarter4mean, selection.freq_cofm, selection.freq_stepup, selection.freq_stepdown, selection.freq_numsteps, selection.freq_slopemean, selection.freq_absslopemean, selection.freq_posslopemean, selection.freq_negslopemean, selection.freq_sloperatio, selection.freq_begsweep, selection.freq_begup, selection.freq_begdown, selection.freq_endsweep, selection.freq_endup, selection.freq_enddown, selection.num_sweepsupdown, selection.num_sweepsdownup, selection.num_sweepsupflat, selection.num_sweepsdownflat, selection.num_sweepsflatup, selection.num_sweepsflatdown, selection.freq_sweepuppercent, selection.freq_sweepdownpercent, selection.freq_sweepflatpercent, selection.num_inflections, selection.inflection_maxdelta, selection.inflection_mindelta, selection.inflection_maxmindelta, selection.inflection_meandelta, selection.inflection_standarddeviationdelta, selection.inflection_mediandelta, selection.inflection_duration, selection.step_duration])
-        
-        output.seek(0)
-        return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename=ContourStats-{recording.get_start_time_string()}.csv'})
+
+@routes_selection.route('/encounter/<uuid:encounter_id>/extract_selection_stats', methods=['GET'])
+def extract_selection_stats_for_encounter(encounter_id):
+    with Session() as session:
+        selections = []
+        encounter = session.query(Encounter).filter(Encounter.id == encounter_id).first()
+        recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
+
+        for recording in recordings:
+            selections += session.query(Selection).filter(Selection.recording_id == recording.id).all()
+
+        return write_contour_stats(selections, filename=f"ContourStats-{encounter.encounter_name}.csv")

@@ -476,3 +476,68 @@ def recalculate_contour_statistics(recording_id):
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
         return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=selection.recording.encounter_id))
+    
+import zipfile
+import tempfile
+import shutil
+
+def zip_and_download_files(file_paths, zip_filename):
+    with zipfile.ZipFile(zip_filename, 'w') as zipf:
+        for file_path in file_paths:
+            zipf.write(file_path, os.path.basename(file_path))
+    
+    return send_file(zip_filename, as_attachment=True)
+
+def download_files(file_paths, file_names, zip_filename):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for file_path, file_name in zip(file_paths, file_names):
+            if not file_name.endswith("."):
+                file_extension = os.path.splitext(file_path)[1]
+                new_file_name = f"{file_name}{file_extension}"
+            else:
+                new_file_name = file_name
+            new_file_path = os.path.join(temp_dir, new_file_name)
+            shutil.copy(file_path, new_file_path)
+        
+        return zip_and_download_files([os.path.join(temp_dir, file) for file in os.listdir(temp_dir)], zip_filename)
+@routes_recording.route('/recording/<uuid:recording_id>/download-ctr-files', methods=['GET'])
+def download_ctr_files(recording_id):
+    with Session() as session:
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
+        ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
+        file_names = [selection.generate_ctr_file_name() for selection in selections if selection.ctr_file is not None]
+        # Download and zip the CTR files
+        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_ctr_files.zip"
+        file_paths = [ctr_file.get_full_absolute_path() for ctr_file in ctr_files]
+        response = download_files(file_paths, file_names, zip_filename)
+        
+        return response
+    
+@routes_recording.route('/recording/<uuid:recording_id>/download-selection-files', methods=['GET'])
+def download_selection_files(recording_id):
+    with Session() as session:
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
+        file_names = [selection.generate_filename() for selection in selections if selection.selection_file is not None]
+        # Download and zip the CTR files
+        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_selection_files.zip"
+        file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
+        response = download_files(file_paths, file_names, zip_filename)
+        
+        return response
+
+@routes_recording.route('/recording/<uuid:recording_id>/download-contour-files', methods=['GET'])
+def download_contour_files(recording_id):
+    with Session() as session:
+        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
+        file_names = [selection.generate_contour_filename() for selection in selections if selection.contour_file is not None]
+        # Download and zip the CTR files
+        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_contour_files.zip"
+        file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
+        response = download_files(file_paths, file_names, zip_filename)
+        
+        return response

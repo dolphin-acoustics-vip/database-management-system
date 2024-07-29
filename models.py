@@ -961,6 +961,9 @@ class Selection(db.Model):
         if self.contour_file_id is not None:
             self.contour_file.delete(session)
             self.contour_file = None
+        if self.ctr_file_id is not None:
+            self.ctr_file.delete(session)
+            self.ctr_file = None
             
         
 

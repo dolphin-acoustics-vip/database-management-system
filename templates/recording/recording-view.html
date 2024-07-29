@@ -55,12 +55,30 @@
         {% set insert_route = "selection.selection_insert_bulk" %}
         {% if current_user.role_id in [1, 2] %}
         
+        <form action="{{url_for('selection.extract_selection_stats_for_encounter', encounter_id=recording.encounter.id)}}" method="get">
+            <button type="submit">Download Contour Stats For Encounter</button>
+        </form>
         <form action="/recording/{{recording.id}}/extract_selection_stats" method="get">
             <button type="submit">Download Contour Stats</button>
         </form>
         <form action="/recording/{{recording.id}}/recalculate-contour-statistics" method="get">
             <button type="submit">Recalculate Contour Statistics</button>
         </form>
+
+        <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
+            <button type="submit">Download CTR Files</button>
+        </form>
+
+        <form action="{{url_for('recording.download_contour_files', recording_id=recording.id)}}" method="get">
+            <button type="submit">Download Contour Files</button>
+        </form>
+        
+        <form action="{{url_for('recording.download_selection_files', recording_id=recording.id)}}" method="get">
+            <button type="submit">Download Selection Files</button>
+        </form>
+            
+
+        {% endif %}
 
         <h3 style="margin-top: 20px;">Assign Users</h3>
         <p>Start typing and then select from the dropdown.</p>
@@ -101,7 +119,6 @@
             </div>
         </section>
 
-        {% endif %}
 
         <h2>Add selections</h2>
         {% include 'recording/multi-file-upload-template.html' %}
