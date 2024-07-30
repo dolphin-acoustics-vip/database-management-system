@@ -21,7 +21,7 @@
             </td>
             {% if recording.recording_file != None %}
             <td>
-                <a href="{{ url_for('download_file', relative_path=recording.recording_file.get_full_relative_path()) }}">Download</a><br>
+                <a href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a><br>
                 {% if g.user.role_id in [1, 2] %}
                 <a href="{{ url_for('recording.recording_file_delete', encounter_id=recording.encounter_id, recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
                 {% endif %}

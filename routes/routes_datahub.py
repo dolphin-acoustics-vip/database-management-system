@@ -316,9 +316,19 @@ def get_assignment_statistics():
         number_completed_assignments = 0
         number_inprogress_assignments = 0
 
-        all_species = session.query(Species).all()
-        species_specific_data = {str(species.id): {'species_name': species.species_name, 'recordings': 0, 'assigned_recordings': 0, 'unassigned_recordings': 0, 'completed_assignments': 0, 'inprogress_assignments': 0, 'traced_count': 0} for species in all_species}
+        recordings_reviewed_count = 0
+        recordings_on_hold_count = 0
+        recordings_awaiting_review_count = 0
+        recordings_unassigned_count = 0
+        recordings_in_progress_count = 0
 
+
+        all_species = session.query(Species).all()
+        species_specific_data = {str(species.id): {'species_name': species.species_name, 'recordings': 0, 'assigned_recordings': 0, 'unassigned_recordings': 0, 'completed_assignments': 0, 'inprogress_assignments': 0, 'traced_count': 0, 'recordings_reviewed_count': 0, 'recordings_on_hold_count': 0, 'recordings_awaiting_review_count': 0, 'recordings_unassigned_count': 0, 'recordings_in_progress_count': 0} for species in all_species}
+
+        completed_recordings = []
+        awaiting_review_recordings = []
+        on_hold_recordings = []
         assigned_recordings = []
         unassigned_recordings = []
 
@@ -329,26 +339,54 @@ def get_assignment_statistics():
         processed_recordings = []
         for recording in records:
             recording['recording_route'] = url_for('recording.recording_view', recording_id=recording['id'], encounter_id=recording['enc_id'])
-            processed_recordings.append(recording['id'])
+            
             
             if recording['sp_id'] in species_specific_data:
                 species_specific_data[recording['sp_id']]['recordings'] += 1
-                if recording['assignment_user_login_id'] is not None:
+
+                if recording['status'] == 'Reviewed':
+                    completed_recordings.append(recording) if recording['id'] not in processed_recordings else None
+                    species_specific_data[recording['sp_id']]['recordings_reviewed_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    processed_recordings.append(recording['id'])
+                elif recording['status'] == 'Awaiting Review':
+                    awaiting_review_recordings.append(recording) if recording['id'] not in processed_recordings else None
+                    species_specific_data[recording['sp_id']]['recordings_awaiting_review_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    processed_recordings.append(recording['id'])
+                elif recording['status'] == 'On Hold':
+                    on_hold_recordings.append(recording) if recording['id'] not in processed_recordings else None
+                    species_specific_data[recording['sp_id']]['recordings_on_hold_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    processed_recordings.append(recording['id'])
+                elif recording['status'] == 'Unassigned':
+                    unassigned_recordings.append(recording)
+                    species_specific_data[recording['sp_id']]['recordings_unassigned_count'] += 1
+                elif recording['status'] == 'In Progress':
                     assigned_recordings.append(recording)
+                    species_specific_data[recording['sp_id']]['recordings_in_progress_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    processed_recordings.append(recording['id'])
+
+                if recording['assignment_user_login_id'] is not None:
+
                     species_specific_data[recording['sp_id']]['assigned_recordings'] += 1
                     if recording['assignment_completed_flag'] == True:
                         species_specific_data[recording['sp_id']]['completed_assignments'] += 1
                     elif recording['assignment_completed_flag'] == False:
                         species_specific_data[recording['sp_id']]['inprogress_assignments'] += 1
-                else:
-                    unassigned_recordings.append(recording)
+                else: 
                     species_specific_data[recording['sp_id']]['unassigned_recordings'] += 1
                 species_specific_data[recording['sp_id']]['traced_count'] += recording['traced_count']
+
         recording_statistics['unassigned_recordings'] = sorted(unassigned_recordings, key=lambda x: x['created_datetime'], reverse=True)
         
+        recording_statistics['on_hold_recordings'] = sorted(on_hold_recordings, key=lambda x: x['created_datetime'], reverse=True)
         
+        recording_statistics['awaiting_review_recordings'] = sorted(awaiting_review_recordings, key=lambda x: x['created_datetime'], reverse=True)
+        recording_statistics['completed_recordings'] = sorted(completed_recordings, key=lambda x: x['created_datetime'], reverse=True)
         recording_statistics['assigned_recordings'] = sorted(assigned_recordings, key=lambda x: (-(x['traced_count']==0 and x['assignment_completed_flag']==True), x['assignment_completed_flag'], x['created_datetime']))
         for sp_id in species_specific_data:
             species_specific_data[sp_id]['completion_rate'] = round((species_specific_data[sp_id]['completed_assignments'] / species_specific_data[sp_id]['assigned_recordings']) * 100, 0) if species_specific_data[sp_id]['recordings'] > 0 else 0
+
+            species_specific_data[sp_id]['recordings_count'] = species_specific_data[sp_id]['recordings_unassigned_count'] + species_specific_data[sp_id]['recordings_in_progress_count'] + species_specific_data[sp_id]['recordings_reviewed_count'] + species_specific_data[sp_id]['recordings_awaiting_review_count'] + species_specific_data[sp_id]['recordings_on_hold_count']
+            species_specific_data[sp_id]['progress'] = round((species_specific_data[sp_id]['recordings_reviewed_count'] / species_specific_data[sp_id]['recordings_count']) * 100, 0) if species_specific_data[sp_id]['recordings_count'] > 0 else 0
+
 
         return jsonify(species_statistics=species_specific_data, recording_statistics=recording_statistics)

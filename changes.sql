@@ -112,6 +112,7 @@ CREATE TABLE `file` (
   `updated_by_id` uuid DEFAULT NULL,
   `duration` int(11) DEFAULT NULL,
   `upload_datetime` DATETIME DEFAULT NOW(),
+  `original_filename` varchar(255) DEFAULT NULL,
   KEY `fk_updated_by_id_file` (`updated_by_id`),
   CONSTRAINT `fk_updated_by_id_file` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`),
   PRIMARY KEY (`id`)
@@ -135,6 +136,9 @@ CREATE TABLE `recording` (
   `ignore_selection_table_warnings` tinyint(1) NOT NULL DEFAULT 0,
   `updated_by_id` uuid DEFAULT NULL,
   `created_datetime` DATETIME DEFAULT NOW(),
+  `status` enum('Unassigned','In Progress', 'Awaiting Review', 'Reviewed', 'On Hold') DEFAULT 'Unassigned',
+  `status_change_datetime` DATETIME DEFAULT NULL,
+  `notes` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_time_encounter_id` (`start_time`,`encounter_id`),
   KEY `fk_encounter_id` (`encounter_id`),
@@ -398,6 +402,7 @@ CREATE TABLE `assignment` (
   `recording_id` uuid NOT NULL,
   `created_datetime` timestamp NOT NULL DEFAULT NOW(),
   `completed_flag` tinyint(1) NOT NULL DEFAULT 0,	
+  `notes` text,
   CONSTRAINT `user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `recording_id_fk` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`),
   PRIMARY KEY (`user_id`,`recording_id`)

@@ -28,6 +28,9 @@
     <p>You are not logged in</p>
     {% endif %}
 
+
+
+    {% if recordings %}
     <h3>Current Assignments</h3>
     <table>
         <tr>
@@ -36,7 +39,9 @@
           <th>Encounter</th>
           <th>Recording</th>
           <th>Completed</th>
+          <th>Admin Review</th>
       </tr>   
+      
       {% for recording_and_assignment in recordings %}
 
       <tr>
@@ -45,10 +50,14 @@
         <td><a href="{{ url_for('encounter.encounter_view', encounter_id=recording_and_assignment['recording'].encounter.id) }}">{{ recording_and_assignment['recording'].encounter.encounter_name }}</a></td>
         <td><a href="{{ url_for('recording.recording_view', recording_id=recording_and_assignment['recording'].id, encounter_id= recording_and_assignment['recording'].encounter.id) }}">{{ recording_and_assignment['recording'].get_start_time_string() }}</a></td>
         <td>{{ recording_and_assignment['assignment'].is_complete() }}</td>
+        <td>{% if recording_and_assignment['recording'].is_on_hold() %} ACTION REQUIRED {% else %} {{ recording_and_assignment['recording'].status}} {% endif %}</td>
       </tr>
       {% endfor %}
     </table>
-  
+
+    {% else %}
+    <p>You have no assigned recordings. Please contact your administrator and come back later.</p>
+    {% endif %}
 </div>
 
 </body>

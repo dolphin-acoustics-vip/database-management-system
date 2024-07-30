@@ -11,7 +11,7 @@ def parse_alchemy_error(error):
         elif error.orig.args[0] == 1062 and "Duplicate entry" in error_message:
             duplicate_value = error_message.split("Duplicate entry ")[1].split(" for key")[0]
             duplicate_attribute = error_message.split("for key '")[1].split("'")[0]
-            return "Duplicate entry: {} for {}.".format(duplicate_value, duplicate_attribute)
+            return "Duplicate entry"
         else:
             foreign_key_constraint = error_message.split('`')[3]
             return "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)

@@ -179,6 +179,7 @@ def home():
         result = session.query(Recording, Assignment). \
             join(Assignment, Assignment.recording_id == Recording.id). \
             filter(Assignment.user_id == current_user.id). \
+            order_by((Recording.status == "On Hold").desc()). \
             order_by(Assignment.completed_flag). \
             order_by(Assignment.created_datetime.desc()). \
             all()

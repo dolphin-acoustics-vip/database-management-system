@@ -63,7 +63,6 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         session.add(new_file)
         new_recording.recording_file = new_file
     
-    print(request.form)
     if 'assign_user_id' in request.form:
         assign_user_id = request.form['assign_user_id'] 
         try:
@@ -76,7 +75,10 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
             assignment = Assignment()
             assignment.recording_id = new_recording.id
             assignment.user_id = user_obj.id
+            
             session.add(assignment)
+            session.flush()
+            new_recording.update_status_upon_assignment_add_remove(session)
     session.commit()
     return new_recording
 
@@ -206,9 +208,7 @@ def recording_insert(encounter_id):
             flash(f'Added recording: {recording_obj.id}', 'success')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except SQLAlchemyError as e:
-            raise e
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
+            handle_sqlalchemy_exception(session, e)
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
 @routes_recording.route('/recording/<uuid:recording_id>/get-unresolved-warnings', methods=['GET'])
@@ -257,25 +257,52 @@ def recording_view(encounter_id,recording_id):
         
         return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned)
 
+@routes_recording.route('/recording/<uuid:recording_id>/update_notes', methods=['POST'])
+def update_notes(recording_id):
+    with Session() as session:
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        notes = request.form.get('notes')
+        print(notes)
+        
+        recording.notes = notes
+        print(recording.notes)
+        session.commit()
+        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))  # Redirect to the recording view page
+
+
+def flag_user_assignment(session, recording_id, user_id, completed_flag):
+    recording = session.query(Recording).filter_by(id=recording_id).first()
+    assignment = session.query(Assignment).filter_by(recording_id=recording_id).filter_by(user_id=user_id).first()
+    if assignment is not None:
+        assignment.completed_flag = completed_flag
+        recording.update_status_upon_assignment_flag_change(session)
+        session.commit()
+
+@routes_recording.route('/recording/<uuid:recording_id>/<uuid:user_id>/flag-as-completed', methods=['GET'])
+def flag_as_complete_for_user(recording_id, user_id):
+    with Session() as session:
+        flag_user_assignment(session, recording_id, user_id, True)
+        return jsonify({'message': 'Success'})
+
+@routes_recording.route('/recording/<uuid:recording_id>/<uuid:user_id>/unflag-as-completed', methods=['GET'])
+def unflag_as_complete_for_user(recording_id, user_id):
+    with Session() as session:
+        flag_user_assignment(session, recording_id, user_id, False)
+        return jsonify({'message': 'Success'})
+
 @routes_recording.route('/recording/<uuid:recording_id>/unflag-as-completed', methods=['GET'])
 def unflag_as_complete(recording_id):
     with Session() as session:
-        assignment = session.query(Assignment).filter_by(recording_id=recording_id).filter_by(user_id=current_user.id).first()
         recording = session.query(Recording).filter_by(id=recording_id).first()
-        if assignment is not None:
-            assignment.completed_flag = False
-        session.commit()
+        flag_user_assignment(session, recording_id, current_user.id, False)
+
         return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
 
 @routes_recording.route('/recording/<uuid:recording_id>/flag-as-completed', methods=['GET'])
 def flag_as_complete(recording_id):
     with Session() as session:
-        assignment = session.query(Assignment).filter_by(recording_id=recording_id).filter_by(user_id=current_user.id).first()
         recording = session.query(Recording).filter_by(id=recording_id).first()
-
-        if assignment is not None:
-            assignment.completed_flag = True
-        session.commit()
+        flag_user_assignment(session, recording_id, current_user.id, True)
         return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
@@ -439,11 +466,15 @@ def extract_date():
 def assign_recording(user_id, recording_id):
     with Session() as session:
         try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
             new_assignment = Assignment()
             new_assignment.user_id = user_id
             new_assignment.recording_id = recording_id
             session.add(new_assignment)
+            session.flush()
+            recording.update_status_upon_assignment_add_remove(session)
             session.commit()
+            
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
         return jsonify(success=True)
@@ -453,7 +484,9 @@ def assign_recording(user_id, recording_id):
 def unassign_recording(user_id, recording_id):
     with Session() as session:
         try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
             session.query(Assignment).filter_by(user_id=user_id, recording_id=recording_id).delete()
+            recording.update_status_upon_assignment_add_remove(session)
             session.commit()
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
@@ -489,6 +522,8 @@ def zip_and_download_files(file_paths, zip_filename):
             zipf.write(file_path, os.path.basename(file_path))
     
     return send_file(zip_filename, as_attachment=True)
+
+
 
 def download_files(file_paths, file_names, zip_filename):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -542,4 +577,30 @@ def download_contour_files(recording_id):
         file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
         response = download_files(file_paths, file_names, zip_filename)
         
+    
         return response
+    
+
+@routes_recording.route('/recording/<uuid:recording_id>/download-recording-file', methods=['GET'])
+def download_recording_file(recording_id):
+    with Session() as session:
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        file_name = recording.recording_file.get_full_absolute_path()
+        download_file_name = recording.generate_recording_filename()
+
+        return send_file(file_name, as_attachment=True, download_name=download_file_name)
+@routes_recording.route('/recording/<uuid:recording_id>/mark_as_complete', methods=['GET'])
+def mark_as_complete(recording_id):
+    with Session() as session:
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        recording.set_status("Reviewed")
+        session.commit()
+        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
+
+@routes_recording.route('/recording/<uuid:recording_id>/mark_as_on_hold', methods=['GET'])
+def mark_as_on_hold(recording_id):
+    with Session() as session:
+        recording = session.query(Recording).filter_by(id=recording_id).first()
+        recording.set_status("On Hold")
+        session.commit()
+        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))

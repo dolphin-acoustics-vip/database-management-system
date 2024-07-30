@@ -25,15 +25,52 @@
 
 <body>
     <div class="outer-div">
+        {% if current_user.role_id in [1, 2] %}
+        <h2>Administration Actions</h3>
+        <h3>Review</h3>
+        <label>Status: {{recording.status}} {% if recording.status_change_datetime %} ({{recording.status_change_datetime}}) {% endif %}</label>
+        {% if recording.is_complete() == False %}
+        <form action = "{{url_for('recording.mark_as_complete', recording_id=recording.id)}}" method="get">
+            <button type="submit" id="mark-as-complete-button">Mark as Complete</button>
+        </form>
+        {% endif %}
+        {% if recording.is_on_hold() == False %}
+        <form action = "{{url_for('recording.mark_as_on_hold', recording_id=recording.id)}}" method="get">
+            <button type="submit" id="mark-as-on-hold-button">Reject</button>
+        </form>
+        {% endif %}
+        <h3 style="margin-top: 20px;">Assign Users</h3>
+        <p>Start typing and then select from the dropdown.</p>
+        <input type="text" style="width: 100%" id="search-input" placeholder="Search users">
+        <div class="user-dropdown" id="user-dropdown" data-recording-id="{{recording.id}}"></div><br>
+        <table>
+            {% for assigned_user in assigned_users %}
+            <tr>
+                <td style="color: gray;">{{assigned_user.user.name}} ({{assigned_user.user.login_id}})</td>
+                <td>{% if assigned_user.completed_flag %} <button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="flagAssignmentIncomplete()">Remove Completed Flag</button> {% else %} <button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="flagAssignmentComplete()">Flag as Completed</button> {% endif %}</td>
+                <td><button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="removeAssignment()">Unassign User</button></td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        </script>
+
+        {% endif %}
         <h2>Recording Summary</h2>
+        {% if recording.is_complete() == True %}
+        
+        <p1>Assignment Status: REVIEWED {% if recording.status_change_datetime %} ({{recording.status_change_datetime}}) {% endif %}</p1>
+        {% else %}
         {% if logged_in_user_assigned %}
-        {% if logged_in_user_assigned.completed_flag %}
-        <p1>Assignment Status: COMPLETE</p1>
+
+        {% if logged_in_user_assigned.completed_flag == True %}
+
+        <p1>Assignment Status: COMPLETE (Awaiting Review)</p1>
         <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="get">
             <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
         </form>
         {% else %}
-        <p1>Assignment Status: IN PROGRESS</p1>
+        <p1>Assignment Status: IN PROGRESS </p1>
 
         <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="get">
         
@@ -44,11 +81,20 @@
         {% else %}
         <p1>Assignment Status: NOT ASSIGNED TO CURRENT USER</p1>
         {% endif %}
+        {% endif %}
         <p>Start date: {{ recording.start_time }}</p>
         <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
             recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
         <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
         <p>Number of contours: {{ recording.get_number_of_contours() }}</p>
+
+        <form action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
+            <label for="notes">Notes:</label>
+            <textarea id="notes" name="notes" rows="4" cols="50">{% if recording.notes %} {{ recording.notes }} {% endif %}</textarea>
+            <br>
+            <button type="submit">Update Notes</button>
+        </form>
+
         {% set identifier_heading = "Selection Number" %}
         {% set unique_id = "selection-number"%}
         {% set process_route = "process_selection" %}
@@ -80,18 +126,7 @@
 
         {% endif %}
 
-        <h3 style="margin-top: 20px;">Assign Users</h3>
-        <p>Start typing and then select from the dropdown.</p>
-        <input type="text" style="width: 100%" id="search-input" placeholder="Search users">
-        <div class="user-dropdown" id="user-dropdown" data-recording-id="{{recording.id}}"></div><br>
-        <table>
-            {% for assigned_user in assigned_users %}
-            <tr>
-                <td style="color: gray;">{{assigned_user.user.name}} ({{assigned_user.user.login_id}})</td>
-                <td><button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="removeAssignment()">Remove</button></td>
-            </tr>
-            {% endfor %}
-        </table>
+
 
         <section>
             <div class="audit-history">
@@ -221,6 +256,30 @@
 </body>
 
 <script>
+
+flagAssignmentComplete = function() {
+    var xhr = new XMLHttpRequest();
+    const recordingId = event.target.closest('.user-row').dataset.recordingId;
+    const userId = event.target.closest('.user-row').dataset.userId
+    xhr.open('GET', '/recording/' + recordingId + '/' + userId  + '/flag-as-completed', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function () {
+        window.location.href = window.location.href;
+    }
+    xhr.send();
+}
+
+flagAssignmentIncomplete = function() {
+    var xhr = new XMLHttpRequest();
+    const recordingId = event.target.closest('.user-row').dataset.recordingId;
+    const userId = event.target.closest('.user-row').dataset.userId
+    xhr.open('GET', '/recording/' + recordingId + '/' + userId  + '/unflag-as-completed', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function () {
+        window.location.href = window.location.href;
+    }
+    xhr.send();
+}
 
 removeAssignment = function() {
     var xhr = new XMLHttpRequest();

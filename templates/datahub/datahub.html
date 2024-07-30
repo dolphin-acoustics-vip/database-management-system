@@ -28,7 +28,7 @@
         <button id="clear-all-filters" class="btn btn-primary" onclick="refreshPage()">Refresh</button>
         {% from 'partials/days-ago-selector.html' import days_ago_selector %}
         {{ days_ago_selector() }}
-
+        <p id="statistics-date-range-title"></p>
           {% from 'partials/species-checkbox.html' import species_checkbox %}
           {{ species_checkbox(species_list) }}
           
@@ -39,7 +39,7 @@
         <button id="clear-user-filter-button" hidden onclick="clearUserFilter()">Clear User Filter</button>
         <section style="padding-bottom: 20px; display: none;" id="user-statistics-section">
             <h2 id="user-statistics-title">User Statistics</h2>
-            <p id="user-statistics-date-range-title"></p>
+
             <div class="statistic-box" id="user-statistics-box">
             </div>
             <div class="statistic-box" id="user-graph1-box">
@@ -49,7 +49,6 @@
         </section>
 
         <h2 id="statistics-title-text">All Statistics</h2>
-        <p id="statistics-date-range-title"></p>
 
         <div class="statistic-box" id="selection-statistics-box">
             <h3>Selection Statistics</h3>
@@ -61,7 +60,7 @@
             <h3>Number of Uploaded Selection and Contour File Contributions</h3>
             <canvas id="selection-statistics-chart" style="width:100%; height: 300px;"></canvas>
         </div>
-        <h2>User Contributions</h2>
+        <h2 id="user-statistics-text">User Contributions</h2>
         <button id="clear-all-filters" class="btn btn-primary" style="margin-bottom: 10px" onclick="refreshPage()">Refresh</button>
 
         <div class="statistic-box" id="selection-graph2-box">
@@ -87,13 +86,13 @@
         </div>
 
     </div>
-<h2>Recording Assignments</h2>
+<h2 id="recording-and-assignments-statistics-text">Recordings and Assignments</h2>
 <button id="clear-all-filters" class="btn btn-primary" style="margin-bottom: 10px" onclick="refreshPage()">Refresh</button>
 
-    <div class="statistic-box" id="species-statistics-box">
+    <div class="statistic-box" id="recording-statistics-box">
         <h3>Species Statistics</h3>
     </div>
-    <div class="statistic-box" id="recording-list-box">
+    <div class="statistic-box" id="assignment-statistics-box">
         <h3>Recording List</h3>
     </div>
         
@@ -269,6 +268,15 @@ function generateColors(numColors) {
         clearUserDropdownInput(); // method from macro for user selection dropdown
         $("#clear-user-filter-button").hide()
     }
+
+    function createHeadingMessage(start_text, day_count, user_name=null, user_login_id=null) {
+        if (user_name != null && user_login_id != null) {
+            return start_text + " for " + user_name + " (" + user_login_id + "), since " + day_count + " day" + (day_count > 1 ? "s" : "") + " ago"
+        } else {
+            return start_text + " since " + day_count + " day" + (day_count > 1 ? "s" : "") + " ago"
+        }
+    }
+
     async function getPageStatistics(user_only = false) {
         $('#statistics-title-text').text("Loading Statistics...")
         if (StartDateTime === null) {
@@ -288,11 +296,11 @@ function generateColors(numColors) {
             success: function (result) {
                 console.log(result)
                 console.log(result.user_name, result.user_name != null)
-                if (result.user_name != null) {
-                    $('#statistics-title-text').text("Statistics for " + result.user_name + " (" + result.user_login_id + "), since " + result.dayCount + " day" + (result.dayCount > 1 ? "s" : "") + " ago")
-                } else {
-                    $('#statistics-title-text').text("Statistics since " + result.dayCount + " day" + (result.dayCount > 1 ? "s" : "") + " ago")
-                }
+                $('#statistics-title-text').text(createHeadingMessage("Selection Statistics", result.dayCount, result.user_name, result.user_login_id))
+                $('#user-statistics-text').text(createHeadingMessage("User Contributions", result.dayCount, result.user_name, result.user_login_id))
+                $('#recording-and-assignments-statistics-text').text(createHeadingMessage("Recordings and Assignments", result.dayCount, result.user_name, result.user_login_id))
+
+                
                 updateBarChartData(selectionAndContourStatisticsChart, 'selection-statistics-chart', result.selectionAndContourStatisticsChartLabels, result.selectionAndContourStatisticsChartData).then(function (updated_chart) {
                     selectionAndContourStatisticsChart = updated_chart
                 })
@@ -315,7 +323,7 @@ function generateColors(numColors) {
                 console.log(recordingStatistics)
 
                 updateSpeciesStatistics(speciesStatistics)
-                updateRecordingList(recordingStatistics['unassigned_recordings'], recordingStatistics['assigned_recordings'])
+                updateRecordingList(recordingStatistics['unassigned_recordings'], recordingStatistics['assigned_recordings'], recordingStatistics['completed_recordings'], recordingStatistics['awaiting_review_recordings'], recordingStatistics['on_hold_recordings'])
             }
         });
     
@@ -346,34 +354,62 @@ function generateColors(numColors) {
     }
 
     function updateSpeciesStatistics(speciesStatistics) {
-        $('#species-statistics-box').empty()
+        $('#recording-statistics-box').empty()
+        $('#assignment-statistics-box').empty()
+        console.log(speciesStatistics)
+        $('#recording-statistics-box').append("<h3>Recording Statistics</h3>")
 
-        speciesStatisticsTable = createTable(['Species', 'Assignments', 'Assignments Completed', 'Assignment Completion Rate', 'Recordings to Assign'])
-        tbody = speciesStatisticsTable.find('tbody')
+        recordingStatisticsTable = createTable(['Species', 'Recordings', 'Unassigned', 'In Progress', 'Awaiting Review', 'Reviewed', 'On Hold', 'Progress'])
+        tbody = recordingStatisticsTable.find('tbody')
         for (species in speciesStatistics) {
-            addStatisticsTableRow(tbody, [speciesStatistics[species]['species_name'], speciesStatistics[species]['assigned_recordings'], speciesStatistics[species]['completed_assignments'], speciesStatistics[species]['completion_rate'] + "%", speciesStatistics[species]['unassigned_recordings']])
+            addStatisticsTableRow(tbody, [speciesStatistics[species]['species_name'], speciesStatistics[species]['recordings_count'], speciesStatistics[species]['recordings_unassigned_count'], speciesStatistics[species]['recordings_in_progress_count'], speciesStatistics[species]['recordings_awaiting_review_count'], speciesStatistics[species]['recordings_reviewed_count'], speciesStatistics[species]['recordings_on_hold_count'], speciesStatistics[species]['progress'] + "%"])
         }
-        $('#species-statistics-box').append(speciesStatisticsTable);
-    }
-
-    function updateRecordingList(unassigned_recordings, assigned_recordings) {
-        $('#recording-list-box').empty()
-        if (unassigned_recordings.length > 0) {
-            
-        unassignedRecordingsTable = createTable(['Species', 'Encounter', 'Recording', 'Created On'])
-        tbody = unassignedRecordingsTable.find('tbody')
-        for (recording in unassigned_recordings) {
-            recording_link = "<a href='" + unassigned_recordings[recording]['recording_route'] + "'>" + unassigned_recordings[recording]['start_time'] + "</a>"
-            addStatisticsTableRow(tbody, [unassigned_recordings[recording]['sp_species_name'], unassigned_recordings[recording]['enc_encounter_name'], recording_link, unassigned_recordings[recording]['created_datetime']])
-        }
-
-        $('#recording-list-box').append("<h3>Unassigned Recordings</h3>")
-        $('#recording-list-box').append(unassignedRecordingsTable);
-        $('#recording-list-box').append('<br>')
+        $('#recording-statistics-box').append(recordingStatisticsTable);
         
-    } else {
-        $('#recording-list-box').append("<p>There are no unassigned recordings for the selected filters.</p>");
+        $('#assignment-statistics-box').append("<h3>Assignment Statistics</h3>")
+
+        assignmentStatisticsTable = createTable(['Species', 'Assignments', 'Open Assignments', 'Completed Assignments', 'Completion Rate'])
+        tbody = assignmentStatisticsTable.find('tbody')
+        for (species in speciesStatistics) {
+            addStatisticsTableRow(tbody, [speciesStatistics[species]['species_name'], speciesStatistics[species]['assigned_recordings'], speciesStatistics[species]['inprogress_assignments'], speciesStatistics[species]['completed_assignments'], speciesStatistics[species]['completion_rate'] + "%"])
+        }
+        $('#assignment-statistics-box').append(assignmentStatisticsTable);
     }
+
+    function create_recording_table(recording_list) {
+        recordingsTable = createTable(['Species', 'Encounter', 'Recording', 'Created On' , 'Status'])
+        tbody = recordingsTable.find('tbody')
+        for (recording in recording_list) {
+            recording_link = "<a href='" + recording_list[recording]['recording_route'] + "'>" + recording_list[recording]['start_time'] + "</a>"
+            addStatisticsTableRow(tbody, [recording_list[recording]['sp_species_name'], recording_list[recording]['enc_encounter_name'], recording_link, recording_list[recording]['created_datetime'], recording_list[recording]['status']])
+        }
+        return recordingsTable
+    }
+
+    function updateRecordingList(unassigned_recordings, assigned_recordings, completed_recordings, awaiting_review_recordings, on_hold_recordings) {
+        
+        console.log(completed_recordings)
+        if (on_hold_recordings.length > 0) {
+            $('#recording-statistics-box').append("<h3>On Hold Recordings (ACTION NEEDED)</h3>")
+            $('#recording-statistics-box').append(create_recording_table(on_hold_recordings))
+            $('#recording-statistics-box').append('<br>')
+        }
+        if (awaiting_review_recordings.length > 0) {
+            $('#recording-statistics-box').append("<h3>Awaiting Review Recordings (ACTION NEEDED)</h3>")
+            $('#recording-statistics-box').append(create_recording_table(awaiting_review_recordings))
+            $('#recording-statistics-box').append('<br>')
+        }
+        if (unassigned_recordings.length > 0) {
+            $('#recording-statistics-box').append("<h3>Unassigned Recordings (ACTION NEEDED)</h3>")
+            $('#recording-statistics-box').append(create_recording_table(unassigned_recordings))
+            $('#recording-statistics-box').append('<br>')
+} else {
+$('#recording-statistics-box').append("<p>There are no unassigned recordings for the selected filters.</p>");
+}
+
+
+
+        
         if (assigned_recordings.length > 0) {
             
         assignedRecordingTable = createTable(['Assigned On', 'Status', 'Assignment', 'Species', 'Encounter', 'Recording', 'Created On'])
@@ -392,13 +428,21 @@ function generateColors(numColors) {
             addStatisticsTableRow(tbody, [assigned_recordings[recording]['assignment_created_datetime'], status, assigned_recordings[recording]['assignment_user_name'] + " (" + assigned_recordings[recording]['assignment_user_login_id'] + ")", assigned_recordings[recording]['sp_species_name'], assigned_recordings[recording]['enc_encounter_name'], recording_link, assigned_recordings[recording]['created_datetime']  ])
 
         }
-        $('#recording-list-box').append("<h3>Recording Assignment Status</h3>")
+        $('#assignment-statistics-box').append("<h3>Current Open Assignments</h3>")
 
-        $('#recording-list-box').append(assignedRecordingTable);
+        $('#assignment-statistics-box').append(assignedRecordingTable);
         
     } else {
-        $('#recording-list-box').append("<p>There are no assigned recordings for the selected filters.</p>");
+        $('#assignment-statistics-box').append("<p>There are no assigned recordings for the selected filters.</p>");
     }
+
+    if (completed_recordings.length > 0) {
+            $('#recording-statistics-box').append("<h3>Completed Recordings</h3>")
+            $('#recording-statistics-box').append(create_recording_table(completed_recordings))
+            $('#recording-statistics-box').append('<br>')
+        } else {
+            $('#recording-statistics-box').append("<p>There are no completed recordings for the selected filters.</p>");
+        }
     }
     var userStatisticsChart;
     function updateSelectionStatisticsForUser(response) {

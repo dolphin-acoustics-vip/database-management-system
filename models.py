@@ -235,6 +235,7 @@ class File(db.Model):
     uploaded_date = db.Column(db.DateTime)
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
+    original_filename = db.Column(db.String(255))
 
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
@@ -315,6 +316,7 @@ class File(db.Model):
             import re
             self.path = new_path
             self.filename = new_filename  # filename without extension
+            self.original_filename = file.filename
             self.extension = file.filename.split('.')[-1]
             
             destination_path = os.path.join(root_path, self.get_full_relative_path())
@@ -431,7 +433,9 @@ class Recording(db.Model):
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
-
+    status = db.Column(db.Enum('Unassigned','In Progress','Awaiting Review','Reviewed','On Hold'), nullable=False, default='Unassigned')
+    status_change_datetime = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
     #row_end = db.Column(db.DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
     #valid_to = Column(DateTime, server_default=func.inf())
@@ -439,11 +443,51 @@ class Recording(db.Model):
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
+
+    def is_complete(self):
+        return True if self.status == 'Reviewed' else False
+
+    def is_on_hold(self):
+        return True if self.status == 'On Hold' else False
+
     def set_user_id(self, user_id):
         self.updated_by_id = user_id
 
+    def update_status_change_datetime(self):
+        self.status_change_datetime = datetime.now()
+
+    def set_status(self, status):
+        if self.status != status:
+            self.update_status_change_datetime()
+        self.status = status
 
 
+    def update_status_upon_assignment_flag_change(self, session):
+        assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
+        old_status = self.status
+        if self.status != 'On Hold' and self.status != 'Reviewed':
+
+            # this will be run when a user selects complete
+            self.status = 'Awaiting Review'
+            for assignment in assignments:
+                if assignment.completed_flag is False:
+                    self.status = 'In Progress'
+        
+        if old_status != self.status:
+            self.update_status_change_datetime()
+    def update_status_upon_assignment_add_remove(self, session):
+
+        assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
+        old_status = self.status
+        if self.status != 'On Hold' and self.status != 'Reviewed' and self.status != 'Awaiting Review':
+            if len(assignments) == 0:
+                self.status = 'Unassigned'
+            else:
+                self.status = 'In Progress'
+        print(self.status, old_status)
+        if old_status != self.status:
+            self.update_status_change_datetime()
+        
     def get_number_of_selections(self):
         selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         return len(selections)
