@@ -1,4 +1,4 @@
-{% macro recording_table() %}
+{% macro recording_table(show_message) %}
 
 <style>
     .user-item {
@@ -14,9 +14,9 @@
       outline: 2px solid blue;
     }
 </style>
-
-
+{% if show_message %}
 <p>Start typing and then select from the dropdown.</p>
+{% endif %}
 <input type="text" style="width: 100%" id="search-input" placeholder="Search users">
 <div class="user-dropdown" id="user-dropdown"></div><br>
 
@@ -52,7 +52,7 @@
                   var userId = $(this).data('user-id');
                   dropdown.empty();
                   $('#search-input').val(user.login_id);
-                  onUserSelectionDropdownComplete(userId)
+                  onUserSelectionDropdownComplete(userId, user)
                 });
                 userItem.data('user-id', user.id);
                 dropdown.append(userItem);

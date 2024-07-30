@@ -73,6 +73,8 @@
 <body>
     <div class="outer-div">
     <h1>Health Centre</h1>
+    {% from 'partials/days-ago-selector.html' import days_ago_selector %}
+    {{ days_ago_selector() }}
     {% from 'partials/species-checkbox.html' import species_checkbox %}
     {{ species_checkbox(species_list) }}
     <h4>User filter</h4>
@@ -81,8 +83,7 @@
     {{ recording_table() }}
     <button id="clear-user-filter-button" hidden onclick="clearUserFilter()">Clear User Filter</button>
 
-    {% from 'partials/days-ago-selector.html' import days_ago_selector %}
-    {{ days_ago_selector() }}
+
 
     <h2 id="health-score-title">Health Score</h2>
     <div id="health-score-container">

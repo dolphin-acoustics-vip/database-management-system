@@ -16,8 +16,7 @@
                 {% endif %}
                 <label hidden>{{ recording.get_start_time() }}</label><br>
                 {% if g.user.role_id in [1, 2] %}
-                <input style="width: 100%" type="datetime-local" id="time_start" name="time_start" value="{{ recording.get_start_time_string() }}" required>
-                <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="Seconds" value="{{ recording.get_seconds() }}" required><br>
+                <input style="width: 100%" type="datetime-local" id="time_start" name="time_start" value="{{ recording.get_start_time_string() }}" step="1" required>
                 {% endif %}
             </td>
             {% if recording.recording_file != None %}

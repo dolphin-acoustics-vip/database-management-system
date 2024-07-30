@@ -263,7 +263,12 @@ function generateColors(numColors) {
     $(document).ready(function () {
         
     });
-
+    function clearUserFilter() {
+        userFilterId = null
+        refreshPage();
+        clearUserDropdownInput(); // method from macro for user selection dropdown
+        $("#clear-user-filter-button").hide()
+    }
     async function getPageStatistics(user_only = false) {
         $('#statistics-title-text').text("Loading Statistics...")
         if (StartDateTime === null) {

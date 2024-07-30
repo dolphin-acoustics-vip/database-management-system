@@ -72,19 +72,53 @@
         </section>
 
         <section id="add-recording">
+            <style>
+                label {
+                    padding-top: 10px;
+                    margin-bottom: 5px;
+                }
+            </style>
             <h2>Add Recording</h2>
             <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post" enctype="multipart/form-data">
-                <label for="time_start">Start Time:</label>
-                <input type="datetime-local" id="time_start" name="time_start" required>
-                <input type="number" id="seconds" name="seconds" min="0" max="59" placeholder="seconds" required><br>
-                <label for="recording_file">Recording File:</label>
+                <label for="time_start" style="padding-top:0px;">Start Time:</label>
+                <input type="datetime-local" id="time_start" name="time_start" step="1" required>
+                <label for="recording_file"  style="margin-top: 5px;">Recording File:</label>
                 <input style="width:100%;" type="file" id="recording_file" name="recording_file" accept=".wav"><br>
-                <label for="selection_table_file">Selection File:</label>
-                <input style="width:100%;" type="file" id="selection_table_file" name="selection_table_file" accept=".csv"><br>
+                <label>Assign to User</label>
+                {% from 'partials/search-dropdown.html' import recording_table %}
+                <div id = 'user-input-dropdown'>
+                {{ recording_table(show_message=false) }}
+                </div>
+                <label hidden id="assign-user-id-label" for="assign_user_id">Assign to User: </label>
+                <button id="remove-user-assignment" type="button" hidden onclick="removeUserAssignment()">Remove</button>
                 <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
+                <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
+
                 <button type="submit">Submit</button>
             </form><br>
         </section>
+
+        <script>
+
+            function onUserSelectionDropdownComplete(user_id, user) {
+                $('#assign_user_id').val(user.id);
+                $('#assign-user-id-label').text('Assign to User: ' + user.name + ' (' + user.login_id + ')');
+                $('#assign-user-id-label').show();
+                $('#user-input-dropdown').hide();
+                $('#remove-user-assignment').show();
+            }
+
+            function removeUserAssignment() {
+                $('#assign_user_id').val('');
+                $('#assign-user-id-label').text('Assign to User: ');
+                $('#user-input-dropdown').show();
+                $('#assign-user-id-label').hide()
+
+                $('#remove-user-assignment').hide();
+                clearUserDropdownInput();
+            }
+
+        </script>
 
         {% endif %}
 
@@ -130,9 +164,10 @@
                     var response = JSON.parse(xhr.responseText);
                     if (response.date != null) {
                         var date = new Date(response.date);
-                        var formattedDate = date.toISOString().slice(0, 16);
+                        // cut out milliseconds
+                        var formattedDate = date.toISOString().slice(0, 19);
                         document.getElementById('time_start').value = formattedDate;
-                        document.getElementById('seconds').value = date.getSeconds();
+                       
                     }
                 }
             }

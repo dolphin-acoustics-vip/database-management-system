@@ -610,12 +610,10 @@ class Recording(db.Model):
         return self.start_time.second
 
 
-    def set_start_time(self, datetime_object, seconds=0):
-        if seconds is None or seconds == "":
-            seconds = 0
+    def set_start_time(self, datetime_object):
         if isinstance(datetime_object, str):
             try:
-                datetime_object = datetime.strptime(f"{datetime_object}:{seconds}", '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
+                datetime_object = datetime.strptime(f"{datetime_object}", '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
             except ValueError:
                 raise ValueError("Invalid datetime format")
         elif not isinstance(datetime_object, datetime):
@@ -625,11 +623,10 @@ class Recording(db.Model):
     def match_start_time(self, match_datetime):
         return self.start_time == match_datetime
 
+    # TODO remove seconds dependency
     def get_start_time_string(self, seconds=False):
-        if seconds:
-            return self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
-        else:
-            return self.start_time.strftime('%Y-%m-%dT%H:%M')
+        return self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
+
 
     def get_start_time(self):
         return self.start_time

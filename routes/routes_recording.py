@@ -42,9 +42,9 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     else:
         new_recording = Recording()
 
+
     
-    seconds = request.form['seconds']
-    new_recording.set_start_time(time_start, seconds)
+    new_recording.set_start_time(time_start)
     new_recording.set_duration(0)
     new_recording.set_encounter_id(encounter_id)
     new_recording.set_user_id(current_user.id)
@@ -63,18 +63,20 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         session.add(new_file)
         new_recording.recording_file = new_file
     
-    # If a selection file has been given, add it to the Recording object
-    if 'selection_table_file' in request.files and request.files['selection_table_file'].filename != '':
-        selection_table_file = request.files['selection_table_file']
-        new_selection_table_filename = new_recording.generate_selection_table_filename()
-        new_relative_path = new_recording.generate_relative_path()
-        new_file = File()
-        new_file.insert_path_and_filename(selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
-        new_file.set_uploaded_date = datetime.now()
-        new_file.set_uploaded_by("User 1")
-        session.add(new_file)
-        new_recording.reset_all_selections_unresolved_warnings(session)
-        new_recording.selection_table_file = new_file    
+    print(request.form)
+    if 'assign_user_id' in request.form:
+        assign_user_id = request.form['assign_user_id'] 
+        try:
+            user_id_uuid = uuid.UUID(assign_user_id)
+            user_obj = session.query(User).filter_by(id=user_id_uuid).first()
+
+        except ValueError:
+            user_obj=None
+        if user_obj is not None:
+            assignment = Assignment()
+            assignment.recording_id = new_recording.id
+            assignment.user_id = user_obj.id
+            session.add(assignment)
     session.commit()
     return new_recording
 
