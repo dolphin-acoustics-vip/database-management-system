@@ -10,15 +10,42 @@
 
 <body>
     <div class="outer-div">
+        <style>
+            .image-container {
+                display: inline-block;
+                justify-content: center;
+            }
+        
+            .image-container img {
+                max-width: 50%;
+                margin: 0 10px;
+                height: auto;
+            }
+        </style>
+        
+
+
         <h2>Selection Number: {{ selection.selection_number }}</h1>
         <hr>
         <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording</a>
         {% if current_user.role_id in [1, 2] %}
         <hr>
+        <div class="image-container">
+            {% if selection.spectogram_file %}
+            <h3>Spectogram</h3>
+            <img src="{{url_for('get_image',path=selection.spectogram_file.get_full_absolute_path())}}" alt="Spectogram">
+            {% endif %}
+        
+            {% if selection.plot_file %}
+            <h3>Contour Plot</h3>
+            <img src="{{url_for('get_image',path=selection.plot_file.get_full_absolute_path())}}" alt="Contour Plot">
+            {% endif %}
+        </div>
         <section>
             <div class="audit-history">
                 <h3>Audit History</h3>
-                <table>
+                <div class="table-responsive">
+                <table class="table-striped">
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -38,6 +65,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
         </section>
         <hr>
@@ -118,8 +146,7 @@
         <hr>
 
         <table>
-            <tr><td>Selection Number</td></tr>
-            <tr><td>{{ selection_dict.selection_number }}</td></tr>
+
             <tr>
                 <th>Attribute</th>
                 <th>Value</th>

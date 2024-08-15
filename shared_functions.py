@@ -210,3 +210,13 @@ def create_all_time_request(session, db_object, filters=None, order_by=None):
     #error_msg=""
 
     return recording_history
+
+
+def parse_snapshot_date(date_string):
+    formats = ["%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"]
+    for date_format in formats:
+        try:
+            return datetime.strptime(date_string, date_format)
+        except ValueError:
+            pass
+    raise ValueError("Invalid date format")

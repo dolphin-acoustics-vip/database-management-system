@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="static/css/hero-section.css">
-  <link rel="stylesheet" href="static/css/general-style.css">
+
+
 </head>
 {% include 'partials/header.html' %}
 <section class="hero-section">
@@ -20,19 +20,11 @@
 </section>
 <body>
   <div class="outer-div">
-    <h2>Home</h2>
-
-    {% if user.is_authenticated %}
-    <p>Logged in as: {{ user.name }} ({{ user.login_id }})</p>
-    {% else %}
-    <p>You are not logged in</p>
-    {% endif %}
-
-
-
+    
     {% if recordings %}
-    <h3>Current Assignments</h3>
-    <table>
+    <h1>Current Assignments</h1>
+    <div class="table-responsive">
+    <table class="table-striped">
         <tr>
           <th>Assigned On</th>
           <th>Species</th>
@@ -54,8 +46,10 @@
       </tr>
       {% endfor %}
     </table>
+  </div>
 
     {% else %}
+    <h1>Home</h1>
     <p>You have no assigned recordings. Please contact your administrator and come back later.</p>
     {% endif %}
 </div>

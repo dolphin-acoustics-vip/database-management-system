@@ -20,6 +20,19 @@ import pandas as pd
 import os
 from enum import Enum
 
+def round_to_nearest_whole(num):
+    """
+    Rounds a number to the neares whole number.
+    This is to account for the fact that the 
+    math.round() method rounds to the nearest
+    even number.
+    """
+    if num % 1 < 0.5:
+        return int(num)
+    else:
+        return int(num) + 1
+    
+
 class ContourFile:
 
 
@@ -48,7 +61,7 @@ class ContourFile:
 
             self.sweep = None
             self.step = ContourFile.Step.FLAT
-            self.slope = ContourFile.Slope.FLAT
+            self.slope = 0
         
         def time_seconds(self):
             return self.time_milliseconds / 1000
@@ -60,14 +73,12 @@ class ContourFile:
             self.sweep = value
 
 
-    
     def __init__(self, file_path=None):
         if file_path: self.insert_from_file(file_path)
 
     def insert_from_file(self, file_path):   
              
         extension = os.path.splitext(file_path)[-1].lower()
-        print(file_path, extension)
         if extension == '.csv':
             df = pd.read_csv(file_path)
         elif extension == '.xlsx':
@@ -75,7 +86,6 @@ class ContourFile:
         else:
             raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
         
-        print(df)
         # check columns and datatypes
         expected_columns = {
             'Time [ms]': int,
@@ -144,14 +154,14 @@ class ContourFile:
                         slope_neg_sum += slope
                         slope_neg_counter += 1
                 if freq_diff > 0:
-                    contour.set_slope(self.Slope.UP)
+                    contour.set_slope(slope)
                 elif freq_diff < 0:
-                    contour.set_slope(self.Slope.DOWN)
+                    contour.set_slope(slope)
                 else:
-                    contour.set_slope(self.Slope.FLAT)
+                    contour.set_slope(slope)
             else:
                 # Default slope value is DOWN
-                contour.set_slope(self.Slope.DOWN)
+                contour.set_slope(0)
         
 
         # See calculations in loop below to understand meaning of these variables
@@ -363,17 +373,17 @@ class ContourFile:
         
         # calculate beginning slope as an average of the first three non-zero slopes,
         # skipping the first row as the slope will always be zero
-        beg_slope_avg = (self.contour_rows[1].slope.value + self.contour_rows[2].slope.value + self.contour_rows[3].slope.value)/3
-        if beg_slope_avg > self.Slope.FLAT.value:
-            selection.freq_begsweep = self.Slope.UP.value
+        beg_slope_avg = (self.contour_rows[1].slope + self.contour_rows[2].slope + self.contour_rows[3].slope)/3
+        if beg_slope_avg > 0:
+            selection.freq_begsweep = self.Sweep.UP.value
             selection.freq_begup = True
             selection.freq_begdown = False
-        elif beg_slope_avg < self.Slope.FLAT.value:
-            selection.freq_begsweep = self.Slope.DOWN.value
+        elif beg_slope_avg < 0:
+            selection.freq_begsweep = self.Sweep.DOWN.value
             selection.freq_begup = False
             selection.freq_begdown = True
         else:
-            selection.freq_begsweep = self.Slope.FLAT.value
+            selection.freq_begsweep = self.Sweep.FLAT.value
             selection.freq_begup = False
             selection.freq_begdown = False
         
@@ -381,17 +391,17 @@ class ContourFile:
         # maintain the legacy algorithm. In the original Java code, the end sweep was calculated using the second, 
         # third, and fourth last slopes, rather than the last, second, and third last.
         # end_slope_avg = (self.contour_rows[-1].slope + self.contour_rows[-2].slope + self.contour_rows[-3].slope)/3
-        end_slope_avg = (self.contour_rows[-4].slope.value + self.contour_rows[-3].slope.value + self.contour_rows[-2].slope.value)/3
-        if end_slope_avg > self.Slope.FLAT.value:
-            selection.freq_endsweep = self.Slope.UP.value
+        end_slope_avg = (self.contour_rows[-4].slope + self.contour_rows[-3].slope + self.contour_rows[-2].slope)/3
+        if end_slope_avg > 0:
+            selection.freq_endsweep = self.Sweep.UP.value
             selection.freq_endup = True
             selection.freq_enddown = False
-        elif end_slope_avg < self.Slope.FLAT.value:
-            selection.freq_endsweep = self.Slope.DOWN.value
+        elif end_slope_avg < 0:
+            selection.freq_endsweep = self.Sweep.DOWN.value
             selection.freq_endup = False
             selection.freq_enddown = True
         else:
-            selection.freq_endsweep = self.Slope.FLAT.value
+            selection.freq_endsweep = self.Sweep.FLAT.value
             selection.freq_endup = False
             selection.freq_enddown = False
         
@@ -427,11 +437,11 @@ class ContourFile:
         # frequency standard deviation is the standard deviation of all peak_frequencies in the contour_rows
         selection.freq_standarddeviation = pd.Series([row.peak_frequency for row in self.contour_rows]).std()
         # frequency quarter 1 is the peak_frequency at one quarter of the duration
-        selection.freq_quarter1 = self.contour_rows[int(num_points/4)].peak_frequency
+        selection.freq_quarter1 = self.contour_rows[int(round_to_nearest_whole(num_points/4))-1].peak_frequency
         # frequency quarter 2 is the peak_frequency at two quarters of the duration
-        selection.freq_quarter2 = self.contour_rows[int(num_points/2)].peak_frequency
+        selection.freq_quarter2 = self.contour_rows[int(round_to_nearest_whole(num_points/2))-1].peak_frequency
         # frequency quarter 3 is the peak_frequency at three quarters of the duration
-        selection.freq_quarter3 = self.contour_rows[3*int(num_points/4)].peak_frequency
+        selection.freq_quarter3 = self.contour_rows[int(round_to_nearest_whole(3*(num_points/4)))-1].peak_frequency
         # frequency spread is the difference between the third and first quartiles
         selection.freq_spread = pd.Series([row.peak_frequency for row in self.contour_rows]).quantile(0.75) - pd.Series([row.peak_frequency for row in self.contour_rows]).quantile(0.25)
         

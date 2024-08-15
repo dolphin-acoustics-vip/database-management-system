@@ -60,10 +60,13 @@ DROP TABLE IF EXISTS `encounter`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `encounter` (
   `id` uuid NOT NULL DEFAULT uuid(),
+  `encounter_date` DATE,
+  `data_timezone` int(4),
+  `location_timezone` int(4),
   `encounter_name` varchar(100) NOT NULL,
   `location` varchar(100) NOT NULL,
   `species_id` uuid NOT NULL,
-  `cruise` varchar(100) DEFAULT NULL,
+  `project` varchar(100) NOT NULL,
   `longitude` varchar(20) DEFAULT NULL,
   `latitude` varchar(20) DEFAULT NULL,
   `notes` varchar(1000) DEFAULT NULL,
@@ -71,9 +74,9 @@ CREATE TABLE `encounter` (
   `data_source_id` uuid DEFAULT NULL,
   `recording_platform_id` uuid DEFAULT NULL,
   `updated_by_id` uuid DEFAULT NULL,
-  `created_datetime` DATETIME DEFAULT NOW(),
+  `created_datetime` TIMESTAMP DEFAULT NOW(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `encounter_name` (`encounter_name`,`location`),
+  UNIQUE KEY `encounter_name` (`encounter_name`,`location`,`project`),
   KEY `species_id` (`species_id`),
   KEY `data_source_id` (`data_source_id`),
   KEY `recording_platform_id` (`recording_platform_id`),
@@ -111,7 +114,7 @@ CREATE TABLE `file` (
   `uploaded_date` datetime DEFAULT NULL,
   `updated_by_id` uuid DEFAULT NULL,
   `duration` int(11) DEFAULT NULL,
-  `upload_datetime` DATETIME DEFAULT NOW(),
+  `upload_datetime` TIMESTAMP DEFAULT NOW(),
   `original_filename` varchar(255) DEFAULT NULL,
   KEY `fk_updated_by_id_file` (`updated_by_id`),
   CONSTRAINT `fk_updated_by_id_file` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`),
@@ -128,16 +131,16 @@ DROP TABLE IF EXISTS `recording`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `recording` (
   `id` uuid NOT NULL DEFAULT uuid(),
-  `start_time` datetime NOT NULL,
+  `start_time` DATETIME NOT NULL,
   `duration` int(11) DEFAULT NULL,
   `recording_file_id` uuid DEFAULT NULL,
   `selection_table_file_id` uuid DEFAULT NULL,
   `encounter_id` uuid NOT NULL,
   `ignore_selection_table_warnings` tinyint(1) NOT NULL DEFAULT 0,
   `updated_by_id` uuid DEFAULT NULL,
-  `created_datetime` DATETIME DEFAULT NOW(),
+  `created_datetime` TIMESTAMP DEFAULT NOW(),
   `status` enum('Unassigned','In Progress', 'Awaiting Review', 'Reviewed', 'On Hold') DEFAULT 'Unassigned',
-  `status_change_datetime` DATETIME DEFAULT NULL,
+  `status_change_datetime` TIMESTAMP DEFAULT NULL,
   `notes` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_time_encounter_id` (`start_time`,`encounter_id`),
@@ -151,7 +154,6 @@ CREATE TABLE `recording` (
   CONSTRAINT `fk_updated_by_id_recording` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
 ) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
@@ -301,7 +303,9 @@ CREATE TABLE `selection` (
   `step_duration` double DEFAULT NULL,
   `updated_by_id` uuid DEFAULT NULL,
   `ctr_file_id` uuid DEFAULT NULL,
-  `created_datetime` DATETIME DEFAULT NOW(),
+  `spectogram_file_id` uuid DEFAULT NULL,
+  `plot_file_id` uuid DEFAULT NULL,	
+  `created_datetime` TIMESTAMP DEFAULT NOW(),
   PRIMARY KEY (`id`),
   KEY `fk_updated_by_id_selection` (`updated_by_id`),
   UNIQUE KEY `selection_number` (`selection_number`,`recording_id`),
@@ -309,9 +313,13 @@ CREATE TABLE `selection` (
   KEY `fk_selection_file_id` (`selection_file_id`),
   KEY `fk_contour_file_id` (`contour_file_id`),
   KEY `fk_ctr_file_id` (`ctr_file_id`),
+  KEY `fk_spectogram_file_id` (`spectogram_file_id`),
+  KEY `fk_plot_file_id` (`plot_file_id`),
   CONSTRAINT `fk_ctr_file_id` FOREIGN KEY (`ctr_file_id`) REFERENCES `file` (`id`),
   CONSTRAINT `fk_contour_file_id` FOREIGN KEY (`contour_file_id`) REFERENCES `file` (`id`),
   CONSTRAINT `fk_selection_file_id` FOREIGN KEY (`selection_file_id`) REFERENCES `file` (`id`),
+  CONSTRAINT `fk_spectogram_file_id` FOREIGN KEY (`spectogram_file_id`) REFERENCES `file` (`id`),
+  CONSTRAINT `fk_plot_file_id` FOREIGN KEY (`plot_file_id`) REFERENCES `file` (`id`),
   CONSTRAINT `selection_ibfk_1` FOREIGN KEY (`recording_id`) REFERENCES `recording` (`id`),
   CONSTRAINT `fk_updated_by_id_selection` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
 ) WITH SYSTEM VERSIONING ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
@@ -400,7 +408,7 @@ DROP TABLE IF EXISTS `assignment`;
 CREATE TABLE `assignment` (
   `user_id` uuid NOT NULL,
   `recording_id` uuid NOT NULL,
-  `created_datetime` timestamp NOT NULL DEFAULT NOW(),
+  `created_datetime` TIMESTAMP NOT NULL DEFAULT NOW(),
   `completed_flag` tinyint(1) NOT NULL DEFAULT 0,	
   `notes` text,
   CONSTRAINT `user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),

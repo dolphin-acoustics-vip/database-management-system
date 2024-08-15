@@ -39,6 +39,7 @@ def admin_dashboard():
 @routes_admin.route('/admin/data-source/<uuid:data_source_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
+@require_live_session
 def admin_data_source_view(data_source_id):
     """
     Route for viewing a specific data source in the admin panel.
@@ -162,6 +163,7 @@ def admin_data_source_delete(data_source_id):
 @routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
+@require_live_session
 def admin_recording_platform_view(recording_platform_id):
     """
     Route to view a RecordingPlatform object, given its ID.
@@ -381,6 +383,7 @@ def admin_species_insert():
 @routes_admin.route('/admin/user', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
+@require_live_session
 def admin_user():
     """
     Route to render the template to view all users.
@@ -396,6 +399,7 @@ def admin_user():
 @routes_admin.route('/admin/user/<uuid:user_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
+@require_live_session
 def admin_user_view(user_id):
     """
     Route to view info on a particular User object, given its ID.
@@ -407,7 +411,7 @@ def admin_user_view(user_id):
         roles = session.query(Role).all()
         return render_template('admin/admin-user-view.html', user=user, roles=roles,datetime=datetime)
     
-    
+@require_live_session
 def update_or_insert_user(session, user, request, login_id=None, is_temporary=False, role_id=None):
     """
     Method to edit (UPDATE) or create (INSERT) a user into the User ORM class. 
@@ -532,6 +536,7 @@ def admin_temporary_user_insert():
 @routes_admin.route('/admin/temporary-user/<uuid:user_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
+@require_live_session
 def admin_temporary_user_view(user_id):
     """
     Route to view info on a particular User object, given its ID.

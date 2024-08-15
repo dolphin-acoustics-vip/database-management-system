@@ -2,53 +2,44 @@
 <html>
 {% include 'partials/header.html' %}
 
-
-
 <head>
-    <title>Edit Encounter</title>
+    <title>Edit Encounter: {{ encounter.get_unique_name(' - ') }}</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="../../../static/css/hero-section.css">
-    <link rel="stylesheet" href="../../../static/css/general-style.css">
 </head>
+
 <body>
     <div class="outer-div">
-        <h1>Encounter</h1>
-
-
-       
-
-        <a href="#encounter-summary">Encounter Summary</a> | <a href="#add-recording">Add Recording</a> | <a href="#recordings">Recordings</a>
+        <h1>Encounter: {{ encounter.get_unique_name(' - ') }}</h1>
+        <hr>
         <section id="encounter-summary">
-            <div class="summary" id="summary">
+            <div id="summary">
                 <h2>Encounter Summary</h2>
-                {% if g.user.role_id in [1, 2] %}
-                <form style="margin-bottom:5px;" method="get"
-                    action="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">
-                    <input type="hidden" name="_method" value="GET">
-                    <button type="submit" data-encounter-id="{{ encounter.id }}">Edit</button>
-                </form>
-                {% endif %}
                 <p>Encounter: {{ encounter.encounter_name }}</p>
                 <p>Location: {{ encounter.location }}</p>
-                <p>Cruise: {% if encounter.origin %}{{ encounter.origin }} {% else %}Not entered{% endif %}</p>
+                <p>Project: {% if encounter.project %}{{ encounter.project }} {% else %}Not entered{% endif %}</p>
                 <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
-                <h3>Other details</h3>
-                <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {%else %}Not entered{% endif %}</p>
-                <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{%endif %}</p>
+                <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}}
+                    {%else %}Not entered{% endif %}</p>
+                <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not
+                    entered{%endif %}</p>
                 <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
             </div>
-            <h4 id="encounter-coordinate-message">Interactive map view of the encounter coordinates</h4>
-            <div id="outer-map" hidden>
-                <div class="map" id="map" hidden></div>
-            </div><br>
-        </section>
 
+        </section>
+        <hr>
         {% if g.user.role_id in [1, 2] %}
-        <section>
-            <div class="audit-history">
-                <h3>Audit History</h3>
-                <table>
+        <h2>Administration</h2>
+        {% if not session['snapshot_date'] %}
+
+        <a title="Edit the encounter" class="button" href="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">Edit
+            Encounter: {{ encounter.get_unique_name(' - ') }}</a>
+        {% endif %}
+        <div class="audit-history">
+            <h3>Audit History</h3>
+            <div class="table-responsive">
+                <table class="table-striped">
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -59,61 +50,59 @@
                     </thead>
                     <tbody>
                         {% for encounter in encounter_history %}
-                            <tr>
-                                <td>{{ encounter['row_start'] }}</td>
-                                <td>{{ encounter['action'] }}</td>
-                                <td>{{ encounter['updated_by'].name }}</td>
-                                <td><a href="{{ url_for('encounter.encounter_view', encounter_id=encounter['id'], snapshot_date=encounter['row_start']) }}">HERE</a></td>
-                            </tr>
+                        <tr>
+                            <td>{{ encounter['row_start'] }}</td>
+                            <td>{{ encounter['action'] }}</td>
+                            <td>{{ encounter['updated_by'].name }}</td>
+                            <td><a
+                                    href="{{ url_for('encounter.encounter_view', encounter_id=encounter['id'], snapshot_date=encounter['row_start']) }}">HERE</a>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </section>
+        </div>
+        {% if not session['snapshot_date'] %}
 
-        <section id="add-recording">
-            <style>
-                label {
-                    padding-top: 10px;
-                    margin-bottom: 5px;
-                }
-            </style>
-            <h2>Add Recording</h2>
-            <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post" enctype="multipart/form-data">
-                <label for="time_start" style="padding-top:0px;">Start Time:</label>
-                <input type="datetime-local" id="time_start" name="time_start" step="1" required>
-                <label for="recording_file"  style="margin-top: 5px;">Recording File:</label>
-                <input style="width:100%;" type="file" id="recording_file" name="recording_file" accept=".wav"><br>
-                <label>Assign to User</label>
-                {% from 'partials/search-dropdown.html' import recording_table %}
-                <div id = 'user-input-dropdown'>
+        <h3>Add Recording</h3>
+        <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post"
+            enctype="multipart/form-data">
+            {% from 'recording/recording-form-template.html' import recording_form %}
+            {{ recording_form(editing=False, data_timezone=encounter.data_timezone, location_timezone=encounter.location_timezone, recording=None) }}
+
+
+            <label id="assign-user-id-label" class="bold">Assign to User</label>
+            {% from 'partials/search-dropdown.html' import recording_table %}
+            <div id="user-input-dropdown">
                 {{ recording_table(show_message=false) }}
-                </div>
-                <label hidden id="assign-user-id-label" for="assign_user_id">Assign to User: </label>
-                <button id="remove-user-assignment" type="button" hidden onclick="removeUserAssignment()">Remove</button>
-                <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
-                <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
-
-                <button type="submit">Submit</button>
-            </form><br>
+            </div>
+            <button style="display: none;margin-top: 0.6rem; margin-bottom: 0.8rem;" id="remove-user-assignment" class="small" type="button"
+                onclick="removeUserAssignment()">Remove</button>
+            <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
+            <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
+            <button type="submit" class="blue">Submit</button>
+        </form>
+        {% endif %}
         </section>
-
+        <hr>
         <script>
+
+
+
 
             function onUserSelectionDropdownComplete(user_id, user) {
                 $('#assign_user_id').val(user.id);
-                $('#assign-user-id-label').text('Assign to User: ' + user.name + ' (' + user.login_id + ')');
-                $('#assign-user-id-label').show();
+                $('#assign-user-id-label').hide();
+                $('#remove-user-assignment').text('Remove user assignment: ' + user.name + ' (' + user.login_id + ')');
                 $('#user-input-dropdown').hide();
                 $('#remove-user-assignment').show();
             }
 
             function removeUserAssignment() {
                 $('#assign_user_id').val('');
-                $('#assign-user-id-label').text('Assign to User: ');
                 $('#user-input-dropdown').show();
-                $('#assign-user-id-label').hide()
-
+                $('#assign-user-id-label').show();
                 $('#remove-user-assignment').hide();
                 clearUserDropdownInput();
             }
@@ -142,94 +131,40 @@
             <p>This encounter has no recordings. Please use the form above to add recordings.</p>
             {% endif %}
         </section>
+        {% if not session['snapshot_date'] %}
+
+        <form type="hidden" id="deleteForm_{{ encounter.id }}" method="post"
+            action="{{ url_for('encounter.encounter_delete', encounter_id=encounter.id) }}">
+            <input type="hidden" name="_method" value="DELETE">
+            <button class="gray small" id="delete-encounter-button"
+                title="Delete the entire encounter. All recordings in the encounter must be deleted before proceeding."
+                type="button" style="margin-top: 1rem;" class="delete-button" data-encounter-id="{{ encounter.id }}" delete-info="{{encounter.get_unique_name('-')}}">Delete
+                Encounter</button>
+        </form>
+        {% endif %}
     </div>
-    <script async src="https://maps.googleapis.com/maps/api/js?key={{server_side_api_key_variable}}&callback=console.debug&libraries=maps,marker&v=beta&callback=initMap&loading=async"></script>
+
+    <script src="{{ url_for('static', filename='js/time-management.js') }}"></script>
+
     <script>
 
+        // Add an event listener to the delete button to confirm deletion
+        $("#delete-encounter-button").on("click", function (event) {
+            // Get the encounter ID from the button's data attribute
+            var encounterId = $(this).data("encounter-id");
+            var deleteInfo = $(this).attr('delete-info');
 
-
-        /**
-         * Extracts the date from a given file name and updates the time_start and seconds fields in the document.
-         * The date is extracted using an HTTP request to a server-side method which determines the regex code.
-         * 
-         * @param {string} fileName - The name of the file to extract the date from.
-         */
-        function extractDate(fileName) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/encounter/extract_date?filename=' + encodeURIComponent(fileName), true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.onload = function () {
-                console.log(xhr)
-                if (xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    if (response.date != null) {
-                        var date = new Date(response.date);
-                        // cut out milliseconds
-                        var formattedDate = date.toISOString().slice(0, 19);
-                        document.getElementById('time_start').value = formattedDate;
-                       
-                    }
-                }
-            }
-            xhr.send();
-        }
-
-        // Extract the date from the recording file name once a file is input.
-        document.getElementById('recording_file').addEventListener('change', function () {
-            if (this.files.length === 1) {
-                extractDate(this.files[0].name);
+            // Confirm deletion with the user
+            if (confirm("Are you sure you want to delete encounter: " + deleteInfo + "?\nBefore this action is completed, all recordings must be deleted individually.")) {
+                // If confirmed, submit the delete form
+                $("#deleteForm_" + encounterId).submit();
+            } else {
+                // If not confirmed, prevent the default form submission
+                event.preventDefault();
             }
         });
-
-        /**
-         * Initializes the (Google) map based on encounter coordinates and handles errors.
-         */
-        function initMap() {
-            try {
-                const latitude = parseFloat('{{encounter.get_latitude()}}');
-                const longitude = parseFloat('{{encounter.get_longitude()}}');
-                
-                // Check for invalid coordinates
-                if (isNaN(latitude) || isNaN(longitude)) {
-                    throw new Error('Invalid coordinates');
-                }
-
-                const mapOptions = {
-                    center: { lat: latitude, lng: longitude },
-                    zoom: 7,
-                    mapId: 'encounter-coordinate-map'
-                };
-
-                const map = new google.maps.Map(document.getElementById('map'), mapOptions);
-
-                const marker = new google.maps.Marker({
-                    position: { lat: latitude, lng: longitude },
-                    map: map,
-                    title: 'My location'
-                });
-
-                // Display encounter coordinates
-                document.getElementById('encounter-coordinate-message').innerHTML = 'Encounter coordinates: {{ encounter.get_latitude() }}, {{ encounter.get_longitude() }}';
-
-            } catch (error) {
-                if (error.message === 'Invalid coordinates') {
-                    // Display error message for invalid coordinates
-                    document.getElementById('encounter-coordinate-message').innerHTML = 'Invalid coordinates for encounter ({{ encounter.get_latitude() }}, {{ encounter.get_longitude() }}). Cannot show map.';
-                } else if (error.message.includes('InvalidKeyMapError')) {
-                    // Handle InvalidKeyMapError
-                    console.log('Invalid Google Maps API Key.');
-                    document.getElementById('outer-map').style.display = 'none';
-                    document.getElementById('error-message').innerText = 'Invalid Google Maps API Key. Please check the API key configuration.';
-                } else {
-                    // Handle other errors
-                    console.error('An error occurred while initializing the map:', error);
-                    document.getElementById('encounter-coordinate-message').innerHTML = 'An error occurred while initializing the map: ' + error;
-                    document.getElementById('outer-map').style.display = 'none';
-                }
-                // Remove the map container
-                document.getElementById('outer-map').remove();
-            }
-        }
     </script>
+
 </body>
+
 </html>

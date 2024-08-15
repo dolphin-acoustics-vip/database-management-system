@@ -4,6 +4,7 @@ from flask import session as client_session
 
 def parse_alchemy_error(error):
     if isinstance(error, sqlalchemy.exc.IntegrityError):
+        raise error
         error_message = str(error)
         if "cannot be null" in error_message:
             column_name = error_message.split("Column '")[1].split("' cannot be null")[0]

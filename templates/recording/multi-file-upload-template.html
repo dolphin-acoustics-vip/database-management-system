@@ -1,10 +1,12 @@
 <form id="{{unique_id}}-upload-form" onsubmit="return false;" enctype="multipart/form-data">
-    <input type="file" name="{{unique_id}}-files" id="{{unique_id}}-files" multiple>
-    <p id="{{unique_id}}-bulk-upload-status-message" hidden="true">Status message</p>
-    <button id="{{unique_id}}-bulk-upload-validate" style="margin-bottom: 5px;" hidden="true">Validate</button>
-    <input id="{{unique_id}}-bulk-upload" style="margin-bottom: 5px;" type="submit" value="Upload" hidden="true">
-    <button id="{{unique_id}}-bulk-upload-clear" style="margin-bottom: 5px;" hidden>Reset</button>
-    <table id="{{unique_id}}-table" hidden="true">
+    <input class="small" type="file" name="{{unique_id}}-files" id="{{unique_id}}-files" multiple>
+    <label id="{{unique_id}}-bulk-upload-status-message" hidden="true">Status message</label>
+    <button class="gray small" id="{{unique_id}}-bulk-upload-validate" style="margin-bottom: 5px;" hidden="true">Validate</button>
+    <button class="gray small" id="{{unique_id}}-bulk-upload-clear" style="margin-bottom: 5px;" hidden>Reset</button>
+    
+    <button class="blue small" id="{{unique_id}}-bulk-upload" style="margin-bottom: 5px;" type="submit" hidden="true">Upload</button>
+    <div class="table-responsive">
+        <table class="table-striped" id="{{unique_id}}-table" hidden="true">
         <thead>
             <tr>
                 <th>Filename</th>
@@ -17,6 +19,7 @@
         <tbody>
         </tbody>
     </table>
+    </div>
 </form>
 
 <script>

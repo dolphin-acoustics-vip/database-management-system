@@ -1,6 +1,6 @@
 # Standard library imports
 import os, uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import shared_functions
 import scipy.io
 import numpy as np
@@ -18,8 +18,35 @@ from sqlalchemy import event
 # Local application imports
 from db import db, FILE_SPACE_PATH
 
+SYSTEM_GMT_OFFSET = 0
 
+def convert_to_gmt_time(system_time: datetime) -> datetime:
+    """
+    Converts a system time to GMT time by adding the system GMT offset.
+    
+    Parameters:
+        system_time (datetime): The system time to be converted.
+    
+    Returns:
+        datetime: The GMT time equivalent to the provided system time.
+    """
+    gmt_offset = timedelta(hours=SYSTEM_GMT_OFFSET)
+    gmt_time = system_time + gmt_offset
+    return gmt_time
 
+def convert_from_gmt(gmt_time: datetime) -> datetime:
+    """
+    Converts a GMT time to a system time by subtracting the system GMT offset.
+    
+    Parameters:
+        gmt_time (datetime): The GMT time to be converted.
+    
+    Returns:
+        datetime: The system time equivalent to the provided GMT time.
+    """
+    gmt_offset = timedelta(hours=SYSTEM_GMT_OFFSET)
+    system_time = gmt_time - gmt_offset
+    return system_time
 
 def process_id(value):
     if type(value)==str:
@@ -125,12 +152,14 @@ class Encounter(db.Model):
     encounter_name = db.Column(db.String(100), nullable=False)
     location = db.Column(db.String(100), nullable=False)
     species_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('species.id'), nullable=False)
-    cruise = db.Column(db.String(100))
+    project = db.Column(db.String(100), nullable=False)
     latitude = db.Column(db.String(20))
     longitude = db.Column(db.String(20))
     data_source_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('data_source.id'), nullable=False)
     recording_platform_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording_platform.id'), nullable=False)
     notes = db.Column(db.String(1000))
+    data_timezone = db.Column(db.Integer)
+    location_timezone = db.Column(db.Integer)
     
     species = db.relationship("Species")
     data_source = db.relationship("DataSource")
@@ -142,6 +171,9 @@ class Encounter(db.Model):
         db.UniqueConstraint('encounter_name', 'location'),
     )
     
+    def get_unique_name(self, deimiter):
+        return f"{self.encounter_name}{deimiter}{self.location}{deimiter}{self.project} "
+
     def get_number_of_recordings(self):
         """
         Calculate the number of recordings associated with the encounter and return
@@ -164,7 +196,7 @@ class Encounter(db.Model):
     def delete(self,session):
         recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
         for recording in recordings:
-            recording.delete(session)
+            recording.delete(session, keep_file_reference=True)
         session.delete(self)
 
     def get_latitude(self):
@@ -200,17 +232,33 @@ class Encounter(db.Model):
     def set_location(self, value):
         self.location = None if value.strip() == '' else value.strip()
 
-    def get_cruise(self):
-        return '' if self.cruise is None else self.cruise
+    def get_project(self):
+        return '' if self.project is None else self.project
 
-    def set_cruise(self, value):
-        self.cruise = None if value.strip() == '' else value.strip()
+    def set_project(self, value):
+        self.project = None if value.strip() == '' else value.strip()
 
     def get_notes(self):
         return '' if self.notes is None else self.notes
 
     def set_notes(self, value):
         self.notes = None if value.strip() == '' else value.strip()
+
+    def check_valid_timezone(self, value):
+        if value is not None:
+            try:
+                value = int(value)
+            except ValueError:
+                raise ValueError("Timezone must be an integer")
+        if value is not None and (value < -720 or value > 840):
+            raise ValueError("Timezone must be between GMT-12 and GMT+14 (inclusive).")
+        return value
+
+    def set_data_timezone(self, value):
+        self.data_timezone = self.check_valid_timezone(value)
+    
+    def set_location_timezone(self, value):
+        self.location_timezone = self.check_valid_timezone(value)
 
 
 """TODO remove"""
@@ -252,7 +300,9 @@ class File(db.Model):
             os.remove(self.get_full_absolute_path())
 
     def delete(self, session):
+        session.flush()
         self.move_to_trash(session)
+        session.commit()
         #session.delete(self)
     
     def update_call(self,session):
@@ -273,7 +323,7 @@ class File(db.Model):
     def get_absolute_directory(self):
         return os.path.join(FILE_SPACE_PATH, self.path)
 
-    def insert_path_and_filename_file_already_in_place(self, new_path, new_filename, new_extension):
+    def insert_path_and_filename_file_already_in_place(self, session, new_path, new_filename, new_extension):
         self.path=new_path
         self.filename=new_filename
         self.extension=new_extension
@@ -299,7 +349,7 @@ class File(db.Model):
             os.rename(loose_file_path, new_path)
 
     
-    def insert_path_and_filename(self, file, new_path, new_filename, root_path):
+    def insert_path_and_filename(self, session, file, new_path, new_filename, root_path):
         """
         Updates the path, filename, and extension of the file. If the file already exists in the specified location, renames the existing file with a unique suffix.
         
@@ -312,22 +362,20 @@ class File(db.Model):
         Returns:
             None
         """
-        try:
-            import re
-            self.path = new_path
-            self.filename = new_filename  # filename without extension
-            self.original_filename = file.filename
-            self.extension = file.filename.split('.')[-1]
+        
+        self.path = new_path
+        self.filename = new_filename  # filename without extension
+        self.original_filename = file.filename
+        self.extension = file.filename.split('.')[-1]
+        session.flush()
+        
+        destination_path = os.path.join(root_path, self.get_full_relative_path())
             
-            destination_path = os.path.join(root_path, self.get_full_relative_path())
-                
-            self.rename_loose_file(self.path, self.filename, self.extension)
-            os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
-            file.save(destination_path)
-        except Exception as e:
-            print(e)
-            raise e
-    
+        self.rename_loose_file(self.path, self.filename, self.extension)
+        os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
+        print('saving file')
+        file.save(destination_path)
+
     
     def update_path_and_filename(self, new_path, new_filename,root_path):
 
@@ -353,7 +401,7 @@ class File(db.Model):
         This function moves the file to the trash folder by renaming the file and adding a unique identifier to its name.
         TODO: keep a record of deleted file metadata
         """
-        
+        session.flush()
         trash_folder = 'trash'
         unique_name = str(uuid.uuid4())
         os.makedirs(trash_folder, exist_ok=True)
@@ -377,7 +425,7 @@ class File(db.Model):
         """
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
         current_relative_file_path = os.path.join(root_path, self.get_full_relative_path())
-
+        session.flush()
         # make the directory of the new_relative_file_path_with_root
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
@@ -388,9 +436,10 @@ class File(db.Model):
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
-            
+            session.flush()
             self.rename_loose_file(self.path, self.filename, self.extension)
-            os.rename(current_relative_file_path, new_relative_file_path_with_root)
+            if os.path.exists(current_relative_file_path):
+                os.rename(current_relative_file_path, new_relative_file_path_with_root)
             session.commit()
  
             
@@ -529,39 +578,12 @@ class Recording(db.Model):
             elif file_extension == '.txt':
                 # Read the text file into a pandas DataFrame
                 df = pd.read_csv(file_path, sep='\t')
-            elif file_extension == '.xlsx':
+            elif file_extension == '.xlsx' or file_extension == '.xls':
                 # Read the Excel file into a pandas DataFrame
                 df = pd.read_excel(file_path)
             else:
                 raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file.")
-            # Define the expected column names and data types
-            
-            '''
-            expected_columns = {
-                'Selection': int,
-                'View': object,
-                'Channel': int,
-                'Begin Time (s)': float,
-                'End Time (s)': float,
-                'Low Freq (Hz)': float,
-                'High Freq (Hz)': float,
-                'Delta Time (s)': float,
-                'Delta Freq (Hz)': float,
-                'Avg Power Density (dB FS/Hz)': float,
-                'Annotation': object,
-                'annotation': object
-            }
 
-            # Check that the columns match the expected names and types
-            for column, dtype in expected_columns.items():
-                if column not in df.columns:
-                    raise ValueError(f"Missing column: {column}")
-                if df[column].dtype != dtype:
-                    raise ValueError(f"Incorrect data type for column {column}: expected {dtype}, got {df[column].dtype}")
-            '''
-            # Check that the values in the 'Annotation' column are either 'Y' or 'M' or 'N'
-            if not df['Annotation'].isin(['y','m','n','Y', 'M', 'N']).all():
-                raise ValueError("Invalid values in 'annotation' column: expected 'Y' or 'N'")
 
             return df
 
@@ -573,13 +595,10 @@ class Recording(db.Model):
             if st_df.empty:
                 return [], "The Selection Table does not exist"
             self.upload_selection_table_rows(session, st_df)
-
             return ""
         except Exception as e:
-            raise e
-            return "The Selection Table provided is invalid: " + str(e)
             
-        return "The Selection Table does not exist"
+            return "The Selection Table provided is invalid: " + str(e)
 
     def upload_selection_table_rows(self, session, st_df):
         selection_table_selection_numbers = st_df.Selection.to_list()
@@ -609,6 +628,11 @@ class Recording(db.Model):
         
 
     def delete(self, session, keep_file_reference=False):        
+        session.flush()
+        assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
+        for assignment in assignments:
+            assignment.delete(session)
+            session.commit()
         if self.recording_file_id is not None:
             self.recording_file.delete(session)
             if not keep_file_reference: self.recording_file = None  # Remove the reference to the recording file
@@ -623,6 +647,7 @@ class Recording(db.Model):
 
 
         session.delete(self)
+        session.commit()
 
 
     def move_file(self, session, root_path):
@@ -655,11 +680,15 @@ class Recording(db.Model):
 
 
     def set_start_time(self, datetime_object):
+        print(datetime_object)
         if isinstance(datetime_object, str):
             try:
-                datetime_object = datetime.strptime(f"{datetime_object}", '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
+                datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
             except ValueError:
-                raise ValueError("Invalid datetime format")
+                try:
+                    datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M')  # Try without milliseconds
+                except ValueError:
+                    raise ValueError("Invalid datetime format")
         elif not isinstance(datetime_object, datetime):
             raise ValueError("Start time must be a valid datetime")
         self.start_time = datetime_object
@@ -723,6 +752,8 @@ class Selection(db.Model):
     recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     ctr_file_id = db.Column(db.String, db.ForeignKey('file.id'))
+    spectogram_file_id = db.Column(db.String, db.ForeignKey('file.id'))
+    plot_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     sampling_rate = db.Column(db.Float, nullable=False)
     traced = db.Column(db.Boolean, nullable=True, default=None)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
@@ -802,6 +833,8 @@ class Selection(db.Model):
     selection_file = db.relationship("File", foreign_keys=[selection_file_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
     ctr_file = db.relationship("File", foreign_keys=[ctr_file_id])
+    spectogram_file = db.relationship("File", foreign_keys=[spectogram_file_id])
+    plot_file = db.relationship("File", foreign_keys=[plot_file_id])
     
     updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
@@ -817,7 +850,9 @@ class Selection(db.Model):
             import wave
             with wave.open(self.selection_file.get_full_absolute_path(), "rb") as wave_file:
                 self.sampling_rate = wave_file.getframerate()
-                
+
+
+
 
     #def auto_populate_contoured(self):
     #    if self.annotation == "Y"
@@ -853,9 +888,46 @@ class Selection(db.Model):
         return warnings
 
     def generate_ctr_file_name(self):
-        return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}.ctr"
+        return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
+
+    def create_spectogram(self, session):
+        import librosa
+        import matplotlib.pyplot as plt
+        print('start')
+        with open(self.selection_file.get_full_absolute_path(), 'rb') as selection_file:
+            # Load the audio file
+            audio, sr = librosa.load(selection_file)
+
+            # Increase the resolution of the spectrogram
+            n_fft = 2048  # default is 2048, increase this value to increase resolution
+            hop_length = 512  # default is 512, adjust this value to control the time resolution
+            spectrogram = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
+
+            # Plot the spectrogram
+            plt.figure(figsize=(20, 5))
+            plt.imshow(librosa.amplitude_to_db(spectrogram, ref=np.max), cmap='inferno', origin='lower', aspect='auto')
+            plt.colorbar(format='%+2.0f dB')
+            plt.title('Spectrogram')
+            plt.xlabel('Time')
+            plt.ylabel('Frequency')
+
+            # Save the spectrogram as a PNG
+            spectrogram_path = os.path.join(FILE_SPACE_PATH, os.path.join(self.generate_relative_path(), self.generate_spectogram_filename()) ) + '.png'
+            plt.savefig(spectrogram_path, bbox_inches='tight')
+
+            # Create a new File object for the spectrogram
+            spectrogram_file = File()
+            spectrogram_file.insert_path_and_filename_file_already_in_place(session,self.generate_relative_path(),self.generate_spectogram_filename(), spectrogram_path.split(".")[-1])
+
+            session.add(spectrogram_file)      
+            self.spectogram_file = spectrogram_file       
+
+            plt.close()   
+
 
     def generate_ctr_file(self, session, contour_rows):
+        import matplotlib.pyplot as plt
+
         def find_most_common_difference(arr):
             differences = []
             for i in range(len(arr) - 1):
@@ -874,11 +946,38 @@ class Selection(db.Model):
         # Create a dictionary to store the data in the .ctr format
         mat_data = {'tempRes':temp_res,'freqContour': np.array([unit.peak_frequency for unit in contour_rows]),'ctrLength':ctr_length}
         # Save the data to a MATLAB file
-        scipy.io.savemat(os.path.join(FILE_SPACE_PATH, os.path.join(os.path.join(self.generate_relative_path(), self.generate_ctr_file_name()))), mat_data)
+        scipy.io.savemat(os.path.join(FILE_SPACE_PATH, os.path.join(self.generate_relative_path(), self.generate_ctr_file_name())) + ".ctr", mat_data)
+        
         file_obj = File()
-        file_obj.insert_path_and_filename_file_already_in_place(self.generate_relative_path(),self.generate_ctr_file_name().split(".")[0], self.generate_ctr_file_name().split(".")[-1])
+        file_obj.insert_path_and_filename_file_already_in_place(session, self.generate_relative_path(),self.generate_ctr_file_name().split(".")[0], "ctr")
         session.add(file_obj)
         self.ctr_file = file_obj
+
+
+        # Plot the time against the peak frequency
+        plt.figure(figsize=(10, 6))
+        plt.plot(
+            [unit.time_milliseconds / 1000 for unit in contour_rows],
+            [unit.peak_frequency for unit in contour_rows]
+        )
+        plt.xlabel('Time (s)')
+        plt.ylabel('Peak Frequency (Hz)')
+        plt.title('Time vs Peak Frequency')
+
+        # Save the plot as a PNG
+        plot_path = os.path.join(FILE_SPACE_PATH, os.path.join(self.generate_relative_path(), self.generate_plot_filename())) + '.png'
+        plt.savefig(plot_path, bbox_inches='tight')
+
+        plot_file = File()
+        plot_file.insert_path_and_filename_file_already_in_place(session,
+            self.generate_relative_path(),
+            self.generate_plot_filename(),
+            plot_path.split(".")[-1]
+        )
+        session.add(plot_file)
+        self.plot_file = plot_file
+
+        plt.close('all')
 
 
     def reset_contour_stats(self):
@@ -951,10 +1050,13 @@ class Selection(db.Model):
 
         # Get the values for the 'Selection' and 'Annotation' columns
         selection_number = st_df.iloc[0, selection_index]
-        annotation = st_df.iloc[0, annotation_index].upper()
-        
-        if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
-            self.annotation = annotation.upper()
+        annotation = st_df.iloc[0, annotation_index]
+        print(annotation)
+        if isinstance(annotation, str):
+            if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
+                self.annotation = annotation.upper()
+            else:
+                self.annotation = "M"
         else:
             self.annotation = "M"
 
@@ -981,11 +1083,18 @@ class Selection(db.Model):
 
     def move_file(self, session, root_path):
         if self.selection_file is not None:
-            self.selection_file.move_file(session,self.generate_full_relative_path()+"." +self.selection_file.extension,root_path)
+            self.selection_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_filename())+"." +self.selection_file.extension,root_path)
         if self.contour_file is not None:
-            self.contour_file.move_file(session,self.generate_full_relative_path()+"." +self.contour_file.extension,root_path)
+            self.contour_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_contour_filename())+"." +self.contour_file.extension,root_path)
+        if self.ctr_file is not None:
+            self.ctr_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_ctr_file_name())+"." +self.ctr_file.extension,root_path)
+        if self.spectogram_file is not None:
+            self.spectogram_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_spectogram_filename())+"." +self.spectogram_file.extension,root_path)
+        if self.plot_file is not None:
+            self.plot_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_plot_filename())+"." +self.plot_file.extension,root_path)
 
     def delete(self, session,keep_file_reference=True):        
+        session.flush()
         if self.selection_file_id is not None:
             self.selection_file.delete(session)
             if not keep_file_reference: self.selection_file = None  # Remove the reference to the recording file
@@ -995,7 +1104,14 @@ class Selection(db.Model):
         if self.ctr_file_id is not None:
             self.ctr_file.delete(session)
             if not keep_file_reference: self.ctr_file = None
+        if self.spectogram_file_id is not None:
+            self.spectogram_file.delete(session)
+            if not keep_file_reference: self.spectogram_file = None
+        if self.plot_file_id is not None:
+            self.plot_file.delete(session)
+            if not keep_file_reference: self.plot_file = None
         session.delete(self)
+        session.commit()
 
 
     def delete_contour_file(self, session):
@@ -1005,8 +1121,15 @@ class Selection(db.Model):
         if self.ctr_file_id is not None:
             self.ctr_file.delete(session)
             self.ctr_file = None
+        if self.plot_file_id is not None:
+            self.plot_file.delete(session)
+            self.plot_file = None
             
-        
+    def generate_plot_filename(self):
+        return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_plot"
+
+    def generate_spectogram_filename(self):
+        return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_spectrogram"
 
     def generate_filename(self):
         return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
@@ -1069,4 +1192,11 @@ class Assignment(db.Model):
 
 
     def is_complete(self):
+    
         return "Yes" if self.completed_flag else "No"
+    
+
+    def delete(self, session):
+
+        session.delete(self)
+        session.commit()

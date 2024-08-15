@@ -29,7 +29,7 @@ def get_data_warnings():
     from models import Selection
     snapshot_date=client_session.get('snapshot_date')
 
-    snapshot_date_datetime = datetime.strptime(snapshot_date, "%Y-%m-%d %H:%M:%S.%f") if snapshot_date else None       
+    snapshot_date_datetime = shared_functions.parse_snapshot_date(snapshot_date) if snapshot_date else None
     if snapshot_date_datetime is None:
         snapshot_date_datetime = datetime.now()
 
@@ -77,7 +77,7 @@ def get_data_warnings():
             if selection['enc_id'] not in warnings:
                 warnings[selection['enc_id']] = {'enc_name':selection['enc_encounter_name'], 'enc_species': selection['species_name'], 'enc_location': selection['enc_location'], 'recordings': {}}
             if selection['rec_id'] not in warnings[selection['enc_id']]['recordings']:
-                warnings[selection['enc_id']]['recordings'][selection['rec_id']] = {'rec_name': selection['rec_start_time'], 'rec_route': url_for('recording.recording_view', recording_id=selection['rec_id'], encounter_id=selection['enc_id']), 'selections': []}
+                warnings[selection['enc_id']]['recordings'][selection['rec_id']] = {'rec_name': selection['rec_start_time'], 'rec_route': url_for('recording.recording_view', recording_id=selection['rec_id']), 'selections': []}
 
             if len(warnings[selection['enc_id']]['recordings'][selection['rec_id']]['selections']) == 0:
                 warnings[selection['enc_id']]['recordings'][selection['rec_id']]['selections'].append(new_warning_sel)

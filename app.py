@@ -8,7 +8,8 @@ from flask import (Flask, flash, get_flashed_messages, jsonify, redirect,
                    send_from_directory)
 from flask import session as client_session
 from sqlalchemy import or_
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
+
 from sqlalchemy.orm import joinedload, sessionmaker
 from flask_login import LoginManager
 from flask_login import login_user,login_required, current_user, login_manager
@@ -36,11 +37,69 @@ app.register_blueprint(routes_auth)
 app.register_blueprint(routes_datahub)
 app.register_blueprint(routes_healthcentre)
 
+@app.errorhandler(OperationalError)
+def handle_operational_error(e):
+    print(e)
+    # Redirect the user to a custom error page
+    return redirect(url_for('operational_error'))
+
+@app.route('/operational-error', endpoint='operational_error')
+def operational_error():
+    return render_template('operational-error.html')
+
+# 404 Error Handler
+@app.errorhandler(404)
+def page_not_found(e):
+    return "Page not found. Please check the URL and try again.", 404
+
+# 405 Error Handler
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return "Method not allowed. Please check the request method and try again.", 405
+
+# 500 Error Handler
+@app.errorhandler(500)
+def internal_server_error(e):
+    return "Internal server error. Please try again later.", 500
+
+# 502 Error Handler
+@app.errorhandler(502)
+def bad_gateway(e):
+    return "Bad gateway. Please try again later.", 502
+
+# 503 Error Handler
+@app.errorhandler(503)
+def service_unavailable(e):
+    return "Service unavailable. Please try again later.", 503
+
+# 504 Error Handler
+@app.errorhandler(504)
+def gateway_timeout(e):
+    return "Gateway timeout. Please try again later.", 504
+
+@app.errorhandler(NotFoundException)
+def not_found(e):
+    return render_template('error.html', error_code=404, error_message='This page does not exist.', goback_link='/home', goback_message="Home")
+
+# Generic Error Handler
+# @app.errorhandler(Exception)
+# def generic_error_handler(e):
+#     return "An error occurred that could not be automatically resolved. Please contact your system administrator with instructions to reproduce it and try again later.", 500
+
 @app.route('/favicon.ico')
 def favicon():
     """For the Web App's favicon"""
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+@app.route('/image/<path:path>')
+def get_image(path):
+    # Path to the PNG file
+    image_path = path
+
+    # Return the PNG file as a response
+    return send_file(image_path, mimetype='image/png')
+
 
 @app.before_request
 def before_request():
@@ -49,6 +108,20 @@ def before_request():
     which can then be accessed by the HTML templates.
     """
     g.user = current_user
+
+
+@app.route('/enter-snapshot-date-in-session', methods=['GET'])
+def enter_snapshot_date_in_session():
+    """
+    Enter the snapshot date into the session. This works well
+    to enter the snapshot date into the session so that it can be
+    passed to new requests.
+    """
+    snapshot_date = request.args.get('archive-mode-date')
+    redirect_link = request.args.get('redirect-link')
+    client_session['snapshot_date'] = snapshot_date
+    print(client_session['snapshot_date'])
+    return redirect(redirect_link)
 
 def remove_snapshot_date_from_url(url):
     """
@@ -96,6 +169,13 @@ def serve_resource(filename):
     Serve a file from the 'resources' directory (for resources such as images).
     """
     return send_from_directory('resources', filename)
+
+@app.route('/static/js/<path:filename>')
+def serve_script(filename):
+    """
+    Serve a file from the 'static/js' directory (for JS).
+    """
+    return send_from_directory('static/js', filename)
 
 @app.route('/static/css/<path:filename>')
 def serve_style(filename):

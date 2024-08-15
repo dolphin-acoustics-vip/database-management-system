@@ -7,17 +7,21 @@
       padding-inline: 5px;
       padding-top: 7px;
       padding-bottom: 7px;
-      border-radius: 1px;
+      border-radius: 2px;
       border-color: black;
+      border-width: 2px;
+      margin: 2px;
     }
     .user-item.selected {
       outline: 2px solid blue;
     }
 </style>
+<link rel="stylesheet" href="../../../static/css/general-style.css">
+
 {% if show_message %}
 <p>Start typing and then select from the dropdown.</p>
 {% endif %}
-<input type="text" style="width: 100%" id="search-input" placeholder="Search users">
+<input type="text" class="text-input small" id="search-input" placeholder="Search users">
 <div class="user-dropdown" id="user-dropdown"></div><br>
 
 <script>

@@ -78,7 +78,7 @@ def get_statistics():
     from models import Selection
     snapshot_date=client_session.get('snapshot_date')
 
-    snapshot_date_datetime = datetime.strptime(snapshot_date, "%Y-%m-%d %H:%M:%S.%f") if snapshot_date else None       
+    snapshot_date_datetime = shared_functions.parse_snapshot_date(snapshot_date) if snapshot_date else None
     if snapshot_date_datetime is None:
         snapshot_date_datetime = datetime.now()
 
@@ -383,7 +383,7 @@ def get_assignment_statistics():
         recording_statistics['completed_recordings'] = sorted(completed_recordings, key=lambda x: x['created_datetime'], reverse=True)
         recording_statistics['assigned_recordings'] = sorted(assigned_recordings, key=lambda x: (-(x['traced_count']==0 and x['assignment_completed_flag']==True), x['assignment_completed_flag'], x['created_datetime']))
         for sp_id in species_specific_data:
-            species_specific_data[sp_id]['completion_rate'] = round((species_specific_data[sp_id]['completed_assignments'] / species_specific_data[sp_id]['assigned_recordings']) * 100, 0) if species_specific_data[sp_id]['recordings'] > 0 else 0
+            species_specific_data[sp_id]['completion_rate'] = round((species_specific_data[sp_id]['completed_assignments'] / species_specific_data[sp_id]['assigned_recordings']) * 100, 0) if species_specific_data[sp_id]['assigned_recordings'] > 0 else 0
 
             species_specific_data[sp_id]['recordings_count'] = species_specific_data[sp_id]['recordings_unassigned_count'] + species_specific_data[sp_id]['recordings_in_progress_count'] + species_specific_data[sp_id]['recordings_reviewed_count'] + species_specific_data[sp_id]['recordings_awaiting_review_count'] + species_specific_data[sp_id]['recordings_on_hold_count']
             species_specific_data[sp_id]['progress'] = round((species_specific_data[sp_id]['recordings_reviewed_count'] / species_specific_data[sp_id]['recordings_count']) * 100, 0) if species_specific_data[sp_id]['recordings_count'] > 0 else 0

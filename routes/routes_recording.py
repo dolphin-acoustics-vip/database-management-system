@@ -49,7 +49,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     new_recording.set_encounter_id(encounter_id)
     new_recording.set_user_id(current_user.id)
     session.add(new_recording)
-    session.commit()
+    session.flush()
 
     # If a recording file has been given, add it to the Recording object
     if 'recording_file' in request.files and request.files['recording_file'].filename != '':
@@ -57,11 +57,11 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_recording_filename = new_recording.generate_recording_filename()
         new_relative_path = new_recording.generate_relative_path()
         new_file = File()
-        new_file.insert_path_and_filename(recording_file, new_relative_path, new_recording_filename, FILE_SPACE_PATH)
-        new_file.set_uploaded_date = datetime.now()
-        new_file.set_uploaded_by("User 1")
         session.add(new_file)
         new_recording.recording_file = new_file
+        new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename, FILE_SPACE_PATH)
+        session.commit()
+        
     
     if 'assign_user_id' in request.form:
         assign_user_id = request.form['assign_user_id'] 
@@ -75,17 +75,16 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
             assignment = Assignment()
             assignment.recording_id = new_recording.id
             assignment.user_id = user_obj.id
-            
             session.add(assignment)
-            session.flush()
             new_recording.update_status_upon_assignment_add_remove(session)
-    session.commit()
+            session.commit()
     return new_recording
-
 
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/add', methods=['POST'])
 @require_live_session
+@exclude_role_4
+@login_required
 def recording_selection_table_add(encounter_id,recording_id):
     """
     Given a selection table file in the POST request (selection-table-file), add it to the recording
@@ -101,7 +100,7 @@ def recording_selection_table_add(encounter_id,recording_id):
                 new_selection_table_filename = recording.generate_selection_table_filename()
                 new_relative_path = recording.generate_relative_path()
                 new_file = File()
-                new_file.insert_path_and_filename(selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
+                new_file.insert_path_and_filename(session, selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
                 session.add(new_file)
                 recording.selection_table_file = new_file 
                 # Validate the selection table - if invalid then delete the selection table file
@@ -109,7 +108,7 @@ def recording_selection_table_add(encounter_id,recording_id):
                 if error_msg != None and error_msg != "":
                     new_file.move_to_trash(session)
                     handle_exception(error_msg, session)
-                    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+                    return redirect(url_for('recording.recording_view', recording_id=recording_id))
                 recording.update_selection_traced_status(session)
                 session.commit()
 
@@ -120,12 +119,14 @@ def recording_selection_table_add(encounter_id,recording_id):
             handle_sqlalchemy_exception(session, e)
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
-    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+    return redirect(url_for('recording.recording_view', recording_id=recording_id))
  
 import csv
 from flask import Response
 from io import StringIO
 @routes_recording.route('/export-selection-table/<uuid:recording_id>/<export_format>')
+@require_live_session
+@login_required
 def export_selection_table(recording_id, export_format):
     """
     Export the selection table of a recording to a CSV or TSV file.
@@ -172,6 +173,8 @@ def export_selection_table(recording_id, export_format):
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/delete', methods=['POST'])
 @require_live_session
+@exclude_role_4
+@login_required
 def recording_selection_table_delete(encounter_id, recording_id):
     """
     Delete the selection table file associated with the recording
@@ -192,10 +195,13 @@ def recording_selection_table_delete(encounter_id, recording_id):
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
         finally:
-            return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['POST'])
 @require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def recording_insert(encounter_id):
     """
     Inserts a new recording into the database for a given encounter ID.
@@ -211,23 +217,11 @@ def recording_insert(encounter_id):
             handle_sqlalchemy_exception(session, e)
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
-@routes_recording.route('/recording/<uuid:recording_id>/get-unresolved-warnings', methods=['GET'])
-def get_number_of_unresolved_warnings(recording_id):
-    with Session() as session:
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id})
-
-        # Prepare the response data
-        response_data = {
-            'recording_id': recording_id,
-            'number_of_unresolved_warnings': recording.get_number_of_unresolved_warnings()
-        }
-        return jsonify(response_data)
-    
     
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/view', methods=['GET'])
+@routes_recording.route('/recording/<uuid:recording_id>/view', methods=['GET'])
 @login_required
-def recording_view(encounter_id,recording_id):
+def recording_view(recording_id):
     """
     Renders the recording view page for a specific encounter and recording.
     """
@@ -237,7 +231,7 @@ def recording_view(encounter_id,recording_id):
 
     with Session() as session:
         
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id})[0]
+        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         
 
         #recording = query.filter_by(id=recording_id).first()
@@ -258,6 +252,9 @@ def recording_view(encounter_id,recording_id):
         return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned)
 
 @routes_recording.route('/recording/<uuid:recording_id>/update_notes', methods=['POST'])
+@require_live_session
+@exclude_role_4
+@login_required
 def update_notes(recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
@@ -267,7 +264,7 @@ def update_notes(recording_id):
         recording.notes = notes
         print(recording.notes)
         session.commit()
-        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))  # Redirect to the recording view page
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))  # Redirect to the recording view page
 
 
 def flag_user_assignment(session, recording_id, user_id, completed_flag):
@@ -279,52 +276,75 @@ def flag_user_assignment(session, recording_id, user_id, completed_flag):
         session.commit()
 
 @routes_recording.route('/recording/<uuid:recording_id>/<uuid:user_id>/flag-as-completed', methods=['GET'])
+@require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def flag_as_complete_for_user(recording_id, user_id):
     with Session() as session:
         flag_user_assignment(session, recording_id, user_id, True)
         return jsonify({'message': 'Success'})
 
 @routes_recording.route('/recording/<uuid:recording_id>/<uuid:user_id>/unflag-as-completed', methods=['GET'])
+@require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def unflag_as_complete_for_user(recording_id, user_id):
     with Session() as session:
         flag_user_assignment(session, recording_id, user_id, False)
         return jsonify({'message': 'Success'})
 
 @routes_recording.route('/recording/<uuid:recording_id>/unflag-as-completed', methods=['GET'])
+@require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def unflag_as_complete(recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         flag_user_assignment(session, recording_id, current_user.id, False)
 
-        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/recording/<uuid:recording_id>/flag-as-completed', methods=['GET'])
+@require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def flag_as_complete(recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         flag_user_assignment(session, recording_id, current_user.id, True)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/update', methods=['POST'])
+@routes_recording.route('/recording/<uuid:recording_id>/update', methods=['POST'])
 @require_live_session
-def recording_update(encounter_id, recording_id):
+@exclude_role_3
+@exclude_role_4
+@login_required
+def recording_update(recording_id):
     """
     Updates a recording in the encounter with the specified encounter ID and recording ID.
     """
     with Session() as session:
         try:
-            recording_obj = insert_or_update_recording(session, request, encounter_id, recording_id)
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            recording_obj = insert_or_update_recording(session, request, recording.encounter_id, recording_id)
             recording_obj.update_call(session)
             session.commit()
             flash(f'Edited recording: {recording_obj.id}', 'success')                
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/delete', methods=['GET'])
 @require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def recording_delete(encounter_id,recording_id):
     """
     Function for deleting a recording of a given ID
@@ -332,7 +352,7 @@ def recording_delete(encounter_id,recording_id):
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
-            recording.delete(session)
+            recording.delete(session, keep_file_reference=True)
             session.commit()
             flash(f'Deleted recording: {recording.id}', 'success')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
@@ -341,9 +361,12 @@ def recording_delete(encounter_id,recording_id):
             session.rollback()
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/recording-file/<uuid:file_id>/delete',methods=['GET'])
+@routes_recording.route('/encounter/recording/<uuid:recording_id>/recording-file/<uuid:file_id>/delete',methods=['GET'])
 @require_live_session
-def recording_file_delete(encounter_id,recording_id,file_id):
+@exclude_role_3
+@exclude_role_4
+@login_required
+def recording_file_delete(recording_id,file_id):
     """
     A function for deleting a recording file of a given ID
     """
@@ -362,14 +385,16 @@ def recording_file_delete(encounter_id,recording_id,file_id):
             except FileNotFoundError:
                 session.commit()
                 flash(f'Deleted file record but could not find file: {file_path}', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except SQLAlchemyError as e:
             flash(parse_alchemy_error(e), 'error')
             session.rollback()
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/recording/<uuid:recording_id>/recording_delete_selections', methods=['DELETE'])
 @require_live_session
+@exclude_role_4
+@login_required
 def recording_delete_selections(recording_id):
     if request.method == 'DELETE':
         data = request.get_json()
@@ -397,52 +422,6 @@ def recording_delete_selections(recording_id):
             session.close()
     else:
         return jsonify({'error': 'Method not allowed'}), 405
-
-
-@routes_recording.route('/recording/recording_selection_table_ignore_warnings/<uuid:recording_id>', methods=['POST'])
-@require_live_session
-def recording_selection_table_ignore_warnings(recording_id):
-    session = Session()
-    data = request.get_json()
-    try:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
-        recording.ignore_selection_table_warnings = not recording.ignore_selection_table_warnings
-        session.commit()
-        return jsonify({'ignore_selection_table_warnings': recording.ignore_selection_table_warnings}), 200
-    except SQLAlchemyError as e:
-        session.rollback()
-        flash(parse_alchemy_error(e), 'error')
-        return jsonify({'error': parse_alchemy_error(e)}), 500
-    finally:
-        session.close()
-
-
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/check-selection-table', methods=['GET'])
-def check_selection_table(encounter_id, recording_id):
-    return_string = "None"
-    
-    with Session() as session:
-        try:
-            recording = session.query(Recording).filter_by(id=recording_id).first()
-            selections = session.query(Selection).filter_by(recording_id=recording_id).all()
-            selection_numbers = []
-            for selection in selections:
-                selection_numbers.append(selection.selection_number)
-                
-            selection_table_file = recording.selection_table_file
-            if selection_table_file == None:
-                raise FileNotFoundError()   
-            else:
-                selection_table_file_path = selection_table_file.get_full_absolute_path()
-                if os.path.exists(selection_table_file_path):
-                    # parse CSV file and check if the selection numbers exist in 
-                    # the list above selection_numbers
-                    pass
-        except Exception as e:
-            return(str(e))
-        
-        return return_string
-
   
 
 @routes_recording.route('/encounter/extract_date', methods=['GET'])
@@ -463,6 +442,10 @@ def extract_date():
     return jsonify(date=date)
 
 @routes_recording.route('/assign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+@require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def assign_recording(user_id, recording_id):
     with Session() as session:
         try:
@@ -481,6 +464,10 @@ def assign_recording(user_id, recording_id):
             
 
 @routes_recording.route('/unassign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+@require_live_session
+@exclude_role_3
+@exclude_role_4
+@login_required
 def unassign_recording(user_id, recording_id):
     with Session() as session:
         try:
@@ -493,6 +480,9 @@ def unassign_recording(user_id, recording_id):
         return jsonify(success=True)
 
 @routes_recording.route('/recording/<uuid:recording_id>/recalculate-contour-statistics', methods=['GET'])
+@login_required
+@exclude_role_4
+@require_live_session
 def recalculate_contour_statistics(recording_id):
     counter = 0
     with Session() as session:
@@ -510,7 +500,7 @@ def recalculate_contour_statistics(recording_id):
             flash(f'Recalculated {counter} contour statistics', 'success')
         except Exception as e:
             handle_sqlalchemy_exception(session, e)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=selection.recording.encounter_id))
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))
     
 import zipfile
 import tempfile
@@ -538,6 +528,7 @@ def download_files(file_paths, file_names, zip_filename):
         
         return zip_and_download_files([os.path.join(temp_dir, file) for file in os.listdir(temp_dir)], zip_filename)
 @routes_recording.route('/recording/<uuid:recording_id>/download-ctr-files', methods=['GET'])
+@login_required
 def download_ctr_files(recording_id):
     with Session() as session:
         recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
@@ -552,6 +543,7 @@ def download_ctr_files(recording_id):
         return response
     
 @routes_recording.route('/recording/<uuid:recording_id>/download-selection-files', methods=['GET'])
+@login_required
 def download_selection_files(recording_id):
     with Session() as session:
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
@@ -566,6 +558,7 @@ def download_selection_files(recording_id):
         return response
 
 @routes_recording.route('/recording/<uuid:recording_id>/download-contour-files', methods=['GET'])
+@login_required
 def download_contour_files(recording_id):
     with Session() as session:
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
@@ -582,6 +575,7 @@ def download_contour_files(recording_id):
     
 
 @routes_recording.route('/recording/<uuid:recording_id>/download-recording-file', methods=['GET'])
+@login_required
 def download_recording_file(recording_id):
     with Session() as session:
         recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
@@ -590,17 +584,25 @@ def download_recording_file(recording_id):
 
         return send_file(file_name, as_attachment=True, download_name=download_file_name)
 @routes_recording.route('/recording/<uuid:recording_id>/mark_as_complete', methods=['GET'])
+@require_live_session
+@login_required
+@exclude_role_3
+@exclude_role_4
 def mark_as_complete(recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         recording.set_status("Reviewed")
         session.commit()
-        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/recording/<uuid:recording_id>/mark_as_on_hold', methods=['GET'])
+@require_live_session
+@login_required
+@exclude_role_3
+@exclude_role_4
 def mark_as_on_hold(recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         recording.set_status("On Hold")
         session.commit()
-        return redirect(url_for('recording.recording_view', recording_id=recording_id, encounter_id=recording.encounter.id))
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))

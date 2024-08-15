@@ -52,27 +52,35 @@ def encounter_insert():
     """
     Inserts a new encounter into the database based on the provided form data.
     """
-    encounter_name = request.form['encounter_name']
-    location = request.form['location']
-    species_id = request.form['species']
-    latitude = request.form['latitude-start']
-    longitude = request.form['longitude-start']
-    data_source = request.form['data_source']
-    recording_platform = request.form['recording_platform']
-    origin = request.form['cruise']
-    notes = request.form['notes']
     with Session() as session:
+
+        encounter_name = request.form['encounter_name']
+        location = request.form['location']
+        species_id = request.form['species']
+        latitude = request.form['latitude-start']
+        longitude = request.form['longitude-start']
+        data_source = request.form['data_source']
+        recording_platform = request.form['recording_platform']
+        origin = request.form['project']
+        notes = request.form['notes']
+
+
+        data_timezone = request.form['data-timezone']
+        location_timezone = request.form['location-timezone']
+
         try:
             new_encounter = Encounter()
             new_encounter.set_encounter_name(encounter_name)
             new_encounter.set_location(location)
-            new_encounter.set_cruise(origin)
+            new_encounter.set_project(origin)
             new_encounter.set_notes(notes)
             new_encounter.set_species_id(species_id)
             new_encounter.set_latitude(latitude)
             new_encounter.set_longitude(longitude)
             new_encounter.set_data_source_id(data_source)
             new_encounter.set_recording_platform_id(recording_platform)
+            new_encounter.set_data_timezone(data_timezone)
+            new_encounter.set_location_timezone(location_timezone)
             session.add(new_encounter)
             session.commit()
             flash(f'Encounter added: {encounter_name}', 'success')
@@ -149,12 +157,14 @@ def encounter_update(encounter_id):
             encounter.set_encounter_name(request.form['encounter_name'])
             encounter.set_location(request.form['location'])
             encounter.set_species_id(request.form['species'])
-            encounter.set_cruise(request.form['cruise'])
+            encounter.set_project(request.form['project'])
             encounter.set_latitude(request.form['latitude-start'])
             encounter.set_longitude(request.form['longitude-start'])
             encounter.set_data_source_id(request.form['data_source'])
             encounter.set_recording_platform_id(request.form['recording_platform'])
             encounter.set_notes(request.form['notes'])
+            encounter.set_data_timezone(request.form['data-timezone'])
+            encounter.set_location_timezone(request.form['location-timezone'])
             encounter.update_call(session)
             session.commit()
             flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
@@ -171,11 +181,16 @@ def encounter_update(encounter_id):
 def encounter_delete(encounter_id):
     with Session() as session:
         encounter = session.query(Encounter).filter_by(id=encounter_id).first()
-        try:
-            encounter.delete(session)
-            session.commit()
-            flash(f'Encounter deleted: {encounter.get_encounter_name()}-{encounter.get_location()}.', 'success')
-        except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
-        return redirect(url_for('encounter.encounter'))
+        recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
+        if len(recordings) > 0:
+            flash('Encounter cannot be deleted. Please delete all recordings first.', 'error')
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+        else:
+            try:
+                encounter.delete(session)
+                session.commit()
+                flash(f'Encounter deleted: {encounter.get_encounter_name()}-{encounter.get_location()}.', 'success')
+            except SQLAlchemyError as e:
+                flash(parse_alchemy_error(e), 'error')
+                session.rollback()
+            return redirect(url_for('encounter.encounter'))

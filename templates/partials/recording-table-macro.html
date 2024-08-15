@@ -1,5 +1,6 @@
 {% macro recording_table(recordings) %}
-<table>
+<div class="table-responsive">
+    <table class="table-striped">
     <tr>
         <th>Start Time</th>
         <th>Recording File</th>
@@ -7,45 +8,42 @@
     </tr>
     {% for recording in recordings %}
     <tr>
-        <form
-            action="{{ url_for('recording.recording_update', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
-            method="post" enctype="multipart/form-data">
             <td>
-                {% if recording.id in assignment_recording_ids %}
-                <p>Assigned</p>
-                {% endif %}
-                <label hidden>{{ recording.get_start_time() }}</label><br>
-                {% if g.user.role_id in [1, 2] %}
-                <input style="width: 100%" type="datetime-local" id="time_start" name="time_start" value="{{ recording.get_start_time_string() }}" step="1" required>
-                {% endif %}
+
+                <div id="time-offsets-{{ recording.id }}" >
+                    <input hidden type="text" id="start-time-{{ recording.id }}" name="start-time-{{ recording.id }}" value="{{ recording.get_start_time() }}">
+
+                    <label style="display: none;" class="bold" id="data-time-label-{{ recording.id }}"></label>
+                    <label hidden style="display: none;" id="gmt-offset-label-{{ recording.id }}"></label>
+                    <label hidden style="display: none;" id="location-offset-label-{{ recording.id }}"></label>
+                </div>
+                
+            </td>
+                <script>
+
+$(document).ready(function() {
+  $('#time-offsets-{{ recording.id }}').ready(function() {
+    calculateTimeOffsets('start-time-{{ recording.id }}','gmt-offset-label-{{ recording.id }}','location-offset-label-{{ recording.id }}','data-time-label-{{ recording.id }}','{{ recording.encounter.data_timezone }}','{{ recording.encounter.location_timezone }}');
+  });
+});
+                </script>
             </td>
             {% if recording.recording_file != None %}
             <td>
-                <a href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a><br>
-                {% if g.user.role_id in [1, 2] %}
-                <a href="{{ url_for('recording.recording_file_delete', encounter_id=recording.encounter_id, recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
-                {% endif %}
+                <a class="button" href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a><br>
             </td>
             {% else %}
             <td>
-                {% if g.user.role_id in [1, 2] %}
-                <label for="recording_file" class="btn">Add file: </label>
-                <input style="width:100%;" type="file" id="recording_file" name="recording_file"><br>
-                {% else %}
-                <label for="recording_file" class="btn">No file</label>
-                {% endif %}
+                <label for="recording_file" >This recording does not have an audio file</label><br>
             </td>
             {% endif %}
             <td>
-                <button style="width:100%" type="button" onclick="window.location.href='{{ url_for('recording.recording_view', encounter_id=recording.encounter_id, recording_id=recording.id) }}'">View Selections</button><br>
-                {% if g.user.role_id in [1, 2] %}
-                <button style="width: 100%" type="submit">Update</button>
-                <button style="width: 100%" type="button" onclick="return confirm('Are you sure you want to delete this recording?') ? window.location.href='{{ url_for("recording.recording_delete", encounter_id=recording.encounter_id, recording_id=recording.id) }}':false;">Delete</button><br>
-                {% endif %}
+                <a class="button" href="{{ url_for('recording.recording_view', encounter_id=recording.encounter_id, recording_id=recording.id) }}">View Selections</a><br>
+
             </td>
 
-        </form>
     </tr>
     {% endfor %}
 </table>
+</div>
 {% endmacro %}

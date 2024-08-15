@@ -4,134 +4,66 @@
 
 <head>
     <title>View Selections</title>
-    <link rel="stylesheet" href="../../../../static/css/hero-section.css">
-    <link rel="stylesheet" href="../../../../static/css/general-style.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        .user-item {
-          cursor: pointer;
-          background-color: whitesmoke;
-          padding-inline: 5px;
-          padding-top: 7px;
-          padding-bottom: 7px;
-          border-radius: 1px;
-          border-color: black;
-        }
-        .user-item.selected {
-          outline: 2px solid blue;
-        }
-      </style>
+
 </head>
 
 <body>
     <div class="outer-div">
         {% if current_user.role_id in [1, 2] %}
         <h2>Administration Actions</h3>
+            {% if not session['snapshot_date'] %}
+
+            <h3>Edit Recording Metadata</h3>
+            <form
+            action="{{ url_for('recording.recording_update', recording_id=recording.id)}}"
+            method="post" enctype="multipart/form-data">
+            {% from 'recording/recording-form-template.html' import recording_form %}
+
+            {{ recording_form(editing=True, data_timezone=recording.encounter.data_timezone, location_timezone=recording.encounter.location_timezone, recording=recording) }}
+
+            <button class="blue" type="submit" style="margin-top: 0.7rem;">Update</button><br>
+
+        </form>
+    
         <h3>Review</h3>
         <label>Status: {{recording.status}} {% if recording.status_change_datetime %} ({{recording.status_change_datetime}}) {% endif %}</label>
+        <div stype="display: flex;">
         {% if recording.is_complete() == False %}
         <form action = "{{url_for('recording.mark_as_complete', recording_id=recording.id)}}" method="get">
-            <button type="submit" id="mark-as-complete-button">Mark as Complete</button>
+            <button class="gray small" type="submit" id="mark-as-complete-button">Mark as Complete</button>
         </form>
         {% endif %}
         {% if recording.is_on_hold() == False %}
         <form action = "{{url_for('recording.mark_as_on_hold', recording_id=recording.id)}}" method="get">
-            <button type="submit" id="mark-as-on-hold-button">Reject</button>
+            <button class="gray small" type="submit" id="mark-as-on-hold-button">Reject</button>
         </form>
         {% endif %}
+        </div>
+        {% endif %}
+        {% if not session['snapshot_date'] %}
+
+
         <h3 style="margin-top: 20px;">Assign Users</h3>
-        <p>Start typing and then select from the dropdown.</p>
-        <input type="text" style="width: 100%" id="search-input" placeholder="Search users">
-        <div class="user-dropdown" id="user-dropdown" data-recording-id="{{recording.id}}"></div><br>
-        <table>
+        {% from 'partials/search-dropdown.html' import recording_table %}
+        {{ recording_table(show_message=true) }}
+        {% endif %}
+        <div class="table-responsive">
+            <table class="table-striped" >
             {% for assigned_user in assigned_users %}
             <tr>
                 <td style="color: gray;">{{assigned_user.user.name}} ({{assigned_user.user.login_id}})</td>
-                <td>{% if assigned_user.completed_flag %} <button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="flagAssignmentIncomplete()">Remove Completed Flag</button> {% else %} <button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="flagAssignmentComplete()">Flag as Completed</button> {% endif %}</td>
-                <td><button class="user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="removeAssignment()">Unassign User</button></td>
+                <td>{% if assigned_user.completed_flag %} <button class="gray small user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="flagAssignmentIncomplete()">Remove Completed Flag</button> {% else %} <button class="gray small user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="flagAssignmentComplete()">Flag as Completed</button> {% endif %}</td>
+                <td><button class="gray small user-row" id="user-row" style="width:100%;" data-user-id="{{assigned_user.user_id}}" data-recording-id="{{assigned_user.recording_id}}" onclick="removeAssignment()">Unassign User</button></td>
             </tr>
             {% endfor %}
         </table>
-
-        </script>
-
-        {% endif %}
-        <h2>Recording Summary</h2>
-        {% if recording.is_complete() == True %}
-        
-        <p1>Assignment Status: REVIEWED {% if recording.status_change_datetime %} ({{recording.status_change_datetime}}) {% endif %}</p1>
-        {% else %}
-        {% if logged_in_user_assigned %}
-
-        {% if logged_in_user_assigned.completed_flag == True %}
-
-        <p1>Assignment Status: COMPLETE (Awaiting Review)</p1>
-        <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="get">
-            <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
-        </form>
-        {% else %}
-        <p1>Assignment Status: IN PROGRESS </p1>
-
-        <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="get">
-        
-            <button type="submit" id="flag-as-complete-button"
-                onclick="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}">Flag as Complete</button>
-        </form>
-        {% endif %}
-        {% else %}
-        <p1>Assignment Status: NOT ASSIGNED TO CURRENT USER</p1>
-        {% endif %}
-        {% endif %}
-        <p>Start date: {{ recording.start_time }}</p>
-        <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
-            recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
-        <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
-        <p>Number of contours: {{ recording.get_number_of_contours() }}</p>
-
-        <form action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
-            <label for="notes">Notes:</label>
-            <textarea id="notes" name="notes" rows="4" cols="50">{% if recording.notes %} {{ recording.notes }} {% endif %}</textarea>
-            <br>
-            <button type="submit">Update Notes</button>
-        </form>
-
-        {% set identifier_heading = "Selection Number" %}
-        {% set unique_id = "selection-number"%}
-        {% set process_route = "process_selection" %}
-        {% set insert_route = "selection.selection_insert_bulk" %}
-        {% if current_user.role_id in [1, 2] %}
-        
-        <form action="{{url_for('selection.extract_selection_stats_for_encounter', encounter_id=recording.encounter.id)}}" method="get">
-            <button type="submit">Download Contour Stats For Encounter</button>
-        </form>
-        <form action="/recording/{{recording.id}}/extract_selection_stats" method="get">
-            <button type="submit">Download Contour Stats</button>
-        </form>
-        <form action="/recording/{{recording.id}}/recalculate-contour-statistics" method="get">
-            <button type="submit">Recalculate Contour Statistics</button>
-        </form>
-
-        <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
-            <button type="submit">Download CTR Files</button>
-        </form>
-
-        <form action="{{url_for('recording.download_contour_files', recording_id=recording.id)}}" method="get">
-            <button type="submit">Download Contour Files</button>
-        </form>
-        
-        <form action="{{url_for('recording.download_selection_files', recording_id=recording.id)}}" method="get">
-            <button type="submit">Download Selection Files</button>
-        </form>
-            
-
-        {% endif %}
-
-
-
+        </div>
         <section>
             <div class="audit-history">
                 <h3>Audit History</h3>
-                <table>
+                <div class="table-responsive">
+                    <table class="table-striped">
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -151,50 +83,143 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
         </section>
 
+        {% endif %}
+        <h2>Recording Summary</h2>
+        {% if recording.is_complete() == True %}
+        
+        <label>Assignment Status: REVIEWED {% if recording.status_change_datetime %} ({{recording.status_change_datetime}}) {% endif %}</label>
+        {% else %}
+        {% if logged_in_user_assigned %}
 
-        <h2>Add selections</h2>
+        {% if logged_in_user_assigned.completed_flag == True %}
+
+        <label>Assignment Status: COMPLETE (Awaiting Review)</label>
+        <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="get">
+            <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
+        </form>
+        {% else %}
+        <label>Assignment Status: IN PROGRESS </label>
+
+        <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="get">
+        
+            <button type="submit" id="flag-as-complete-button"
+                onclick="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}">Flag as Complete</button>
+        </form>
+        {% endif %}
+        {% else %}
+        <label>Assignment Status: NOT ASSIGNED TO CURRENT USER</label>
+        {% endif %}
+        {% endif %}
+        <label>Start date: {{ recording.start_time }}</label>
+        <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
+            recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
+        <label>Number of selections: {{ recording.get_number_of_selections() }}</label>
+        <label>Number of contours: {{ recording.get_number_of_contours() }}</label>
+
+        <form action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
+            <label for="notes">Notes:</label>
+            <textarea id="notes" name="notes" rows="4" cols="50"  {% if session['snapshot_date'] %}disabled{% endif %}>{% if recording.notes %} {{ recording.notes }} {% endif %}</textarea>
+            {% if not session['snapshot_date'] %}
+            <button class="gray small" type="submit">Update Notes</button>
+            {% endif %}
+        </form><br>
+
+        {% set identifier_heading = "Selection Number" %}
+        {% set unique_id = "selection-number"%}
+        {% set process_route = "process_selection" %}
+        {% set insert_route = "selection.selection_insert_bulk" %}
+        {% if current_user.role_id in [1, 2] %}
+        
+        <h3>Download Options</h3>
+
+        <form action="{{url_for('selection.extract_selection_stats_for_encounter', encounter_id=recording.encounter.id)}}" method="get">
+            <button class="link small" type="submit">Download Contour Stats For Encounter</button>
+        <form action="/recording/{{recording.id}}/extract_selection_stats" method="get">
+            <button class="link small" type="submit">Download Contour Stats</button>
+        </form>
+        <form action="/recording/{{recording.id}}/recalculate-contour-statistics" method="get">
+            <button class="link small" type="submit">Recalculate Contour Statistics</button>
+        </form>
+
+        <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
+            <button class="link small" type="submit">Download CTR Files</button>
+        </form>
+
+        <form action="{{url_for('recording.download_contour_files', recording_id=recording.id)}}" method="get">
+            <button class="link small" type="submit">Download Contour Files</button>
+        </form>
+        
+        <form action="{{url_for('recording.download_selection_files', recording_id=recording.id)}}" method="get">
+            <button class="link small" type="submit">Download Selection Files</button>
+        </form>
+            
+
+        {% endif %}
+
+
+
+
+        {% if not session['snapshot_date'] %}
+
+        <h3>Add selections</h3>
         {% include 'recording/multi-file-upload-template.html' %}
 
         {% set identifier_heading = "Contour Number" %}
         {% set unique_id = "contour-number"%}
         {% set process_route = "process_contour" %}
         {% set insert_route = "selection.contour_insert_bulk" %}
-        <h2>Add contours</h2>
+        <h3>Add contours</h3>
         {% include 'recording/multi-file-upload-template.html' %}
 
+        {% endif %}
 
-
-        <h2>Manage selection table</h2>
+        <h3>Manage selection table</h3>
         {% if recording.selection_table_file %}
-        <form
+        <div style="display:flex;">
+            <a class="button small" href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download TXT</a>
+            <a class="button small" href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download CSV</a>
+        </div>
+        {% if not session['snapshot_date'] %}
+
+        <form id="delete-selection-table-form" encounter-id="{{recording.encounter_id}}" selection-table-id="{{recording.selection_table_id}}"
             action="{{ url_for('recording.recording_selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
             method="post">
-            <button type="submit">Delete</button>
+            <button class="gray small" style="margin-top: 10px;" type="submit">Delete Selection Table</button>
         </form>
-        
-        <a href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download TXT</a>
-        <a href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download CSV</a>
+
+        <script>
+            $("#delete-selection-table-form").submit(function (event) {
+                if (!confirm("Are you sure you want to delete the selection table?")) {
+                    event.preventDefault();
+                }
+            });
+        </script>
+
+        {% endif %}
 
         {% else %}
         <form
             action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
             method="post" enctype="multipart/form-data">
-            <input type="file" name="selection-table-file" id="selection-table-file">
-            <button type="submit">Upload</button>
+            <div style="display:flex;">
+            <input class="small" type="file" name="selection-table-file" id="selection-table-file">
+            <button class="gray small" type="submit">Upload</button></div>
         </form>
         {% endif %}
 
         <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
         {% if selections|length > 0 %}
-        <input type="submit" value="Delete Selected" onclick="deleteSelectedSelections()"><br><br>
-        <table>
+        <div class="table-responsive">
+            <table class="table-striped">
             <tr>
                 <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
                 <th></th>
                 <th>Selection</th>
+                <th>Selection File</th>
                 <th>Annotation</th>
                 <th>Contour</th>
                 <th>Confirmation</th>
@@ -204,39 +229,57 @@
                 <tr>
                     <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}">
                     </td>
-                    <td><a href="{{ url_for('selection.selection_view', selection_id=selection.id)}}">View</a> </td>
+                    <td><a class="button" href="{{ url_for('selection.selection_view', selection_id=selection.id)}}">View</a> </td>
                     <td>
                         <label style="float:left; margin-right:15px;">{{ selection.selection_number }}</label>
+
+                    </td>
+                    <td>
                         {% if selection.selection_file %}
-                        <label style="float:left;">(</label>
-                        <a style="float:left;"
-                            href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">download</a>)<br>
+                        <a class="button" style="float:left;"
+                            href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a>
                         {% else %}
                         <section id="encounter-summary"> No selection file available</section>
                         {% endif %}
+
                     </td>
                     <td>
                         <label>{{ selection.annotation }}</label>
                     </td>
                     <td>
                         {% if selection.contour_file %}
-                        <a
+                        <a class="button"
                             href="{{ url_for('download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
-                        <a href="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}">Delete</a>
+                    {% endif %}
+                    {% if not session['snapshot_date'] %}
+
+                    <form action="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}" class="deleteFormContour" id="deleteFormContour-{{selection.id}}" method="get">
+                        {% if selection.contour_file %}
+                            <button class="link" type="submit">Delete</button>
                         {% endif %}
+                    </form>
+                    <script>
+                        $("#deleteFormContour-{{selection.id}}").submit(function (event) {
+                            if (!confirm("Are you sure you want to delete the contour file?")) {
+                                event.preventDefault();
+                            }
+                        });
+                    </script>
+
+                    {% endif %}
                     </td>
                     <td>
                         <div class="selection-row" data-selection-id="{{selection.id}}">
                         
                         {% if selection.traced == None %}
                             {% if selection.contour_file %}
-                            <button type="button" style="width: 100%" class="confirm-file-upload">Confirm File Upload</button>
+                            <button class="gray small confirm-file-upload" style="width: 100%" {% if session['snapshot_date'] %} disabled {% endif %}>Confirm File Upload</button>
                             {% else %}
-                            <button type="button" style="width: 100%" class="confirm-no-file-upload">Confirm No File Upload</button>
+                            <button class="gray small confirm-no-file-upload" style="width: 100%" {% if session['snapshot_date'] %} disabled {% endif %}>Confirm No File Upload</button>
                             {% endif %}
-                            <p id="traced-status-label" hidden>Confirmed</p>
+                            <p id="traced-status-label" hidden>Confirmed</label>
                         {% else %}
-                            <p id="traced-status-label">Confirmed</p>
+                            <p id="traced-status-label">Confirmed</label>
                         {% endif %}
                     </div>
                         
@@ -247,14 +290,44 @@
                 {% endfor %}
             </form>
         </table>
-        <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path_for_selections())}}">Download
-            All</a>
-        {% else %}
-        <p>This recording has no selections. Please use the form above to add selections.</p>
+        </div>
+        {% if not session['snapshot_date'] %}
+        <button class="gray small" style="width: 25%; margin-top: 0.3rem;" onclick="deleteSelectedRows()">Delete Selected</button>
         {% endif %}
-    </div>
-</body>
+        {% else %}
+        <label>This recording has no selections. Please use the form above to add selections.</label>
+        {% endif %}
+        {% if not session['snapshot_date'] %}
+<form type="hidden" id="deleteForm_{{ recording.id }}" method="GET"
+action="{{ url_for('recording.recording_delete', encounter_id=recording.encounter_id, recording_id=recording.id) }}">
+<input type="hidden" name="_method" value="GET">
+<button class="link small" id="delete-recording-button"
+    title="Delete the entire recording."
+    type="submit" style="margin-top: 1rem;" data-recording-id="{{ recording.id }}" delete-info="{{recording.get_start_time_string()}}">Delete Recording</button>
+</form>
+{% endif %}
+</div>
 
+<script>
+
+    // Add an event listener to the delete button to confirm deletion
+    $("#delete-recording-button").on("click", function (event) {
+        // Get the recording ID from the button's data attribute
+        var recordingId = $(this).data("recording-id");
+        var deleteInfo = $(this).attr('delete-info');
+
+        // Confirm deletion with the user
+        if (confirm("Are you sure you want to delete recording: " + deleteInfo + "?\nThis will delete ALL selections and CANNOT be undone.")) {
+            // If confirmed, submit the delete form
+            $("#deleteForm_" + recordingId).submit();
+        } else {
+            // If not confirmed, prevent the default form submission
+            event.preventDefault();
+        }
+    });
+</script>
+
+</body>
 <script>
 
 flagAssignmentComplete = function() {
@@ -293,51 +366,15 @@ removeAssignment = function() {
     xhr.send();
 }
 
-$(document).ready(function() {
-      $('#search-input').on('input', function() {
-        var searchTerm = $(this).val();
-        if (searchTerm.length > 0) {
-          $.ajax({
-            url: '/api/users',
-            method: 'GET',
-            data: {
-              search: searchTerm
-            },
-            success: function(response) {
-              var users = response.users;
-              var dropdown = $('#user-dropdown');
-              dropdown.empty();
-              users.forEach(function(user) {
-                var userItem = $('<div>').addClass('user-item').text(user.name + " (" + user.login_id + ")");
-                userItem.on('click', function() {
-                  $('.user-item').removeClass('selected');
-                  $(this).addClass('selected');
-                });
-                userItem.on('dblclick', function() {
-                    console.log(" DOUBLE BLOCK")
-                    var xhr = new XMLHttpRequest();
-                    const recordingId = event.target.closest('.user-dropdown').dataset.recordingId;
-                    xhr.open('GET', '/assign_recording/' + user.id + '/' + recordingId, true);
-                    xhr.setRequestHeader('Content-Type', 'application/json');
-                    xhr.onload = function () {
-                    console.log(xhr)
-                    if (xhr.status === 200) {
-                        var response = JSON.parse(xhr.responseText);
-                        console.log("completed")
-                        window.location.href = window.location.href;
-                    }
-                }
-                xhr.send();
-                });
-                dropdown.append(userItem);
-              });
-            }
-          });
-        } else {
-          $('#user-dropdown').empty();
-        }
-      });
-    });   
+function onUserSelectionDropdownComplete(user_id, user) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/assign_recording/' + user.id + '/' + '{{recording.id}}', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function () {
+        window.location.href = window.location.href;
+    }
+    xhr.send();
+}
 
 const selectionRows = document.querySelectorAll('.selection-row');
 
@@ -537,7 +574,8 @@ selectionRows.forEach(row => {
     /**
      * Deletes the selected selections in bulk using an AJAX request.
      */
-    async function deleteSelectedSelections() {
+    async function deleteSelectedRows() {
+
         // Get the delete form and all selected checkboxes
         var form = document.getElementById('deleteForm');
         var selectedCheckboxes = document.querySelectorAll('input[name="selectedSelections"]:checked');
@@ -548,6 +586,10 @@ selectionRows.forEach(row => {
         // Extract the values of the selected checkboxes and store them in the selectedIds array
         for (var i = 0; i < selectedCheckboxes.length; i++) {
             selectedIds.push(selectedCheckboxes[i].value);
+        }
+        // Check first with user
+        if (!confirm('Are you sure you want to delete these ' + selectedIds.length + ' selections? This CANNOT be undone.')) {
+            return;
         }
 
         // Define the URL for the delete request

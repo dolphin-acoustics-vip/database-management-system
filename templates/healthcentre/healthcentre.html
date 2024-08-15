@@ -77,7 +77,7 @@
     {{ days_ago_selector() }}
     {% from 'partials/species-checkbox.html' import species_checkbox %}
     {{ species_checkbox(species_list) }}
-    <h4>User filter</h4>
+    <label class="bold">User filter</label>
 
     {% from 'partials/search-dropdown.html' import recording_table %}
     {{ recording_table() }}
@@ -212,17 +212,17 @@ function generateWarningsHTML(warnings, container) {
             const recWarnings = encWarnings['recordings'][recId];
 
             // Create the recording div
-            const recDiv = $('<div>').addClass('rec-div-box').appendTo(encDiv);
+            const recDiv = $('<div>').addClass('rec-div-box table-responsive').appendTo(encDiv);
             $('<h4>').text("Recording: " + recWarnings['rec_name']).appendTo(recDiv);
             // Create the button
-            const goToButton = $('<button>').text('Go To').addClass('ignore-table-button').attr('data-recording-id', recId).appendTo(recDiv);
+            const goToButton = $('<button>').text('Go To').addClass('ignore-table-button link small').attr('data-recording-id', recId).appendTo(recDiv);
 
             // Add an event listener to the button
             goToButton.on('click', function() {
                 const recRoute =  recWarnings['rec_route'];
                 window.open(recRoute, '_blank');
             });            // Create the selections table
-            const selTable = $('<table>').addClass('selection-table').appendTo(recDiv);
+            const selTable = $('<table>').addClass('selection-table table-striped').appendTo(recDiv);
 
             // Create the table header
             const headerRow = $('<tr>').appendTo($('<thead>').appendTo(selTable));

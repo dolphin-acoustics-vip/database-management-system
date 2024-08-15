@@ -44,7 +44,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = File()
     try:
-        new_file.insert_path_and_filename(selection_file, selection_relative_path, selection_filename, FILE_SPACE_PATH)
+        new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename, FILE_SPACE_PATH)
     except IOError as e:
         if "File already exists" in str(e):
             if session.query(Selection).filter_by(selection_number=selection_number).filter_by(recording_id=recording_id).first() is not None:
@@ -59,19 +59,21 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     selection_obj.selection_file_id = new_file.id
     session.add(new_file)
     session.commit()
+    selection_obj.create_spectogram(session)
     return selection_obj
 
 
-@routes_selection.route('/contour_file_delete/<uuid:selection_id>')
+@routes_selection.route('/contour_file_delete/<uuid:selection_id>', methods=["GET", "POST"])
 @require_live_session
 def contour_file_delete(selection_id):
+    print('i got here')
     with Session() as session:
         selection_obj = session.query(Selection).filter_by(id=selection_id).first()
         selection_obj.delete_contour_file(session)
         selection_obj.update_traced_status()
         #before_commit(session)
         session.commit()
-        return redirect(url_for('recording.recording_view', encounter_id=selection_obj.recording.encounter_id, recording_id=selection_obj.recording.id))
+        return redirect(url_for('recording.recording_view', recording_id=selection_obj.recording.id))
 
 @require_live_session
 def insert_or_update_contour(session, selection_id, file, recording_id):
@@ -81,7 +83,7 @@ def insert_or_update_contour(session, selection_id, file, recording_id):
     contour_relative_path = selection_obj.generate_relative_path()
     new_file = File()
     try:
-        new_file.insert_path_and_filename(contour_file, contour_relative_path, contour_filename, FILE_SPACE_PATH)
+        new_file.insert_path_and_filename(session, contour_file, contour_relative_path, contour_filename, FILE_SPACE_PATH)
     except IOError as e:
         if "File already exists" in str(e):
             raise IOError (f"Contour {selection_id} for this recording already exists in the database.")
@@ -138,6 +140,24 @@ def process_contour():
             messages.append("<span style='color: red;'>Could not cross-reference selection number.</span>")
             valid = False
         
+
+        # Check if the selection start time matches that of its recording
+        recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
+        match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', filename)
+        if match:
+            year = match.group(1)
+            month = match.group(2)
+            day = match.group(3)
+            hour = match.group(4)
+            minute = match.group(5)
+            second = match.group(6)
+            date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+            date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
+            if not recording.match_start_time(date):
+                messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
+        else:
+            messages.append("<span style='color: orange;'>Warning: no start time.</span>")
+    
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
 
@@ -279,7 +299,7 @@ def contour_insert_bulk(encounter_id, recording_id):
             session.rollback()
             raise e
             flash(f'Error inserting contour: {e}', 'error')
-    return redirect(url_for('recording.recording_view', encounter_id=encounter_id, recording_id=recording_id))
+    return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
 @require_live_session
@@ -432,11 +452,11 @@ from io import StringIO
 def write_contour_stats(selections, filename):
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Encounter','Location','Cruise','Recording','Species','SamplingRate','SELECTIONNUMBER','FREQMAX', 'FREQMIN', 'DURATION', 'FREQBEG', 'FREQEND', 'FREQRANGE', 'DCMEAN', 'DCSTDDEV', 'FREQMEAN', 'FREQSTDDEV', 'FREQMEDIAN', 'FREQCENTER', 'FREQRELBW', 'FREQMAXMINRATIO', 'FREQBEGENDRATIO', 'FREQQUARTER1', 'FREQQUARTER2', 'FREQQUARTER3', 'FREQSPREAD', 'DCQUARTER1MEAN', 'DCQUARTER2MEAN', 'DCQUARTER3MEAN', 'DCQUARTER4MEAN', 'FREQCOFM', 'FREQSTEPUP', 'FREQSTEPDOWN', 'FREQNUMSTEPS', 'FREQSLOPEMEAN', 'FREQABSSLOPEMEAN', 'FREQPOSSLOPEMEAN', 'FREQNEGSLOPEMEAN', 'FREQSLOPERATIO', 'FREQBEGSWEEP', 'FREQBEGUP', 'FREQBEGDWN', 'FREQENDSWEEP', 'FREQENDUP', 'FREQENDDWN', 'NUMSWEEPSUPDWN', 'NUMSWEEPSDWNUP', 'NUMSWEEPSUPFLAT', 'NUMSWEEPSDWNFLAT', 'NUMSWEEPSFLATUP', 'NUMSWEEPSFLATDWN', 'FREQSWEEPUPPERCENT', 'FREQSWEEPDWNPERCENT', 'FREQSWEEPFLATPERCENT', 'NUMINFLECTIONS', 'INFLMAXDELTA', 'INFLMINDELTA', 'INFLMAXMINDELTA', 'INFLMEANDELTA', 'INFLSTDDEVDELTA', 'INFLMEDIANDELTA', 'INFLDUR', 'STEPDUR'])
+    writer.writerow(['Encounter','Location','Project','Recording','Species','SamplingRate','SELECTIONNUMBER','FREQMAX', 'FREQMIN', 'DURATION', 'FREQBEG', 'FREQEND', 'FREQRANGE', 'DCMEAN', 'DCSTDDEV', 'FREQMEAN', 'FREQSTDDEV', 'FREQMEDIAN', 'FREQCENTER', 'FREQRELBW', 'FREQMAXMINRATIO', 'FREQBEGENDRATIO', 'FREQQUARTER1', 'FREQQUARTER2', 'FREQQUARTER3', 'FREQSPREAD', 'DCQUARTER1MEAN', 'DCQUARTER2MEAN', 'DCQUARTER3MEAN', 'DCQUARTER4MEAN', 'FREQCOFM', 'FREQSTEPUP', 'FREQSTEPDOWN', 'FREQNUMSTEPS', 'FREQSLOPEMEAN', 'FREQABSSLOPEMEAN', 'FREQPOSSLOPEMEAN', 'FREQNEGSLOPEMEAN', 'FREQSLOPERATIO', 'FREQBEGSWEEP', 'FREQBEGUP', 'FREQBEGDWN', 'FREQENDSWEEP', 'FREQENDUP', 'FREQENDDWN', 'NUMSWEEPSUPDWN', 'NUMSWEEPSDWNUP', 'NUMSWEEPSUPFLAT', 'NUMSWEEPSDWNFLAT', 'NUMSWEEPSFLATUP', 'NUMSWEEPSFLATDWN', 'FREQSWEEPUPPERCENT', 'FREQSWEEPDWNPERCENT', 'FREQSWEEPFLATPERCENT', 'NUMINFLECTIONS', 'INFLMAXDELTA', 'INFLMINDELTA', 'INFLMAXMINDELTA', 'INFLMEANDELTA', 'INFLSTDDEVDELTA', 'INFLMEDIANDELTA', 'INFLDUR', 'STEPDUR'])
         
     for selection in selections:
         if selection.traced:
-            writer.writerow([selection.recording.encounter.encounter_name, selection.recording.encounter.location, selection.recording.encounter.cruise, selection.recording.get_start_time_string(), selection.recording.encounter.species.species_name, selection.sampling_rate,  selection.selection_number, selection.freq_max, selection.freq_min, selection.duration, selection.freq_begin, selection.freq_end, selection.freq_range, selection.dc_mean, selection.dc_standarddeviation, selection.freq_mean, selection.freq_standarddeviation, selection.freq_median, selection.freq_center, selection.freq_relbw, selection.freq_maxminratio, selection.freq_begendratio, selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3, selection.freq_spread, selection.dc_quarter1mean, selection.dc_quarter2mean, selection.dc_quarter3mean, selection.dc_quarter4mean, selection.freq_cofm, selection.freq_stepup, selection.freq_stepdown, selection.freq_numsteps, selection.freq_slopemean, selection.freq_absslopemean, selection.freq_posslopemean, selection.freq_negslopemean, selection.freq_sloperatio, selection.freq_begsweep, selection.freq_begup, selection.freq_begdown, selection.freq_endsweep, selection.freq_endup, selection.freq_enddown, selection.num_sweepsupdown, selection.num_sweepsdownup, selection.num_sweepsupflat, selection.num_sweepsdownflat, selection.num_sweepsflatup, selection.num_sweepsflatdown, selection.freq_sweepuppercent, selection.freq_sweepdownpercent, selection.freq_sweepflatpercent, selection.num_inflections, selection.inflection_maxdelta, selection.inflection_mindelta, selection.inflection_maxmindelta, selection.inflection_meandelta, selection.inflection_standarddeviationdelta, selection.inflection_mediandelta, selection.inflection_duration, selection.step_duration])
+            writer.writerow([selection.recording.encounter.encounter_name, selection.recording.encounter.location, selection.recording.encounter.project, selection.recording.get_start_time_string(), selection.recording.encounter.species.species_name, selection.sampling_rate,  selection.selection_number, selection.freq_max, selection.freq_min, selection.duration, selection.freq_begin, selection.freq_end, selection.freq_range, selection.dc_mean, selection.dc_standarddeviation, selection.freq_mean, selection.freq_standarddeviation, selection.freq_median, selection.freq_center, selection.freq_relbw, selection.freq_maxminratio, selection.freq_begendratio, selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3, selection.freq_spread, selection.dc_quarter1mean, selection.dc_quarter2mean, selection.dc_quarter3mean, selection.dc_quarter4mean, selection.freq_cofm, selection.freq_stepup, selection.freq_stepdown, selection.freq_numsteps, selection.freq_slopemean, selection.freq_absslopemean, selection.freq_posslopemean, selection.freq_negslopemean, selection.freq_sloperatio, selection.freq_begsweep, selection.freq_begup, selection.freq_begdown, selection.freq_endsweep, selection.freq_endup, selection.freq_enddown, selection.num_sweepsupdown, selection.num_sweepsdownup, selection.num_sweepsupflat, selection.num_sweepsdownflat, selection.num_sweepsflatup, selection.num_sweepsflatdown, selection.freq_sweepuppercent, selection.freq_sweepdownpercent, selection.freq_sweepflatpercent, selection.num_inflections, selection.inflection_maxdelta, selection.inflection_mindelta, selection.inflection_maxmindelta, selection.inflection_meandelta, selection.inflection_standarddeviationdelta, selection.inflection_mediandelta, selection.inflection_duration, selection.step_duration])
     
     output.seek(0)
     return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})

@@ -10,9 +10,10 @@
     <div class="outer-div">
 
         <h1>Users</h1>
-        <a href="{{ url_for('admin.admin_user_new') }}" class="add-new-button"><button>Add new user</button></a>
+        <a href="{{ url_for('admin.admin_user_new') }}" class="add-new-button"><button class="gray">Add new user</button></a>
 
-        <table id="data-source-table">
+        <div class="table-responsive" style="margin-top: 10px">
+            <table class="table-striped"  id="data-source-table">
             <tr>
                 <th>Email</th>
                 <th>Status</th> 
@@ -29,7 +30,7 @@
                 <td>{{user.expiry}}</td>
                 <td>{{user.role.name}}</td>
                 <td>
-                    <a href="{{ url_for('admin.admin_user_view', user_id=user.id) }}">View</a>
+                    <a class="button" href="{{ url_for('admin.admin_user_view', user_id=user.id) }}">View</a>
                 </td>
             </tr>
             {% endfor %}
@@ -38,9 +39,10 @@
 
         <h1>Temporary</h1>
         <p1>All temporary users have view-only access permissions.</p1><br>
-        <a href="{{ url_for('admin.admin_temporary_user_new') }}" class="add-new-button"><button style="margin-bottom:15px;margin-top:15px;">Add new temporary user</button></a>
+        <a href="{{ url_for('admin.admin_temporary_user_new') }}" class="add-new-button"><button style="margin-bottom:10px;margin-top:15px;" class="gray">Add new temporary user</button></a>
 
-        <table id="data-source-table">
+        <div class="table-responsive">
+            <table class="table-striped"  id="data-source-table">
             <tr>
                 <th>Access Code</th>
                 <th>Status</th>
@@ -57,8 +59,8 @@
                 <td>{{user.expiry}}</td>
                 <td>{{user.role.name}}</td>
                 <td>
-                    <a href="{{ url_for('admin.admin_temporary_user_view', user_id=user.id) }}"><button style="width:100%; margin-bottom:5px;">View</button></a>
-                    <button class="btn btn-primary" style="width:100%" onClick="copyToClipboard('Login details for OCEAN (University of St Andrews)\nAccess code: {{user.login_id}}\nPassword: {{user.password}}')">Copy details</button>
+                    <a href="{{ url_for('admin.admin_temporary_user_view', user_id=user.id) }}"><button class="link" style="width:100%; margin-bottom:5px;">View</button></a><br>
+                    <button style="width:100%" onClick="copyToClipboard('Login details for OCEAN (University of St Andrews)\nAccess code: {{user.login_id}}\nPassword: {{user.password}}')" class="link">Copy details</button>
                 </td>
             </tr>
             {% endfor %}

@@ -130,6 +130,8 @@ def require_live_session(func):
             return render_template("require-live-session.html", user=current_user, original_url=request.url, referrer_url=referrer_url)
     return wrapper
 
+
+
 # Setup user login
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
@@ -140,9 +142,14 @@ def load_user(user_id: str):
     Retrieve the user relation for the database for a particular user_id. Return value is an 
     instance of the User class, or None if the user_id is not found.
     """
-    from models import User
-    # Since the user_id is just the primary key of the user table, use it in the query for the user
-    return User.query.get(uuid.UUID(user_id))
+    from sqlalchemy.exc import OperationalError
+    try:
+        from models import User
+        # Since the user_id is just the primary key of the user table, use it in the query for the user
+        return User.query.get(uuid.UUID(user_id))
+    except OperationalError:
+        return None
+
 
 def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError) -> str:
     """
@@ -151,7 +158,8 @@ def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError) -> str:
     foreign key constraints, operational errors, and programming errors. Where an error is
     unrecognised, the default sqlalchemy error message is returned with a prefix
     """
-    if isinstance(error, sqlalchemy.exc.IntegrityError, sqlalchemy.exc.ProgrammingError, sqlalchemy.exc.OperationalError):
+    print(error)
+    if isinstance(error, sqlalchemy.exc.OperationalError) or isinstance(error, sqlalchemy.exc.IntegrityError) or isinstance(error, sqlalchemy.exc.ProgrammingError):
         error_message = str(error)
         if "cannot be null" in error_message:
             column_name = error_message.split("Column '")[1].split("' cannot be null")[0]

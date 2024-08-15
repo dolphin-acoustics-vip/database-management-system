@@ -12,7 +12,6 @@
         <form action="{{ url_for('admin.admin_data_source_edit', data_source_id=data_source.id) }}" method="post">
             {% set editing = True %}
             {% include 'admin/admin-data-source-template.html' %}
-            <button type="submit">Save Changes</button>
         </form>
     </div>
 </body>

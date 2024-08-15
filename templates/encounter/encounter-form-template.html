@@ -1,10 +1,10 @@
-<label for="encounter_name" style="margin-bottom:5px;">Name:</label>
-<input type="text" id="encounter_name" name="encounter_name" {% if editing %}value="{{ encounter.get_encounter_name() }}"{% endif %} required><br>
-<label for="location" style="margin-bottom:5px;">Location:</label>
-<input type="text" id="location" name="location" {% if editing %}value="{{ encounter.get_location() }}"{% endif %}><br>
-<label for="cruise" style="margin-bottom:5px;">Cruise:</label>
-<input type="text" id="cruise" name="cruise" {% if editing %}value="{{ encounter.get_cruise() }}"{% endif %}><br>
-<label for="species" style="margin-bottom:5px;">Species:</label>
+<label class="bold" for="encounter_name" style="margin-bottom:5px;">Name*</label>
+<input type="text" id="encounter_name" name="encounter_name" {% if editing %}value="{{ encounter.get_encounter_name() }}"{% endif %} required>
+<label class="bold" for="location" style="margin-bottom:5px;">Location*</label>
+<input type="text" id="location" name="location" {% if editing %}value="{{ encounter.get_location() }}"{% endif %}>
+<label class="bold" for="project" style="margin-bottom:5px;" required>Project*</label>
+<input type="text" id="project" name="project" {% if editing %}value="{{ encounter.get_project() }}"{% endif %}>
+<label class="bold" for="species" style="margin-bottom:5px;">Species</label>
 <select id="species" name="species" required>
     {% for species in species_list %}
         {% if species.get_common_name() == '' %}
@@ -13,33 +13,34 @@
             <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.get_species_name() +" (" + species.get_common_name()+ ")" }}</option>
         {% endif %}
     {% endfor %}
-</select><br><br>
-<label for="data_source" style="margin-bottom:5px;">Data source:</label>
+</select>
+<label class="bold" for="data_source" style="margin-bottom:5px;">Data source</label>
 <select id="data_source" name="data_source">
     <option value="">Select a data source</option>
     {% for data_source in data_sources %}
         <option value="{{data_source.id}}" {% if editing and data_source.id == encounter.data_source.id %}selected{% endif %}>{{ data_source.name + " (" + data_source.email1 + ")"}}</option>
     {% endfor %}
-</select><br><br>
-<label for="recording_platform" style="margin-bottom:5px;">Recording platform:</label>
+</select>
+<label class="bold" for="recording_platform" style="margin-bottom:5px;">Recording platform</label>
 <select id="recording_platform" name="recording_platform">
     <option value="">Select a recording platform</option>
     {% for recording_platform in recording_platforms %}
         <option value="{{recording_platform.id}}" {% if editing and recording_platform.id == encounter.recording_platform.id %}selected{% endif %}>{{ recording_platform.name }}</option>
     {% endfor %}
-</select><br><br>
-<label for="coordinates-start" style="margin-bottom:5px;">Initial coordinates</label>
+</select>
+<label class="bold" for="coordinates-start" style="margin-bottom:5px;">Initial coordinates</label>
 <div id="coordinates-start">
     <input type="number" placeholder="Latitude" id="latitude-start" name="latitude-start" min="-90" max="90" step="0.00000001" {% if editing %}value="{{ encounter.get_latitude() }}"{% endif %}>
     <input type="number" placeholder="Longitude" id="longitude-start" name="longitude-start" min="-180" max="180" step="0.00000001" {% if editing %}value="{{ encounter.get_longitude() }}"{% endif %}>
-</div><br>
-<label for="coordinates-end" style="margin-bottom:5px;">Final coordinates (INOP)</label>
-<div id="coordinates-end">
-    <input type="number" placeholder="Latitude" id="latitude-start" name="latitude-start" min="-90" max="90" step="0.00000001" disabled {% if editing %}value="{{ encounter.get_latitude() }}"{% endif %}>
-    <input type="number" placeholder="Longitude" id="longitude-end" name="longitude-end" min="-180" max="180" step="0.00000001" disabled {% if editing %}value="{{ encounter.get_longitude() }}"{% endif %}>
-</div><br>
-<label for="received_date" style="margin-bottom:5px;">Date received (INOP):</label>
-<input type="date" id="received_date" name="received_date" disabled><br>
-<label for="notes" style="margin-bottom:5px;">Notes:</label>
-<textarea id="notes" name="notes" rows="4" cols="50"></textarea><br>
-<button type="submit">{% if editing %}Update{% else %}Submit{% endif %}</button>
+</div>
+<label class="bold" for="notes" style="margin-bottom:5px;">Notes</label>
+<textarea id="notes" name="notes" rows="4" cols="50"></textarea>
+
+
+{% from 'partials/tz-dropdown.html' import tz_dropdown %}
+<label class="bold">Data Timezone</label>
+{{ tz_dropdown('data-timezone', encounter.data_timezone if editing else 0) }}
+<label class="bold">Encounter Timezone</label>
+{{ tz_dropdown('location-timezone', encounter.location_timezone if editing else 0) }}
+
+<button class="blue" type="submit" title="{% if editing %}Update encounter with changed data.{% else %}Create a new encounter with provided data.{% endif %}">{% if editing %}Update{% else %}Submit{% endif %}</button>

@@ -25,14 +25,14 @@
 
         <h1>Data Hub</h1>
 
-        <button id="clear-all-filters" class="btn btn-primary" onclick="refreshPage()">Refresh</button>
+        <button class="blue small" id="clear-all-filters" class="btn btn-primary" onclick="refreshPage()">Refresh</button>
         {% from 'partials/days-ago-selector.html' import days_ago_selector %}
         {{ days_ago_selector() }}
-        <p id="statistics-date-range-title"></p>
+        <p1 style="font-weight: lighter;" id="statistics-date-range-title"></p1>
           {% from 'partials/species-checkbox.html' import species_checkbox %}
           {{ species_checkbox(species_list) }}
           
-        <h4>User filter</h4>
+        <label class="bold">User filter</label>
 
         {% from 'partials/search-dropdown.html' import recording_table %}
         {{ recording_table() }}
@@ -50,10 +50,10 @@
 
         <h2 id="statistics-title-text">All Statistics</h2>
 
-        <div class="statistic-box" id="selection-statistics-box">
+        <div class="statistic-box table-responsive" id="selection-statistics-box">
             <h3>Selection Statistics</h3>
         </div>
-        <div class="statistic-box" id="selection-traced-statistics-box">
+        <div class="statistic-box table-responsive" id="selection-traced-statistics-box">
 
             </div>
         <div class="statistic-box" id="selection-graph1-box">
@@ -61,7 +61,7 @@
             <canvas id="selection-statistics-chart" style="width:100%; height: 300px;"></canvas>
         </div>
         <h2 id="user-statistics-text">User Contributions</h2>
-        <button id="clear-all-filters" class="btn btn-primary" style="margin-bottom: 10px" onclick="refreshPage()">Refresh</button>
+        <button class="blue small" id="clear-all-filters" class="btn btn-primary" style="margin-bottom: 10px" onclick="refreshPage()">Refresh</button>
 
         <div class="statistic-box" id="selection-graph2-box">
             <h3>Species Aggregate Traces</h3>
@@ -70,14 +70,14 @@
             </canvas>
           </div>
         <div style="display: flex; flex-direction: row;">
-            <div class="statistic-box" style="margin-right: 1%; width: 49%; height: auto;" id="selection-graph2-box">
+            <div class="statistic-box table-responsive" style="margin-right: 1%; width: 49%; height: auto;" id="selection-graph2-box">
                 <h3>Selection File Contributions by User</h3>
                 <div id="selection-file-contributions-table-box">
                   <!-- Your table content here -->
                 </div>
               </div>
         
-        <div class="statistic-box" style="margin-left: 1%; width: 49%; height: auto;" id="selection-graph3-box">
+        <div class="statistic-box table-responsive" style="margin-left: 1%; width: 49%; height: auto;" id="selection-graph3-box">
             <h3>Contour File Contributions by User</h3>
             <div id="contour-file-contributions-table-box">
 
@@ -87,12 +87,12 @@
 
     </div>
 <h2 id="recording-and-assignments-statistics-text">Recordings and Assignments</h2>
-<button id="clear-all-filters" class="btn btn-primary" style="margin-bottom: 10px" onclick="refreshPage()">Refresh</button>
+<button class="blue small" id="clear-all-filters" class="btn btn-primary" style="margin-bottom: 10px" onclick="refreshPage()">Refresh</button>
 
-    <div class="statistic-box" id="recording-statistics-box">
+    <div class="statistic-box table-responsive" id="recording-statistics-box">
         <h3>Species Statistics</h3>
     </div>
-    <div class="statistic-box" id="assignment-statistics-box">
+    <div class="statistic-box table-responsive" id="assignment-statistics-box">
         <h3>Recording List</h3>
     </div>
         
@@ -488,8 +488,8 @@ $('#recording-statistics-box').append("<p>There are no unassigned recordings for
     }
 
     function createTable(headers) {
-
-        var table = $('<table>').addClass('statistics-table');
+        
+        var table = $('<table>').addClass('statistics-table table-striped"');
         var thead = $('<thead>').appendTo(table);
         var tbody = $('<tbody>').appendTo(table);
         
@@ -506,7 +506,7 @@ $('#recording-statistics-box').append("<p>There are no unassigned recordings for
     function addStatisticsTableRow(tbody, data) {
         var row = $('<tr>').appendTo(tbody);
         for (var i = 0; i < data.length; i++) {
-            var col = $('<td>').html(data[i]).appendTo(row);
+            var col = $('<td style="font-weight: lighter">').html(data[i]).appendTo(row);
         }
     }
 

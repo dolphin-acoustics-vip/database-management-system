@@ -3,52 +3,46 @@
 {% include 'partials/header.html' %}
 <head>
     <title>Encounters</title>
-    <link rel="stylesheet" href="../../static/css/hero-section.css">
-    <link rel="stylesheet" href="../../static/css/general-style.css">
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 </head>
+<style>
+
+
+</style>
 <body>
     <div class="outer-div">
         <h1>Encounters</h2>
         {% if current_user.role_id in [1, 2] %}
-        <a href="{{ url_for('encounter.encounter_new') }}" style="width:300px; margin-bottom: 10px"><button>Add New Encounter</button></a><br>
+        {% if not session['snapshot_date'] %}
+        <a href="{{ url_for('encounter.encounter_new') }}" class="button" style=" margin-bottom: 10px" title="Add new encounter">Add New Encounter</a><br>
+        {% endif %}
         {% endif %}
         {% if encounter_list %}
         <div style="margin-top: 10px; margin-bottom: 5px;">
             <label for="sort-select">Filter (any column):</label>
         </div>
-        <input style="margin-bottom: 10px; width:195px;" type="text" id="filter-input" placeholder="No filter">
+        <input style="margin-bottom: 10px;" type="text" class="text-input small" id="filter-input" placeholder="No filter">
         <table style="margin-top: 10px" id="encounter-table">
             <thead>
                 <tr>
-                    <th>Name</th>
+                    <th>Encounter</th>
                     <th>Location</th>
+                    <th>Project</th>
                     <th>Species</th>
-                    <th>Cruise</th>
-                    <th>Actions</th>
+
                 </tr>
             </thead>
             <tbody>
                 {% for encounter in encounter_list %}
                     <tr>
-                        <td>{{ encounter.get_encounter_name() }}</td>
+                        <td><a style="width:100%" data-encounter-id="{{ encounter.id }}" href="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">{{ encounter.get_encounter_name() }}</a></td>
                         <td>{{ encounter.get_location() }}</td>
+                        <td>{{ encounter.get_project() }}</td>
                         <td>{{ encounter.species.get_species_name() }}</td>
-                        <td>{{ encounter.get_cruise() }}</td>
-                        <td>
-                            <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}" onclick="window.location.href='{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}'">View</button>
 
-                            {% if current_user.role_id in [1, 2] %}
-                            <button type="submit" style="width:100%" data-encounter-id="{{ encounter.id }}" onclick="window.location.href='{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}'">Edit</button>
-                            <form id="deleteForm_{{ encounter.id }}" method="post" action="{{ url_for('encounter.encounter_delete', encounter_id=encounter.id) }}">
-                                <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" style="width:100%" class="delete-link" data-encounter-id="{{ encounter.id }}">Delete</button>
-                            </form>
-                            {% endif %}
-                        
-                        </td>
-                        
+
                     </tr>
                 {% endfor %}
             </tbody>
@@ -81,8 +75,8 @@
                     var name = $(this).find('td:nth-child(1)').text().toLowerCase();
                     var location = $(this).find('td:nth-child(2)').text().toLowerCase();
                     var species = $(this).find('td:nth-child(3)').text().toLowerCase();
-                    var cruise = $(this).find('td:nth-child(4)').text().toLowerCase();
-                    if (!(name.includes(filterValue) || location.includes(filterValue) || species.includes(filterValue) || cruise.includes(filterValue))) {
+                    var project = $(this).find('td:nth-child(4)').text().toLowerCase();
+                    if (!(name.includes(filterValue) || location.includes(filterValue) || species.includes(filterValue) || project.includes(filterValue))) {
                     $(this).hide();
                     } else {
                     $(this).show();
