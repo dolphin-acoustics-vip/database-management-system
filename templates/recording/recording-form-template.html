@@ -13,9 +13,13 @@
 {% if editing and recording.recording_file %}
 <div style="display: flex;">
         <a style="margin-right: 0.25rem" class="button small" href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a>
+        <a style="margin-left: 0.25rem" class="button small" href="{{ url_for('get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.get_unique_name(' - ')}}">File Details</a>
+
         <form action="{{ url_for('recording.recording_file_delete', recording_id=recording.id, file_id=recording.recording_file.id) }}" method="post">
-        <a style="margin-left: 0.25rem;" class="button small" href="{{ url_for('recording.recording_file_delete', recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
-</div>
+        
+            <a style="margin-left: 0.25rem;" class="button small" href="{{ url_for('recording.recording_file_delete', recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
+
+    </div>
         {% else %}
  <input class="file-input small" type="file" id="recording_file" name="recording_file" accept=".wav">
 {% endif %}
@@ -54,12 +58,12 @@
         xhr.send();
     }
 
-    // Extract the date from the recording file name once a file is input.
-    document.getElementById('recording_file').addEventListener('change', async function () {
-        if (this.files.length === 1) {
-            await extractDate(this.files[0].name);
-        }
-    });
+    // // Extract the date from the recording file name once a file is input.
+    // document.getElementById('recording_file').addEventListener('change', async function () {
+    //     if (this.files.length === 1) {
+    //         await extractDate(this.files[0].name);
+    //     }
+    // });
 
     $(document).ready(function () {
         if ('{{editing}}' == 'True') {

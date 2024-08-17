@@ -11,7 +11,7 @@ from flask_login import login_user,login_required, current_user, login_manager
 import calculations.rocca.contour as contour_code
 
 # Location application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from db import get_file_space_path, get_tempdir, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 
@@ -44,7 +44,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = File()
     try:
-        new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename, FILE_SPACE_PATH)
+        new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename, get_file_space_path())
     except IOError as e:
         if "File already exists" in str(e):
             if session.query(Selection).filter_by(selection_number=selection_number).filter_by(recording_id=recording_id).first() is not None:
@@ -59,7 +59,6 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     selection_obj.selection_file_id = new_file.id
     session.add(new_file)
     session.commit()
-    selection_obj.create_spectogram(session)
     return selection_obj
 
 
@@ -76,25 +75,23 @@ def contour_file_delete(selection_id):
         return redirect(url_for('recording.recording_view', recording_id=selection_obj.recording.id))
 
 @require_live_session
-def insert_or_update_contour(session, selection_id, file, recording_id):
-    selection_obj = session.query(Selection).filter_by(id=selection_id).first()
+def insert_or_update_contour(session, selection, file, recording_id):
+    session.flush()
+    selection_obj = selection
     contour_file = file
     contour_filename = selection_obj.generate_contour_filename()
     contour_relative_path = selection_obj.generate_relative_path()
+    
     new_file = File()
-    try:
-        new_file.insert_path_and_filename(session, contour_file, contour_relative_path, contour_filename, FILE_SPACE_PATH)
-    except IOError as e:
-        if "File already exists" in str(e):
-            raise IOError (f"Contour {selection_id} for this recording already exists in the database.")
-        raise e
+    new_file.insert_path_and_filename(session, contour_file, contour_relative_path, contour_filename, get_file_space_path())
+    session.add(new_file)
+
     selection_obj.contour_file = new_file
     selection_obj.update_traced_status()
-
+    
     contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
     contour_file_obj.calculate_statistics(session, selection_obj)
 
-    session.add(new_file)
     return selection_obj
 
 @routes_selection.route('/process_contour', methods=["GET"])
@@ -270,36 +267,67 @@ def process_selection():
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
 
-@routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/contour/insert-bulk', methods=['GET', 'POST'])
+
+
+@routes_selection.route('/serve_spectogram/<uuid:selection_id>')
+def serve_spectogram(selection_id):
+    import tempfile
+    with Session() as session:
+        selection = session.query(Selection).filter_by(id=selection_id).first()
+        if selection:
+            with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
+                spectogram_file_path = selection.create_temp_spectogram(session, temp_dir)
+                return send_file(spectogram_file_path, mimetype='image/png')
+        else:
+            return jsonify({'error': 'Selection not found'}), 404
+
+@routes_selection.route('/serve_plot/<uuid:selection_id>')
+def serve_plot(selection_id):
+    fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
+    hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
+    import tempfile
+    with Session() as session:
+        selection = session.query(Selection).filter_by(id=selection_id).first()
+        if selection:
+            with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
+                plot_file_path = selection.create_temp_plot(session, temp_dir, fft_size, hop_size)
+                return send_file(plot_file_path, mimetype='image/png')
+        else:
+            return jsonify({'error': 'Selection not found'}), 404
+
+@routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/contour/insert-bulk', methods=['POST'])
 @require_live_session
 def contour_insert_bulk(encounter_id, recording_id):
     with Session() as session:
-        try:
-            if 'files' not in request.files:
-                return jsonify({'error': 'No files found'}), 400
+        if 'files' not in request.files:
+            handle_sqlalchemy_exception(session, Exception('The form did not submit any contours'))
 
-            # Access the uploaded files
-            files = request.files.getlist('files')
-            ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
+        counter = 0
 
-            # Process the files and add them to the Selection object
-            for i, file in enumerate(files):
+        # Access the uploaded files
+        files = request.files.getlist('files')
+        ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
+
+        # Process the files and add them to the Selection object
+        for i, file in enumerate(files):
+
+            selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
+            
+            if selection.contour_file_id is not None:
+                handle_sqlalchemy_exception(session, Exception(f'Selection {ids[i]} already has a contour'), f'Error uploading contour {ids[i]}')
+            else:
                 try:
-                    selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
-
-                    insert_or_update_contour(session,selection.id, file, recording_id)
-                    #before_commit(session)
+                    insert_or_update_contour(session,selection, file, recording_id)
                     session.commit()
-                    flash(f'Added contour {ids[i]}', 'success')
-                except SQLAlchemyError as e:
+                    counter += 1
+                except (SQLAlchemyError, Exception) as e:
                     session.rollback()
-                    raise e
-                    flash(f'Error inserting contour {ids[i]}: {e}', 'error')
-        except Exception as e:
-            session.rollback()
-            raise e
-            flash(f'Error inserting contour: {e}', 'error')
-    return redirect(url_for('recording.recording_view', recording_id=recording_id))
+                    handle_sqlalchemy_exception(session, e, f'Error uploading contour {ids[i]}')
+        
+        if counter > 0:
+            flash(f'Added {counter} contours', 'success')
+
+        return jsonify({'message': 'Files uploaded successfully'}), 200
 
 @routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
 @require_live_session
@@ -481,3 +509,36 @@ def extract_selection_stats_for_encounter(encounter_id):
             selections += session.query(Selection).filter(Selection.recording_id == recording.id).all()
 
         return write_contour_stats(selections, filename=f"ContourStats-{encounter.encounter_name}.csv")
+
+def validate_uuid(uuid_str):
+    import uuid
+    try:
+        return uuid.UUID(uuid_str)
+    except ValueError:
+        return None
+
+@routes_selection.route('/selection/deactivate', methods=['POST'])
+def deactivate_selections():
+    with Session() as session:
+        selection_ids_str = request.json.get('selection_ids', [])
+        selection_ids = [validate_uuid(selection_id) for selection_id in selection_ids_str]
+        if not selection_ids:
+            return jsonify({'error': 'No selection IDs provided'}), 400
+        selections = session.query(Selection).filter(Selection.id.in_(selection_ids)).all()
+        for selection in selections:
+            selection.deactivate()
+        session.commit()
+        return jsonify({'success': True})
+    
+@routes_selection.route('/selection/reactivate', methods=['POST'])
+def reactivate_selections():
+    with Session() as session:
+        selection_ids_str = request.json.get('selection_ids', [])
+        selection_ids = [validate_uuid(selection_id) for selection_id in selection_ids_str]
+        if not selection_ids:
+            return jsonify({'error': 'No selection IDs provided'}), 400
+        selections = session.query(Selection).filter(Selection.id.in_(selection_ids)).all()
+        for selection in selections:
+            selection.reactivate()
+        session.commit()
+        return jsonify({'success': True})

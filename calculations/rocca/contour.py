@@ -100,9 +100,9 @@ class ContourFile:
         
         for column, dtype in expected_columns.items():
             if column not in df.columns:
-                raise ValueError(f"Missing column in '{file_path}': {column}")
+                raise ValueError(f"Missing column: {column}")
             if df[column].dtype != dtype:
-                raise ValueError(f"Incorrect data type for column '{column}' in '{file_path}': expected {dtype}, got {df[column].dtype}")
+                raise ValueError(f"Incorrect data type for column '{column}': expected {dtype}, got {df[column].dtype}")
         self.contour_rows = []
         for index, row in df.iterrows():
             self.contour_rows.append(self.ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))

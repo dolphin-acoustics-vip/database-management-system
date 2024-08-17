@@ -8,7 +8,7 @@ from flask import session as client_session
 from datetime import datetime, timedelta
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 
@@ -185,6 +185,22 @@ def get_statistics():
                     traced_false_unmatch_count += 1
 
 
+            if selection['sp_id'] not in species_complete_counter:
+                species_complete_counter[selection['sp_id']] = {'untraced_count':0,'deactivated_count':0,'complete': 0, 'species_name': selection['species_name'], 'record':[0] * len(axis_labels)}
+
+            if selection['deactivated'] == True:
+                species_complete_counter[selection['sp_id']]['deactivated_count'] += 1
+            else:
+                if selection['traced'] == True:
+                    complete_counter += 1
+                    species_complete_counter[selection['sp_id']]['complete'] += 1
+                    if category_months:
+                        index = axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(monthly_axis_label_format))
+                        species_complete_counter[selection['sp_id']]['record'][index] += 1
+                    else:  
+                        species_complete_counter[selection['sp_id']]['record'][axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(daily_axis_label_format))] += 1
+                elif selection['traced'] == None:
+                    species_complete_counter[selection['sp_id']]['untraced_count'] += 1
 
 
             if selection['contour_file_id'] is not None:
@@ -193,17 +209,6 @@ def get_statistics():
                     if selection['contour_file_upload_datetime'] > start_date_time:
                         num_contour_file_uploads += 1
 
-                        if selection['traced'] == True:
-                            complete_counter += 1
-                            if selection['sp_id'] not in species_complete_counter:
-                                species_complete_counter[selection['sp_id']] = {'complete': 1, 'species_name': selection['species_name'], 'record':[0] * len(axis_labels)}
-                            else:
-                                species_complete_counter[selection['sp_id']]['complete'] += 1
-                            if category_months:
-                                index = axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(monthly_axis_label_format))
-                                species_complete_counter[selection['sp_id']]['record'][index] += 1
-                            else:  
-                                species_complete_counter[selection['sp_id']]['record'][axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(daily_axis_label_format))] += 1
 
 
                         if selection['contour_file_user_id'] in contour_user_contributions:

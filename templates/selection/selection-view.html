@@ -30,17 +30,20 @@
         <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording</a>
         {% if current_user.role_id in [1, 2] %}
         <hr>
-        <div class="image-container">
-            {% if selection.spectogram_file %}
-            <h3>Spectogram</h3>
-            <img src="{{url_for('get_image',path=selection.spectogram_file.get_full_absolute_path())}}" alt="Spectogram">
-            {% endif %}
-        
-            {% if selection.plot_file %}
-            <h3>Contour Plot</h3>
-            <img src="{{url_for('get_image',path=selection.plot_file.get_full_absolute_path())}}" alt="Contour Plot">
-            {% endif %}
-        </div>
+
+        <h3>Spectogram and Contour Plot</h3>
+        <div style="display: flex;  margin-top: 20px; margin-bottom: 20px; align-items:center;">
+            <img style="width:80%" id="plot-image" src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot">
+
+            <form style="width:15%; margin-left: 20px; align-items:center;" id="plot-form">
+            <label for="fft-size">FFT Size:</label>
+            <input type="number" id="fft-size" name="fft-size" value="{{ selection.default_fft_size if selection.default_fft_size else 2048}}">
+            <label for="hop-size">Hop Size:</label>
+            <input type="number" id="hop-size" name="hop-size" value="{{ selection.default_hop_size if selection.default_hop_size else 512}}">
+            <button class="gray small" type="submit" style="margin-top: 0.7rem;">Apply</button>
+          </form>
+    </div>
+        <hr>
         <section>
             <div class="audit-history">
                 <h3>Audit History</h3>
@@ -74,29 +77,32 @@
 
         <hr>
         {% if selection.selection_file %}
-            <a href="{{url_for('download_file', relative_path=selection.selection_file.get_full_relative_path())}}">Download selection file</a><br><br>
-        {% else %}
+            <a class="button small" href="{{url_for('download_file', relative_path=selection.selection_file.get_full_relative_path())}}">Download Selection File</a>
+            <a class="button small" href="{{ url_for('get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name(' - ') }}&redirect_link={{ request.referrer }}">See Selection File Details</a>
+            {% else %}
             <p style="margin-right:10px;">This selection has no selection file.</p>
-            <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Add</a><br>
         {% endif %}
         {% if selection.contour_file %}
-            <a href="{{url_for('download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download contour file</a><br>
-        {% else %}
-        <p>This selection has no contour file.</p>
-        <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Add</a><br>
-        {% endif %}
+            <a class="button small" href="{{url_for('download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download Contour File</a>
+            <a class="button small" href="{{ url_for('get_file_details', file_id=selection.selection_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See Contour File Details</a>
+
+            {% else %}
+            <p style="margin-right:10px;">This selection has no contour file.</p>	
+            {% endif %}
         
         <hr>
         <h3>Selection Table</h3>
         {% if selection.recording.selection_table_file %}
         <p>Selection table excerpt for selection number {{ selection.selection_number }}</p>
         <table>
-            <tr>Selection Number</tr>
-            <tr>{{ selection.selection_number }}</tr>
+
             <tr>
                 <th>Attribute</th>
                 <th>Value</th>
             </tr>
+            <tr>
+                <td>Selection Number</td>
+            <td>{{ selection.selection_number }}</td></tr>
             <tr>
                 <td>View</td>
                 <td>{{ selection.view }}</td>
@@ -138,8 +144,6 @@
                 <td>{{ selection.annotation }}</td>
             </tr>
         </table>
-              <a href="{{url_for('download_file', relative_path=selection.recording.selection_table_file.get_full_relative_path())}}">Download full selection table</a><br>
-
         {% else %}
             <p>This selection has no selection table.</p>
         {% endif %}
@@ -162,3 +166,18 @@
     </div>
 
 </body>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    document.getElementById("plot-form").addEventListener("submit", function(event) {
+        document.getElementById("plot-image").style.display = "none";
+      event.preventDefault();
+      var fftSize = document.getElementById("fft-size").value;
+      var hopSize = document.getElementById("hop-size").value;
+      var url = "{{url_for('selection.serve_plot',selection_id=selection.id)}}";
+      url += "?fft_size=" + fftSize + "&hop_size=" + hopSize;
+      document.getElementById("plot-image").src = url;
+      document.getElementById("plot-image").style.display = "block";
+
+    });
+  </script>

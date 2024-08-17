@@ -8,7 +8,7 @@ from flask import session as client_session
 from datetime import datetime, timedelta
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 
@@ -93,6 +93,7 @@ def get_data_warnings():
                         break
             return warning_counter
         
+        
 
 
         for selection in records:
@@ -105,7 +106,7 @@ def get_data_warnings():
                 warning_counter=add_warning(selection, "Selection with no file.",warning_counter)
             
             else:
-                if selection['traced'] == None:
+                if selection['traced'] == None and selection['deactivated'] == False:
                     warning_counter=add_warning(selection, "Abandoned selection",warning_counter)
         print(total_selections_counter)
         health_score = 100 - round ((warning_counter / total_selections_counter) * 100) if total_selections_counter > 0 else None

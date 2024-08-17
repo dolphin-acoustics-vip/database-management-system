@@ -16,7 +16,7 @@ from sqlalchemy import event
 
 
 # Local application imports
-from db import db, FILE_SPACE_PATH
+from db import db, get_file_space_path
 
 SYSTEM_GMT_OFFSET = 0
 
@@ -172,7 +172,7 @@ class Encounter(db.Model):
     )
     
     def get_unique_name(self, deimiter):
-        return f"{self.encounter_name}{deimiter}{self.location}{deimiter}{self.project} "
+        return f"Encounter {self.encounter_name}{deimiter}{self.location}{deimiter}{self.project} "
 
     def get_number_of_recordings(self):
         """
@@ -267,7 +267,7 @@ def encounter_updated(session, encounter_id):
     try:
         recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
         for recording in recordings:
-            recording.move_file(session,FILE_SPACE_PATH)
+            recording.move_file(session,get_file_space_path())
         session.commit()
     except Exception as e:
         session.rollback()
@@ -318,10 +318,10 @@ class File(db.Model):
         return os.path.join(self.path, f"{self.filename}.{self.extension}")
     
     def get_full_absolute_path(self):
-        return os.path.join(FILE_SPACE_PATH, self.get_full_relative_path())
+        return os.path.join(get_file_space_path(), self.get_full_relative_path())
     
     def get_absolute_directory(self):
-        return os.path.join(FILE_SPACE_PATH, self.path)
+        return os.path.join(get_file_space_path(), self.path)
 
     def insert_path_and_filename_file_already_in_place(self, session, new_path, new_filename, new_extension):
         self.path=new_path
@@ -331,7 +331,7 @@ class File(db.Model):
 
     def rename_loose_file(self,loose_file_directory, loose_file_name, loose_file_extension):
         import re
-        loose_file_path = os.path.join(FILE_SPACE_PATH,loose_file_directory, loose_file_name + '.' + loose_file_extension)
+        loose_file_path = os.path.join(get_file_space_path(),loose_file_directory, loose_file_name + '.' + loose_file_extension)
         if os.path.exists(loose_file_path):
             # Find the highest suffix integer in the existing filenames
             suffix_regex = re.compile(r'Dupl(\d+)_{}\.{}'.format(re.escape(loose_file_name), re.escape(loose_file_extension)))
@@ -408,7 +408,7 @@ class File(db.Model):
         file_name = self.filename
         trash_file_path = os.path.join(trash_folder,os.path.join(self.get_path(),unique_name + '_' + file_name + '.' + self.extension))
         
-        self.move_file(session, trash_file_path, FILE_SPACE_PATH)
+        self.move_file(session, trash_file_path, get_file_space_path())
 
     def delete_file(self, session):
         os.path.remove(self.get_full_absolute_path())
@@ -492,6 +492,8 @@ class Recording(db.Model):
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
+    def get_unique_name(self, separator):
+        return f"{self.encounter.get_unique_name(separator)}, Recording {self.start_time}"
 
     def is_complete(self):
         return True if self.status == 'Reviewed' else False
@@ -548,7 +550,7 @@ class Recording(db.Model):
         return len(contours)
 
     def update_call(self, session):
-        self.move_file(session,FILE_SPACE_PATH)
+        self.move_file(session,get_file_space_path())
         if self.recording_file is not None:
             self.recording_file.update_call(session)
         if self.selection_table_file is not None:
@@ -591,17 +593,27 @@ class Recording(db.Model):
 
     def validate_selection_table(self, session, custom_file=None):
         try:
+            print("MARKER 1")
             st_df = self.load_selection_table_data(custom_file=custom_file)
+            print('MARKER 2')
             if st_df.empty:
+                raise ValueError("The Selection Table provided is empty")
                 return [], "The Selection Table does not exist"
+            print('MARKER 3')
             self.upload_selection_table_rows(session, st_df)
             return ""
         except Exception as e:
-            
+            raise ValueError("The Selection Table provided is invalid: " + str(e))
             return "The Selection Table provided is invalid: " + str(e)
 
     def upload_selection_table_rows(self, session, st_df):
+
+        if 'Selection' not in st_df.columns:
+            raise ValueError("The Selection Table must contain a 'Selection' column")
+        if 'Annotation' not in st_df.columns:
+            raise ValueError("The Selection Table must contain an 'Annotation' column")
         selection_table_selection_numbers = st_df.Selection.to_list()
+
         for selection_number in selection_table_selection_numbers:
             selection = session.query(Selection).filter_by(recording_id=self.id, selection_number=selection_number).first()
             if selection is None:
@@ -756,8 +768,10 @@ class Selection(db.Model):
     plot_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     sampling_rate = db.Column(db.Float, nullable=False)
     traced = db.Column(db.Boolean, nullable=True, default=None)
+    deactivated = db.Column(db.Boolean, nullable=True, default=False)
     row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
-
+    default_fft_size = db.Column(db.Integer)
+    default_hop_size = db.Column(db.Integer)
 
     ### Selection Table data ###
     view = db.Column(db.String)
@@ -845,14 +859,22 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+    def get_unique_name(self, separator):
+        return f"{self.recording.get_unique_name(separator)}, Selection {self.selection_number}"
+
     def calculate_sampling_rate(self, session):
         if self.selection_file:
             import wave
             with wave.open(self.selection_file.get_full_absolute_path(), "rb") as wave_file:
                 self.sampling_rate = wave_file.getframerate()
 
+    def deactivate(self):
+        self.traced = None
+        self.deactivated = True
 
-
+    def reactivate(self):
+        self.traced = self.update_traced_status()
+        self.deactivated = False
 
     #def auto_populate_contoured(self):
     #    if self.annotation == "Y"
@@ -871,7 +893,7 @@ class Selection(db.Model):
     def update_traced_status(self):
         if self.contour_file and (self.annotation == "Y" or self.annotation == "M"):
             self.traced = True
-        elif not self.contour_file and (self.annotation == "N" or self.annotation == "M"):
+        elif not self.contour_file and (self.annotation == "N"):
             self.traced = False
         else:
             self.traced = None
@@ -890,40 +912,106 @@ class Selection(db.Model):
     def generate_ctr_file_name(self):
         return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
 
-    def create_spectogram(self, session):
+
+
+    def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None):
         import librosa
         import matplotlib.pyplot as plt
-        print('start')
+        import numpy as np
+        import os
+        from calculations.rocca.contour import ContourFile
+        # Set default FFT and hop sizes if not provided
+        if fft_size is None:
+            n_fft = self.default_fft_size if self.default_fft_size else 2048
+            if not self.default_fft_size:
+                self.default_fft_size = n_fft
+                session.commit()
+        else:
+            self.default_fft_size = fft_size
+            session.commit()
+            n_fft = fft_size
+
+        if hop_size is None:
+            hop_length = self.default_hop_size if self.default_hop_size else 512
+            if not self.default_hop_size:
+                self.default_hop_size = hop_length
+                session.commit()
+        else:
+            self.default_hop_size = hop_size
+            session.commit()
+            hop_length = hop_size
+
+        # Load the audio file
         with open(self.selection_file.get_full_absolute_path(), 'rb') as selection_file:
-            # Load the audio file
             audio, sr = librosa.load(selection_file)
 
-            # Increase the resolution of the spectrogram
-            n_fft = 2048  # default is 2048, increase this value to increase resolution
-            hop_length = 512  # default is 512, adjust this value to control the time resolution
-            spectrogram = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
+        # Increase the resolution of the spectrogram
+        spectrogram = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
 
-            # Plot the spectrogram
-            plt.figure(figsize=(20, 5))
-            plt.imshow(librosa.amplitude_to_db(spectrogram, ref=np.max), cmap='inferno', origin='lower', aspect='auto')
-            plt.colorbar(format='%+2.0f dB')
-            plt.title('Spectrogram')
-            plt.xlabel('Time')
-            plt.ylabel('Frequency')
+        # Create a figure with one or two subplots
+        if self.contour_file:
+            fig, axs = plt.subplots(2, 1, figsize=(30, 10))
+        else:
+            fig, axs = plt.subplots(1, 1, figsize=(30, 5))
 
-            # Save the spectrogram as a PNG
-            spectrogram_path = os.path.join(FILE_SPACE_PATH, os.path.join(self.generate_relative_path(), self.generate_spectogram_filename()) ) + '.png'
-            plt.savefig(spectrogram_path, bbox_inches='tight')
+        spectogram_axs = axs[0] if self.contour_file else axs
 
-            # Create a new File object for the spectrogram
-            spectrogram_file = File()
-            spectrogram_file.insert_path_and_filename_file_already_in_place(session,self.generate_relative_path(),self.generate_spectogram_filename(), spectrogram_path.split(".")[-1])
+        # Plot the spectrogram
+        spectogram_axs.imshow(librosa.amplitude_to_db(np.abs(spectrogram), ref=np.max), cmap='inferno', origin='lower', aspect='auto')
+        spectogram_axs.set_xlabel('Time', fontsize=20)
+        spectogram_axs.set_ylabel('Frequency (hz)', fontsize=20)
+        spectogram_axs.tick_params(axis='both', labelsize=14)
 
-            session.add(spectrogram_file)      
-            self.spectogram_file = spectrogram_file       
+        # Plot the contour if it exists
+        if self.contour_file:
+            contour_file_obj = ContourFile(self.contour_file.get_full_absolute_path())
+            contour_rows = contour_file_obj.contour_rows
+            min_time_ms = min([unit.time_milliseconds for unit in contour_rows])
+            axs[1].plot([unit.time_milliseconds - min_time_ms for unit in contour_rows], [unit.peak_frequency for unit in contour_rows])
+            axs[1].set_xlabel('Time (ms)', fontsize=20)
+            axs[1].set_ylabel('Frequency (hz)', fontsize=20)
+            axs[1].tick_params(axis='both', labelsize=14)
 
-            plt.close()   
+            # Adjust the y-axis limits of the spectrogram to match the y-axis limits of the contour plot
+            contour_y_min = min([unit.peak_frequency for unit in contour_rows])
+            contour_y_max = max([unit.peak_frequency for unit in contour_rows])
+            contour_y_range = contour_y_max - contour_y_min
+            spectogram_y_min = axs[0].get_ylim()[0]
+            spectogram_y_max = axs[0].get_ylim()[1]
+            spectogram_y_range = spectogram_y_max - spectogram_y_min
+            range_diff = spectogram_y_range - contour_y_range
+            if range_diff < 0:
+                warning = ". Warning: contour y-axis range larger than spectogram y-axis range."
+            else:
+                contour_y_min_new = contour_y_min - (range_diff / 2)
+                contour_y_max_new = contour_y_max + (range_diff / 2)
+                axs[1].set_ylim(contour_y_max_new, contour_y_min_new)
 
+            contour_x_min = min([unit.time_milliseconds - min_time_ms for unit in contour_rows])
+            contour_x_max = max([unit.time_milliseconds - min_time_ms for unit in contour_rows])
+            contour_x_range = contour_x_max - contour_x_min
+            spectogram_x_min = axs[0].get_xlim()[0]
+            spectogram_x_max = axs[0].get_xlim()[1]
+            spectogram_x_range = spectogram_x_max - spectogram_x_min
+            range_x_diff = contour_x_range - spectogram_x_range
+            contour_x_min_new = contour_x_min - (range_x_diff / 2)
+            contour_x_max_new = contour_x_max + (range_x_diff / 2)
+            axs[1].set_xlim(contour_x_max_new, contour_x_min_new)
+
+            fig.suptitle(f'Spectrogram (FFT Size: {n_fft}, Hop Size: {hop_length}){warning}', fontsize=26)
+        else:
+            fig.suptitle(f'Spectrogram (FFT Size: {n_fft}, Hop Size: {hop_length})', fontsize=26)
+
+        # Layout so plots do not overlap
+        fig.tight_layout()
+
+        # Save the plot as a PNG
+        plot_path = os.path.join(temp_dir, self.generate_plot_filename() + ".png")
+        plt.savefig(plot_path, bbox_inches='tight')
+
+        plt.close('all')
+
+        return plot_path
 
     def generate_ctr_file(self, session, contour_rows):
         import matplotlib.pyplot as plt
@@ -946,38 +1034,13 @@ class Selection(db.Model):
         # Create a dictionary to store the data in the .ctr format
         mat_data = {'tempRes':temp_res,'freqContour': np.array([unit.peak_frequency for unit in contour_rows]),'ctrLength':ctr_length}
         # Save the data to a MATLAB file
-        scipy.io.savemat(os.path.join(FILE_SPACE_PATH, os.path.join(self.generate_relative_path(), self.generate_ctr_file_name())) + ".ctr", mat_data)
+        scipy.io.savemat(os.path.join(get_file_space_path(), os.path.join(self.generate_relative_path(), self.generate_ctr_file_name())) + ".ctr", mat_data)
         
         file_obj = File()
         file_obj.insert_path_and_filename_file_already_in_place(session, self.generate_relative_path(),self.generate_ctr_file_name().split(".")[0], "ctr")
         session.add(file_obj)
         self.ctr_file = file_obj
 
-
-        # Plot the time against the peak frequency
-        plt.figure(figsize=(10, 6))
-        plt.plot(
-            [unit.time_milliseconds / 1000 for unit in contour_rows],
-            [unit.peak_frequency for unit in contour_rows]
-        )
-        plt.xlabel('Time (s)')
-        plt.ylabel('Peak Frequency (Hz)')
-        plt.title('Time vs Peak Frequency')
-
-        # Save the plot as a PNG
-        plot_path = os.path.join(FILE_SPACE_PATH, os.path.join(self.generate_relative_path(), self.generate_plot_filename())) + '.png'
-        plt.savefig(plot_path, bbox_inches='tight')
-
-        plot_file = File()
-        plot_file.insert_path_and_filename_file_already_in_place(session,
-            self.generate_relative_path(),
-            self.generate_plot_filename(),
-            plot_path.split(".")[-1]
-        )
-        session.add(plot_file)
-        self.plot_file = plot_file
-
-        plt.close('all')
 
 
     def reset_contour_stats(self):
@@ -1039,8 +1102,11 @@ class Selection(db.Model):
         self.step_duration = None
 
     def upload_selection_table_data(self, session, st_df):
-        # Find the index of the 'Selection' column
-        selection_index = st_df.columns.get_loc('Selection')
+        try:
+            # Find the index of the 'Selection' column
+            selection_index = st_df.columns.get_loc('Selection')
+        except ValueError:
+            raise ValueError("Missing required column: 'Selection'")
         
         # Find the index of the 'Annotation' column
         annotation_index = st_df.columns.get_loc('Annotation')
@@ -1079,7 +1145,7 @@ class Selection(db.Model):
         session.commit()
 
     def update_call(self, session):
-        self.move_file(session,FILE_SPACE_PATH)
+        self.move_file(session,get_file_space_path())
 
     def move_file(self, session, root_path):
         if self.selection_file is not None:

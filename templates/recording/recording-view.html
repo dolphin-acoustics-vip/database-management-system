@@ -181,7 +181,8 @@
         {% if recording.selection_table_file %}
         <div style="display:flex;">
             <a class="button small" href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download TXT</a>
-            <a class="button small" href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download CSV</a>
+            <a style="margin-left: 0.25rem" class="button small" href="{{ url_for('get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.get_unique_name(' - ')}}">File Details</a>
+            <a style="margin-left: 0.25rem;" class="button small" href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download CSV</a>
         </div>
         {% if not session['snapshot_date'] %}
 
@@ -226,12 +227,12 @@
             </tr>
             <form id="deleteForm" onsubmit="return false;">
                 {% for selection in selections %}
-                <tr>
+                <tr id="row-{{ selection.id }}" {% if selection.deactivated %} style="color: red;" {% endif %}>
                     <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}">
                     </td>
                     <td><a class="button" href="{{ url_for('selection.selection_view', selection_id=selection.id)}}">View</a> </td>
                     <td>
-                        <label style="float:left; margin-right:15px;">{{ selection.selection_number }}</label>
+                        <label style="float:left; margin-right:15px;">{{ selection.selection_number }}{% if selection.deactivated %} (Deactivated){% endif %}</label>
 
                     </td>
                     <td>
@@ -243,6 +244,13 @@
                         {% endif %}
 
                     </td>
+                    {% if selection.deactivated %}
+                    <td colspan="3" >
+                        <div style="display:inline-flex; width: 100%;">
+                        <button class="gray small" onclick="reactivateSelection('{{ selection.id }}')">Reactivate</button>
+                    </div>
+                    </td>
+                    {% else %}
                     <td>
                         <label>{{ selection.annotation }}</label>
                     </td>
@@ -286,6 +294,7 @@
                                 
 
                     </td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </form>
@@ -293,6 +302,9 @@
         </div>
         {% if not session['snapshot_date'] %}
         <button class="gray small" style="width: 25%; margin-top: 0.3rem;" onclick="deleteSelectedRows()">Delete Selected</button>
+        <button class="gray small" style="width: 25%; margin-top: 0.3rem;" onclick="deactivateSelectedRows()">Deactivate Selected</button>
+        <button class="gray small" style="width: 25%; margin-top: 0.3rem;" onclick="reactivateSelectedRows()">Reactivate Selected</button>
+
         {% endif %}
         {% else %}
         <label>This recording has no selections. Please use the form above to add selections.</label>
@@ -565,9 +577,80 @@ selectionRows.forEach(row => {
     updateWarningCount();
     */
 
+    function getSelectedSelectionIds() {
+        var selectedCheckboxes = document.querySelectorAll('input[name="selectedSelections"]:checked');
+        var selectedIds = [];
 
+        for (var i = 0; i < selectedCheckboxes.length; i++) {
+            selectedIds.push(selectedCheckboxes[i].value);
+        }  
 
+        return selectedIds
+    }
 
+    async function reactivateSelectedRows(override_selection_id = null) {
+        var selectionIds = getSelectedSelectionIds();
+        if (override_selection_id) selectionIds = [override_selection_id];
+
+        try {
+            const response = await $.ajax({
+            url: '/selection/reactivate',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ selection_ids: selectionIds }),
+            success: function (data, textStatus, jqXHR) {
+                window.location.href = window.location.href
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error('Error deactivating selection:', textStatus, errorThrown);
+            }
+            });
+        } catch (error) {
+            console.error('Error deactivating selection:', error);
+        }
+    }
+
+    async function reactivateSelection(selectionId, ignore_reload = false) {
+        reactivateSelectedRows(selectionId);
+
+    }
+
+    /**
+     * Sends a POST request to deactivate a selection with the given ID.
+     * 
+     * This function sends a request to the server using jQuery's `$.ajax` method,
+     * and upon receiving a response, disables the corresponding table row.
+     * 
+     * @async
+     * @function deactivateSelection
+     * @param {number} selectionId - The ID of the selection to be deactivated.
+     * @return {Promise} A Promise that resolves when the request is complete.
+     */
+     async function deactivateSelection(selectionId, ignore_reload = false) {
+        deactivateSelectedRows(selectionId);
+    }
+
+    async function deactivateSelectedRows(override_selection_id = null) {
+    var selectionIds = getSelectedSelectionIds();
+    if (override_selection_id) selectionIds = [override_selection_id];
+
+    try {
+        const response = await $.ajax({
+        url: '/selection/deactivate',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ selection_ids: selectionIds }),
+        success: function (data, textStatus, jqXHR) {
+            window.location.href = window.location.href
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.error('Error deactivating selection:', textStatus, errorThrown);
+        }
+        });
+    } catch (error) {
+        console.error('Error deactivating selection:', error);
+    }
+    }
 
 
 

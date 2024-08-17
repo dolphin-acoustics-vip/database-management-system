@@ -92,6 +92,13 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
+@app.route('/file-details/<uuid:file_id>')
+def get_file_details(file_id):
+    file_details = request.args.get('file_details')
+    with Session() as session:
+        file_obj = session.query(File).filter_by(id=file_id).first()
+        return render_template('file-info.html', file=file_obj, file_details=file_details, redirect_link=request.referrer)
+
 @app.route('/image/<path:path>')
 def get_image(path):
     # Path to the PNG file
@@ -221,7 +228,7 @@ def download_file(relative_path):
     Download a file from the FILE_SPACE_PATH.
     """
     if relative_path != "":
-        file_path = os.path.join(FILE_SPACE_PATH, relative_path)
+        file_path = os.path.join(get_file_space_path(), relative_path)
         return send_file(file_path, as_attachment=True)
 
 @app.route('/')

@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 
 from models import *
 from exception_handler import *
@@ -59,7 +59,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_file = File()
         session.add(new_file)
         new_recording.recording_file = new_file
-        new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename, FILE_SPACE_PATH)
+        new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename, get_file_space_path())
         session.commit()
         
     
@@ -100,25 +100,19 @@ def recording_selection_table_add(encounter_id,recording_id):
                 new_selection_table_filename = recording.generate_selection_table_filename()
                 new_relative_path = recording.generate_relative_path()
                 new_file = File()
-                new_file.insert_path_and_filename(session, selection_table_file, new_relative_path, new_selection_table_filename, FILE_SPACE_PATH)
+                new_file.insert_path_and_filename(session, selection_table_file, new_relative_path, new_selection_table_filename, get_file_space_path())
                 session.add(new_file)
                 recording.selection_table_file = new_file 
                 # Validate the selection table - if invalid then delete the selection table file
                 error_msg = recording.validate_selection_table(session)
-                if error_msg != None and error_msg != "":
-                    new_file.move_to_trash(session)
-                    handle_exception(error_msg, session)
-                    return redirect(url_for('recording.recording_view', recording_id=recording_id))
+                
                 recording.update_selection_traced_status(session)
                 session.commit()
-
-            session.commit()  
-        except SQLAlchemyError as e:
+            else:
+                handle_sqlalchemy_exception(session, Exception("The form did not send a selection table file."))
+        except (Exception, SQLAlchemyError) as e:
             handle_sqlalchemy_exception(session, e)
-        except IOError as e:
-            handle_sqlalchemy_exception(session, e)
-        except Exception as e:
-            handle_sqlalchemy_exception(session, e)
+        
     return redirect(url_for('recording.recording_view', recording_id=recording_id))
  
 import csv

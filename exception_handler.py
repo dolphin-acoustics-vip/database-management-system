@@ -41,7 +41,7 @@ def handle_exception(exception: Exception | str, session=None) -> None:
         session.rollback()
     return str(exception)
 
-def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQLAlchemyError) -> None:
+def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQLAlchemyError, prefix="") -> None:
     """
     Parse SQLAlchemy errors and return a human-readable message which can be displayed in the UI
     where necessary. This method can parse database errors such as illegal duplicates, null values,
@@ -65,11 +65,10 @@ def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQ
 
     #new_file_objects.extend(dirty_file_objects)
 
-    print("DIRTY FILE OBJECTS", dirty_file_objects)
-    print("NEW FILE OBJECTS", new_file_objects)
     for file_object in new_file_objects:
         file_object.rollback(session)
-
+    if prefix != "":
+        error_string = prefix + ". " + error_string
     flash(error_string, 'error')
     session.rollback()
     return error_string

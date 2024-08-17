@@ -377,11 +377,13 @@ function generateColors(numColors) {
     }
 
     function create_recording_table(recording_list) {
-        recordingsTable = createTable(['Species', 'Encounter', 'Recording', 'Created On' , 'Status'])
+        recordingsTable = createTable(['Species', 'Encounter', 'Recording', 'Created On' , 'Status', 'Traced', 'Untraced','Deactivated'])
         tbody = recordingsTable.find('tbody')
         for (recording in recording_list) {
             recording_link = "<a href='" + recording_list[recording]['recording_route'] + "'>" + recording_list[recording]['start_time'] + "</a>"
-            addStatisticsTableRow(tbody, [recording_list[recording]['sp_species_name'], recording_list[recording]['enc_encounter_name'], recording_link, recording_list[recording]['created_datetime'], recording_list[recording]['status']])
+            console.log('DATA')
+            console.log(recording_list[recording])
+            addStatisticsTableRow(tbody, [recording_list[recording]['sp_species_name'], recording_list[recording]['enc_encounter_name'], recording_link, recording_list[recording]['created_datetime'], recording_list[recording]['status'], recording_list[recording]['traced_count'], recording_list[recording]['untraced_count'], recording_list[recording]['deactivated_count']])
         }
         return recordingsTable
     }
@@ -546,12 +548,11 @@ $('#recording-statistics-box').append("<p>There are no unassigned recordings for
         $('#contour-file-contributions-table-box').empty().append(contourFileUserStatisticsTable);
 
 
-        tracedTable = createTable(['Species', 'Traced'])
+        tracedTable = createTable(['Species', 'Traced', 'Deactivated', 'Not Traced'])
         tracedTbody = tracedTable.find('tbody')
         for (species in data.speciesCompleteCounter) {
-            addStatisticsTableRow(tracedTbody, [data.speciesCompleteCounter[species].species_name, data.speciesCompleteCounter[species].complete])
+            addStatisticsTableRow(tracedTbody, [data.speciesCompleteCounter[species].species_name, data.speciesCompleteCounter[species].complete, data.speciesCompleteCounter[species].deactivated_count, data.speciesCompleteCounter[species].untraced_count])
         }
-        addStatisticsTableRow(tracedTbody, ['TOTAL', data.completeCounter])
         $('#selection-traced-statistics-box').append($('<h3>').text('Traced Contours'))
         $('#selection-traced-statistics-box').append(tracedTable);
 

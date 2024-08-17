@@ -14,6 +14,9 @@ from jinja2 import Environment
 env = Environment()
 env.globals['getattr'] = getattr
 
+DATA_DIR = 'data'
+TEMP_DIR = 'tempdir'
+
 # Define the file space folder and get the Google API key from a file
 FILE_SPACE_PATH = ''
 if os.path.exists('file_space_path.txt'):
@@ -25,6 +28,14 @@ GOOGLE_API_KEY = ''
 if os.path.exists('google_api_key.txt'):
     with open('google_api_key.txt', 'r') as f:
         GOOGLE_API_KEY = f.read()
+
+def get_file_space_path():
+    return os.path.join(FILE_SPACE_PATH, DATA_DIR)
+
+def get_tempdir():
+    if not os.path.exists(os.path.join(FILE_SPACE_PATH, TEMP_DIR)):
+        os.makedirs(os.path.join(FILE_SPACE_PATH, TEMP_DIR))
+    return os.path.join(FILE_SPACE_PATH, TEMP_DIR)
 
 
 def get_snapshot_date_from_session():
