@@ -20,7 +20,7 @@
             method="post" enctype="multipart/form-data">
             {% from 'recording/recording-form-template.html' import recording_form %}
 
-            {{ recording_form(editing=True, data_timezone=recording.encounter.data_timezone, location_timezone=recording.encounter.location_timezone, recording=recording) }}
+            {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone, local_timezone=recording.encounter.local_timezone, recording=recording) }}
 
             <button class="blue" type="submit" style="margin-top: 0.7rem;">Update</button><br>
 

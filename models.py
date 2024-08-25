@@ -1,6 +1,8 @@
 # Standard library imports
 import os, uuid
 from datetime import datetime, timedelta
+
+import pytz
 import shared_functions
 import scipy.io
 import numpy as np
@@ -74,14 +76,14 @@ def clean_directory(root_directory):
 
 
 class User(db.Model, UserMixin):
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
     login_id = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
     name = db.Column(db.String(1000))
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
     is_active = db.Column(db.Boolean, default=True)
     is_temporary = db.Column(db.Boolean, default=False)
-    expiry = db.Column(db.DateTime)
+    expiry = db.Column(db.DateTime(timezone=True))
     
     role=db.relationship('Role', backref='users', lazy=True)
 
@@ -115,12 +117,12 @@ class Role(db.Model):
 
 class Species(db.Model):
     __tablename__ = 'species'
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
     # TODO rename to scientific_name (refactor with actual database)
     species_name = db.Column(db.String(100), nullable=False, unique=True)
     genus_name = db.Column(db.String(100))
     common_name = db.Column(db.String(100))
-    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
     def update_call(self,session):
@@ -148,24 +150,24 @@ class Species(db.Model):
 
 class Encounter(db.Model):
     __tablename__ = 'encounter'
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
     encounter_name = db.Column(db.String(100), nullable=False)
     location = db.Column(db.String(100), nullable=False)
-    species_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('species.id'), nullable=False)
+    species_id = db.Column(db.String(36), db.ForeignKey('species.id'), nullable=False)
     project = db.Column(db.String(100), nullable=False)
     latitude = db.Column(db.String(20))
     longitude = db.Column(db.String(20))
-    data_source_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('data_source.id'), nullable=False)
-    recording_platform_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording_platform.id'), nullable=False)
+    data_source_id = db.Column(db.String(36), db.ForeignKey('data_source.id'), nullable=False)
+    recording_platform_id = db.Column(db.String(36), db.ForeignKey('recording_platform.id'), nullable=False)
     notes = db.Column(db.String(1000))
-    data_timezone = db.Column(db.Integer)
-    location_timezone = db.Column(db.Integer)
+    file_timezone = db.Column(db.Integer)
+    local_timezone = db.Column(db.Integer)
     
     species = db.relationship("Species")
     data_source = db.relationship("DataSource")
     recording_platform = db.relationship("RecordingPlatform")
 
-    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     __table_args__ = (
         db.UniqueConstraint('encounter_name', 'location'),
@@ -254,11 +256,11 @@ class Encounter(db.Model):
             raise ValueError("Timezone must be between GMT-12 and GMT+14 (inclusive).")
         return value
 
-    def set_data_timezone(self, value):
-        self.data_timezone = self.check_valid_timezone(value)
+    def set_file_timezone(self, value):
+        self.file_timezone = self.check_valid_timezone(value)
     
-    def set_location_timezone(self, value):
-        self.location_timezone = self.check_valid_timezone(value)
+    def set_local_timezone(self, value):
+        self.local_timezone = self.check_valid_timezone(value)
 
 
 """TODO remove"""
@@ -277,15 +279,15 @@ def encounter_updated(session, encounter_id):
 class File(db.Model):
     __tablename__ = 'file'
 
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
     path = db.Column(db.String, nullable=False)
     filename = db.Column(db.String(255), nullable=False)
-    uploaded_date = db.Column(db.DateTime)
+    uploaded_date = db.Column(db.DateTime(timezone=True))
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
     original_filename = db.Column(db.String(255))
 
-    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
     def rollback(self, session):
@@ -298,6 +300,12 @@ class File(db.Model):
         """
         if self in session.new:
             os.remove(self.get_full_absolute_path())
+
+    def get_uploaded_date_utc(self):
+        """
+        This method should return the uploaded date in UTC timezone, however has not yet been implemented
+        """
+        return self.uploaded_date
 
     def delete(self, session):
         session.flush()
@@ -455,38 +463,27 @@ class File(db.Model):
                 raise IOError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
             return False
 
-"""
-class Audit(db.Model):
-    __tablename__ = 'audit'
-
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
-    created_at = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()")
-    updated_at = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()", onupdate="current_timestamp()")
-    action = db.Column(db.String(50), nullable=False)
-
-"""
-    
 class Recording(db.Model):
     __tablename__ = 'recording'
 
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
-    start_time = db.Column(db.DateTime, nullable=False)
+    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    start_time = db.Column(db.DateTime(timezone=True), nullable=False)
     duration = db.Column(db.Integer)
-    recording_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
-    selection_table_file_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('file.id'))
-    encounter_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('encounter.id'), nullable=False)
+    recording_file_id = db.Column(db.String(36), db.ForeignKey('file.id'))
+    selection_table_file_id = db.Column(db.String(36), db.ForeignKey('file.id'))
+    encounter_id = db.Column(db.String(36), db.ForeignKey('encounter.id'), nullable=False)
     ignore_selection_table_warnings = db.Column(db.Boolean, default=False)
-    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
-    created_datetime = db.Column(db.DateTime, nullable=False, server_default="current_timestamp()")
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
+    created_datetime = db.Column(db.DateTime(timezone=True), nullable=False, server_default="current_timestamp()")
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     status = db.Column(db.Enum('Unassigned','In Progress','Awaiting Review','Reviewed','On Hold'), nullable=False, default='Unassigned')
-    status_change_datetime = db.Column(db.DateTime)
+    status_change_datetime = db.Column(db.DateTime(timezone=True))
     notes = db.Column(db.Text)
-    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
-    #row_end = db.Column(db.DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    row_start = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
+    #row_end = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp())
     #valid_to = Column(DateTime, server_default=func.inf())
     __table_args__ = (
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
@@ -752,16 +749,16 @@ class Recording(db.Model):
 class RecordingAudit(Audit, Recording, db.Model):
     __tablename__ = 'recording_audit'
 
-    record_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
+    record_id = db.Column(db.String(36), db.ForeignKey('recording.id'), nullable=False)
     record = db.relationship("Recording", foreign_keys=[record_id])
 """
 class Selection(db.Model):
     __tablename__ = 'selection'
 
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
+    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
     selection_number = db.Column(db.Integer, nullable=False)
     selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
-    recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), nullable=False)
+    recording_id = db.Column(db.String(36), db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     ctr_file_id = db.Column(db.String, db.ForeignKey('file.id'))
     spectogram_file_id = db.Column(db.String, db.ForeignKey('file.id'))
@@ -769,7 +766,7 @@ class Selection(db.Model):
     sampling_rate = db.Column(db.Float, nullable=False)
     traced = db.Column(db.Boolean, nullable=True, default=None)
     deactivated = db.Column(db.Boolean, nullable=True, default=False)
-    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+    row_start = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     default_fft_size = db.Column(db.Integer)
     default_hop_size = db.Column(db.Integer)
 
@@ -850,7 +847,7 @@ class Selection(db.Model):
     spectogram_file = db.relationship("File", foreign_keys=[spectogram_file_id])
     plot_file = db.relationship("File", foreign_keys=[plot_file_id])
     
-    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
 
@@ -920,6 +917,7 @@ class Selection(db.Model):
         import numpy as np
         import os
         from calculations.rocca.contour import ContourFile
+        warning = ""
         # Set default FFT and hop sizes if not provided
         if fft_size is None:
             n_fft = self.default_fft_size if self.default_fft_size else 2048
@@ -980,12 +978,14 @@ class Selection(db.Model):
             spectogram_y_max = axs[0].get_ylim()[1]
             spectogram_y_range = spectogram_y_max - spectogram_y_min
             range_diff = spectogram_y_range - contour_y_range
+
             if range_diff < 0:
                 warning = ". Warning: contour y-axis range larger than spectogram y-axis range."
             else:
                 contour_y_min_new = contour_y_min - (range_diff / 2)
                 contour_y_max_new = contour_y_max + (range_diff / 2)
-                axs[1].set_ylim(contour_y_max_new, contour_y_min_new)
+                print(contour_y_min_new, contour_y_max_new)
+                axs[1].set_ylim(contour_y_min_new, contour_y_max_new)
 
             contour_x_min = min([unit.time_milliseconds - min_time_ms for unit in contour_rows])
             contour_x_max = max([unit.time_milliseconds - min_time_ms for unit in contour_rows])
@@ -996,9 +996,8 @@ class Selection(db.Model):
             range_x_diff = contour_x_range - spectogram_x_range
             contour_x_min_new = contour_x_min - (range_x_diff / 2)
             contour_x_max_new = contour_x_max + (range_x_diff / 2)
-            axs[1].set_xlim(contour_x_max_new, contour_x_min_new)
-
-            fig.suptitle(f'Spectrogram (FFT Size: {n_fft}, Hop Size: {hop_length}){warning}', fontsize=26)
+            axs[1].set_xlim(contour_x_min_new, contour_x_max_new)
+            fig.suptitle(f'Spectrogram (FFT Size: {n_fft}, Hop Size: {hop_length}){warning if warning else ""}', fontsize=26)
         else:
             fig.suptitle(f'Spectrogram (FFT Size: {n_fft}, Hop Size: {hop_length})', fontsize=26)
 
@@ -1007,6 +1006,7 @@ class Selection(db.Model):
 
         # Save the plot as a PNG
         plot_path = os.path.join(temp_dir, self.generate_plot_filename() + ".png")
+        print(plot_path)
         plt.savefig(plot_path, bbox_inches='tight')
 
         plt.close('all')
@@ -1192,7 +1192,7 @@ class Selection(db.Model):
             self.plot_file = None
             
     def generate_plot_filename(self):
-        return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_plot"
+        return f"Selectionplot-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_plot"
 
     def generate_spectogram_filename(self):
         return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_spectrogram"
@@ -1218,7 +1218,7 @@ class Selection(db.Model):
 class DataSource(db.Model):
     __tablename__ = 'data_source'
 
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
+    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
     name = db.Column(db.String(255))
     phone_number1 = db.Column(db.String(20), unique=True)
     phone_number2 = db.Column(db.String(20), unique=True)
@@ -1228,7 +1228,7 @@ class DataSource(db.Model):
     notes = db.Column(db.Text)
     type = db.Column(db.Enum('person', 'organisation'))
 
-    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<DataSource %r>' % self.name
@@ -1238,9 +1238,9 @@ class DataSource(db.Model):
 class RecordingPlatform(db.Model):
     __tablename__ = 'recording_platform'
 
-    id = db.Column(db.UUID(as_uuid=True), primary_key=True, nullable=False, server_default="UUID()")
+    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
     name = db.Column(db.String(100), unique=True, nullable=False)
-    updated_by_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'))
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name
@@ -1248,12 +1248,12 @@ class RecordingPlatform(db.Model):
 class Assignment(db.Model):
     __tablename__ = 'assignment'
     
-    user_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('user.id'), primary_key=True, nullable=False)
-    recording_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('recording.id'), primary_key=True, nullable=False)
-    row_start = db.Column(db.DateTime, server_default=func.current_timestamp())
+    user_id = db.Column(db.String(36), db.ForeignKey('user.id'), primary_key=True, nullable=False)
+    recording_id = db.Column(db.String(36), db.ForeignKey('recording.id'), primary_key=True, nullable=False)
+    row_start = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     user = db.relationship("User", foreign_keys=[user_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
-    created_datetime = db.Column(db.DateTime, server_default=func.current_timestamp())
+    created_datetime = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     completed_flag = db.Column(db.Boolean, default=False)
 
 

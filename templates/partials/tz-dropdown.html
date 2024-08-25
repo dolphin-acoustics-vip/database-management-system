@@ -2,7 +2,7 @@
 {% macro tz_dropdown(dropdown_id, default_timezone) %}
 
 <div style="display: flex;">
-  <select id="{{dropdown_id}}" name="{{dropdown_id}}" style="display: inline-block;"></select>
+  <select id="{{dropdown_id}}" name="{{dropdown_id}}" style="display: inline-block;" required></select>
   <button class="gray small" type="button" title="Toggle the timezone dropdown to see timezones at 0.25 hour increments. To toggle back to 1 hour increments the dropdown must be set to a whole number timezone (such as GMT+8.00)" id="toggle-complex-timezone-{{dropdown_id}}" onclick="toggleComplexTimezone('{{dropdown_id}}', document.getElementById('{{dropdown_id}}').value)" style="display: inline-block;"></button>
 </div><br>
 
@@ -43,6 +43,11 @@
         }
         button.innerHTML = "See More Timezones";
       }
+      console.log(default_timezone, 'DEFAULT')
+      if (default_timezone == 'None') {
+        select.value=null
+        
+      } else {
       console.log(found, complexTimezone)
       if (!found) {
         if (!complexTimezone) {
@@ -55,7 +60,7 @@
       } else {
 
       complexTimezone = !complexTimezone;
-  }}
+  }}}
 
     // Initialize the dropdown
     toggleComplexTimezone("{{dropdown_id}}", "{{default_timezone}}");

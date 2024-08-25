@@ -1,53 +1,53 @@
 /**
- * Calculates time offsets based on the provided time label IDs, GMT offset labels, location offset labels, data time labels, and GMT offsets.
+ * Calculates time offsets based on the provided time label IDs, GMT offset labels, local offset labels, file time labels, and GMT offsets.
  * A time offset is calculated through a conversion from a given time to GMT, and then from GMT to a specific timezone
  *
  * @param {string} datetimestampInput - The ID of the input (can be hidden) with a value of the datetime to be converted.
  * @param {string} gmtLabelId - The ID of the GMT datetime label element (can be blank).
- * @param {string} locationLabelId - The ID of the location datetime label element (can be blank).
- * @param {string} dataOriginalLabelId - The ID of the data time label element.
- * @param {string} dataGmtOffset - The GMT offset value for the data time (in minutes).
- * @param {string} locationGmtOffset - The GMT offset value for the location time (in minutes).
+ * @param {string} localLabelId - The ID of the local datetime label element (can be blank).
+ * @param {string} fileOriginalLabelId - The ID of the file time label element.
+ * @param {string} fileGmtOffset - The GMT offset value for the file time (in minutes).
+ * @param {string} localGmtOffset - The GMT offset value for the local time (in minutes).
  * @return {void}
  */
-function calculateTimeOffsets(originalLabelId, gmtLabelId, locationLabelId, dataOriginalLabelId, dataGmtOffset, locationGmtOffset) {
+function calculateTimeOffsets(originalLabelId, gmtLabelId, localLabelId, fileOriginalLabelId, fileGmtOffset, localGmtOffset) {
     const timeStartInput = document.getElementById(originalLabelId);
     const gmtOffsetLabel = document.getElementById(gmtLabelId);
-    const dataTimeLabel = document.getElementById(dataOriginalLabelId);
-    const locationOffsetLabel = document.getElementById(locationLabelId);
+    const fileTimeLabel = document.getElementById(fileOriginalLabelId);
+    const localOffsetLabel = document.getElementById(localLabelId);
 
     gmtOffsetLabel.style.display = 'none';
-    dataTimeLabel.style.display = 'none';
-    locationOffsetLabel.style.display = 'none';
+    fileTimeLabel.style.display = 'none';
+    localOffsetLabel.style.display = 'none';
 
     const selectedTime = new Date(timeStartInput.value);
-    const dataGmtOffsetInt = parseInt(dataGmtOffset);
-    const locationGmtOffsetInt = parseInt(locationGmtOffset);
+    const fileGmtOffsetInt = parseInt(fileGmtOffset);
+    const localGmtOffsetInt = parseInt(localGmtOffset);
 
-    const dateGmtOffsetString = "GMT" + (dataGmtOffsetInt >= 0 ? "+" : "") + dataGmtOffsetInt / 60;
-    const locationGmtOffsetString = "GMT" + (locationGmtOffsetInt >= 0 ? "+" : "") + locationGmtOffsetInt / 60;
+    const dateGmtOffsetString = "GMT" + (fileGmtOffsetInt >= 0 ? "+" : "") + fileGmtOffsetInt / 60;
+    const localGmtOffsetString = "GMT" + (localGmtOffsetInt >= 0 ? "+" : "") + localGmtOffsetInt / 60;
 
-    if (isNaN(dataGmtOffsetInt) || isNaN(locationGmtOffsetInt)) {
+    if (isNaN(fileGmtOffsetInt) || isNaN(localGmtOffsetInt)) {
         gmtOffsetLabel.textContent = 'Error in time conversion';
-        locationOffsetLabel.textContent = 'Error in time conversion';
+        localOffsetLabel.textContent = 'Error in time conversion';
         return;
     }
 
-    const gmtOffset = dataGmtOffsetInt * 60 * 1000;
-    const locationOffset = locationGmtOffsetInt * 60 * 1000;
+    const gmtOffset = fileGmtOffsetInt * 60 * 1000;
+    const localOffset = localGmtOffsetInt * 60 * 1000;
 
-    const dataTime = new Date(selectedTime.getTime());
+    const fileTime = new Date(selectedTime.getTime());
     const gmtTime = new Date(selectedTime.getTime() - gmtOffset);
-    const locationTime = new Date(gmtTime.getTime() + locationOffset);
+    const localTime = new Date(gmtTime.getTime() + localOffset);
 
     gmtOffsetLabel.textContent = `GMT Time (GMT+0): ${gmtTime.toLocaleString('en-GB')}`;
-    locationOffsetLabel.textContent = `Location Time (` + locationGmtOffsetString + `): ${locationTime.toLocaleString('en-GB')}`;
-    dataTimeLabel.textContent = `Data Time (${dateGmtOffsetString}): ${dataTime.toLocaleString('en-GB')}`;
+    localOffsetLabel.textContent = `Local Time (` + localGmtOffsetString + `): ${localTime.toLocaleString('en-GB')}`;
+    fileTimeLabel.textContent = `File Time (${dateGmtOffsetString}): ${fileTime.toLocaleString('en-GB')}`;
 
 
 
     gmtOffsetLabel.style.display = 'block';
-    dataTimeLabel.style.display = 'block';
-    locationOffsetLabel.style.display = 'block';
+    fileTimeLabel.style.display = 'block';
+    localOffsetLabel.style.display = 'block';
 }
 

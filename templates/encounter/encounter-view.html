@@ -69,7 +69,7 @@
         <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post"
             enctype="multipart/form-data">
             {% from 'recording/recording-form-template.html' import recording_form %}
-            {{ recording_form(editing=False, data_timezone=encounter.data_timezone, location_timezone=encounter.location_timezone, recording=None) }}
+            {{ recording_form(editing=False, file_timezone=encounter.file_timezone, local_timezone=encounter.local_timezone, recording=None) }}
 
 
             <label id="assign-user-id-label" class="bold">Assign to User</label>

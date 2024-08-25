@@ -62,7 +62,7 @@ def insert_or_update_selection(session, selection_number, file, recording_id, se
     return selection_obj
 
 
-@routes_selection.route('/contour_file_delete/<uuid:selection_id>', methods=["GET", "POST"])
+@routes_selection.route('/contour_file_delete/<selection_id>', methods=["GET", "POST"])
 @require_live_session
 def contour_file_delete(selection_id):
     print('i got here')
@@ -158,7 +158,7 @@ def process_contour():
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
 
-@routes_selection.route('/selection/selection_ignore_warnings/<uuid:selection_id>', methods=['POST'])
+@routes_selection.route('/selection/selection_ignore_warnings/<selection_id>', methods=['POST'])
 @require_live_session
 def selection_ignore_warnings(selection_id):
     # Retrieve the selection object based on the selection_id
@@ -269,7 +269,7 @@ def process_selection():
 
 
 
-@routes_selection.route('/serve_spectogram/<uuid:selection_id>')
+@routes_selection.route('/serve_spectogram/<selection_id>')
 def serve_spectogram(selection_id):
     import tempfile
     with Session() as session:
@@ -281,7 +281,7 @@ def serve_spectogram(selection_id):
         else:
             return jsonify({'error': 'Selection not found'}), 404
 
-@routes_selection.route('/serve_plot/<uuid:selection_id>')
+@routes_selection.route('/serve_plot/<selection_id>')
 def serve_plot(selection_id):
     fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
     hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
@@ -295,7 +295,7 @@ def serve_plot(selection_id):
         else:
             return jsonify({'error': 'Selection not found'}), 404
 
-@routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/contour/insert-bulk', methods=['POST'])
+@routes_selection.route('/encounter/<encounter_id>/recording/<recording_id>/contour/insert-bulk', methods=['POST'])
 @require_live_session
 def contour_insert_bulk(encounter_id, recording_id):
     with Session() as session:
@@ -329,7 +329,7 @@ def contour_insert_bulk(encounter_id, recording_id):
 
         return jsonify({'message': 'Files uploaded successfully'}), 200
 
-@routes_selection.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
+@routes_selection.route('/encounter/<encounter_id>/recording/<recording_id>/selection/insert-bulk', methods=['GET', 'POST'])
 @require_live_session
 def selection_insert_bulk(encounter_id,recording_id):
     """
@@ -383,7 +383,7 @@ def selection_insert_bulk(encounter_id,recording_id):
         
 
 
-@routes_selection.route('/selection/<uuid:selection_id>/view', methods=['GET'])
+@routes_selection.route('/selection/<selection_id>/view', methods=['GET'])
 def selection_view(selection_id):
     """
     Renders the recording view page for a specific encounter and recording.
@@ -456,7 +456,7 @@ def selection_view(selection_id):
             }
         return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict)
 
-@routes_selection.route('/selection/<uuid:selection_id>/confirm_contour_upload', methods=['POST'])
+@routes_selection.route('/selection/<selection_id>/confirm_contour_upload', methods=['POST'])
 def confirm_contour_upload(selection_id):
     with Session() as session:
         selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
@@ -464,7 +464,7 @@ def confirm_contour_upload(selection_id):
         session.commit()
         return jsonify({'success': True})
 
-@routes_selection.route('/selection/<uuid:selection_id>/confirm_no_contour_upload', methods=['POST'])
+@routes_selection.route('/selection/<selection_id>/confirm_no_contour_upload', methods=['POST'])
 def confirm_no_contour_upload(selection_id):
     with Session() as session:
         selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
@@ -489,7 +489,7 @@ def write_contour_stats(selections, filename):
     output.seek(0)
     return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
     
-@routes_selection.route('/recording/<uuid:recording_id>/extract_selection_stats', methods=['GET'])
+@routes_selection.route('/recording/<recording_id>/extract_selection_stats', methods=['GET'])
 def extract_selection_stats(recording_id):
     with Session() as session:
         selections = session.query(Selection).filter(Selection.recording_id == recording_id).all()
@@ -498,7 +498,7 @@ def extract_selection_stats(recording_id):
         return write_contour_stats(selections, filename=f"ContourStats-{recording.get_start_time_string()}.csv")
 
 
-@routes_selection.route('/encounter/<uuid:encounter_id>/extract_selection_stats', methods=['GET'])
+@routes_selection.route('/encounter/<encounter_id>/extract_selection_stats', methods=['GET'])
 def extract_selection_stats_for_encounter(encounter_id):
     with Session() as session:
         selections = []

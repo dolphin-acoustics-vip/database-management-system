@@ -65,8 +65,8 @@ def encounter_insert():
         notes = request.form['notes']
 
 
-        data_timezone = request.form['data-timezone']
-        location_timezone = request.form['location-timezone']
+        file_timezone = request.form['file-timezone']
+        local_timezone = request.form['local-timezone']
 
         try:
             new_encounter = Encounter()
@@ -79,8 +79,8 @@ def encounter_insert():
             new_encounter.set_longitude(longitude)
             new_encounter.set_data_source_id(data_source)
             new_encounter.set_recording_platform_id(recording_platform)
-            new_encounter.set_data_timezone(data_timezone)
-            new_encounter.set_location_timezone(location_timezone)
+            new_encounter.set_file_timezone(file_timezone)
+            new_encounter.set_local_timezone(local_timezone)
             session.add(new_encounter)
             session.commit()
             flash(f'Encounter added: {encounter_name}', 'success')
@@ -91,7 +91,7 @@ def encounter_insert():
             return redirect(url_for('encounter.encounter'))
 
 
-@routes_encounter.route('/encounter/<uuid:encounter_id>/view', methods=['GET'])
+@routes_encounter.route('/encounter/<encounter_id>/view', methods=['GET'])
 @login_required
 def encounter_view(encounter_id):
     """
@@ -105,6 +105,9 @@ def encounter_view(encounter_id):
             encounter = shared_functions.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
             species = shared_functions.create_system_time_request(session, Species, {"id":encounter.species_id}, one_result=True)
             encounter.species=species
+            
+            if encounter is None:
+                raise exception_handler.NotFoundException("Encounter not found")
 
             #encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
             #recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
@@ -131,7 +134,7 @@ def encounter_view(encounter_id):
 
         return shared_functions.page_not_found(e, url_for("encounter.encounter_view", encounter_id=encounter_id))
     
-@routes_encounter.route('/encounter/<uuid:encounter_id>/edit', methods=['GET'])
+@routes_encounter.route('/encounter/<encounter_id>/edit', methods=['GET'])
 @login_required
 @require_live_session
 def encounter_edit(encounter_id):
@@ -146,7 +149,7 @@ def encounter_edit(encounter_id):
         return render_template('encounter/encounter-edit.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
 
-@routes_encounter.route('/encounter/<uuid:encounter_id>/update', methods=['POST'])
+@routes_encounter.route('/encounter/<encounter_id>/update', methods=['POST'])
 @login_required
 @require_live_session
 def encounter_update(encounter_id):
@@ -163,8 +166,8 @@ def encounter_update(encounter_id):
             encounter.set_data_source_id(request.form['data_source'])
             encounter.set_recording_platform_id(request.form['recording_platform'])
             encounter.set_notes(request.form['notes'])
-            encounter.set_data_timezone(request.form['data-timezone'])
-            encounter.set_location_timezone(request.form['location-timezone'])
+            encounter.set_file_timezone(request.form['file-timezone'])
+            encounter.set_local_timezone(request.form['local-timezone'])
             encounter.update_call(session)
             session.commit()
             flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
@@ -175,7 +178,7 @@ def encounter_update(encounter_id):
             return redirect(url_for('encounter.encounter'))
         
 
-@routes_encounter.route('/encounter/<uuid:encounter_id>/delete', methods=['POST'])
+@routes_encounter.route('/encounter/<encounter_id>/delete', methods=['POST'])
 @login_required
 @require_live_session
 def encounter_delete(encounter_id):

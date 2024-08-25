@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS `data_source`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `data_source` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `name` varchar(255) NOT NULL,
   `phone_number1` varchar(20) DEFAULT NULL,
   `phone_number2` varchar(20) DEFAULT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE `data_source` (
   `address` text DEFAULT NULL,
   `notes` text DEFAULT NULL,
   `type` enum('person','organisation') DEFAULT NULL,
-  `updated_by_id` uuid DEFAULT NULL,
+  `updated_by_id` CHAR(36) DEFAULT NULL,
   KEY `fk_updated_by_id_data_source` (`updated_by_id`),
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`,`email1`),
@@ -59,21 +59,21 @@ DROP TABLE IF EXISTS `encounter`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `encounter` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `encounter_date` DATE,
-  `data_timezone` int(4),
-  `location_timezone` int(4),
+  `file_timezone` int(4),
+  `local_timezone` int(4),
   `encounter_name` varchar(100) NOT NULL,
   `location` varchar(100) NOT NULL,
-  `species_id` uuid NOT NULL,
+  `species_id` CHAR(36) NOT NULL,
   `project` varchar(100) NOT NULL,
   `longitude` varchar(20) DEFAULT NULL,
   `latitude` varchar(20) DEFAULT NULL,
   `notes` varchar(1000) DEFAULT NULL,
   `date_received` date DEFAULT NULL,
-  `data_source_id` uuid DEFAULT NULL,
-  `recording_platform_id` uuid DEFAULT NULL,
-  `updated_by_id` uuid DEFAULT NULL,
+  `data_source_id` CHAR(36) DEFAULT NULL,
+  `recording_platform_id` CHAR(36) DEFAULT NULL,
+  `updated_by_id` CHAR(36) DEFAULT NULL,
   `created_datetime` TIMESTAMP DEFAULT NOW(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `encounter_name` (`encounter_name`,`location`,`project`),
@@ -107,12 +107,12 @@ DROP TABLE IF EXISTS `file`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `file` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `path` text NOT NULL,
   `filename` varchar(255) NOT NULL,
   `extension` varchar(10) NOT NULL,
   `uploaded_date` datetime DEFAULT NULL,
-  `updated_by_id` uuid DEFAULT NULL,
+  `updated_by_id` CHAR(36) DEFAULT NULL,
   `duration` int(11) DEFAULT NULL,
   `upload_datetime` TIMESTAMP DEFAULT NOW(),
   `original_filename` varchar(255) DEFAULT NULL,
@@ -130,14 +130,14 @@ DROP TABLE IF EXISTS `recording`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `recording` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `start_time` DATETIME NOT NULL,
   `duration` int(11) DEFAULT NULL,
-  `recording_file_id` uuid DEFAULT NULL,
-  `selection_table_file_id` uuid DEFAULT NULL,
-  `encounter_id` uuid NOT NULL,
+  `recording_file_id` CHAR(36) DEFAULT NULL,
+  `selection_table_file_id` CHAR(36) DEFAULT NULL,
+  `encounter_id` CHAR(36) NOT NULL,
   `ignore_selection_table_warnings` tinyint(1) NOT NULL DEFAULT 0,
-  `updated_by_id` uuid DEFAULT NULL,
+  `updated_by_id` CHAR(36) DEFAULT NULL,
   `created_datetime` TIMESTAMP DEFAULT NOW(),
   `status` enum('Unassigned','In Progress', 'Awaiting Review', 'Reviewed', 'On Hold') DEFAULT 'Unassigned',
   `status_change_datetime` TIMESTAMP DEFAULT NULL,
@@ -167,9 +167,9 @@ DROP TABLE IF EXISTS `recording_platform`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `recording_platform` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `name` varchar(100) NOT NULL,
-  `updated_by_id` uuid DEFAULT NULL,
+  `updated_by_id` CHAR(36) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_updated_by_id_recording_platform` (`updated_by_id`),
   UNIQUE KEY `unique_name` (`name`),
@@ -201,7 +201,7 @@ CREATE TABLE `role` (
   `name` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -228,11 +228,11 @@ DROP TABLE IF EXISTS `selection`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `selection` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `selection_number` int(11) NOT NULL,
-  `selection_file_id` uuid DEFAULT NULL,
-  `recording_id` uuid NOT NULL,
-  `contour_file_id` uuid DEFAULT NULL,
+  `selection_file_id` CHAR(36) DEFAULT NULL,
+  `recording_id` CHAR(36) NOT NULL,
+  `contour_file_id` CHAR(36) DEFAULT NULL,
   `sampling_rate` double DEFAULT NULL,
   `view` varchar(30) DEFAULT NULL,
   `channel` int(4) DEFAULT NULL,
@@ -245,6 +245,7 @@ CREATE TABLE `selection` (
   `average_power` double DEFAULT NULL,
   `annotation` varchar(10) DEFAULT NULL,  
   `traced` boolean DEFAULT NULL,
+  `deactivated` boolean DEFAULT 0,
   `freq_max` double DEFAULT NULL,
   `freq_min` double DEFAULT NULL,
   `duration` double DEFAULT NULL,
@@ -301,10 +302,10 @@ CREATE TABLE `selection` (
   `inflection_mediandelta` double DEFAULT NULL,
   `inflection_duration` double DEFAULT NULL,
   `step_duration` double DEFAULT NULL,
-  `updated_by_id` uuid DEFAULT NULL,
-  `ctr_file_id` uuid DEFAULT NULL,
-  `spectogram_file_id` uuid DEFAULT NULL,
-  `plot_file_id` uuid DEFAULT NULL,	
+  `updated_by_id` CHAR(36) DEFAULT NULL,
+  `ctr_file_id` CHAR(36) DEFAULT NULL,
+  `spectogram_file_id` CHAR(36) DEFAULT NULL,
+  `plot_file_id` CHAR(36) DEFAULT NULL,	
   `default_fft_size` int(4) DEFAULT NULL,
   `deactivate_selection` BOOLEAN NOT NULL DEFAULT 0,
   `default_hop_size` int(4) DEFAULT NULL,
@@ -337,11 +338,11 @@ DROP TABLE IF EXISTS `species`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `species` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `species_name` varchar(100) NOT NULL,
   `genus_name` varchar(100) DEFAULT NULL,
   `common_name` varchar(100) DEFAULT NULL,
-  `updated_by_id` uuid DEFAULT NULL,
+  `updated_by_id` CHAR(36) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_updated_by_id_species` (`updated_by_id`),
   UNIQUE KEY `species_name` (`species_name`),
@@ -369,7 +370,7 @@ DROP TABLE IF EXISTS `user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `user` (
-  `id` uuid NOT NULL DEFAULT uuid(),
+  `id` CHAR(36) NOT NULL DEFAULT uuid(),
   `login_id` varchar(100) DEFAULT NULL,
   `password` varchar(100) DEFAULT NULL,
   `name` varchar(1000) DEFAULT NULL,
@@ -381,7 +382,7 @@ CREATE TABLE `user` (
   UNIQUE KEY `login_id` (`login_id`),
   KEY `role_id` (`role_id`),
   CONSTRAINT `user_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `role` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -409,8 +410,8 @@ UNLOCK TABLES;
 
 DROP TABLE IF EXISTS `assignment`;
 CREATE TABLE `assignment` (
-  `user_id` uuid NOT NULL,
-  `recording_id` uuid NOT NULL,
+  `user_id` CHAR(36) NOT NULL,
+  `recording_id` CHAR(36) NOT NULL,
   `created_datetime` TIMESTAMP NOT NULL DEFAULT NOW(),
   `completed_flag` tinyint(1) NOT NULL DEFAULT 0,	
   `notes` text,

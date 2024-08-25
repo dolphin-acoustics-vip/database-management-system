@@ -31,18 +31,7 @@
         {% if current_user.role_id in [1, 2] %}
         <hr>
 
-        <h3>Spectogram and Contour Plot</h3>
-        <div style="display: flex;  margin-top: 20px; margin-bottom: 20px; align-items:center;">
-            <img style="width:80%" id="plot-image" src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot">
 
-            <form style="width:15%; margin-left: 20px; align-items:center;" id="plot-form">
-            <label for="fft-size">FFT Size:</label>
-            <input type="number" id="fft-size" name="fft-size" value="{{ selection.default_fft_size if selection.default_fft_size else 2048}}">
-            <label for="hop-size">Hop Size:</label>
-            <input type="number" id="hop-size" name="hop-size" value="{{ selection.default_hop_size if selection.default_hop_size else 512}}">
-            <button class="gray small" type="submit" style="margin-top: 0.7rem;">Apply</button>
-          </form>
-    </div>
         <hr>
         <section>
             <div class="audit-history">
@@ -73,7 +62,18 @@
         </section>
         <hr>
         {% endif %}
+        <h3>Spectogram and Contour Plot</h3>
+        <div style="display: flex;  margin-top: 20px; margin-bottom: 20px; align-items:center;">
+            <img style="width:80%" id="plot-image" src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot">
 
+            <form style="width:15%; margin-left: 20px; align-items:center;" id="plot-form">
+            <label for="fft-size">FFT Size:</label>
+            <input type="number" id="fft-size" name="fft-size" value="{{ selection.default_fft_size if selection.default_fft_size else 2048}}">
+            <label for="hop-size">Hop Size:</label>
+            <input type="number" id="hop-size" name="hop-size" value="{{ selection.default_hop_size if selection.default_hop_size else 512}}">
+            <button class="gray small" type="submit" style="margin-top: 0.7rem;">Apply</button>
+          </form>
+    </div>
 
         <hr>
         {% if selection.selection_file %}
@@ -84,7 +84,7 @@
         {% endif %}
         {% if selection.contour_file %}
             <a class="button small" href="{{url_for('download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download Contour File</a>
-            <a class="button small" href="{{ url_for('get_file_details', file_id=selection.selection_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See Contour File Details</a>
+            <a class="button small" href="{{ url_for('get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See Contour File Details</a>
 
             {% else %}
             <p style="margin-right:10px;">This selection has no contour file.</p>	

@@ -41,11 +41,12 @@ app.register_blueprint(routes_healthcentre)
 def handle_operational_error(e):
     print(e)
     # Redirect the user to a custom error page
-    return redirect(url_for('operational_error'))
-
-@app.route('/operational-error', endpoint='operational_error')
-def operational_error():
     return render_template('operational-error.html')
+
+@app.errorhandler(Exception)
+def handle_error(ex):
+    return render_template('error.html', error_code=404, error_message='A fatal error has ocurred. Please contact your administrator.', goback_link='/home', goback_message="Home")
+
 
 # 404 Error Handler
 @app.errorhandler(404)
@@ -79,7 +80,8 @@ def gateway_timeout(e):
 
 @app.errorhandler(NotFoundException)
 def not_found(e):
-    return render_template('error.html', error_code=404, error_message='This page does not exist.', goback_link='/home', goback_message="Home")
+    print(e)
+    return render_template('error.html', error_code=404, error=str(e), goback_link='/home', goback_message="Home")
 
 # Generic Error Handler
 # @app.errorhandler(Exception)
@@ -92,7 +94,7 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-@app.route('/file-details/<uuid:file_id>')
+@app.route('/file-details/<file_id>')
 def get_file_details(file_id):
     file_details = request.args.get('file_details')
     with Session() as session:

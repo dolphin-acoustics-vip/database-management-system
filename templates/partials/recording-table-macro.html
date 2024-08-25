@@ -10,13 +10,9 @@
     <tr>
             <td>
 
-                <div id="time-offsets-{{ recording.id }}" >
-                    <input hidden type="text" id="start-time-{{ recording.id }}" name="start-time-{{ recording.id }}" value="{{ recording.get_start_time() }}">
 
-                    <label style="display: none;" class="bold" id="data-time-label-{{ recording.id }}"></label>
-                    <label hidden style="display: none;" id="gmt-offset-label-{{ recording.id }}"></label>
-                    <label hidden style="display: none;" id="location-offset-label-{{ recording.id }}"></label>
-                </div>
+
+                <label for="start-time-{{ recording.id }}" >{{ recording.get_start_time() }}</label><br>
                 
             </td>
                 <script>

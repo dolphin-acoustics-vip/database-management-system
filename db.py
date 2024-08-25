@@ -59,6 +59,9 @@ app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
 
 # Configure the database connection using SQLAlchemy and MariaDB
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
+
+# USED FOR THE Docker TEST ENVIRONMENT:
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:test123@127.0.0.1:3306/test_database'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize the SQLAlchemy database

@@ -81,7 +81,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     return new_recording
 
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/add', methods=['POST'])
+@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/selection-table/add', methods=['POST'])
 @require_live_session
 @exclude_role_4
 @login_required
@@ -118,7 +118,7 @@ def recording_selection_table_add(encounter_id,recording_id):
 import csv
 from flask import Response
 from io import StringIO
-@routes_recording.route('/export-selection-table/<uuid:recording_id>/<export_format>')
+@routes_recording.route('/export-selection-table/<recording_id>/<export_format>')
 @require_live_session
 @login_required
 def export_selection_table(recording_id, export_format):
@@ -165,7 +165,7 @@ def export_selection_table(recording_id, export_format):
         return response
 
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/selection-table/delete', methods=['POST'])
+@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/selection-table/delete', methods=['POST'])
 @require_live_session
 @exclude_role_4
 @login_required
@@ -191,7 +191,7 @@ def recording_selection_table_delete(encounter_id, recording_id):
         finally:
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/insert', methods=['POST'])
+@routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -213,7 +213,7 @@ def recording_insert(encounter_id):
 
     
 
-@routes_recording.route('/recording/<uuid:recording_id>/view', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/view', methods=['GET'])
 @login_required
 def recording_view(recording_id):
     """
@@ -245,7 +245,7 @@ def recording_view(recording_id):
         
         return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned)
 
-@routes_recording.route('/recording/<uuid:recording_id>/update_notes', methods=['POST'])
+@routes_recording.route('/recording/<recording_id>/update_notes', methods=['POST'])
 @require_live_session
 @exclude_role_4
 @login_required
@@ -269,7 +269,7 @@ def flag_user_assignment(session, recording_id, user_id, completed_flag):
         recording.update_status_upon_assignment_flag_change(session)
         session.commit()
 
-@routes_recording.route('/recording/<uuid:recording_id>/<uuid:user_id>/flag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/<user_id>/flag-as-completed', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -279,7 +279,7 @@ def flag_as_complete_for_user(recording_id, user_id):
         flag_user_assignment(session, recording_id, user_id, True)
         return jsonify({'message': 'Success'})
 
-@routes_recording.route('/recording/<uuid:recording_id>/<uuid:user_id>/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/<user_id>/unflag-as-completed', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -289,7 +289,7 @@ def unflag_as_complete_for_user(recording_id, user_id):
         flag_user_assignment(session, recording_id, user_id, False)
         return jsonify({'message': 'Success'})
 
-@routes_recording.route('/recording/<uuid:recording_id>/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/unflag-as-completed', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -301,7 +301,7 @@ def unflag_as_complete(recording_id):
 
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/recording/<uuid:recording_id>/flag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/flag-as-completed', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -312,7 +312,7 @@ def flag_as_complete(recording_id):
         flag_user_assignment(session, recording_id, current_user.id, True)
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/recording/<uuid:recording_id>/update', methods=['POST'])
+@routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -334,7 +334,7 @@ def recording_update(recording_id):
             session.rollback()
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/encounter/<uuid:encounter_id>/recording/<uuid:recording_id>/delete', methods=['GET'])
+@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -355,7 +355,7 @@ def recording_delete(encounter_id,recording_id):
             session.rollback()
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
-@routes_recording.route('/encounter/recording/<uuid:recording_id>/recording-file/<uuid:file_id>/delete',methods=['GET'])
+@routes_recording.route('/encounter/recording/<recording_id>/recording-file/<file_id>/delete',methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -385,7 +385,7 @@ def recording_file_delete(recording_id,file_id):
             session.rollback()
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/recording/<uuid:recording_id>/recording_delete_selections', methods=['DELETE'])
+@routes_recording.route('/recording/<recording_id>/recording_delete_selections', methods=['DELETE'])
 @require_live_session
 @exclude_role_4
 @login_required
@@ -430,12 +430,26 @@ def extract_date():
         hour = match.group(4)
         minute = match.group(5)
         second = match.group(6)
-        
         date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
         date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
+    if not match:
+        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', filename)
+        if match:
+            year = match.group(1)
+            month = match.group(2)
+            day = match.group(3)
+            hour = match.group(4)
+            minute = match.group(5)
+            second = match.group(6)
+            date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+            date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
+
+
+        
+
     return jsonify(date=date)
 
-@routes_recording.route('/assign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+@routes_recording.route('/assign_recording/<user_id>/<recording_id>', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -457,7 +471,7 @@ def assign_recording(user_id, recording_id):
         return jsonify(success=True)
             
 
-@routes_recording.route('/unassign_recording/<uuid:user_id>/<uuid:recording_id>', methods=['GET'])
+@routes_recording.route('/unassign_recording/<user_id>/<recording_id>', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -473,7 +487,7 @@ def unassign_recording(user_id, recording_id):
             handle_sqlalchemy_exception(session, e)
         return jsonify(success=True)
 
-@routes_recording.route('/recording/<uuid:recording_id>/recalculate-contour-statistics', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/recalculate-contour-statistics', methods=['GET'])
 @login_required
 @exclude_role_4
 @require_live_session
@@ -521,7 +535,7 @@ def download_files(file_paths, file_names, zip_filename):
             shutil.copy(file_path, new_file_path)
         
         return zip_and_download_files([os.path.join(temp_dir, file) for file in os.listdir(temp_dir)], zip_filename)
-@routes_recording.route('/recording/<uuid:recording_id>/download-ctr-files', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/download-ctr-files', methods=['GET'])
 @login_required
 def download_ctr_files(recording_id):
     with Session() as session:
@@ -536,7 +550,7 @@ def download_ctr_files(recording_id):
         
         return response
     
-@routes_recording.route('/recording/<uuid:recording_id>/download-selection-files', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/download-selection-files', methods=['GET'])
 @login_required
 def download_selection_files(recording_id):
     with Session() as session:
@@ -551,7 +565,7 @@ def download_selection_files(recording_id):
         
         return response
 
-@routes_recording.route('/recording/<uuid:recording_id>/download-contour-files', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/download-contour-files', methods=['GET'])
 @login_required
 def download_contour_files(recording_id):
     with Session() as session:
@@ -568,7 +582,7 @@ def download_contour_files(recording_id):
         return response
     
 
-@routes_recording.route('/recording/<uuid:recording_id>/download-recording-file', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/download-recording-file', methods=['GET'])
 @login_required
 def download_recording_file(recording_id):
     with Session() as session:
@@ -577,7 +591,7 @@ def download_recording_file(recording_id):
         download_file_name = recording.generate_recording_filename()
 
         return send_file(file_name, as_attachment=True, download_name=download_file_name)
-@routes_recording.route('/recording/<uuid:recording_id>/mark_as_complete', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['GET'])
 @require_live_session
 @login_required
 @exclude_role_3
@@ -589,7 +603,7 @@ def mark_as_complete(recording_id):
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/recording/<uuid:recording_id>/mark_as_on_hold', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/mark_as_on_hold', methods=['GET'])
 @require_live_session
 @login_required
 @exclude_role_3

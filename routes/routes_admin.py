@@ -36,7 +36,7 @@ def admin_dashboard():
         species_list = session.query(Species).all()
         return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list, species_list=species_list)
 
-@routes_admin.route('/admin/data-source/<uuid:data_source_id>/view', methods=['GET'])
+@routes_admin.route('/admin/data-source/<data_source_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -54,7 +54,7 @@ def admin_data_source_view(data_source_id):
             handle_sqlalchemy_exception(session, e)
             return redirect(url_for('admin.admin_dashboard'))
         
-@routes_admin.route('/admin/data-source/<uuid:data_source_id>/edit', methods=['POST'])
+@routes_admin.route('/admin/data-source/<data_source_id>/edit', methods=['POST'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -138,7 +138,7 @@ def admin_data_source_insert():
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
-@routes_admin.route('/admin/data-source/<uuid:data_source_id>/delete', methods=['GET'])
+@routes_admin.route('/admin/data-source/<data_source_id>/delete', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -160,7 +160,7 @@ def admin_data_source_delete(data_source_id):
             
     return redirect(url_for('admin.admin_dashboard'))
 
-@routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/view', methods=['GET'])
+@routes_admin.route('/admin/recording-platform/<recording_platform_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -178,7 +178,7 @@ def admin_recording_platform_view(recording_platform_id):
             handle_sqlalchemy_exception(session, e)
             return redirect(url_for('admin.admin_dashboard'))
         
-@routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/edit', methods=['POST'])
+@routes_admin.route('/admin/recording-platform/<recording_platform_id>/edit', methods=['POST'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -238,7 +238,7 @@ def admin_recording_platform_insert():
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
-@routes_admin.route('/admin/recording-platform/<uuid:recording_platform_id>/delete', methods=['GET'])
+@routes_admin.route('/admin/recording-platform/<recording_platform_id>/delete', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -259,7 +259,7 @@ def admin_recording_platform_delete(recording_platform_id):
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
-@routes_admin.route('/admin/species/<uuid:species_id>/view', methods=['GET'])
+@routes_admin.route('/admin/species/<species_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -279,7 +279,7 @@ def admin_species_view(species_id):
             handle_sqlalchemy_exception(session, e)
             return redirect(url_for('admin.admin_dashboard'))
     
-@routes_admin.route('/admin/species/<uuid:species_id>/edit', methods=['POST'])
+@routes_admin.route('/admin/species/<species_id>/edit', methods=['POST'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -314,7 +314,7 @@ def admin_species_edit(species_id):
         return redirect(url_for('admin.admin_dashboard'))
 
 
-@routes_admin.route('/admin/species/<uuid:species_id>/delete', methods=['POST'])
+@routes_admin.route('/admin/species/<species_id>/delete', methods=['POST'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -396,7 +396,7 @@ def admin_user():
         return render_template('admin/admin-user.html', users=users, temporary_users=temporary_users)
     
     
-@routes_admin.route('/admin/user/<uuid:user_id>/view', methods=['GET'])
+@routes_admin.route('/admin/user/<user_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -454,7 +454,7 @@ def update_or_insert_user(session, user, request, login_id=None, is_temporary=Fa
         session.rollback()
     return redirect(url_for('admin.admin_user'))
     
-@routes_admin.route('/admin/user/<uuid:user_id>/update', methods=['POST'])
+@routes_admin.route('/admin/user/<user_id>/update', methods=['POST'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -533,7 +533,7 @@ def admin_temporary_user_insert():
         session.add(user)
         return update_or_insert_user(session, user, request, login_id=uuid.uuid4(), is_temporary=True, role_id=4)
 
-@routes_admin.route('/admin/temporary-user/<uuid:user_id>/view', methods=['GET'])
+@routes_admin.route('/admin/temporary-user/<user_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session
@@ -548,7 +548,7 @@ def admin_temporary_user_view(user_id):
         roles = session.query(Role).all()
         return render_template('admin/admin-temporary-user-view.html', user=user, roles=roles,datetime=datetime)
 
-@routes_admin.route('/admin/temporary-user/<uuid:user_id>/update', methods=['POST'])
+@routes_admin.route('/admin/temporary-user/<user_id>/update', methods=['POST'])
 @exclude_role_4
 @exclude_role_3
 @require_live_session

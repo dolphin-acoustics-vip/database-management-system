@@ -106,10 +106,12 @@ def create_system_time_between_request(session, db_object, start_date, end_date,
 
     # Create a list of dictionaries with column names as keys
     recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
-
+    print('I GOT HERE')
     for recording_history_item in recording_history:
         if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
-            recording_history_item['updated_by'] = session.query(User).filter_by(id=uuid.UUID(recording_history_item['updated_by_id'])).first()  
+            print('QUERY USER')
+            print(session.query(User).filter_by(id=recording_history_item['updated_by_id']).first() )
+            recording_history_item['updated_by'] = session.query(User).filter_by(id=recording_history_item['updated_by_id']).first()  
         else:
             recording_history_item['updated_by'] = None 
     # Sort the data by 'row_start' dates
@@ -166,10 +168,9 @@ def create_all_time_request(session, db_object, filters=None, order_by=None):
 
     # Create a list of dictionaries with column names as keys
     recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
-
     for recording_history_item in recording_history:
         if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
-            recording_history_item['updated_by'] = session.query(User).filter_by(id=uuid.UUID(recording_history_item['updated_by_id'])).first()  
+            recording_history_item['updated_by'] = session.query(User).filter_by(id=recording_history_item['updated_by_id']).first()  
         else:
             recording_history_item['updated_by'] = None 
     # Sort the data by 'row_start' dates
