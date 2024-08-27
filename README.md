@@ -1,6 +1,6 @@
 > ⚠️ **Warning:** this project is still in a developmental stage. Some sections of the code and documentation may be incomplete.
 
-[Wiki page](wiki/).
+[Wiki page](wiki/Administration).
 
 # Dolphin Acoustics VIP Database Management System
 
