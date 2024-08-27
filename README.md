@@ -1,5 +1,7 @@
 > ⚠️ **Warning:** this project is still in a developmental stage. Some sections of the code and documentation may be incomplete.
 
+[Wiki page](wiki/).
+
 # Dolphin Acoustics VIP Database Management System
 
 The Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews (the Project).
@@ -124,50 +126,10 @@ The password for a particular host and user can be set using the following comma
 `
 
 ### Other setup instructions
-If Google Maps are desired to view encounter coordinates, a Maps Embed API key is required to be placed in [google_api_key.txt](google_api_key.txt) in the program root. See [here](https://developers.google.com/maps/documentation/embed/get-api-key) for more details.
-
 To start the server, run [app.py](app.py) from within the Python virtual environment from the root directory.
 
 
-## The Meta Base
-The metadata for each file is stored in a MariaDB database, otherwise called the Meta Base. See [Initialising the Meta Base](#initialising-the-meta-base).
-
-The Meta Base currently models most data from the point of an audio recording to storing selections. An entity relationship diagram for the current Meta Base is shown below, where each entity contains attributes and foreign key references to other tables.
-
-![ER Diagram](documentation/readme-resources/er-diagram.png)
-
-Each tuple in all tables are given a Universally Unique Identifier ([UUID](https://www.cockroachlabs.com/blog/what-is-a-uuid/)) such that foreign key references are simpler to implement. Additional unique and nullity constraints are also enforced on each table to standardise data quality assurance (please see [create_database.sql](create_database.sql) for more information).
-
-The following subsections describe the tables from the ER diagram in more detail.
-
-#### Encounter
-Stores information on a marine animal encounter. Categorical information is stored using foreign keys to separate tables (*species*, *data_source*, and *recording_platform*) while other information in attributes.
-
-#### File
-Stores general metadata on a file stored in the File Space, such as the filename, extension, and upload date. Each file is given a unique UUID that is referenced by other entities that require file storage.
-
-#### Recording
-Stores information on each recording in an encounter. Intuitively, each *recording* references an *encounter* (many-to-one). 
-
-#### Selection
-Stores a particular selection (otherwise known as clip) from a recording. Intuitively, each *selection* references a *recording*.
-
-
-## The File Space
-All data files stored by the user in the DBMS are placed in the File Space. The File Space should already be initialised [above](#setting-up-the-file-space).
-
-> ⚠️ **Warning:** the File Space should rarely be manually modified by the Developer and never by the User. This is because changing file paths would invalidate the file references in the Meta Base.
-
-An important aspect of the File Space is its heirarchical structure, and the fact that can be understood by the user. Namely, when a file is added to the DBMS, it is placed in an intuitive location within the File Space. With read-only permissions, a user could then access files without using the Web App as an intermediary.
-
-The structure of the file space is shown below, notingt that the contour WAV file is not yet developed in the DBMS. 
-
-![File Space](documentation/readme-resources/file-space.png)
-
-*The File Space shown in a diagramattic form. Note that the naming conventions are for demonstration purposes only and do not accurately reflect the implementation of the File Space*
-
-
-## The Web App
+# The Web App
 The Web App brings together the Meta Base and the File Space into a single user interface. The Web App utilises the Flask library.
 
 The following folders exist in the Web App's root directory (note that a *module* refers to a compartamentalised section of code pertaining to a specific functionality such as encounter, recording or selection):
@@ -178,19 +140,19 @@ The following folders exist in the Web App's root directory (note that a *module
 - [db.py](db.py) handles database connection and the loading of external files such as [file_space_path.txt](file_space_path.txt) and [google_api_key.txt](google_api_key.txt).
 - [app.py](app.py) is the mainline which calls `db.py` and loads all `routes`.
 
-### Templates and static files
+## Templates and static files
 Templates are pre-designed layouts that arrange content on a webpage, usually written in HTML. Found in the `templates` folder, templates are structured into modular sub-categories for set functions.
 
 The template [templates/partials/header.html]() defines a reusable header at the top of each page.
 
-Styling (or CSS) files are stored in the `static` folder. These files are referenced in each of the templates through a resource route specified in [app.py](app.py).
+Styling (or CSS) and Javascript files are stored in the `static` folder. These files are referenced in each of the templates through a resource route specified in [app.py](app.py).
 
-### Routes
+## Routes
 Routes are a server-side URL schema which describe interfaces through which a client can interact with a web app. Routes follow a Hypertext Transfer Protocol (HTTP) through which requests such as `GET` and `POST` can be made. Any request sent to the server that matches a defined URL schema is handed to the associated method defined in [routes](). 
 
 > The majority of routes exist in the folder [routes](), however the mainline [app.py]() also contains some basic routes such as `/home` and `/`, where the latter redirects to the prior.
 
-#### Requests
+### Requests
 HTTP has a large number of possible request types. For simplicity, the Web App uses:
 - `GET` to load templates and/or send information to the client;
 - `POST` to send information from the client to the server, usually to complete a CRUD operation in the Meta Base.
@@ -202,18 +164,63 @@ The classes for each relation are written in [models.py](models.py) using the [F
 
 Additional methods also exist within each ORM class as to provide APIs for the program to interact with the database, such as:
 
-#### `update_call()` 
-This method is a generic method that could be used to implement clean-up or quality-assurance checks. In addition, calling the `update_call()` method in a master would subsequently call `update_call()` in all its slaves. 
-
-> An example of the update_call method being used is when metadata of a *species* is changed. Each *encounter*, *recording*, and *selection* that are slave to that *species* would have their own `update_call()` methods added to the call stack. Functionality written in these methods would then update the files in the File Space to include the updated species data.
-
-
-#### `delete()`
-This method prevents foreign key error references upon delete. Upon the deletion request of a master object (by calling `delete()` in the master), the  `delete()` method in each slave is added to the call stack, which ensures all slaves are removed from the database before a master.
-
-> ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
-
 ### Session handling
 As data must be synchronised between the File Space and Meta Base, atomicity is crucial. An atomic database transaction is one where either all required operations occur or none at all.
 
 To implement atomicity in the Web App, all database operations are bundled into sessions. If an error is produced in interacting with the File Space, any metadata changes pertaining to the request are rolled back. 
+
+To prevent orphaned files from appearing in the database, all database changes are flushed (`flush()`) before any files are moved. This way, any issues appearing due to the flush are caught and handled (or passed to the user) before creating irreversible file changes.
+
+# Data Model
+
+## Overview
+
+The data is stored in a MariaDB database using SQLAlchemy. Each table is represented by a class in Python, defined in [models.py](../models.py). 
+
+## Unique IDs
+
+Most tables use unique IDs as primary keys, generated using MariaDB's UUID() method. This creates a 36-character string in the format `XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX`. Unique constraints are also defined separately on specific attributes to ensure data integrity.
+
+## File Storage
+
+> ⚠️ **Warning:** the File Space should rarely be manually modified by the Developer and never by the User. This is because changing file paths would invalidate the file references in the Meta Base.
+
+![File Space](documentation/readme-resources/file-space.png)
+
+*The File Space shown in a diagramattic form. Note that the naming conventions are for demonstration purposes only and do not accurately reflect the implementation of the File Space*
+
+Files are stored in unique paths, with each file represented by a `File` class object. All data files stored by the user in the DBMS are placed in the File Space. The File Space should already be initialised [above](#setting-up-the-file-space). The following techniques are used for file storage:
+
+### Creating a Unique Path
+
+When a file needs to be saved, a new `File` object is created and referenced as a foreign key in its parent class. The parent class provides the path (directory and filename) to the `File` object. This ensures that each file is associated with a specific parent object and can be easily retrieved.
+
+* Filenames are generated using methods in the parent class. This allows for consistent naming conventions and ensures that filenames are unique within a given directory.
+* Directories are generated using methods in the parent class. This allows for a hierarchical organization of files and ensures that files are stored in a logical and consistent manner.
+
+The directory and filename are then passed to the `File` object using `insert_path_and_filename()`. This method updates the `File` object with the generated path and filename, ensuring that the file is stored in the correct location.
+
+### Changing Paths
+
+When metadata changes, the file location must be updated to reflect the new metadata. The `Encounter`, `Recording`, and `Selection` classes are responsible for updating their file locations using the `update_call()` method.
+
+* The `update_call()` method is called when metadata changes, such as when the `Encounter` name is updated.
+* The `update_call()` method calls the `move_file()` method in child `File` objects, which updates the file location to reflect the new metadata.
+
+This ensures that files are always stored in a location that reflects the current metadata, and that files can be easily retrieved using the updated metadata.
+
+### Handling Duplicate Files
+
+If a file already exists in the target path, the existing file is renamed using `File.rename_loose_file()`. This prefixes a unique ID to the existing file, allowing the file to be moved to the desired location.
+
+>Note: This should never happen, as file paths are chosen to be unique alongside the database metadata. However, in the unlikely event that a duplicate file is detected, this mechanism ensures that the file is renamed and can be stored in the desired location. An error is written to the log in this case, indicating that a duplicate file was detected and renamed. This allows for easy identification and resolution of any issues related to duplicate files.
+
+### Handling File Deletion
+
+The `delete()` method prevents foreign key error references upon delete. Upon the deletion request of a master object (by calling `delete()` in the master), the  `delete()` method in each child is added to the call stack, which ensures all slaves are removed from the database before a master.
+
+The `delete()` method in `Encounter`, `Recording`, and `Selection` are responsible for removing all their own files before returning to the master.
+
+> ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
+
+

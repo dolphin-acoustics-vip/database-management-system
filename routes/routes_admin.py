@@ -446,7 +446,7 @@ def update_or_insert_user(session, user, request, login_id=None, is_temporary=Fa
         # so if it is not checked it will not appear in the HTTP request.
         if 'is_active' in request.form:
             is_active = True
-        user.set_is_active(is_active)
+        user.activate() if is_active else user.deactivate()
         session.commit()
         flash('User updated: {}'.format(user.get_login_id()), 'success')
     else:

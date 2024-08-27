@@ -10,9 +10,9 @@ import uuid
 from db import Session, parse_alchemy_error,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
+from logger import logger
 
 routes_auth = Blueprint('auth', __name__)
-
 
 @routes_auth.route('/access-code-login', methods=['GET'])
 def access_code_login():
@@ -22,24 +22,18 @@ def access_code_login():
 def access_code_login_post():
     return render_template('home.html')
 
-
-@routes_auth.route('/profile')
-def profile():
-    return render_template('authentication/profile.html')
-
 @routes_auth.route('/login', methods=['POST'])
 def login_post():
     with Session() as session:
         email = request.form['email']
         password = request.form['password']
-        
         user = session.query(User).filter_by(login_id=email, password=password, is_temporary=0).first()
         if user:
-            if not user.is_active:
+            print('Step 2')
+            if not user.is_active():
                 flash('Your account has been deactivated. Please contact your administrator.', 'error')
                 return redirect(url_for('auth.login'))
             days_until_expiry = (user.expiry - datetime.now().date()).days
-
             if user.expiry < datetime.now().date():
                 flash('Your account has expired. Please contact your administrator.', 'error')
                 return redirect(url_for('auth.login'))
@@ -48,9 +42,8 @@ def login_post():
             if user is None:
                 flash('Invalid username or password', 'error')
                 return redirect(url_for('auth.login'))
-            
             login_user(user, remember=False)
-
+            logger.info(f'User {user.id} logged in')
             return redirect(url_for('home'))
         else:
             flash('Invalid username or password', 'error')
@@ -63,7 +56,7 @@ def login_temporary_post():
         password = request.form['password']
         user = session.query(User).filter_by(login_id=login_id, password=password, is_temporary=1).first()
         if user:
-            if not user.is_active:
+            if not user.is_active():
                 flash('Your account has been deactivated. Please contact your administrator.', 'error')
                 return redirect(url_for('auth.access_code_login'))
             days_until_expiry = (user.expiry - datetime.now().date()).days
@@ -76,6 +69,7 @@ def login_temporary_post():
                 flash('Invalid login ID or password', 'error')
                 return redirect(url_for('auth.access_code_login'))
             login_user(user, remember=False)
+            logger.info(f'Temprary user {user.id} logged in')
             return redirect(url_for('home'))
         else:
             flash('Invalid access code or password', 'error')
@@ -84,7 +78,6 @@ def login_temporary_post():
 @routes_auth.route('/login', methods=['GET'])
 def login():
     return render_template('authentication/login.html')
-
 
 @routes_auth.route('/logout')
 def logout():

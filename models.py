@@ -19,6 +19,7 @@ from sqlalchemy import event
 
 # Local application imports
 from db import db, get_file_space_path
+from logger import logger
 
 SYSTEM_GMT_OFFSET = 0
 
@@ -65,12 +66,16 @@ def process_id(value):
 
 def clean_directory(root_directory):
     """
-    Walk through a given directory and remove any empty directories
+    Walk through a given directory and remove any empty directories.
+
+    :param root_directory: The root directory to start cleaning
+    :type root_directory: str
     """
     # Get the root directory of the project
     for root, dirs, files in os.walk(root_directory, topdown=False):
         for dir in dirs:
             dir_path = os.path.join(root, dir)
+            # If there exist no sub directories, remove it
             if not os.listdir(dir_path):
                 os.rmdir(dir_path)
 
@@ -104,9 +109,16 @@ class User(db.Model, UserMixin):
     
     def get_login_id(self):
         return '' if self.login_id is None else self.login_id
+
     
-    def set_is_active(self, value):
-        self.is_active = value
+    def activate(self):
+        self.is_active = True
+    
+    def deactivate(self):
+        self.is_active = False
+    
+    def is_active(self):
+        return self.is_active
 
     def get_id(self):
         return str(self.id)
@@ -205,6 +217,14 @@ class Encounter(db.Model):
         return '' if self.latitude is None else self.latitude
 
     def set_latitude(self, value):
+<<<<<<<<<<<<<<  ✨ Codeium Command ⭐  >>>>>>>>>>>>>>>>
+    """
+    Set the latitude of the encounter. 
+    
+    :param value: string representing the latitude of the encounter. 
+    :return: None
+    """
+<<<<<<<  b0f34360-4f9a-4af2-85d4-1ef63aae8685  >>>>>>>
         self.latitude = None if value.strip() == '' else value.strip()
     
     def get_longitude(self):
@@ -355,6 +375,7 @@ class File(db.Model):
             new_filename = f"Dupl{new_suffix}_{loose_file_name}"
             new_path = os.path.join(os.path.dirname(loose_file_path), new_filename + '.' + loose_file_extension)
             os.rename(loose_file_path, new_path)
+            logger.warning(f"Attempting to save file in the following path, but a file already exists: {loose_file_path}. Renamed existing file to {new_path}")
 
     
     def insert_path_and_filename(self, session, file, new_path, new_filename, root_path):
@@ -381,9 +402,9 @@ class File(db.Model):
             
         self.rename_loose_file(self.path, self.filename, self.extension)
         os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
-        print('saving file')
+        
         file.save(destination_path)
-
+        logger.info(f"Saved file to {destination_path}")
     
     def update_path_and_filename(self, new_path, new_filename,root_path):
 
@@ -437,10 +458,10 @@ class File(db.Model):
         # make the directory of the new_relative_file_path_with_root
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
-        
+            logger.info(f"Created directory: {os.path.dirname(new_relative_file_path_with_root)}")
+
         # if the new and current file paths are not the same
         if new_relative_file_path_with_root != current_relative_file_path:
-        
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
@@ -679,8 +700,8 @@ class Recording(db.Model):
     def generate_full_relative_path(self,extension=""):
         return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
 
-    def generate_selection_table_filename(self,extension=""):
-        return f"Sel-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}{extension}"
+    def generate_selection_table_filename(self):
+        return f"Sel-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     def get_start_time(self):
         return self.start_time
     
@@ -873,8 +894,6 @@ class Selection(db.Model):
         self.traced = self.update_traced_status()
         self.deactivated = False
 
-    #def auto_populate_contoured(self):
-    #    if self.annotation == "Y"
     def reset_selection_table_values(self, session):
         self.view = None
         self.channel = None
@@ -892,6 +911,8 @@ class Selection(db.Model):
             self.traced = True
         elif not self.contour_file and (self.annotation == "N"):
             self.traced = False
+        elif self.contour_file:
+            self.traced = True
         else:
             self.traced = None
 
@@ -1154,10 +1175,7 @@ class Selection(db.Model):
             self.contour_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_contour_filename())+"." +self.contour_file.extension,root_path)
         if self.ctr_file is not None:
             self.ctr_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_ctr_file_name())+"." +self.ctr_file.extension,root_path)
-        if self.spectogram_file is not None:
-            self.spectogram_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_spectogram_filename())+"." +self.spectogram_file.extension,root_path)
-        if self.plot_file is not None:
-            self.plot_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_plot_filename())+"." +self.plot_file.extension,root_path)
+
 
     def delete(self, session,keep_file_reference=True):        
         session.flush()

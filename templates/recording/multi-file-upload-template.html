@@ -33,10 +33,12 @@
         var filesToDelete = [];
 
         // Add event listeners
-        // All elements in the template are preceded by the unique_id so the template can be called multiple times in the same webpage
+        // All elements in the template are preceded by the unique_id so the template can be called 
+        // multiple times in the same webpage
 
         var fileTable = document.getElementById('{{unique_id}}-table');
         var fileInput = document.getElementById('{{unique_id}}-files');
+
         fileInput.addEventListener('change', function () {
             if (this.files.length > 0) {
                 // Populate the file table with the selected files
@@ -46,10 +48,12 @@
                 clearFileTable();
             }
         });
+
         var validateButton = document.getElementById('{{unique_id}}-bulk-upload-validate');
         validateButton.addEventListener('click', function (event) {
             checkValidFiles(event);
         });
+
         var clearButton = document.getElementById('{{unique_id}}-bulk-upload-clear');
         clearButton.addEventListener('click', function (event) {
             clearBulkUpload(event);
@@ -66,7 +70,6 @@
 
         // Function to add a file to the filesToSubmit array
         function addFileToSubmit(file, id) {
-            console.log("ADD FILE SUBMIT")
             filesToSubmit.push({ file, id });
             console.log(filesToSubmit)
         }
@@ -84,30 +87,19 @@
             filesToDelete.push(file);
         }
 
-        // Function to remove a file from the filesToDelete array
-        function removeFileFromDelete(file) {
-            var index = filesToDelete.indexOf(file);
-            if (index !== -1) {
-                filesToDelete.splice(index, 1);
-            }
-        }
-
         /**
          * Validates selections and updates the selections table based on the validation results.
          * @param {Event} event - The event object.
          */
         function checkValidFiles(event) {
             event.preventDefault(); // Prevent default form submission behavior
-
             // Get table rows and initialize variables
             var tableRows = document.querySelectorAll('#{{unique_id}}-table tbody tr');
             var rowCount = tableRows.length;
             var allValid = true;
             var completedCount = 0;
-
             // Update UI elements
             updateUIBeforeValidation();
-
             // Iterate through table rows
             tableRows.forEach(function (row) {
                 validateRow(row, function (valid, messages, fileName, updatedId) {
@@ -133,18 +125,13 @@
             var cell3 = row.cells[2];
             var cell4 = row.cells[3];
             var cell5 = row.cells[5];
-
             var fileName = cell1.textContent;
             var input = cell2.querySelector('input');
-
             var id = input.value;
-
             var data = {
                 filename: fileName,
                 id: id
             };
-
-
             var xhr = new XMLHttpRequest();
             xhr.open('GET', '/{{process_route}}?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&id=" + encodeURIComponent(data.id), true);
             xhr.setRequestHeader('Content-Type', 'application/json');
@@ -161,7 +148,9 @@
         }
 
         /**
-         * Updates the UI elements before starting the validation process.
+         * Updates the UI to show that the validation process has started.
+         * The "Upload" button, "Validate" button and "Clear" button are hidden.
+         * The "Validating... Please wait" message is shown.
          */
         function updateUIBeforeValidation() {
             document.getElementById("{{unique_id}}-bulk-upload").hidden = true;
@@ -180,7 +169,6 @@
         function updateCellContents(row, valid, messages) {
             var cell3 = row.cells[2];
             var cell4 = row.cells[3];
-
             cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
             cell4.innerHTML = messages.join('<br>');
         }
@@ -193,7 +181,6 @@
          */
         function updateValidationProgress(completedCount, rowCount, allValid) {
             document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Validating... Please wait (" + Math.round(100 * completedCount / rowCount) + "%).";
-
             if (completedCount === rowCount) {
                 if (allValid) {
                     document.getElementById("{{unique_id}}-bulk-upload").hidden = false;
@@ -209,8 +196,10 @@
             }
         }
 
+
         /**
-         * Populates the selection table with file data.
+         * Populates the file table based on the selected files.
+         * @param {Event} event - The event object.
          */
         function populateFileTable() {
             var files = fileInput.files;
@@ -272,7 +261,9 @@
             document.getElementById('{{unique_id}}-files').hidden = true;
         }
 
-        // Clears the selection table by removing all the rows from the table body.
+        /**
+         * Clears the file table by removing all existing rows.
+         */
         function clearFileTable() {
             var tableBody = fileTable.tBodies[0];
             tableBody.innerHTML = '';
@@ -301,12 +292,14 @@
 
         document.getElementById('{{unique_id}}-upload-form').addEventListener('submit', function (event) {
             // Call the function to update the file input before the form is submitted
-            console.log("FILES TO SUBMIT")
-            console.log(filesToSubmit)
             updateFileInputForSubmission();
         });
 
-        // Function to update file input for submission with selection numbers
+        /**
+         * Updates the file input for submission by creating a new FormData object and adding the files to be submitted to it along with their selection numbers.
+         * It also updates the display to show a message that the files are being uploaded and hides the action buttons.
+         * Finally, it sends the form data to the server and handles the server response. If the response is OK, it reloads the page. Otherwise, it displays an error message.
+         */
         async function updateFileInputForSubmission() {
             document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Uploading... Please wait and do not close your browser."
             document.getElementById("{{unique_id}}-bulk-upload-status-message").hidden = false;
@@ -315,7 +308,7 @@
             document.getElementById("{{unique_id}}-bulk-upload-clear").hidden = true;
             var fileInput = document.getElementById('{{unique_id}}-files');
             var formData = new FormData();
-            console.log(filesToSubmit)
+
             // Filter out the files that are marked for deletion
             var filesToSubmitFiltered = filesToSubmit.filter(file => !filesToDelete.includes(file));
             // Append the files to the form data along with their selection numbers
@@ -323,29 +316,27 @@
                 formData.append('files', file.file);
                 formData.append(`ids[${index}]`, file.id); // Add selection number as a custom field
             });
-            console.log(formData)
             
             // Send the form data to the server
-            fetch("{{ url_for(insert_route, encounter_id=recording.encounter.id, recording_id=recording.id) }}", {
+            fetch("{{ url_for(insert_route, recording_id=recording.id) }}", {
                 method: 'POST', 
                 body: formData
             })
             .then(response => {
-                // Handle the server response
-                if (response.ok) {
-                    window.location.href = window.location.href;
-                } else {
-                    console.error('Failed to upload files');
-                    window.location.href = window.location.href;
-                }
+                // Refresh page
+                window.location.href = window.location.href;
+
             })
-            .catch(error => {
-                console.error('Error uploading files:', error);
-            });
         }
 
 
 
+        /**
+         * Resets the file input field, hides the status message and table, and 
+         * toggles the visibility of the buttons.
+         * 
+         * @param {Event} event - The event object from the button click
+         */
         function clearBulkUpload(event) {
             event.preventDefault(); // Prevent default button behavior
 

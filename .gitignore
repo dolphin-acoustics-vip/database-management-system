@@ -8,3 +8,4 @@
 __pycache__/
 google_api_key.txt
 database-management-system.code-workspace
+*.log

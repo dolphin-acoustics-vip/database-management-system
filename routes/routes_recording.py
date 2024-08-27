@@ -8,6 +8,9 @@ from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,rende
 from flask import session as client_session
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
+import csv
+from flask import Response
+from io import StringIO
 
 # Local application imports
 from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
@@ -24,26 +27,21 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     by routes either inserting (new) Recording objects or updating (existing) 
     Recording objects.
 
-    Parameters:
-    - session: the database session (which will be used to insert or update)
-    - request: the HTTP request object (containing the insert or update form)
-    - encounter_id: the ID of the encounter the recording belongs to
-    - recording_id: (optional) the ID of the recording to update, or None to insert
+    :param session: The database session
+    :param request: The request object
+    :param encounter_id: The id of the encounter
+    :param recording_id: The id of the recording to be updated (default is None if inserting a new recording)
 
-    Returns:
-    - new_recording: the newly inserted or updated recording
+    :return: The Recording object that was inserted or updated
     """
     
     time_start = request.form['time_start']
-    # Get Recording object if updating or make a new one is inserting.
-    # This is decided by whether recording_id is None or not.
+
     if recording_id is not None:
         new_recording = session.query(Recording).filter_by(id=recording_id).first()
     else:
         new_recording = Recording()
 
-
-    
     new_recording.set_start_time(time_start)
     new_recording.set_duration(0)
     new_recording.set_encounter_id(encounter_id)
@@ -52,8 +50,8 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     session.flush()
 
     # If a recording file has been given, add it to the Recording object
-    if 'recording_file' in request.files and request.files['recording_file'].filename != '':
-        recording_file = request.files['recording_file']
+    if 'recording-file-input' in request.files and request.files['recording-file-input'].filename != '':
+        recording_file = request.files['recording-file-input']
         new_recording_filename = new_recording.generate_recording_filename()
         new_relative_path = new_recording.generate_relative_path()
         new_file = File()
@@ -62,13 +60,12 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename, get_file_space_path())
         session.commit()
         
-    
+    # If a user assignment is to be made for the recording
     if 'assign_user_id' in request.form:
         assign_user_id = request.form['assign_user_id'] 
         try:
             user_id_uuid = uuid.UUID(assign_user_id)
             user_obj = session.query(User).filter_by(id=user_id_uuid).first()
-
         except ValueError:
             user_obj=None
         if user_obj is not None:
@@ -78,6 +75,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
             session.add(assignment)
             new_recording.update_status_upon_assignment_add_remove(session)
             session.commit()
+    
     return new_recording
 
 
@@ -87,8 +85,14 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
 @login_required
 def recording_selection_table_add(encounter_id,recording_id):
     """
-    Given a selection table file in the POST request (selection-table-file), add it to the recording
-    after validation. 
+    Handles a POST request to upload a selection table for a given recording.
+
+    :param encounter_id: the id of the encounter
+    :type encounter_id: str
+    :param recording_id: the id of the recording
+    :type recording_id: str
+
+    :return: a redirect to the recording view
     """
     with Session() as session:
         try:
@@ -115,9 +119,7 @@ def recording_selection_table_add(encounter_id,recording_id):
         
     return redirect(url_for('recording.recording_view', recording_id=recording_id))
  
-import csv
-from flask import Response
-from io import StringIO
+
 @routes_recording.route('/export-selection-table/<recording_id>/<export_format>')
 @require_live_session
 @login_required
@@ -385,16 +387,23 @@ def recording_file_delete(recording_id,file_id):
             session.rollback()
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/recording/<recording_id>/recording_delete_selections', methods=['DELETE'])
+@routes_recording.route('/recording/recording_delete_selections', methods=['DELETE'])
 @require_live_session
 @exclude_role_4
 @login_required
-def recording_delete_selections(recording_id):
-    if request.method == 'DELETE':
-        data = request.get_json()
-        selection_ids = data.get('selectionIds', [])
-        
-        session = Session()
+def recording_delete_selections():
+    """
+    Bulk delete selections from the database.
+
+    :param selectionIds: A JSON list of selection IDs to delete.
+
+    Expects a JSON payload with a list of selection IDs under the key "selectionIds".
+    Returns a JSON response with a message indicating the number of selections deleted.
+    """
+    data = request.get_json()
+    selection_ids = data.get('selectionIds', [])
+    
+    with Session() as session:
         try:
             counter=0
             for selection_id in selection_ids:
@@ -412,41 +421,20 @@ def recording_delete_selections(recording_id):
             session.rollback()
             flash(parse_alchemy_error(e), 'error')
             return jsonify({'error': parse_alchemy_error(e)}), 500
-        finally:
-            session.close()
-    else:
-        return jsonify({'error': 'Method not allowed'}), 405
+
   
 
 @routes_recording.route('/encounter/extract_date', methods=['GET'])
 def extract_date():
+    """
+    Extracts a date from a filename.
+    
+    :param filename: The filename to extract the date from, as an argument in the request.
+    :type filename: str
+    :return date: The date extracted from the filename in JSON format {date:value}, or {date:None}.
+    """
     filename = request.args.get('filename')
-    date = None
-    match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', filename)
-    if match:
-        year = match.group(1)
-        month = match.group(2)
-        day = match.group(3)
-        hour = match.group(4)
-        minute = match.group(5)
-        second = match.group(6)
-        date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
-        date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
-    if not match:
-        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', filename)
-        if match:
-            year = match.group(1)
-            month = match.group(2)
-            day = match.group(3)
-            hour = match.group(4)
-            minute = match.group(5)
-            second = match.group(6)
-            date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
-            date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
-
-
-        
-
+    date = shared_functions.parse_date(filename)
     return jsonify(date=date)
 
 @routes_recording.route('/assign_recording/<user_id>/<recording_id>', methods=['GET'])
@@ -455,6 +443,16 @@ def extract_date():
 @exclude_role_4
 @login_required
 def assign_recording(user_id, recording_id):
+    """
+    Assigns a recording to a user.
+
+    :param user_id: The ID of the user to assign the recording to.
+    :type user_id: str
+    :param recording_id: The ID of the recording to assign.
+    :type recording_id: str
+    :return: A JSON object with a single key, 'success', with a value of True if successful, False otherwise.
+    :rtype: dict
+    """
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
@@ -477,6 +475,16 @@ def assign_recording(user_id, recording_id):
 @exclude_role_4
 @login_required
 def unassign_recording(user_id, recording_id):
+    """
+    Unassigns a recording from a user.
+
+    :param user_id: The ID of the user to unassign the recording from.
+    :type user_id: str
+    :param recording_id: The ID of the recording to unassign.
+    :type recording_id: str
+    :return: A JSON object with a single key, 'success', with a value of True if successful, False otherwise.
+    :rtype: dict
+    """
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
@@ -492,6 +500,14 @@ def unassign_recording(user_id, recording_id):
 @exclude_role_4
 @require_live_session
 def recalculate_contour_statistics(recording_id):
+    """
+    Recalculates the contour statistics for all selections associated with the recording specified by recording_id.
+
+    :param recording_id: The ID of the recording to recalculate contour statistics for.
+    :type recording_id: str
+    :return: Redirects to the recording view page.
+    :rtype: flask.Response
+    """
     counter = 0
     with Session() as session:
         try:
@@ -513,18 +529,42 @@ def recalculate_contour_statistics(recording_id):
 import zipfile
 import tempfile
 import shutil
+from db import get_tempdir
 
 def zip_and_download_files(file_paths, zip_filename):
-    with zipfile.ZipFile(zip_filename, 'w') as zipf:
-        for file_path in file_paths:
-            zipf.write(file_path, os.path.basename(file_path))
-    
-    return send_file(zip_filename, as_attachment=True)
+    """
+    Creates a zip file from the given list of file paths and returns
+    the file as a response object.
 
-
+    :param file_paths: A list of file paths to add to the zip file.
+    :type file_paths: list
+    :param zip_filename: The name of the zip file to create.
+    :type zip_filename: str
+    :return: A response object containing the zip file.
+    :rtype: flask.Response
+    """
+    with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
+        with zipfile.ZipFile(os.path.join(temp_dir, zip_filename), 'w') as zipf:
+            for file_path in file_paths:
+                zipf.write(file_path, os.path.basename(file_path))
+        return send_file(os.path.join(temp_dir, zip_filename), as_attachment=True)
 
 def download_files(file_paths, file_names, zip_filename):
-    with tempfile.TemporaryDirectory() as temp_dir:
+    """
+    Creates a zip file from the given list of file paths and returns
+    the file as a response object.
+
+    :param file_paths: A list of file paths to add to the zip file.
+    :type file_paths: list
+    :param file_names: A list of names to use for the files in the zip file.
+    :type file_names: list
+    :param zip_filename: The name of the zip file to create.
+    :type zip_filename: str
+    :return: A response object containing the zip file.
+    :rtype: flask.Response
+    """
+    with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
+        new_file_paths = []
         for file_path, file_name in zip(file_paths, file_names):
             if not file_name.endswith("."):
                 file_extension = os.path.splitext(file_path)[1]
@@ -533,8 +573,11 @@ def download_files(file_paths, file_names, zip_filename):
                 new_file_name = file_name
             new_file_path = os.path.join(temp_dir, new_file_name)
             shutil.copy(file_path, new_file_path)
-        
-        return zip_and_download_files([os.path.join(temp_dir, file) for file in os.listdir(temp_dir)], zip_filename)
+            new_file_paths.append(new_file_path)
+            
+            
+        return zip_and_download_files(new_file_paths, zip_filename)
+    
 @routes_recording.route('/recording/<recording_id>/download-ctr-files', methods=['GET'])
 @login_required
 def download_ctr_files(recording_id):
@@ -543,7 +586,6 @@ def download_ctr_files(recording_id):
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
         ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
         file_names = [selection.generate_ctr_file_name() for selection in selections if selection.ctr_file is not None]
-        # Download and zip the CTR files
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_ctr_files.zip"
         file_paths = [ctr_file.get_full_absolute_path() for ctr_file in ctr_files]
         response = download_files(file_paths, file_names, zip_filename)
@@ -553,35 +595,44 @@ def download_ctr_files(recording_id):
 @routes_recording.route('/recording/<recording_id>/download-selection-files', methods=['GET'])
 @login_required
 def download_selection_files(recording_id):
+    """
+    Handles a GET request to download all selection files associated with a given recording.
+    
+    :param recording_id: the id of the recording
+    :type recording_id: str
+    :return: a zip file containing all selection files
+    :rtype: flask.Response
+    """
     with Session() as session:
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
         recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
         file_names = [selection.generate_filename() for selection in selections if selection.selection_file is not None]
-        # Download and zip the CTR files
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_selection_files.zip"
         file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
         response = download_files(file_paths, file_names, zip_filename)
-        
         return response
 
 @routes_recording.route('/recording/<recording_id>/download-contour-files', methods=['GET'])
 @login_required
 def download_contour_files(recording_id):
+    """
+    Handles a GET request to download all contour files associated with a given recording.
+    
+    :param recording_id: the id of the recording
+    :type recording_id: str
+    :return: a JSON response with a success message if the files are downloaded successfully
+    """
     with Session() as session:
         selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
         recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
         file_names = [selection.generate_contour_filename() for selection in selections if selection.contour_file is not None]
-        # Download and zip the CTR files
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_contour_files.zip"
         file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
         response = download_files(file_paths, file_names, zip_filename)
-        
-    
         return response
     
-
 @routes_recording.route('/recording/<recording_id>/download-recording-file', methods=['GET'])
 @login_required
 def download_recording_file(recording_id):
@@ -591,12 +642,23 @@ def download_recording_file(recording_id):
         download_file_name = recording.generate_recording_filename()
 
         return send_file(file_name, as_attachment=True, download_name=download_file_name)
+    
 @routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['GET'])
 @require_live_session
 @login_required
 @exclude_role_3
 @exclude_role_4
 def mark_as_complete(recording_id):
+    """
+    Marks a recording as complete. This is only accessible by users with Role 1 or 2.
+    A recording can be marked as complete if it has been reviewed and is ready to be
+    used for analysis. When a recording is marked as complete, it will be displayed
+    in the recording view as having a status of 'Reviewed'.
+
+    :param recording_id: the id of the recording
+    :type recording_id: str
+    :return: a redirect to the recording view
+    """
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         recording.set_status("Reviewed")
@@ -609,6 +671,16 @@ def mark_as_complete(recording_id):
 @exclude_role_3
 @exclude_role_4
 def mark_as_on_hold(recording_id):
+    """
+    Marks a recording as on hold. This is only accessible by users with Role 1 or 2.
+    A recording can be marked as on hold if it needs to be reviewed or modified before
+    it can be used for analysis. When a recording is marked as on hold, it will be
+    displayed in the recording view as having a status of 'On Hold'.
+
+    :param recording_id: the id of the recording
+    :type recording_id: str
+    :return: a redirect to the recording view
+    """
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         recording.set_status("On Hold")

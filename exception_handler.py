@@ -1,18 +1,19 @@
 from flask import flash
 import sqlalchemy
 from flask import session as client_session
+from logger import logger
 
 def parse_alchemy_error(error):
     if isinstance(error, sqlalchemy.exc.IntegrityError):
-        raise error
         error_message = str(error)
         if "cannot be null" in error_message:
             column_name = error_message.split("Column '")[1].split("' cannot be null")[0]
             return "Error: {} cannot be null. Please provide a valid value for {}.".format(column_name, column_name)
         elif error.orig.args[0] == 1062 and "Duplicate entry" in error_message:
+            print(error_message)
             duplicate_value = error_message.split("Duplicate entry ")[1].split(" for key")[0]
             duplicate_attribute = error_message.split("for key '")[1].split("'")[0]
-            return "Duplicate entry"
+            return "Duplicate entry: {} for {}.".format(duplicate_value, duplicate_attribute)
         else:
             foreign_key_constraint = error_message.split('`')[3]
             return "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)
@@ -41,15 +42,24 @@ def handle_exception(exception: Exception | str, session=None) -> None:
         session.rollback()
     return str(exception)
 
+
+def handle_exception(session, exception: Exception, prefix="") -> None:
+    """
+    Handle exception and rollback the session. Where possible the
+    exception is dissected and a human-readable message is passed
+    to the Flask flash() method. Otherwise, the default exception
+    string is passed to the Flask flash() method. Depending on the
+    severity of the exception, it is logged in the logger.
+
+    :param session: SQLAlchemy session
+    :param exception: Exception to be processed
+    :param prefix: Prefix to be added to the error message
+
+    :return: error_string: Parsed error message
+    """
+    return handle_sqlalchemy_exception(session, exception, prefix=prefix)
+
 def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQLAlchemyError, prefix="") -> None:
-    """
-    Parse SQLAlchemy errors and return a human-readable message which can be displayed in the UI
-    where necessary. This method can parse database errors such as illegal duplicates, null values,
-    foreign key constraints, operational errors, and programming errors. Where an error is
-    unrecognised, the default sqlalchemy error message is returned with a prefix.
-    
-    This method will also roll back the changes in the session.
-    """
     from models import File
 
     if isinstance(sqlAlchemy_exception, sqlalchemy.exc.IntegrityError):
@@ -70,6 +80,7 @@ def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQ
     if prefix != "":
         error_string = prefix + ". " + error_string
     flash(error_string, 'error')
+    logger.warning(error_string)
     session.rollback()
     return error_string
 

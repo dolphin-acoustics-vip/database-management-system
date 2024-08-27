@@ -224,3 +224,41 @@ def parse_snapshot_date(date_string):
         except ValueError:
             pass
     raise ValueError("Invalid date format")
+
+
+
+def parse_date(date_string: str) -> datetime:
+    """
+    This function takes a string and attempts to parse it as a date.
+    The date can be in two formats:
+    - yyyymmdd_HHMMSS
+    - yymmdd-HHMMSS
+    
+    :param date_string: The string to parse as a date
+    :type date_string: str
+    :return: The parsed date
+    """
+    import re
+    match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
+    if match:
+        year = match.group(1)
+        month = match.group(2)
+        day = match.group(3)
+        hour = match.group(4)
+        minute = match.group(5)
+        second = match.group(6)
+        date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+        date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
+    if not match:
+        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
+        if match:
+            year = match.group(1)
+            month = match.group(2)
+            day = match.group(3)
+            hour = match.group(4)
+            minute = match.group(5)
+            second = match.group(6)
+            date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+            date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
+
+    return date

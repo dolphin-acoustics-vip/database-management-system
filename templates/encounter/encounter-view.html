@@ -1,170 +1,136 @@
 <!DOCTYPE html>
 <html>
-{% include 'partials/header.html' %}
+  {% include 'partials/header.html' %}
 
-<head>
+  <head>
     <title>Edit Encounter: {{ encounter.get_unique_name(' - ') }}</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
 
-</head>
-
-<body>
+  <body>
     <div class="outer-div">
-        <h1>Encounter: {{ encounter.get_unique_name(' - ') }}</h1>
-        <hr>
-        <section id="encounter-summary">
-            <div id="summary">
-                <h2>Encounter Summary</h2>
-                <p>Encounter: {{ encounter.encounter_name }}</p>
-                <p>Location: {{ encounter.location }}</p>
-                <p>Project: {% if encounter.project %}{{ encounter.project }} {% else %}Not entered{% endif %}</p>
-                <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
-                <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}}
-                    {%else %}Not entered{% endif %}</p>
-                <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not
-                    entered{%endif %}</p>
-                <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
-            </div>
+      <h1>Encounter: {{ encounter.get_unique_name(' - ') }}</h1>
+      <hr>
 
-        </section>
-        <hr>
-        {% if g.user.role_id in [1, 2] %}
+      <!-- Encounter Summary -->
+      <section id="encounter-summary">
+        <div id="summary">
+          <h2>Encounter Summary</h2>
+          <p>Encounter: {{ encounter.encounter_name }}</p>
+          <p>Location: {{ encounter.location }}</p>
+          <p>Project: {% if encounter.project %}{{ encounter.project }} {% else %}Not entered{% endif %}</p>
+          <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
+          <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {% else %}Not entered{% endif %}</p>
+          <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{% endif %}</p>
+          <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
+        </div>
+      </section>
+      <hr>
+
+      <!-- Administration -->
+      {% if g.user.role_id in [1, 2] %}
         <h2>Administration</h2>
         {% if not session['snapshot_date'] %}
-
-        <a title="Edit the encounter" class="button" href="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">Edit
-            Encounter: {{ encounter.get_unique_name(' - ') }}</a>
+          <a title="Edit the encounter" class="button" href="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">Edit Encounter: {{ encounter.get_unique_name(' - ') }}</a>
         {% endif %}
-        <div class="audit-history">
-            <h3>Audit History</h3>
-            <div class="table-responsive">
-                <table class="table-striped">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Action</th>
-                            <th>User</th>
-                            <th>View Snapshot</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for encounter in encounter_history %}
-                        <tr>
-                            <td>{{ encounter['row_start'] }}</td>
-                            <td>{{ encounter['action'] }}</td>
-                            <td>{{ encounter['updated_by'].name }}</td>
-                            <td><a
-                                    href="{{ url_for('encounter.encounter_view', encounter_id=encounter['id'], snapshot_date=encounter['row_start']) }}">HERE</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% if not session['snapshot_date'] %}
 
-        <h3>Add Recording</h3>
-        <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post"
-            enctype="multipart/form-data">
+        <!-- Audit History -->
+        <div class="audit-history">
+          <h3>Audit History</h3>
+          <div class="table-responsive">
+            <table class="table-striped">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Action</th>
+                  <th>User</th>
+                  <th>View Snapshot</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for encounter in encounter_history %}
+                  <tr>
+                    <td>{{ encounter['row_start'] }}</td>
+                    <td>{{ encounter['action'] }}</td>
+                    <td>{{ encounter['updated_by'].name }}</td>
+                    <td><a href="{{ url_for('encounter.encounter_view', encounter_id=encounter['id'], snapshot_date=encounter['row_start']) }}">HERE</a></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Add Recording -->
+        {% if not session['snapshot_date'] %}
+          <h3>Add Recording</h3>
+          <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post" enctype="multipart/form-data">
             {% from 'recording/recording-form-template.html' import recording_form %}
             {{ recording_form(editing=False, file_timezone=encounter.file_timezone, local_timezone=encounter.local_timezone, recording=None) }}
-
 
             <label id="assign-user-id-label" class="bold">Assign to User</label>
             {% from 'partials/search-dropdown.html' import recording_table %}
             <div id="user-input-dropdown">
-                {{ recording_table(show_message=false) }}
+              {{ recording_table(show_message=false) }}
             </div>
-            <button style="display: none;margin-top: 0.6rem; margin-bottom: 0.8rem;" id="remove-user-assignment" class="small" type="button"
-                onclick="removeUserAssignment()">Remove</button>
+            <button style="display: none;margin-top: 0.6rem; margin-bottom: 0.8rem;" id="remove-user-assignment" class="small" type="button" onclick="removeUserAssignment()">Remove</button>
             <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
             <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
             <button type="submit" class="blue">Submit</button>
-        </form>
+          </form>
         {% endif %}
-        </section>
-        <hr>
-        <script>
+      {% endif %}
 
-
-
-
-            function onUserSelectionDropdownComplete(user_id, user) {
-                $('#assign_user_id').val(user.id);
-                $('#assign-user-id-label').hide();
-                $('#remove-user-assignment').text('Remove user assignment: ' + user.name + ' (' + user.login_id + ')');
-                $('#user-input-dropdown').hide();
-                $('#remove-user-assignment').show();
-            }
-
-            function removeUserAssignment() {
-                $('#assign_user_id').val('');
-                $('#user-input-dropdown').show();
-                $('#assign-user-id-label').show();
-                $('#remove-user-assignment').hide();
-                clearUserDropdownInput();
-            }
-
-        </script>
-
-        {% endif %}
-
-        <section id="recordings">
-            <h2>Recordings</h2>
-            {% if assigned_recordings|length > 0 or unassigned_recordings|length > 0 %}
-            {% if assigned_recordings|length > 0 %}
-            {% from 'partials/recording-table-macro.html' import recording_table %}
+      <!-- Recordings -->
+      <section id="recordings">
+        <h2>Recordings</h2>
+        {% if assigned_recordings|length > 0 or unassigned_recordings|length > 0 %}
+          {% if assigned_recordings|length > 0 %}
             <h3>Assigned Recordings</h3>
-            {{ recording_table(assigned_recordings) }}
-            {% else %}
-            <h3>You do not have any Assigned Recordings in this Encounter</h3>
-            {% endif %}
             {% from 'partials/recording-table-macro.html' import recording_table %}
+            {{ recording_table(assigned_recordings) }}
+          {% else %}
+            <h3>You do not have any Assigned Recordings in this Encounter</h3>
+          {% endif %}
 
-            {% if unassigned_recordings|length > 0 %}
+          {% if unassigned_recordings|length > 0 %}
             <h3>Unassigned Recordings</h3>
+            {% from 'partials/recording-table-macro.html' import recording_table %}
             {{ recording_table(unassigned_recordings) }}
-            {% endif %}
-            {% else %}
-            <p>This encounter has no recordings. Please use the form above to add recordings.</p>
-            {% endif %}
-        </section>
-        {% if not session['snapshot_date'] %}
-
-        <form type="hidden" id="deleteForm_{{ encounter.id }}" method="post"
-            action="{{ url_for('encounter.encounter_delete', encounter_id=encounter.id) }}">
-            <input type="hidden" name="_method" value="DELETE">
-            <button class="gray small" id="delete-encounter-button"
-                title="Delete the entire encounter. All recordings in the encounter must be deleted before proceeding."
-                type="button" style="margin-top: 1rem;" class="delete-button" data-encounter-id="{{ encounter.id }}" delete-info="{{encounter.get_unique_name('-')}}">Delete
-                Encounter</button>
-        </form>
+          {% endif %}
+        {% else %}
+          <p>This encounter has no recordings. Please use the form above to add recordings.</p>
         {% endif %}
+      </section>
+
+      <!-- Delete Encounter -->
+      {% if not session['snapshot_date'] %}
+        <form type="hidden" id="deleteForm_{{ encounter.id }}" method="post" action="{{ url_for('encounter.encounter_delete', encounter_id=encounter.id) }}">
+          <input type="hidden" name="_method" value="DELETE">
+          <button class="gray small" id="delete-encounter-button" title="Delete the entire encounter. All recordings in the encounter must be deleted before proceeding." type="button" style="margin-top: 1rem;" class="delete-button" data-encounter-id="{{ encounter.id }}" delete-info="{{encounter.get_unique_name('-')}}">Delete Encounter</button>
+        </form>
+      {% endif %}
     </div>
 
-    <script src="{{ url_for('static', filename='js/time-management.js') }}"></script>
+    
 
     <script>
+      // Add an event listener to the delete button to confirm deletion
+      $("#delete-encounter-button").on("click", function (event) {
+        // Get the encounter ID from the button's data attribute
+        var encounterId = $(this).data("encounter-id");
+        var deleteInfo = $(this).attr('delete-info');
 
-        // Add an event listener to the delete button to confirm deletion
-        $("#delete-encounter-button").on("click", function (event) {
-            // Get the encounter ID from the button's data attribute
-            var encounterId = $(this).data("encounter-id");
-            var deleteInfo = $(this).attr('delete-info');
-
-            // Confirm deletion with the user
-            if (confirm("Are you sure you want to delete encounter: " + deleteInfo + "?\nBefore this action is completed, all recordings must be deleted individually.")) {
-                // If confirmed, submit the delete form
-                $("#deleteForm_" + encounterId).submit();
-            } else {
-                // If not confirmed, prevent the default form submission
-                event.preventDefault();
-            }
-        });
+        // Confirm deletion with the user
+        if (confirm("Are you sure you want to delete encounter: " + deleteInfo + "?\nBefore this action is completed, all recordings must be deleted individually.")) {
+          // If confirmed, submit the delete form
+          $("#deleteForm_" + encounterId).submit();
+        } else {
+          // If not confirmed, prevent the default form submission
+          event.preventDefault();
+        }
+      });
     </script>
-
-</body>
-
+  </body>
 </html>
