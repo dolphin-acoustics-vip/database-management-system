@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from calculations.rocca import contour
+from . import contour_statistics
 
 # Sample contour file path
 CONTOUR_FILE_PATH = 'testing/sel_03_20021009_081417_ROCCA.csv'
@@ -16,7 +16,7 @@ def test_contour_calculations():
     row = contour_stats_df.iloc[0]
 
     # Load the contour file
-    contour_file = contour.ContourFile(CONTOUR_FILE_PATH)
+    contour_file = contour_statistics.ContourFile(CONTOUR_FILE_PATH)
 
     # Calculate the contour statistics
     contour_file.calculate_statistics()

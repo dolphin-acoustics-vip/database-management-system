@@ -8,7 +8,8 @@ from flask import session as client_session
 from datetime import datetime, timedelta
 
 # Local application imports
-from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+import database_handler
+from database_handler import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 
@@ -48,7 +49,7 @@ def get_data_warnings():
     
     with Session() as session:
 
-        records = shared_functions.get_system_time_request_with_joins(session, user_id=None, assigned_user_id=assigned_user_id, created_date_filter=created_date_filter_datetime, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
+        records = database_handler.get_system_time_request_with_joins(session, user_id=None, assigned_user_id=assigned_user_id, created_date_filter=created_date_filter_datetime, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
         if assigned_user_id:
             user = session.query(User).filter_by(id=uuid.UUID(assigned_user_id)).first()
             user_name= user.name

@@ -5,7 +5,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+import database_handler
+from database_handler import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 from logger import logger
@@ -17,7 +18,7 @@ routes_encounter = Blueprint('encounter', __name__)
 def encounter():
     with Session() as session:
         try:
-            encounter_list = shared_functions.create_system_time_request(session, Encounter, {}, order_by="row_start DESC")
+            encounter_list = database_handler.create_system_time_request(session, Encounter, {}, order_by="row_start DESC")
             return render_template('encounter/encounter.html', encounter_list=encounter_list)
         except SQLAlchemyError as e:
             exception_handler.handle_sqlalchemy_exception(session, e)
@@ -93,14 +94,14 @@ def encounter_view(encounter_id):
 
     try:
         with Session() as session:
-            encounter = shared_functions.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
+            encounter = database_handler.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
             if encounter is None:
                 raise exception_handler.NotFoundException("Encounter not found")
-            species = shared_functions.create_system_time_request(session, Species, {"id":encounter.species_id}, one_result=True)
+            species = database_handler.create_system_time_request(session, Species, {"id":encounter.species_id}, one_result=True)
             encounter.species=species
-            recordings = shared_functions.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
-            encounter_history = shared_functions.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
-            assignments = shared_functions.create_system_time_request(session, Assignment, {"user_id":current_user.id})
+            recordings = database_handler.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
+            encounter_history = database_handler.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
+            assignments = database_handler.create_system_time_request(session, Assignment, {"user_id":current_user.id})
             assignment_recording_ids = [assignment.recording_id for assignment in assignments if assignment.recording_id]
             
             # Filter assigned recordings

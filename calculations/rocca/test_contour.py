@@ -1,4 +1,4 @@
-from contour import ContourFile
+from contour_statistics import ContourFile
 import sys
 from selection_test import Selection
 

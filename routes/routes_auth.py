@@ -7,7 +7,7 @@ from flask import session as client_session
 import uuid
 
 # Local application imports
-from db import Session, parse_alchemy_error,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from database_handler import Session, parse_alchemy_error,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 from logger import logger

@@ -13,7 +13,8 @@ from flask import Response
 from io import StringIO
 
 # Local application imports
-from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+import database_handler
+from database_handler import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 
 from models import *
 from exception_handler import *
@@ -227,15 +228,15 @@ def recording_view(recording_id):
 
     with Session() as session:
         
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         
 
         #recording = query.filter_by(id=recording_id).first()
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id}, order_by="selection_number")
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":recording_id}, order_by="selection_number")
 
-        assigned_users = shared_functions.create_system_time_request(session, Assignment, {"recording_id":recording_id})
+        assigned_users = database_handler.create_system_time_request(session, Assignment, {"recording_id":recording_id})
         
-        logged_in_user_assigned = shared_functions.create_system_time_request(session, Assignment, {"user_id":current_user.id,"recording_id":recording_id})
+        logged_in_user_assigned = database_handler.create_system_time_request(session, Assignment, {"user_id":current_user.id,"recording_id":recording_id})
         logged_in_user_assigned = logged_in_user_assigned[0] if len(logged_in_user_assigned) > 0 else None
         #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
         from sqlalchemy.sql import select
@@ -243,7 +244,7 @@ def recording_view(recording_id):
         
         #sql_query = session.query(Recording).filter_by(id=recording_id).all()
 
-        recording_history = shared_functions.create_all_time_request(session, Recording, filters={"id":recording_id}, order_by="row_start")
+        recording_history = database_handler.create_all_time_request(session, Recording, filters={"id":recording_id}, order_by="row_start")
         
         return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned)
 
@@ -511,7 +512,7 @@ def recalculate_contour_statistics(recording_id):
     counter = 0
     with Session() as session:
         try:
-            import calculations.rocca.contour as contour_code
+            import contour_statistics as contour_code
             selections = session.query(Selection).filter_by(recording_id=recording_id).all()
             for selection in selections:
                 
@@ -529,7 +530,7 @@ def recalculate_contour_statistics(recording_id):
 import zipfile
 import tempfile
 import shutil
-from db import get_tempdir
+from database_handler import get_tempdir
 
 def zip_and_download_files(file_paths, zip_filename):
     """
@@ -582,8 +583,8 @@ def download_files(file_paths, file_names, zip_filename):
 @login_required
 def download_ctr_files(recording_id):
     with Session() as session:
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
+        recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":recording_id})
         ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
         file_names = [selection.generate_ctr_file_name() for selection in selections if selection.ctr_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_ctr_files.zip"
@@ -604,8 +605,8 @@ def download_selection_files(recording_id):
     :rtype: flask.Response
     """
     with Session() as session:
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":recording_id})
+        recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
         file_names = [selection.generate_filename() for selection in selections if selection.selection_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_selection_files.zip"
@@ -624,8 +625,8 @@ def download_contour_files(recording_id):
     :return: a JSON response with a success message if the files are downloaded successfully
     """
     with Session() as session:
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":recording_id})
+        recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
         file_names = [selection.generate_contour_filename() for selection in selections if selection.contour_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_contour_files.zip"
@@ -637,7 +638,7 @@ def download_contour_files(recording_id):
 @login_required
 def download_recording_file(recording_id):
     with Session() as session:
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         file_name = recording.recording_file.get_full_absolute_path()
         download_file_name = recording.generate_recording_filename()
 

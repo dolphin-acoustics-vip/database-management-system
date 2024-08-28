@@ -18,7 +18,8 @@ from sqlalchemy import event
 
 
 # Local application imports
-from db import db, get_file_space_path
+import database_handler
+from database_handler import db, get_file_space_path
 from logger import logger
 
 SYSTEM_GMT_OFFSET = 0
@@ -217,14 +218,6 @@ class Encounter(db.Model):
         return '' if self.latitude is None else self.latitude
 
     def set_latitude(self, value):
-<<<<<<<<<<<<<<  ✨ Codeium Command ⭐  >>>>>>>>>>>>>>>>
-    """
-    Set the latitude of the encounter. 
-    
-    :param value: string representing the latitude of the encounter. 
-    :return: None
-    """
-<<<<<<<  b0f34360-4f9a-4af2-85d4-1ef63aae8685  >>>>>>>
         self.latitude = None if value.strip() == '' else value.strip()
     
     def get_longitude(self):
@@ -558,11 +551,11 @@ class Recording(db.Model):
             self.update_status_change_datetime()
         
     def get_number_of_selections(self):
-        selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        selections = database_handler.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         return len(selections)
 
     def get_number_of_contours(self):
-        #selections = shared_functions.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        #selections = database_handler.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
 
         contours = db.session.query(Selection).filter_by(recording_id=self.id).filter(Selection.contour_file != None).all()
         return len(contours)
@@ -644,7 +637,7 @@ class Recording(db.Model):
     
 
     def find_missing_selections(self, session, st_df):
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         missing_selections = []
         selection_numbers = [selection.selection_number for selection in selections]
         if self.selection_table_file != None:
@@ -755,12 +748,12 @@ class Recording(db.Model):
         self.duration = value
     
     def update_selection_traced_status(self,session):
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         for selection in selections:
             selection.update_traced_status()
     
     def reset_selection_table_values(self,session):
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         for selection in selections:
             selection.reset_selection_table_values(session)
 
@@ -937,7 +930,7 @@ class Selection(db.Model):
         import matplotlib.pyplot as plt
         import numpy as np
         import os
-        from calculations.rocca.contour import ContourFile
+        from contour_statistics import ContourFile
         warning = ""
         # Set default FFT and hop sizes if not provided
         if fft_size is None:

@@ -8,11 +8,12 @@ from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,rende
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_user,login_required, current_user, login_manager
-import calculations.rocca.contour as contour_code
+import contour_statistics as contour_code
 from werkzeug.datastructures import FileStorage
 
 # Location application imports
-from db import get_file_space_path, get_tempdir, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+import database_handler
+from database_handler import get_file_space_path, get_tempdir, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 
@@ -141,7 +142,7 @@ def process_contour():
         else:
             messages.append("Selection number: " + selection_number + ".")
         
-        selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
+        selection = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
 
         if selection:
             if selection.annotation == "N":
@@ -154,7 +155,7 @@ def process_contour():
         
         date = shared_functions.parse_date(filename)
         # Check if the selection start time matches that of its recording
-        recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
+        recording = session.query(Recording).filter(database_handler.text("id = :recording_id")).params(recording_id=recording_id).first()
         if not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
         else:
@@ -222,14 +223,14 @@ def process_selection():
     # Check if selection number already exists
     with Session() as session:
         if selection_number != None:
-            selection_number_exists = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
+            selection_number_exists = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
             if selection_number_exists:
                 if selection_number_exists.selection_file_id is not None:
                     messages.append("<span style='color: red;'>Error: selection number already exists.</span>")
                     valid=False
 
         # Check if the selection start time matches that of its recording
-        recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
+        recording = session.query(Recording).filter(database_handler.text("id = :recording_id")).params(recording_id=recording_id).first()
         date = shared_functions.parse_date(filename)
         if not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
@@ -255,7 +256,7 @@ def serve_plot(selection_id: str):
     fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
     hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
     with Session() as session:
-        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id}, one_result=True)
+        selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id}, one_result=True)
         # Create the file in a temporary path
         with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
             plot_file_path = selection.create_temp_plot(session, temp_dir, fft_size, hop_size)
@@ -284,7 +285,7 @@ def contour_insert_bulk(recording_id):
         ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
         # Process the files and add them to the Selection object
         for i, file in enumerate(files):
-            selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
+            selection = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
             if selection.contour_file_id is not None:
                 handle_exception(session, Exception(f'Selection {ids[i]} already has a contour'), f'Error uploading contour {ids[i]}')
             else:
@@ -322,7 +323,7 @@ def selection_insert_bulk(recording_id):
         for i, file in enumerate(files):
             try:
                 # Insert or update the selection
-                current_selection_object = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
+                current_selection_object = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
                 if current_selection_object is not None:
                     insert_or_update_selection(session,ids[i], file, recording_id, selection_id=current_selection_object.id)
                 else:
@@ -350,8 +351,8 @@ def selection_view(selection_id):
         save_snapshot_date_to_session(request.args.get('snapshot_date'))
 
     with Session() as session:
-        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
-        selection_history = shared_functions.create_all_time_request(session, Selection, filters={"id":selection_id}, order_by="row_start")
+        selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id})[0]
+        selection_history = database_handler.create_all_time_request(session, Selection, filters={"id":selection_id}, order_by="row_start")
         # Create a dictionary of all contour stats so they can be easily inserted into a table in the client side
         selection_dict = {
             'freq_max': selection.freq_max,
@@ -428,7 +429,7 @@ def confirm_no_contour_upload(selection_id):
     :return: a JSON response with a success message if the selection is updated successfully
     """
     with Session() as session:
-        selection = shared_functions.create_system_time_request(session, Selection, {"id":selection_id})[0]
+        selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id})[0]
         selection.traced = False
         session.commit()
         return jsonify({'success': True})
@@ -473,8 +474,8 @@ def extract_selection_stats(recording_id):
     :return: A Response object with the CSV contents
     """
     with Session() as session:
-        selections = shared_functions.create_system_time_request(session, Selection, {"recording_id":recording_id})
-        recording = shared_functions.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":recording_id})
+        recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         return write_contour_stats(selections, filename=f"ContourStats-{recording.get_start_time_string()}.csv")
 
 
@@ -489,10 +490,10 @@ def extract_selection_stats_for_encounter(encounter_id):
     """
     with Session() as session:
         selections = []
-        encounter = shared_functions.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
-        recordings = shared_functions.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
+        encounter = database_handler.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
+        recordings = database_handler.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
         for recording in recordings:
-            selections += shared_functions.create_system_time_request(session, Selection, {"recording_id":recording.id})
+            selections += database_handler.create_system_time_request(session, Selection, {"recording_id":recording.id})
         return write_contour_stats(selections, filename=f"ContourStats-{encounter.encounter_name}.csv")
 
 def validate_uuid(uuid_str):

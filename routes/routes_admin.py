@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 
 # Local application imports
-from db import Session, require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from database_handler import Session, require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 
@@ -480,7 +480,7 @@ def admin_user_new():
     RESTRICTIONS: Live session.
     METHODS: GET.
     """
-    roles=db.session.query(Role).all()
+    roles=database_handler.session.query(Role).all()
     default_date = datetime.now() + timedelta(days=365)
 
     return render_template('admin/admin-user-new.html',roles=roles,default_date=default_date)    

@@ -1,6 +1,5 @@
 > ⚠️ **Warning:** this project is still in a developmental stage. Some sections of the code and documentation may be incomplete.
 
-[Wiki page](wiki/Administration).
 
 # Dolphin Acoustics VIP Database Management System
 
@@ -18,7 +17,7 @@ The Web App has been developed on, and for, a Lunix based system (Debian 12). It
 
 - Python 3.10.12 (Linux) from [here](https://www.python.org/downloads/release/python-31012/)
 - All Python libraries in [requirements.txt](requirements.txt)
-- MariaDB 11.3.2 from [here](https://mariadb.org/download/?t=mariadb&p=mariadb&r=11.3.2&os=windows&cpu=x86_64&pkg=msi&mirror=heanet-ltd)
+- MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive)
 
 Note: MariaDB version **must** be of the stated version. Tables use the UUID package which is not available in some versions of maria db. See [here](https://mariadb.com/kb/en/installing-mariadb-deb-files/).
 
@@ -68,7 +67,6 @@ The DBMS was developed to store data with its metadata in a homogenised system t
 - Storage of aggregate contour statistics (csv)
 - export of contour files in a different format (ctr)
 - quality assurance at each stage of the pipeline
-> **Note:** not all functionalities listed above have been implemented. In addition, the list above is neither detailed nor exhaustive. For a live record of all feature requests, please view the GitHub issues page. For more detail  on the design of each of these stages, please view the DBMS April 2024 handover document.
 
 The storage of such data was split into two separate streams which were then managed by a Web App:
 - storing file metadata in a database (the Meta Base)
@@ -135,10 +133,20 @@ The Web App brings together the Meta Base and the File Space into a single user 
 The following folders exist in the Web App's root directory (note that a *module* refers to a compartamentalised section of code pertaining to a specific functionality such as encounter, recording or selection):
 - [resources](resources) contains additional files required in the Web App such as images.
 - [routes](routes) contains all the Flask route blueprints for separate modules.
-- [static](static) contains all CSS scripts used in the user interface.
+- [static](static) contains all CSS scripts and Javascript code used in the user interface.
 - [templates](templates) contains all HTML scripts used in the user interface.
-- [db.py](db.py) handles database connection and the loading of external files such as [file_space_path.txt](file_space_path.txt) and [google_api_key.txt](google_api_key.txt).
+- [db.py](db.py) handles database connection and the loading of external files such as [file_space_path.txt](file_space_path.txt).
 - [app.py](app.py) is the mainline which calls `db.py` and loads all `routes`.
+
+The following files exist outside the aforementioned folders:
+- `app.py` runs the web app.
+- `db.py` initialises the database and calls `models.py` to setup the ORM structure.
+- `models.py` contains all classes representing the tables in the database.
+- `shared_functions.py` contains some methods such as those required to parse dates and create more complex SQL queries beyond the SQLAlchemy ORM model.
+- `logger.py` handles the setup of a logger.
+- `exception_handler.py` defines custom exceptions and contains methods called when exceptions are found in other parts of the program.
+- `contour_statistics.py` does all contour stats calculations.
+- `maintenance.py` is another flask app that can be called whenever the main application needs to be taken down for maintenance.
 
 ## Templates and static files
 Templates are pre-designed layouts that arrange content on a webpage, usually written in HTML. Found in the `templates` folder, templates are structured into modular sub-categories for set functions.

@@ -18,7 +18,7 @@ from flask_login import login_user,login_required, current_user, login_manager
 from flask import g
 
 # Local application imports
-from db import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
+from database_handler import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
 from models import *
 from routes.routes_admin import routes_admin
 from routes.routes_encounter import routes_encounter
@@ -41,7 +41,7 @@ app.register_blueprint(routes_datahub)
 app.register_blueprint(routes_healthcentre)
 
 @app.errorhandler(OperationalError)
-def handle_operational_error(e):
+def handle_operational_error(ex):
     logger.exception('Operational error')
     return render_template('operational-error.html')
 

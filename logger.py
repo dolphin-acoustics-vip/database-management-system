@@ -1,12 +1,17 @@
 import logging
 from logging.handlers import RotatingFileHandler
-import pytz
+import pytz, os
 from datetime import datetime
 from flask_login import login_user,login_required, current_user, login_manager
 
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+log_dir = 'logs'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
 
 # Define the timezone
 tz = pytz.timezone('UTC')
@@ -27,7 +32,7 @@ class TimezoneFormatter(logging.Formatter):
         return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 # Create a file handler
-file_handler = RotatingFileHandler('app.log', maxBytes=1024*1024*100, backupCount=20)
+file_handler = RotatingFileHandler(os.path.join(log_dir,'app.log'), maxBytes=1024*1024*100, backupCount=20)
 file_handler.setLevel(logging.DEBUG)
 
 # Create a console handler

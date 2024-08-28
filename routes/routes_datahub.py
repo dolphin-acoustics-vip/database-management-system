@@ -8,7 +8,8 @@ from flask import session as client_session
 from datetime import datetime, timedelta
 
 # Local application imports
-from db import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+import database_handler
+from database_handler import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 
@@ -17,29 +18,28 @@ routes_datahub = Blueprint('datahub', __name__)
 
 @routes_datahub.route('/datahub', methods=['GET'])
 @login_required
+@exclude_role_3
+@exclude_role_4
 def datahub_view():
     with Session() as session:
         species_list = session.query(Species).all()
         return render_template('datahub/datahub.html', species_list=species_list)
 
 
-@routes_datahub.route('/datahub/get-selection-statistics', methods=['GET'])
-def get_selection_statistics():
-    data = request.args.get('data')  # Get the data from the query parameters
-    with Session() as session:
-        return jsonify(selections=session.query(Selection).count())
 
-
+# Used for graphs
 daily_axis_label_format = "%d %b %Y"
 monthly_axis_label_format = "%b %Y"
-def create_date_axis_labels(start_date, end_date):
+
+def create_date_axis_labels(start_date: datetime, end_date: datetime) -> tuple:
     """
     Generate date axis labels based on the given start and end dates.
+    If the range is greater than 90 days the axis labels are categorised by months
+    in ascending order. Otherwise they are categorised by daily dates in ascending order
 
-    Args:
-        start_date (datetime): The start date of the date range.
-        end_date (datetime): The end date of the date range.
-
+    :param start_date: The start date of the date range.
+    :param end_date: The end date of the date range.
+    
     Returns:
         tuple: A tuple containing two elements:
             1. labels (list): A list of formatted date strings representing the axis labels.
@@ -57,210 +57,191 @@ def create_date_axis_labels(start_date, end_date):
     return labels, category_months
 
 
-# @routes_datahub.route('/datahub/get-statistics-for-user', methods=['GET'])
-# def get_statistics_for_user():
-#     user_id = request.args.get('user_id')
-#     start_date_time = request.args.get('start_date_time')
-#     start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
-#     columns = "sel.id, sel.selection_number, sel.row_start, sel.row_end, sel.selection_file_id, sel.contour_file_id, sel_file.filename sel_file_filename, sel_file.upload_datetime sel_file_upload_datetime, sel_file.updated_by_id sel_file_updated_by_id, contour_file.filename contour_file_filename, contour_file.upload_datetime contour_file_upload_datetime, contour_file.updated_by_id contour_file_updated_by_id, sel_file_user.id sel_file_user_id, sel_file_user.login_id sel_file_user_login_id, sel_file_user.name sel_file_user_name, contour_file_user.id contour_file_user_id, contour_file_user.name contour_file_user_name, contour_file_user.login_id contour_file_user_login_id"
-#     joins = "LEFT JOIN file AS sel_file ON sel_file.id = sel.selection_file_id LEFT JOIN file AS contour_file ON contour_file.id = sel.contour_file_id LEFT JOIN user AS sel_file_user ON sel_file.updated_by_id = sel_file_user.id LEFT JOIN user AS contour_file_user ON contour_file.updated_by_id = contour_file_user.id"
-#     with Session() as session:
-#         snapshot_date=client_session.get('snapshot_date')
-#         if snapshot_date: query_str="SELECT {} FROM {} FOR SYSTEM_TIME AS OF '{}'".format(columns, Selection.__tablename__, snapshot_date)
-#         else: query_str="SELECT {} FROM {} AS sel".format(columns, Selection.__tablename__)
-#         query_str += " {}".format(joins)
-#         query = db.text(query_str)
-#         result = session.execute(query)
+@routes_datahub.route('/datahub/get-selection-statistics', methods=['GET'])
+@login_required
+@exclude_role_3
+@exclude_role_4
+def get_selection_statistics():
 
-@routes_datahub.route('/datahub/get-statistics', methods=['GET'])
-def get_statistics():
-    statistics_dict = {}
-    from models import Selection
+    """
+    Retrieves statistics for the data hub based on the provided parameters.
+
+    Request parameters:
+        - species_filter (list): A list of species ids to filter the statistics by (can be empty if no filter).
+        - dayCount (int): The number of days to retrieve statistics for.
+        - start_date_time (str): The start date and time for the statistics in yyyy-mm-ddTHH:MM:SS format (if a dayCount is given this can be left blank)
+        - user_id (str): The user ID if the statistics are to be filtered for a single user (can be empty if no filter).
+
+    Returns:
+        A JSON object containing selection statistics (see code for more detail on JSON format and how the calculations are made)
+    """
+    statistics_dict = {
+        
+    }
+
+    # Snapshot date limits the statistics to be retrieved to a certain point in history (or now if None).
     snapshot_date=client_session.get('snapshot_date')
-
     snapshot_date_datetime = shared_functions.parse_snapshot_date(snapshot_date) if snapshot_date else None
     if snapshot_date_datetime is None:
         snapshot_date_datetime = datetime.now()
 
+    # Species and user filter.
     species_filter_str = request.args.get('species_filter')
-
-
+    user_id = request.args.get('user_id')
+    # Determine the period for which the statistics should be retrieved.
     start_date_time = request.args.get('start_date_time')
     start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
-    day_count = request.args.get('day_count')
-    if day_count is not None and day_count.isdigit():
-        start_date_time = snapshot_date_datetime - timedelta(days=int(day_count)-1)
+    dayCount = request.args.get('dayCount')
+    if dayCount is not None and dayCount.isdigit():
+        start_date_time = snapshot_date_datetime - timedelta(days=int(dayCount)-1)
     end_date_time = snapshot_date_datetime
-    user_id = request.args.get('user_id')
 
-
-    
     with Session() as session:
-
-        records = shared_functions.get_system_time_request_with_joins(session, user_id=user_id, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
-        if user_id:
-            user = session.query(User).filter_by(id=uuid.UUID(user_id)).first()
-            statistics_dict['user_name'] = user.name
-            statistics_dict['user_login_id'] = user.login_id
+        records = database_handler.get_system_time_request_with_joins(session, user_id=user_id, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
         
-        num_selection_files = 0
-        num_selection_file_uploads = 0
-        num_contour_files = 0
-        num_contour_file_uploads = 0
-       
-
+        # Grab user filter information which is returned in the statistics (for informational purposes)
+        if user_id:
+            user = session.query(User).filter_by(id=user_id).first()
+            if user:
+                statistics_dict['userName'] = user.name
+                statistics_dict['userLoginId'] = user.login_id
+    
         start_date = start_date_time.date()
         end_date = end_date_time.date()
         number_days = (int((end_date - start_date).days) + 1)
+
+        statistics_dict['startDateTime'] = str(start_date_time)
+        statistics_dict['endDateTime'] = str(end_date_time)
+        statistics_dict['dayCount'] = number_days
+
+        num_selection_files = 0 # total number of selection files (all time)
+        num_selection_file_uploads = 0 # total number of selection files (between start and end date)
+        num_contour_files = 0 # total number of contour files (all time)
+        num_contour_file_uploads = 0 # total number of contour files (between start and end date)
+       
+        # Create data used to render a chart of selection file and contour file uploads over time
+        # selection_file_insert_list and contour_file_insert_list are lists of length number_days
+        # as they will contain y-axis values for each x-axis element in axis_labels.
         axis_labels, category_months = create_date_axis_labels(start_date, end_date)
-        
         selection_file_insert_list = [0] * len(axis_labels)
         contour_file_insert_list = [0] * len(axis_labels)
 
+        # Create a dictionary of species names to store a number of statistics for each
+        species_statistics = {}
+
+        # Calculate a number of selection and contour file uploads for each user
         selection_user_contributions = {}
         contour_user_contributions = {}
 
-        annotation_acceptance_rate = None
-        traced_true_match_count = 0
-        traced_true_unmatch_count = 0
-        traced_false_match_count = 0
-        traced_false_unmatch_count = 0
-
-        contoured_same_selection_count = 0
-        abandoned_plus_week_selection_count = 0
-        abandoned_less_week_selection_count = 0
-
-        species_complete_counter = {}
-        complete_counter = 0
+        # These statistics are not sent to the frontend but are used in an intermediary step to calculate the annotation rejection rate
+        traced_true_matchCount = 0 # the number of times Selection.traced is true and annotation is Y or M
+        traced_true_unmatchCount = 0 # the number of times Selection.traced is true and annotation is N
+        traced_false_matchCount = 0 # the number of times Selection.traced is false and annotation is N or M
+        traced_false_unmatchCount = 0 # the number of times Selection.traced is false and annotation is Y
 
         for selection in records:
-            selection_file_valid = not user_id or user_id and selection['sel_file_updated_by_id'] == user_id
-            contour_file_valid = not user_id or user_id and selection['contour_file_updated_by_id'] == user_id
 
+            # Per-species calculations
+            if selection['sp_id'] not in species_statistics:
+                # Add new species to the dictionary
+                # - untracedCount is the number of selections in that species that have not been traced
+                # - deactivatedCount is the number of selections in that species that have been deactivated
+                # - completedCount is the number of selections in that species that have been traced and are complete
+                # - record is used to populate a line graph (where we need to know selection traces over an axis time).
+                #   It is a list of length number_days as it will contain y-axis values for each x-axis element in axis_labels
+                species_statistics[selection['sp_id']] = {
+                    'untracedCount':0,
+                    'deactivatedCount':0,
+                    'completedCount': 0,
+                    'speciesName': selection['species_name'],
+                    'record':[0] * len(axis_labels)}
+            if selection['deactivated'] == True:
+                species_statistics[selection['sp_id']]['deactivatedCount'] += 1
+            else:
+                if selection['traced'] == True:
+                    species_statistics[selection['sp_id']]['completedCount'] += 1
+                    if category_months:
+                        index = axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(monthly_axis_label_format))
+                        species_statistics[selection['sp_id']]['record'][index] += 1
+                    else:  
+                        species_statistics[selection['sp_id']]['record'][axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(daily_axis_label_format))] += 1
+                elif selection['traced'] == None:
+                    species_statistics[selection['sp_id']]['untracedCount'] += 1
 
-            if selection['sel_created_datetime'] > start_date_time:
-                if selection['selection_file_id'] is None or selection['traced'] is None:
-                    print(selection['sel_updated_by_id'], user_id)
-                    if not user_id or user_id and selection['sel_updated_by_id'] == user_id:
-                        if selection['sel_created_datetime'] < end_date_time - timedelta(days=7):
-                            abandoned_plus_week_selection_count += 1
-                        else:
-                            abandoned_less_week_selection_count += 1                        
-
-
+            # Selection file stats
             if selection['selection_file_id'] is not None:
-                if selection_file_valid: 
-
-                    
-
-
+                # Check if the selection file was uploaded by the user filter (or just continue if no user filter given)
+                if not user_id or user_id and selection['sel_file_updated_by_id'] == user_id:
                     num_selection_files += 1
-
-
+                    # Check if the selection file was uploaded after the defined start date filter
                     if selection['sel_file_upload_datetime'] > start_date_time:
-                        
-
+                        num_selection_file_uploads += 1
+                        # Count user-specific selection contributions in the dictionary (see definition above)
                         if selection['sel_file_user_id'] in selection_user_contributions:
                             selection_user_contributions[selection['sel_file_user_id']]['contributions'] += 1
                         elif selection['sel_file_user_id'] is not None:
                             selection_user_contributions[selection['sel_file_user_id']] = {'login_id': selection['sel_file_user_login_id'], 'name': selection['sel_file_user_name'], 'contributions': 1}
-
-
-
-                        num_selection_file_uploads += 1
+                        # Add selection file upload data to the chart for a particular month or date
                         if category_months:
                             index = axis_labels.index(selection['sel_file_upload_datetime'].date().strftime(monthly_axis_label_format))
                             selection_file_insert_list[index] += 1
                         else:
                             selection_file_insert_list[axis_labels.index(selection['sel_file_upload_datetime'].date().strftime(daily_axis_label_format))] += 1
             
+            # Annotation rejection rate calculations
             if selection['sel_file_upload_datetime'] is not None and selection['sel_file_upload_datetime'] > start_date_time:                
                 if (selection['annotation'] == 'Y' or selection['annotation'] == 'M') and selection['traced'] == True:
-                    traced_true_match_count += 1
+                    traced_true_matchCount += 1
                 if (selection['annotation'] == 'Y' or selection['annotation'] == 'M' or selection['annotation'] == None) and selection['traced'] == False:
-                    traced_true_unmatch_count += 1
+                    traced_true_unmatchCount += 1
                 if (selection['annotation'] == 'N' or selection['annotation'] == 'M') and selection['traced'] == False:
-                    traced_false_match_count += 1
+                    traced_false_matchCount += 1
                 if (selection['annotation'] == 'N' or selection['annotation'] == 'M' or selection['annotation'] == None) and selection['traced'] == True:
-                    traced_false_unmatch_count += 1
-
-
-            if selection['sp_id'] not in species_complete_counter:
-                species_complete_counter[selection['sp_id']] = {'untraced_count':0,'deactivated_count':0,'complete': 0, 'species_name': selection['species_name'], 'record':[0] * len(axis_labels)}
-
-            if selection['deactivated'] == True:
-                species_complete_counter[selection['sp_id']]['deactivated_count'] += 1
-            else:
-                if selection['traced'] == True:
-                    complete_counter += 1
-                    species_complete_counter[selection['sp_id']]['complete'] += 1
-                    if category_months:
-                        index = axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(monthly_axis_label_format))
-                        species_complete_counter[selection['sp_id']]['record'][index] += 1
-                    else:  
-                        species_complete_counter[selection['sp_id']]['record'][axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(daily_axis_label_format))] += 1
-                elif selection['traced'] == None:
-                    species_complete_counter[selection['sp_id']]['untraced_count'] += 1
+                    traced_false_unmatchCount += 1
 
 
             if selection['contour_file_id'] is not None:
-                if contour_file_valid:
+                # Check if the contour file was uploaded by the user filter (or just continue if no user filter given)
+                if not user_id or user_id and selection['contour_file_updated_by_id'] == user_id:
                     num_contour_files += 1
+                    # Check if the contour file was uploaded after the defined start date filter
                     if selection['contour_file_upload_datetime'] > start_date_time:
                         num_contour_file_uploads += 1
-
-
-
+                        # Count user-specific contour contributions in the dictionary (see definition above)
                         if selection['contour_file_user_id'] in contour_user_contributions:
                             contour_user_contributions[selection['contour_file_user_id']]['contributions'] += 1
                         elif selection['contour_file_user_id'] is not None:
                             contour_user_contributions[selection['contour_file_user_id']] = {'login_id': selection['contour_file_user_login_id'], 'name': selection['contour_file_user_name'],'contributions': 1}
-
+                        # Add contour file upload data to the chart for a particular month or date
                         if category_months:
                             index = axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(monthly_axis_label_format))
                             contour_file_insert_list[index] += 1
                         else:
                             contour_file_insert_list[axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(daily_axis_label_format))] += 1
 
-        total_traced_count = traced_true_match_count + traced_true_unmatch_count + traced_false_match_count + traced_false_unmatch_count
-        annotation_rejection_rate = round(((traced_false_unmatch_count + traced_true_unmatch_count) / total_traced_count) * 100) if total_traced_count > 0 else 0
+        # Counting the percentage of selections where the user has rejected an annotation
+        total_tracedCount = traced_true_matchCount + traced_true_unmatchCount + traced_false_matchCount + traced_false_unmatchCount
+        annotation_rejection_rate = round(((traced_false_unmatchCount + traced_true_unmatchCount) / total_tracedCount) * 100) if total_tracedCount > 0 else 0
+        statistics_dict['annotationRejectionRate'] = annotation_rejection_rate
 
-
-        
-        statistics_dict['speciesCompleteCounterAggregateRecord'] = []
-        for species in species_complete_counter:
+        # Summarising the statistics for selection traces over time (aggregate - shown as a line graph)
+        # See above for the meaning of species_statistics[species]['record']. By looping through
+        # and adding to an aggregate total we send an array of values to be plotted on an aggregate line
+        # graph to the client.
+        statistics_dict['speciesStatistics'] = species_statistics
+        statistics_dict['speciesStatisticsAggregateTraced'] = []
+        for species in species_statistics:
             total = 0
             aggregate_list = [0] * len(axis_labels)
-            for i, record in enumerate(species_complete_counter[species]['record']):
+            for i, record in enumerate(species_statistics[species]['record']):
                 total += record
                 aggregate_list[i] = total
-
-            statistics_dict['speciesCompleteCounterAggregateRecord'].append({"label": species_complete_counter[species]['species_name'], "data": aggregate_list})
-
-        print(statistics_dict)
-
-        statistics_dict['completeCounter'] = complete_counter
-        statistics_dict['speciesCompleteCounter'] = species_complete_counter
-
-        statistics_dict['abandonedPlusWeekSelectionCount'] = abandoned_plus_week_selection_count
-        statistics_dict['abandonedLessWeekSelectionCount'] = abandoned_less_week_selection_count
-
-        statistics_dict['tracedTrueMatchCount'] = traced_true_match_count
-        statistics_dict['tracedTrueUnmatchCount'] = traced_true_unmatch_count
-        statistics_dict['tracedFalseMatchCount'] = traced_false_match_count
-        statistics_dict['tracedFalseUnmatchCount'] = traced_false_unmatch_count
-        statistics_dict['annotationRejectionRate'] = annotation_rejection_rate
+            statistics_dict['speciesStatisticsAggregateTraced'].append({"label": species_statistics[species]['speciesName'], "data": aggregate_list})
 
         def sort_by_contributions(dictionary):
             return sorted(dictionary.items(), key=lambda x: x[1]['contributions'], reverse=True)
-
         sorted_selection_user_contributions = sort_by_contributions(selection_user_contributions)
         sorted_contour_user_contributions = sort_by_contributions(contour_user_contributions)
-
-        statistics_dict['startDateTime'] = str(start_date_time)
-        statistics_dict['endDateTime'] = str(end_date_time)
-        
-        statistics_dict['dayCount'] = number_days
 
         statistics_dict['numSelectionFiles'] = num_selection_files
         statistics_dict['numSelectionFileUploads'] = num_selection_file_uploads
@@ -281,117 +262,100 @@ def get_statistics():
         statistics_dict['selectionContributionsByUser'] = sorted_selection_user_contributions
         statistics_dict['contourContributionsByUser'] = sorted_contour_user_contributions
 
-
         return jsonify(statistics_dict)
 
 
 @routes_datahub.route('/datahub/get-recording-statistics', methods=['GET'])
-def get_assignment_statistics():
-    recording_statistics = {'unassigned_recordings': [], 'assigned_recordings': []}
+@login_required
+@exclude_role_3
+@exclude_role_4
+def get_recording_statistics():
+    recording_statistics = {'unassignedRecordings': [], 'assignedRecordings': []}
 
     snapshot_date=client_session.get('snapshot_date')
     snapshot_date_datetime = datetime.strptime(snapshot_date, "%Y-%m-%d %H:%M:%S.%f") if snapshot_date else None       
     if snapshot_date_datetime is None:
         snapshot_date_datetime = datetime.now()
 
+    # Filter information passed as parameter to web request
     species_filter_str = request.args.get('species_filter')
-
-
-    start_date_time = request.args.get('start_date_time')
-    start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
-    day_count = request.args.get('day_count')
-    if day_count is not None and day_count.isdigit():
-        start_date_time = snapshot_date_datetime - timedelta(days=int(day_count)-1)
-    end_date_time = snapshot_date_datetime
     assigned_user_id = request.args.get('assigned_user_id')
     start_date_time = request.args.get('start_date_time')
+    start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
+    dayCount = request.args.get('dayCount')
+    if dayCount is not None and dayCount.isdigit():
+        start_date_time = snapshot_date_datetime - timedelta(days=int(dayCount)-1)
 
-    
     with Session() as session:
+        records = database_handler.get_system_time_request_recording(session, species_filter_str=species_filter_str, assigned_user_id=assigned_user_id, created_date_filter=start_date_time, override_snapshot_date=snapshot_date)
+        all_species = database_handler.create_system_time_request(session, Species)
 
-        records = shared_functions.get_system_time_request_recording(session, species_filter_str=species_filter_str, assigned_user_id=assigned_user_id, created_date_filter=start_date_time, override_snapshot_date=snapshot_date)
-        #if user_id:
-        #    user = session.query(User).filter_by(id=uuid.UUID(user_id)).first()
-        #    statistics_dict['user_name'] = user.name
-        #   statistics_dict['user_login_id'] = user.login_id
+        # Dictionary to store recording statistics for each species
+        species_specific_data = {str(species.id): {'speciesName': species.species_name, 'recordings': 0, 'assignedRecordings': 0, 'unassignedRecordings': 0, 'completedAssignments': 0, 'inprogressAssignments': 0, 'tracedCount': 0, 'recordingsReviewedCount': 0, 'recordingsOnHoldCount': 0, 'recordingsAwaitingReviewCount': 0, 'recordingsUnassignedCount': 0, 'recordingsInProgressCount': 0} for species in all_species}
 
-        number_recordings = 0
-        number_assigned_recordings = 0
-        number_unassigned_recordings = 0
-        number_completed_assignments = 0
-        number_inprogress_assignments = 0
-
-        recordings_reviewed_count = 0
-        recordings_on_hold_count = 0
-        recordings_awaiting_review_count = 0
-        recordings_unassigned_count = 0
-        recordings_in_progress_count = 0
-
-
-        all_species = session.query(Species).all()
-        species_specific_data = {str(species.id): {'species_name': species.species_name, 'recordings': 0, 'assigned_recordings': 0, 'unassigned_recordings': 0, 'completed_assignments': 0, 'inprogress_assignments': 0, 'traced_count': 0, 'recordings_reviewed_count': 0, 'recordings_on_hold_count': 0, 'recordings_awaiting_review_count': 0, 'recordings_unassigned_count': 0, 'recordings_in_progress_count': 0} for species in all_species}
-
-        completed_recordings = []
-        awaiting_review_recordings = []
-        on_hold_recordings = []
-        assigned_recordings = []
-        unassigned_recordings = []
+        # Variables to store recordings statistics depending on each of its status (a field containing either
+        # Reviewed, Awaiting Review, In Hold, Unassigned, In Progress)
+        completedRecordings = []
+        awaitingReviewRecordings = []
+        onHoldRecordings = []
+        assignedRecordings = []
+        unassignedRecordings = []
 
         if assigned_user_id:
-            user = session.query(User).filter_by(id=uuid.UUID(assigned_user_id)).first()
-            recording_statistics['assigned_user_name'] = user.name
-            recording_statistics['assigned_user_login_id'] = user.login_id
-        processed_recordings = []
+            user = session.query(User).filter_by(id=assigned_user_id).first()
+            if user:
+                recording_statistics['assignedUserName'] = user.name
+                recording_statistics['assignedUserLoginId'] = user.login_id
+            
+
+        processed_recordings = [] # keep track of recordings that have already been processed as to not duplicate their stats
         for recording in records:
-            recording['recording_route'] = url_for('recording.recording_view', recording_id=recording['id'], encounter_id=recording['enc_id'])
-            
-            
+            # Route for a button to access the recording in the front end
+            recording['recordingRoute'] = url_for('recording.recording_view', recording_id=recording['id'], encounter_id=recording['enc_id'])
+            # Add statistics for recording to its corresponding species entry in species_specific_data
             if recording['sp_id'] in species_specific_data:
                 species_specific_data[recording['sp_id']]['recordings'] += 1
-
                 if recording['status'] == 'Reviewed':
-                    completed_recordings.append(recording) if recording['id'] not in processed_recordings else None
-                    species_specific_data[recording['sp_id']]['recordings_reviewed_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    completedRecordings.append(recording) if recording['id'] not in processed_recordings else None
+                    species_specific_data[recording['sp_id']]['recordingsReviewedCount'] += 1 if recording['id'] not in processed_recordings else 0
                     processed_recordings.append(recording['id'])
                 elif recording['status'] == 'Awaiting Review':
-                    awaiting_review_recordings.append(recording) if recording['id'] not in processed_recordings else None
-                    species_specific_data[recording['sp_id']]['recordings_awaiting_review_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    awaitingReviewRecordings.append(recording) if recording['id'] not in processed_recordings else None
+                    species_specific_data[recording['sp_id']]['recordingsAwaitingReviewCount'] += 1 if recording['id'] not in processed_recordings else 0
                     processed_recordings.append(recording['id'])
                 elif recording['status'] == 'On Hold':
-                    on_hold_recordings.append(recording) if recording['id'] not in processed_recordings else None
-                    species_specific_data[recording['sp_id']]['recordings_on_hold_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    onHoldRecordings.append(recording) if recording['id'] not in processed_recordings else None
+                    species_specific_data[recording['sp_id']]['recordingsOnHoldCount'] += 1 if recording['id'] not in processed_recordings else 0
                     processed_recordings.append(recording['id'])
                 elif recording['status'] == 'Unassigned':
-                    unassigned_recordings.append(recording)
-                    species_specific_data[recording['sp_id']]['recordings_unassigned_count'] += 1
+                    unassignedRecordings.append(recording)
+                    species_specific_data[recording['sp_id']]['recordingsUnassignedCount'] += 1
                 elif recording['status'] == 'In Progress':
-                    assigned_recordings.append(recording)
-                    species_specific_data[recording['sp_id']]['recordings_in_progress_count'] += 1 if recording['id'] not in processed_recordings else 0
+                    assignedRecordings.append(recording)
+                    species_specific_data[recording['sp_id']]['recordingsInProgressCount'] += 1 if recording['id'] not in processed_recordings else 0
                     processed_recordings.append(recording['id'])
-
+                # Count total number of recordings that have been assigned, completed, are unassigned, or are currently in progress
                 if recording['assignment_user_login_id'] is not None:
-
-                    species_specific_data[recording['sp_id']]['assigned_recordings'] += 1
+                    species_specific_data[recording['sp_id']]['assignedRecordings'] += 1
                     if recording['assignment_completed_flag'] == True:
-                        species_specific_data[recording['sp_id']]['completed_assignments'] += 1
+                        species_specific_data[recording['sp_id']]['completedAssignments'] += 1
                     elif recording['assignment_completed_flag'] == False:
-                        species_specific_data[recording['sp_id']]['inprogress_assignments'] += 1
+                        species_specific_data[recording['sp_id']]['inprogressAssignments'] += 1
                 else: 
-                    species_specific_data[recording['sp_id']]['unassigned_recordings'] += 1
-                species_specific_data[recording['sp_id']]['traced_count'] += recording['traced_count']
+                    species_specific_data[recording['sp_id']]['unassignedRecordings'] += 1
+                # Count total number of selections that have been traced for each recording (traced_count must be generated in the query)
+                species_specific_data[recording['sp_id']]['tracedCount'] += recording['traced_count']
 
-        recording_statistics['unassigned_recordings'] = sorted(unassigned_recordings, key=lambda x: x['created_datetime'], reverse=True)
+        recording_statistics['unassignedRecordings'] = sorted(unassignedRecordings, key=lambda x: x['created_datetime'], reverse=True)
+        recording_statistics['onHoldRecordings'] = sorted(onHoldRecordings, key=lambda x: x['created_datetime'], reverse=True)
+        recording_statistics['awaitingReviewRecordings'] = sorted(awaitingReviewRecordings, key=lambda x: x['created_datetime'], reverse=True)
+        recording_statistics['completedRecordings'] = sorted(completedRecordings, key=lambda x: x['created_datetime'], reverse=True)
+        recording_statistics['assignedRecordings'] = sorted(assignedRecordings, key=lambda x: (-(x['traced_count']==0 and x['assignment_completed_flag']==True), x['assignment_completed_flag'], x['created_datetime']))
         
-        recording_statistics['on_hold_recordings'] = sorted(on_hold_recordings, key=lambda x: x['created_datetime'], reverse=True)
-        
-        recording_statistics['awaiting_review_recordings'] = sorted(awaiting_review_recordings, key=lambda x: x['created_datetime'], reverse=True)
-        recording_statistics['completed_recordings'] = sorted(completed_recordings, key=lambda x: x['created_datetime'], reverse=True)
-        recording_statistics['assigned_recordings'] = sorted(assigned_recordings, key=lambda x: (-(x['traced_count']==0 and x['assignment_completed_flag']==True), x['assignment_completed_flag'], x['created_datetime']))
-        for sp_id in species_specific_data:
-            species_specific_data[sp_id]['completion_rate'] = round((species_specific_data[sp_id]['completed_assignments'] / species_specific_data[sp_id]['assigned_recordings']) * 100, 0) if species_specific_data[sp_id]['assigned_recordings'] > 0 else 0
-
-            species_specific_data[sp_id]['recordings_count'] = species_specific_data[sp_id]['recordings_unassigned_count'] + species_specific_data[sp_id]['recordings_in_progress_count'] + species_specific_data[sp_id]['recordings_reviewed_count'] + species_specific_data[sp_id]['recordings_awaiting_review_count'] + species_specific_data[sp_id]['recordings_on_hold_count']
-            species_specific_data[sp_id]['progress'] = round((species_specific_data[sp_id]['recordings_reviewed_count'] / species_specific_data[sp_id]['recordings_count']) * 100, 0) if species_specific_data[sp_id]['recordings_count'] > 0 else 0
+        for species_id in species_specific_data:
+            species_specific_data[species_id]['completionRate'] = round((species_specific_data[species_id]['completedAssignments'] / species_specific_data[species_id]['assignedRecordings']) * 100, 0) if species_specific_data[species_id]['assignedRecordings'] > 0 else 0
+            species_specific_data[species_id]['recordingsCount'] = species_specific_data[species_id]['recordingsUnassignedCount'] + species_specific_data[species_id]['recordingsInProgressCount'] + species_specific_data[species_id]['recordingsReviewedCount'] + species_specific_data[species_id]['recordingsAwaitingReviewCount'] + species_specific_data[species_id]['recordingsOnHoldCount']
+            species_specific_data[species_id]['progress'] = round((species_specific_data[species_id]['recordingsReviewedCount'] / species_specific_data[species_id]['recordingsCount']) * 100, 0) if species_specific_data[species_id]['recordingsCount'] > 0 else 0
 
 
         return jsonify(species_statistics=species_specific_data, recording_statistics=recording_statistics)
