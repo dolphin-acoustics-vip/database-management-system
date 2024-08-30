@@ -93,15 +93,19 @@ Once downloaded, the Meta Base may be initialised and a new database created. Th
 
 <a name="creating-the-virtual-development-environment"></a>
 ### Creating the virtual development environment
-The Web App was developed using an array of libraries defined [above](#requirements). To create a virtual environment and install all the required libraries, the following code must be run in the Web App root folder:
+The Web App was developed using an array of libraries defined [above](#requirements). To create a virtual environment and install all the required libraries, follow the instructions below.
 
-`python3 virtualenv venv && venv/bin/pip install -r requirements.txt`
+Create the virtual environment. Note that for the purposes of this guide the virtual environment has been assigned the name `virtualenv`:
+
+`python3 -m venv virtualenv`
 
 From the root folder, the virtual environment can then be started using the following command:
 
- `source venv/bin/activate`
+ `source virtualenv/bin/activate`
 
-> ⚠️ **Warning:** to prevent clutter on the git repository, please ensure the virtual environment folder name is placed in the [gitignore](.gitignore) file.
+ Once you verify that the virtual environemnt is installed, and has been activated, run the following command to install all requirements listed in [requirements.txt](requirements.txt).
+
+ `pip3 install -r requirements.txt`
 
 <a name="setting-up-the-file-space"></a>
 ### Setting up the File Space
