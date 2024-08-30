@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 # Local application imports
 import database_handler
-from database_handler import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from database_handler import get_file_space_path, Session, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 
@@ -109,7 +109,6 @@ def get_data_warnings():
             else:
                 if selection['traced'] == None and selection['deactivated'] == False:
                     warning_counter=add_warning(selection, "Abandoned selection",warning_counter)
-        print(total_selections_counter)
         health_score = 100 - round ((warning_counter / total_selections_counter) * 100) if total_selections_counter > 0 else None
         
         return {'warnings': warnings, 'health_score': health_score, 'warning_counter': warning_counter, 'assigned_user_name': user_name, 'assigned_user_login_id': user_login_id}

@@ -30,8 +30,8 @@
 
         <label class="bold">User filter</label>
 
-        {% from 'partials/search-dropdown.html' import recording_table %}
-        {{ recording_table() }}
+        {% from 'partials/user-search.html' import user_search %}
+        {{ user_search() }}
         <button id="clear-user-filter-button" hidden onclick="clearUserFilter()">Clear User Filter</button>
         <section style="padding-bottom: 20px; display: none;" id="user-statistics-section">
             <h2 id="user-statistics-title">User Statistics</h2>

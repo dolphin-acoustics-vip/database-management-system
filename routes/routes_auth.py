@@ -7,7 +7,7 @@ from flask import session as client_session
 import uuid
 
 # Local application imports
-from database_handler import Session, parse_alchemy_error,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from database_handler import Session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 from logger import logger
@@ -29,8 +29,7 @@ def login_post():
         password = request.form['password']
         user = session.query(User).filter_by(login_id=email, password=password, is_temporary=0).first()
         if user:
-            print('Step 2')
-            if not user.is_active():
+            if not user.is_active:
                 flash('Your account has been deactivated. Please contact your administrator.', 'error')
                 return redirect(url_for('auth.login'))
             days_until_expiry = (user.expiry - datetime.now().date()).days
@@ -56,7 +55,7 @@ def login_temporary_post():
         password = request.form['password']
         user = session.query(User).filter_by(login_id=login_id, password=password, is_temporary=1).first()
         if user:
-            if not user.is_active():
+            if not user.is_active:
                 flash('Your account has been deactivated. Please contact your administrator.', 'error')
                 return redirect(url_for('auth.access_code_login'))
             days_until_expiry = (user.expiry - datetime.now().date()).days

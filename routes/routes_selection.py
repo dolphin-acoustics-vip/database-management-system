@@ -13,7 +13,7 @@ from werkzeug.datastructures import FileStorage
 
 # Location application imports
 import database_handler
-from database_handler import get_file_space_path, get_tempdir, Session, GOOGLE_API_KEY, db, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from database_handler import get_file_space_path, get_tempdir, Session, db, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 from exception_handler import *
 
@@ -40,14 +40,13 @@ def insert_or_update_selection(session: sessionmaker, selection_number: str, fil
         selection_obj.recording_id = recording_id
         session.add(selection_obj)
         selection_obj.set_selection_number(selection_number)
-    session.commit()
+    session.flush()
     selection_file = file
     selection_filename = selection_obj.generate_filename()
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = File()
     new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename, get_file_space_path())
-    selection_obj.selection_file = new_file
-    selection_obj.calculate_sampling_rate(session)
+    selection_obj.set_selection_file(new_file)
     session.add(new_file)
     session.commit()
     return selection_obj
@@ -142,7 +141,7 @@ def process_contour():
         else:
             messages.append("Selection number: " + selection_number + ".")
         
-        selection = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
+        selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
 
         if selection:
             if selection.annotation == "N":
@@ -155,7 +154,7 @@ def process_contour():
         
         date = shared_functions.parse_date(filename)
         # Check if the selection start time matches that of its recording
-        recording = session.query(Recording).filter(database_handler.text("id = :recording_id")).params(recording_id=recording_id).first()
+        recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
         if not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
         else:
@@ -223,14 +222,14 @@ def process_selection():
     # Check if selection number already exists
     with Session() as session:
         if selection_number != None:
-            selection_number_exists = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
+            selection_number_exists = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
             if selection_number_exists:
                 if selection_number_exists.selection_file_id is not None:
                     messages.append("<span style='color: red;'>Error: selection number already exists.</span>")
                     valid=False
 
         # Check if the selection start time matches that of its recording
-        recording = session.query(Recording).filter(database_handler.text("id = :recording_id")).params(recording_id=recording_id).first()
+        recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
         date = shared_functions.parse_date(filename)
         if not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
@@ -285,7 +284,7 @@ def contour_insert_bulk(recording_id):
         ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
         # Process the files and add them to the Selection object
         for i, file in enumerate(files):
-            selection = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
+            selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
             if selection.contour_file_id is not None:
                 handle_exception(session, Exception(f'Selection {ids[i]} already has a contour'), f'Error uploading contour {ids[i]}')
             else:
@@ -323,7 +322,7 @@ def selection_insert_bulk(recording_id):
         for i, file in enumerate(files):
             try:
                 # Insert or update the selection
-                current_selection_object = session.query(Selection).filter(database_handler.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
+                current_selection_object = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
                 if current_selection_object is not None:
                     insert_or_update_selection(session,ids[i], file, recording_id, selection_id=current_selection_object.id)
                 else:

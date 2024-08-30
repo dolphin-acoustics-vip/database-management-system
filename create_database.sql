@@ -76,7 +76,7 @@ CREATE TABLE `encounter` (
   `updated_by_id` CHAR(36) DEFAULT NULL,
   `created_datetime` TIMESTAMP DEFAULT NOW(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `encounter_name` (`encounter_name`,`location`,`project`),
+  UNIQUE KEY `encounter_name_location_project` (`encounter_name`,`location`,`project`),
   KEY `species_id` (`species_id`),
   KEY `data_source_id` (`data_source_id`),
   KEY `recording_platform_id` (`recording_platform_id`),

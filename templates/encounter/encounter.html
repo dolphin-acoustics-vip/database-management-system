@@ -1,16 +1,16 @@
+<!--
+This page allows the user to see all encounters.
+Variables required:
+- g.user: current logged in User object
+- encounters: array of Encounter objects
+-->
+
 <!DOCTYPE html>
 <html>
 {% include 'partials/header.html' %}
 <head>
     <title>Encounters</title>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 </head>
-<style>
-
-
-</style>
 <body>
     <div class="outer-div">
         <h1>Encounters</h2>
@@ -53,16 +53,13 @@
             </div>
         {% endif %}
     </div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</body>
 <script>
     $(document).ready(function() {
-        // Add click event listener to the delete button
         $('.delete-link').on('click', function(e) {
-            console.log("i got here")
             e.preventDefault();
             var encounterId = $(this).data('encounter-id');
             var confirmed = confirm("Are you sure you want to delete this encounter?");
-            // Continue with the delete if the user confirms
             if (confirmed) {
                 var formId = 'deleteForm_' + encounterId;
                 var form = document.getElementById(formId);
@@ -84,8 +81,6 @@
                 });
             });
         });
-});
+    });
 </script>
-
-</body>
 </html>

@@ -6,7 +6,7 @@ from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
 import database_handler
-from database_handler import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from database_handler import get_file_space_path, Session, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
 import exception_handler
 from logger import logger
@@ -54,8 +54,8 @@ def encounter_insert():
         species_id = request.form['species']
         latitude = request.form['latitude-start']
         longitude = request.form['longitude-start']
-        data_source = request.form['data_source']
-        recording_platform = request.form['recording_platform']
+        data_source_id = request.form['data_source']
+        recording_platform_id = request.form['recording_platform']
         origin = request.form['project']
         notes = request.form['notes']
         file_timezone = request.form['file-timezone']
@@ -66,11 +66,11 @@ def encounter_insert():
             new_encounter.set_location(location)
             new_encounter.set_project(origin)
             new_encounter.set_notes(notes)
-            new_encounter.set_species_id(species_id)
+            new_encounter.set_species_id(session, species_id)
             new_encounter.set_latitude(latitude)
             new_encounter.set_longitude(longitude)
-            new_encounter.set_data_source_id(data_source)
-            new_encounter.set_recording_platform_id(recording_platform)
+            new_encounter.set_data_source_id(session, data_source_id)
+            new_encounter.set_recording_platform_id(session, recording_platform_id)
             new_encounter.set_file_timezone(file_timezone)
             new_encounter.set_local_timezone(local_timezone)
             session.add(new_encounter)
@@ -78,8 +78,8 @@ def encounter_insert():
             flash(f'Encounter added: {encounter_name}', 'success')
             logger.info(f'Encounter added: {new_encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
-        except Exception as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+        except (Exception,SQLAlchemyError) as e:
+            exception_handler.handle_exception(session, e, 'Error inserting encounter')
             return redirect(url_for('encounter.encounter'))
 
 
@@ -89,30 +89,23 @@ def encounter_view(encounter_id):
     """
     Route to show the encounter view page.
     """
-    if request.args.get('snapshot_date'):
-        save_snapshot_date_to_session(request.args.get('snapshot_date'))
-
-    try:
-        with Session() as session:
+    with Session() as session:
+        try:
             encounter = database_handler.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
             if encounter is None:
-                raise exception_handler.NotFoundException("Encounter not found")
+                raise exception_handler.NotFoundException("Encounter not found", details="This may be due to a local modification of the web page or an unknown error on the backend. Try reloading the page and if the error persists contact an administrator.")
             species = database_handler.create_system_time_request(session, Species, {"id":encounter.species_id}, one_result=True)
             encounter.species=species
             recordings = database_handler.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
             encounter_history = database_handler.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
             assignments = database_handler.create_system_time_request(session, Assignment, {"user_id":current_user.id})
             assignment_recording_ids = [assignment.recording_id for assignment in assignments if assignment.recording_id]
-            
-            # Filter assigned recordings
             assigned_recordings = [recording for recording in recordings if recording.id in assignment_recording_ids]
-            # Filter unassigned recordings
             unassigned_recordings = [recording for recording in recordings if recording.id not in assignment_recording_ids]
-
             return render_template('encounter/encounter-view.html', encounter=encounter, encounter_history=encounter_history, assignment_recording_ids=assignment_recording_ids,assigned_recordings=assigned_recordings,unassigned_recordings=unassigned_recordings)
-    except Exception as e:
-        exception_handler.handle_sqlalchemy_exception(session, e)
-        return redirect(url_for('encounter.encounter'))
+        except (Exception,SQLAlchemyError) as e:
+            exception_handler.handle_sqlalchemy_exception(session, e, 'Error viewing encounter')
+            return redirect(url_for('encounter.encounter'))
 
 @routes_encounter.route('/encounter/<encounter_id>/edit', methods=['GET'])
 @login_required
@@ -135,16 +128,15 @@ def encounter_edit(encounter_id):
 def encounter_update(encounter_id):
     with Session() as session:
         try :
-            session = Session()
             encounter = session.query(Encounter).join(Species).filter(Encounter.id == encounter_id).first()
             encounter.set_encounter_name(request.form['encounter_name'])
             encounter.set_location(request.form['location'])
-            encounter.set_species_id(request.form['species'])
+            encounter.set_species_id(session, request.form['species'])
             encounter.set_project(request.form['project'])
             encounter.set_latitude(request.form['latitude-start'])
             encounter.set_longitude(request.form['longitude-start'])
-            encounter.set_data_source_id(request.form['data_source'])
-            encounter.set_recording_platform_id(request.form['recording_platform'])
+            encounter.set_data_source_id(session, request.form['data_source'])
+            encounter.set_recording_platform_id(session, request.form['recording_platform'])
             encounter.set_notes(request.form['notes'])
             encounter.set_file_timezone(request.form['file-timezone'])
             encounter.set_local_timezone(request.form['local-timezone'])
@@ -153,10 +145,10 @@ def encounter_update(encounter_id):
             flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
             logger.info(f'Encounter updated: {encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
-        except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
+        except (SQLAlchemyError,Exception) as e:
+            exception_handler.handle_exception(session, e, prefix="Error updating encounter")
             return redirect(url_for('encounter.encounter'))
+
         
 
 @routes_encounter.route('/encounter/<encounter_id>/delete', methods=['POST'])
@@ -175,7 +167,6 @@ def encounter_delete(encounter_id):
                 session.commit()
                 logger.info(f'Encounter deleted: {encounter.id}')
                 flash(f'Encounter deleted: {encounter.get_unique_name("-")}.', 'success')
-            except SQLAlchemyError as e:
-                flash(parse_alchemy_error(e), 'error')
-                session.rollback()
+            except (SQLAlchemyError,Exception) as e:
+                exception_handler.handle_exception(session, e, 'Error deleting encounter')
             return redirect(url_for('encounter.encounter'))

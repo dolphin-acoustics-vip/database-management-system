@@ -1,43 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-    <!DOCTYPE html>
-    <html>
-    {% include 'partials/header.html' %}
-    
-    <head>
-        <title>Error 404</title>
-        <link rel="stylesheet" href="../../../static/css/hero-section.css">
-        <link rel="stylesheet" href="../../../static/css/general-style.css">
-    </head>
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+
+<head>
+    <title>Error 404</title>
+    <link rel="stylesheet" href="../../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../../static/css/general-style.css">
+</head>
+
 <body>
     <div class="outer-div">
 
-    <main>
-        <section>
-            <h2>Oops! The page you are looking for does not exist.</h2>
-            {% if session['snapshot_date'] %}
-            <div class="extra-info">
-                <label>This page may not exist in the archival view {{session['snapshot_date']}}</label>
-                <form action="{{ url_for('reset_snapshot_in_session_with_link') }}" method="post">
-                    <input type="hidden" name="redirect_link" value="{{ goback_link }}">
-                    <button class="gray" type="submit">Exit archival view</button>
-                </form>
-            </div>
-        {% else %}
-            
-            {% if error %}
+        <main>
+            <section>
+                <h2>Oops! A piece of data is missing.</h2>
+                {% if error %}
                 <div class="extra-info">
-                    <h3>Extra Information:</h3>
                     <p>{{ error }}</p>
                 </div>
-            {% endif %}
-            <p>{{session['snapshot_date']}}</p>
-            <a href="{{goback_link}}">{{goback_message}}</a>
-            {% endif %}            
+                {% endif %}
+                {% if session['snapshot_date'] %}
+                <div class="extra-info">
+                    <label>This page may not exist in the archival view {{session['snapshot_date']}}</label>
+                    <form action="{{ url_for('reset_snapshot_in_session_with_link') }}" method="post">
+                        <input type="hidden" name="redirect_link" value="{{ goback_link }}">
+                        <button class="gray" type="submit">Exit archival view</button>
+                    </form>
+                </div>
+                {% else %}
 
-        </section>
-    </main>
+
+                <p>{{session['snapshot_date']}}</p>
+                <a href="{{goback_link}}">{{goback_message}}</a>
+                {% endif %}
+
+            </section>
+        </main>
     </div>
 
 </body>
+
 </html>

@@ -1,13 +1,9 @@
 # Standard library imports
 import os, uuid
 from datetime import datetime, timedelta
-
-import pytz
-import shared_functions
 import scipy.io
 import numpy as np
 import pandas as pd
-
 
 # Third-party imports
 from flask_sqlalchemy import SQLAlchemy
@@ -16,14 +12,16 @@ from flask_login import UserMixin
 from sqlalchemy.sql import func
 from sqlalchemy import event
 
-
 # Local application imports
 import database_handler
-from database_handler import db, get_file_space_path
+import exception_handler
+from database_handler import db, get_file_space_path, get_trash_path
 from logger import logger
 
-SYSTEM_GMT_OFFSET = 0
 
+
+### UNUSED ###
+SYSTEM_GMT_OFFSET = 0
 def convert_to_gmt_time(system_time: datetime) -> datetime:
     """
     Converts a system time to GMT time by adding the system GMT offset.
@@ -52,34 +50,25 @@ def convert_from_gmt(gmt_time: datetime) -> datetime:
     system_time = gmt_time - gmt_offset
     return system_time
 
-def process_id(value):
-    if type(value)==str:
-        try:
-            return uuid.UUID(value.strip())
-        except ValueError:
-            value = None
-    elif value is None or value == uuid.UUID('00000000-0000-0000-0000-000000000000'):
-        return None
-    elif isinstance(value, uuid.UUID):
-        return value
+def parse_string_notempty(string:str, field:str) -> str:
+    """
+    Remove whitespace from a string, or raise exception_handler.WarningException()
+    if the string is none or blank (stripped). This method should only be used on
+    data fields which are mandatory, and thus must not be left blank.
+
+    :param string: the string being parsed
+    :type string: str
+
+    :param field: the name of the field of the string being parsed (is used in the
+    event of a raised exception)
+    :type field: str
+
+    :return: the parsed string stripped of its whitespace
+    """
+    if string == None or string.strip() == "":
+        raise exception_handler.WarningException(f'{field} cannot be blank.')
     else:
-        return None
-
-def clean_directory(root_directory):
-    """
-    Walk through a given directory and remove any empty directories.
-
-    :param root_directory: The root directory to start cleaning
-    :type root_directory: str
-    """
-    # Get the root directory of the project
-    for root, dirs, files in os.walk(root_directory, topdown=False):
-        for dir in dirs:
-            dir_path = os.path.join(root, dir)
-            # If there exist no sub directories, remove it
-            if not os.listdir(dir_path):
-                os.rmdir(dir_path)
-
+        return string.strip()
 
 class User(db.Model, UserMixin):
     id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
@@ -111,18 +100,17 @@ class User(db.Model, UserMixin):
     def get_login_id(self):
         return '' if self.login_id is None else self.login_id
 
-    
     def activate(self):
+        """
+        Activate user (by setting is_active to true)
+        """
         self.is_active = True
     
     def deactivate(self):
+        """
+        Deactivate user (by setting is_active to false)
+        """
         self.is_active = False
-    
-    def is_active(self):
-        return self.is_active
-
-    def get_id(self):
-        return str(self.id)
 
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -139,6 +127,12 @@ class Species(db.Model):
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
     def update_call(self,session):
+        """
+        Call update_call() in all Encounter objects linked to the Species object.
+        This method should be called when a metadata change occurs in the Species
+        object that requires files (in Recording and Selection) be given a new
+        path based on that metadata.
+        """
         encounters = session.query(Encounter).filter_by(species=self).all()
         for encounter in encounters:
             encounter.update_call(session)
@@ -183,15 +177,24 @@ class Encounter(db.Model):
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
     __table_args__ = (
-        db.UniqueConstraint('encounter_name', 'location'),
+        db.UniqueConstraint('encounter_name', 'location', 'project'),
     )
     
-    def get_unique_name(self, deimiter):
+    def get_unique_name(self, deimiter='-'):
+        """
+        Generate a unique name using encounter_name, location and project which are defined in
+        the schema as a unique constraint. The name is of the format:
+
+        'Encounter {encounter_name}-{location}-{project}', where - can be replaced by any delimiter.
+
+        :param delimiter: the delimiter used to separate unique variables
+        :type delimiter: str
+        """
         return f"Encounter {self.encounter_name}{deimiter}{self.location}{deimiter}{self.project} "
 
     def get_number_of_recordings(self):
         """
-        Calculate the number of recordings associated with the encounter and return
+        Calculate the number of recordings associated with the encounter and return the count
         """
         num_recordings = db.session.query(Recording).filter_by(encounter_id=self.id).count()
         return num_recordings
@@ -199,11 +202,18 @@ class Encounter(db.Model):
     def generate_relative_path(self):
         """
         Generate a relative path for files stored in the file space based on the species, location, and encounter name.
+        This relative path can be used by Recording and Selection to generate their own sub-directories within this path.
         """
         species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
         return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}"
     
     def update_call(self,session):
+        """
+        Call update_call() in all Recording objects linked to the Encounter object.
+        This method should be called when a metadata change occurs in the Encounter
+        object that requires files (in Recording and Selection) be given a new
+        path based on that metadata.
+        """
         recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
         for recording in recordings:
             recording.update_call(session)
@@ -226,67 +236,72 @@ class Encounter(db.Model):
     def set_longitude(self, value):
         self.longitude = None if value.strip() == '' else value.strip()
     
-    def set_species_id(self, value):
-        self.species_id = process_id(value)
-
-    def set_data_source_id(self, value):
-        self.data_source_id = process_id(value)
-    
-    def set_recording_platform_id(self,value):
-        self.recording_platform_id = process_id(value)
-    
     def get_encounter_name(self):
         return '' if self.encounter_name is None else self.encounter_name
 
     def set_encounter_name(self, value):
-        self.encounter_name = None if value.strip() == '' else value.strip()
+        self.encounter_name = parse_string_notempty(value, 'Encounter name')
 
     def get_location(self):
         return '' if self.location is None else self.location
 
     def set_location(self, value):
-        self.location = None if value.strip() == '' else value.strip()
+        self.location = parse_string_notempty(value, 'Location')
 
     def get_project(self):
         return '' if self.project is None else self.project
 
     def set_project(self, value):
-        self.project = None if value.strip() == '' else value.strip()
+        self.project = parse_string_notempty(value, 'Project')
 
     def get_notes(self):
         return '' if self.notes is None else self.notes
 
     def set_notes(self, value):
-        self.notes = None if value.strip() == '' else value.strip()
+        self.notes = value.strip()
+
+    def set_species_id(self, session, species_id):
+        species = session.query(Species).filter(Species.id == species_id).first()
+        if species:
+            self.species = species
+        else:
+            raise exception_handler.WarningException('Invalid species.')
+    
+    def set_data_source_id(self, session, data_source_id):
+        data_source = session.query(DataSource).filter(DataSource.id == data_source_id).first()
+        if data_source:
+            self.data_source = data_source
+        else:
+            self.data_source = None
+    
+    def set_recording_platform_id(self, session, recording_platform_id):
+        recording_platform = session.query(RecordingPlatform).filter(RecordingPlatform.id == recording_platform_id).first()
+        if recording_platform:
+            self.recording_platform = recording_platform
+        else:
+            self.recording_platform = None
 
     def check_valid_timezone(self, value):
         if value is not None:
             try:
                 value = int(value)
             except ValueError:
-                raise ValueError("Timezone must be an integer")
+                raise exception_handler.WarningException("Timezone must be an integer.")
         if value is not None and (value < -720 or value > 840):
-            raise ValueError("Timezone must be between GMT-12 and GMT+14 (inclusive).")
+            raise exception_handler.WarningException("Timezone must be between GMT-12 and GMT+14 (inclusive).")
         return value
 
     def set_file_timezone(self, value):
         self.file_timezone = self.check_valid_timezone(value)
     
+    def get_file_timezone(self):
+        return self.file_timezone
+    
     def set_local_timezone(self, value):
         self.local_timezone = self.check_valid_timezone(value)
-
-
-"""TODO remove"""
-@DeprecationWarning
-def encounter_updated(session, encounter_id):
-    try:
-        recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
-        for recording in recordings:
-            recording.move_file(session,get_file_space_path())
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        raise e
+    
+    def get_local_timezone(self):
+        return self.local_timezone
 
 
 class File(db.Model):
@@ -305,11 +320,14 @@ class File(db.Model):
 
     def rollback(self, session):
         """
-        Rollback the changes made to the File object in the session by removing the file from the file system.
-        Parameters:
-            session (Session): The SQLAlchemy session object.
-        Returns:
-            None
+        If the current File object has not been committed to the database yet,
+        remove the file from the file space. This enacts a hard delete as the
+        assumption is that the file should not have been uploaded in the first
+        place.
+
+        Warning: this does not delete the File object from a future commit.
+
+        :param session: the SQLAlchemy session
         """
         if self in session.new:
             os.remove(self.get_full_absolute_path())
@@ -321,100 +339,152 @@ class File(db.Model):
         return self.uploaded_date
 
     def delete(self, session):
+        """
+        Enact a soft delete for the file in this File object and commit the new trash path
+        to the database.
+        """
         session.flush()
         self.move_to_trash(session)
         session.commit()
-        #session.delete(self)
     
     def update_call(self,session):
+        """
+        No other classes have dependencies on File so this method merely exists as
+        a placeholder in case one of File's dependencies call it.
+        """
         pass
 
     def get_filename(self):
+        """
+        :return: the filename (without extension) of the file represented by the object
+        """
         return self.filename
     
+    def get_directory(self):
+        """
+        :return: the folder directory (without filename or extension) in which the file
+        represented by the object lies
+        """
+        return self.path  
+
     def get_path(self):
-        return self.path
+        """
+        DEPRACATED. Use self.get_directory()
+        """
+        return self.get_directory()
     
     def get_full_relative_path(self):
+        """
+        :return: the full path in the filespace, including the directory, filename and
+        extension of the file represented by the object
+        """
         return os.path.join(self.path, f"{self.filename}.{self.extension}")
     
     def get_full_absolute_path(self):
+        """
+        :return: the full absolute path of the filespace joined with the directory, 
+        filename and extension of the file represented by the object
+        """
         return os.path.join(get_file_space_path(), self.get_full_relative_path())
     
-    def get_absolute_directory(self):
-        return os.path.join(get_file_space_path(), self.path)
+    # def get_absolute_directory(self):
+    #     return os.path.join(get_file_space_path(), self.path)
 
-    def insert_path_and_filename_file_already_in_place(self, session, new_path, new_filename, new_extension):
-        self.path=new_path
+    def insert_path_and_filename_file_already_in_place(self, session, new_directory:str, new_filename:str, new_extension:str):
+        """
+        Store a path, filename and extension. This assumes the file is already in place.
+        It is recommended unless absolutely necessary to use insert_path_and_filename()
+        to let this class handle the movement of files within the file space.
+
+        :param session: the SQLAlchemy session
+        :param new_directory: the directory (no filename)
+        :param new_filename: the filename (without extension)
+        :param new_extension: the file's extension (without a '.')
+        """
+        self.path=new_directory
         self.filename=new_filename
         self.extension=new_extension
     
 
-    def rename_loose_file(self,loose_file_directory, loose_file_name, loose_file_extension):
+    def rename_loose_file(self,loose_file_directory:str, loose_file_name:str, loose_file_extension:str) -> None:
+        """
+        In the event that a file needs to be saved in a path in which a file already exists,
+        give the existing file (the 'loose file') a new name in the same directory. This 
+        method will create an error in the logger as the cause of this error is usually 
+        manual manipulation of the filespace. 
+
+        A file is renamed by adding 'Dupl#_' to the start of the name (where # is the lowest
+        available integer in the directory to ensure no duplicate file names).
+
+        :param loose_file_directory: the relative directory (folder) in which the loose file
+        exists
+        :param loose_file_name: the name of the loose file that is contested and needs to be
+        renamed (without extension)
+        :param loose_file_extension: the extension (without '.') of the loose file
+        """
         import re
         loose_file_path = os.path.join(get_file_space_path(),loose_file_directory, loose_file_name + '.' + loose_file_extension)
         if os.path.exists(loose_file_path):
-            # Find the highest suffix integer in the existing filenames
-            suffix_regex = re.compile(r'Dupl(\d+)_{}\.{}'.format(re.escape(loose_file_name), re.escape(loose_file_extension)))
-            highest_suffix = 0
+            # Find the highest counter integer in the existing filenames
+            counter_regex = re.compile(r'Dupl(\d+)_{}\.{}'.format(re.escape(loose_file_name), re.escape(loose_file_extension)))
+            highest_counter = 0
             for existing_file in os.listdir(os.path.dirname(loose_file_path)):
-                match = suffix_regex.search(existing_file)
+                match = counter_regex.search(existing_file)
                 if match:
-                    suffix = int(match.group(1))
-                    highest_suffix = max(highest_suffix, suffix)
+                    counter = int(match.group(1))
+                    highest_counter = max(highest_counter, counter)
             
-            # Increment the suffix and generate a new filename
-            new_suffix = highest_suffix + 1
-            new_filename = f"Dupl{new_suffix}_{loose_file_name}"
+            # Increment the counter and generate a new filename
+            new_counter = highest_counter + 1
+            new_filename = f"Dupl{new_counter}_{loose_file_name}"
             new_path = os.path.join(os.path.dirname(loose_file_path), new_filename + '.' + loose_file_extension)
             os.rename(loose_file_path, new_path)
-            logger.warning(f"Attempting to save file in the following path, but a file already exists: {loose_file_path}. Renamed existing file to {new_path}")
+            logger.error(f"Attempting to save file in the following path, but a file already exists: {loose_file_path}. Renamed existing file to {new_path}")
 
-    
-    def insert_path_and_filename(self, session, file, new_path, new_filename, root_path):
+    # TODO: find the datatype of file
+    # TODO: remove root_path requirement as it is automatically generated in the method
+    def insert_path_and_filename(self, session, file, new_directory:str, new_filename:str, root_path=None):
         """
-        Updates the path, filename, and extension of the file. If the file already exists in the specified location, renames the existing file with a unique suffix.
-        
-        Parameters:
-            file: The file object to be saved.
-            new_path: The new path for the file.
-            new_filename: The new filename for the file.
-            root_path: The root path where the file will be saved.
+        Insert a file into the filespace. Automatically save the file on the server and
+        store (and commit) its directory, filename and extension in the database. If 
+        successful write an informational message to the logger.
 
-        Returns:
-            None
+        :param session: the SQLAlchemy session
+        :param file: TBD
+        :param new_directory: the relative directory in which to store the file
+        :param new_filename: the full filename (including extension) to rename the file to
         """
+
+        root_path = get_file_space_path()
         
-        self.path = new_path
+        self.path = new_directory
         self.filename = new_filename  # filename without extension
         self.original_filename = file.filename
         self.extension = file.filename.split('.')[-1]
-        session.flush()
         
         destination_path = os.path.join(root_path, self.get_full_relative_path())
-            
         self.rename_loose_file(self.path, self.filename, self.extension)
         os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
-        
         file.save(destination_path)
         logger.info(f"Saved file to {destination_path}")
+
     
-    def update_path_and_filename(self, new_path, new_filename,root_path):
+    # def update_path_and_filename(self, new_path, new_filename,root_path):
 
-        self.path = new_path
-        self.filename = new_filename
+    #     self.path = new_path
+    #     self.filename = new_filename
 
-    def get_uploaded_date(self):
-        return self.uploaded_date
+    # def get_uploaded_date(self):
+    #     return self.uploaded_date
 
 
-    def set_uploaded_date(self, value):
-        if value is not None and not isinstance(value, datetime):
-            raise ValueError("Uploaded date must be a valid datetime")
-        self.uploaded_date = value
+    # def set_uploaded_date(self, value):
+    #     if value is not None and not isinstance(value, datetime):
+    #         raise ValueError("Uploaded date must be a valid datetime")
+    #     self.uploaded_date = value
     
-    def set_uploaded_by(self, value):
-        self.uploaded_by = value
+    # def set_uploaded_by(self, value):
+    #     self.uploaded_by = value
 
     def move_to_trash(self,session):
         """
@@ -424,13 +494,13 @@ class File(db.Model):
         TODO: keep a record of deleted file metadata
         """
         session.flush()
-        trash_folder = 'trash'
+        trash_folder = get_trash_path()
         unique_name = str(uuid.uuid4())
         os.makedirs(trash_folder, exist_ok=True)
         file_name = self.filename
         trash_file_path = os.path.join(trash_folder,os.path.join(self.get_path(),unique_name + '_' + file_name + '.' + self.extension))
-        
         self.move_file(session, trash_file_path, get_file_space_path())
+        session.commit()
 
     def delete_file(self, session):
         os.path.remove(self.get_full_absolute_path())
@@ -546,7 +616,6 @@ class Recording(db.Model):
                 self.status = 'Unassigned'
             else:
                 self.status = 'In Progress'
-        print(self.status, old_status)
         if old_status != self.status:
             self.update_status_change_datetime()
         
@@ -604,18 +673,12 @@ class Recording(db.Model):
 
     def validate_selection_table(self, session, custom_file=None):
         try:
-            print("MARKER 1")
             st_df = self.load_selection_table_data(custom_file=custom_file)
-            print('MARKER 2')
             if st_df.empty:
-                raise ValueError("The Selection Table provided is empty")
-                return [], "The Selection Table does not exist"
-            print('MARKER 3')
+                raise exception_handler.WarningException("The Selection Table provided is empty")
             self.upload_selection_table_rows(session, st_df)
-            return ""
         except Exception as e:
-            raise ValueError("The Selection Table provided is invalid: " + str(e))
-            return "The Selection Table provided is invalid: " + str(e)
+            raise exception_handler.WarningException("The Selection Table provided is invalid: " + str(e))
 
     def upload_selection_table_rows(self, session, st_df):
 
@@ -703,44 +766,36 @@ class Recording(db.Model):
 
 
     def set_start_time(self, datetime_object):
-        print(datetime_object)
-        if isinstance(datetime_object, str):
+        try:
+            datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
+        except ValueError:
             try:
-                datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
+                datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M')  # Try without milliseconds
             except ValueError:
-                try:
-                    datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M')  # Try without milliseconds
-                except ValueError:
-                    raise ValueError("Invalid datetime format")
-        elif not isinstance(datetime_object, datetime):
-            raise ValueError("Start time must be a valid datetime")
+                raise exception_handler.WarningException("Invalid datetime format. Start time must be of the format yyyy-mm-dd dd:mm:ss.")
+
         self.start_time = datetime_object
     
     def match_start_time(self, match_datetime):
         return self.start_time == match_datetime
 
-    # TODO remove seconds dependency
-    def get_start_time_string(self, seconds=False):
+    def get_start_time_string(self):
         return self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
-
 
     def get_start_time(self):
         return self.start_time
     
+    def set_encounter_id(self, session, encounter_id):
+        encounter = session.query(Encounter).filter(Encounter.id == encounter_id).first()
+        if encounter:
+            self.encounter = encounter
+        else:
+            raise exception_handler.CriticalException('Unable to make link to encounter.')
 
     def get_duration(self):
         return self.duration
 
-    
-    def set_recording_file_id(self, value):
-        self.recording_file_id = process_id(value)
-    
 
-    def set_selection_table_file_id(self, value):
-        self.selection_table_file_id = process_id(value)
-
-    def set_encounter_id(self, value):
-        self.encounter_id = process_id(value)
 
     def set_duration(self,value):
         if value is not None and not isinstance(value, int):
@@ -873,7 +928,7 @@ class Selection(db.Model):
     def get_unique_name(self, separator):
         return f"{self.recording.get_unique_name(separator)}, Selection {self.selection_number}"
 
-    def calculate_sampling_rate(self, session):
+    def calculate_sampling_rate(self):
         if self.selection_file:
             import wave
             with wave.open(self.selection_file.get_full_absolute_path(), "rb") as wave_file:
@@ -923,7 +978,11 @@ class Selection(db.Model):
     def generate_ctr_file_name(self):
         return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
 
-
+    def set_selection_file(self, selection_file: File):
+        if selection_file.extension != 'wav':
+            raise exception_handler.WarningException(f"Selection {self.selection_number} needs to be of type 'wav' but is '{selection_file.extension}'")
+        self.calculate_sampling_rate()
+        self.selection_file = selection_file
 
     def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None):
         import librosa
@@ -998,7 +1057,6 @@ class Selection(db.Model):
             else:
                 contour_y_min_new = contour_y_min - (range_diff / 2)
                 contour_y_max_new = contour_y_max + (range_diff / 2)
-                print(contour_y_min_new, contour_y_max_new)
                 axs[1].set_ylim(contour_y_min_new, contour_y_max_new)
 
             contour_x_min = min([unit.time_milliseconds - min_time_ms for unit in contour_rows])
@@ -1020,7 +1078,6 @@ class Selection(db.Model):
 
         # Save the plot as a PNG
         plot_path = os.path.join(temp_dir, self.generate_plot_filename() + ".png")
-        print(plot_path)
         plt.savefig(plot_path, bbox_inches='tight')
 
         plt.close('all')

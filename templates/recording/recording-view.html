@@ -44,8 +44,8 @@
             {% if not session['snapshot_date'] %}
 
             <h3 style="margin-top: 20px;">Assign Users</h3>
-            {% from 'partials/search-dropdown.html' import recording_table %}
-            {{ recording_table(show_message=true) }}
+            {% from 'partials/user-search.html' import user_search %}
+            {{ user_search(show_message=true) }}
             {% endif %}
             <div class="table-responsive">
                 <table class="table-striped">
@@ -88,8 +88,9 @@
                                     <td>{{ recording['action'] }}</td>
                                     <td>{{ recording['updated_by'].name }}</td>
                                     <td><a
-                                            href="{{ url_for('recording.recording_view', encounter_id=recording['encounter_id'], recording_id=recording['id'], snapshot_date=recording['row_start']) }}">HERE</a>
+                                        href="{{ url_for('enter_snapshot_date_in_session', snapshot_date=recording['row_start'], redirect_link=url_for('recording.recording_view', recording_id=recording['id']))}}">HERE</a>
                                     </td>
+                               
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -286,7 +287,8 @@
 
                                     <form
                                         action="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}"
-                                        class="contour-delete-form" id="contour-delete-form-{{selection.id}}" method="get">
+                                        class="contour-delete-form" id="contour-delete-form-{{selection.id}}"
+                                        method="get">
                                         {% if selection.contour_file %}
                                         <button class="link" type="submit">Delete</button>
                                         {% endif %}
@@ -307,7 +309,9 @@
                                         {% if selection.traced == None %}
                                         {% if selection.contour_file %}
                                         {% else %}
-                                        <button class="gray small confirm-no-file-upload" style="width: 100%" {% if session['snapshot_date'] %} disabled {% endif %}>Confirm No File Upload</button>
+                                        <button class="gray small confirm-no-file-upload" style="width: 100%" {% if
+                                            session['snapshot_date'] %} disabled {% endif %}>Confirm No File
+                                            Upload</button>
                                         {% endif %}
                                         <p id="traced-status-label" hidden>Confirmed</label>
                                             {% else %}
@@ -463,7 +467,7 @@
                             const label = event.target.closest('.selection-row').querySelector('#traced-status-label');
                             label.hidden = false;
                             event.target.hidden = true
-                        } 
+                        }
                     });
             }
         });
@@ -496,114 +500,114 @@
      * The following code concerns the dynamic action of activating or deactivating selections. 
     **/
 
-        /**
-         * Returns an array of IDs of the currently selected Selections.
-         * The selected Selections are determined by the checkboxes with name "selections-checkboxes".
-         * @return {Array<number>} An array of IDs of the selected Selections.
-         */
-        function getSelectedSelectionIds() {
-            // Get the IDs of the selected Selections (based on checkboxes)
-            var selectedCheckboxes = document.querySelectorAll('input[name="selections-checkboxes"]:checked');
-            var selectedIds = [];
-            for (var i = 0; i < selectedCheckboxes.length; i++) {
-                selectedIds.push(selectedCheckboxes[i].value);
-            }
-            return selectedIds
+    /**
+     * Returns an array of IDs of the currently selected Selections.
+     * The selected Selections are determined by the checkboxes with name "selections-checkboxes".
+     * @return {Array<number>} An array of IDs of the selected Selections.
+     */
+    function getSelectedSelectionIds() {
+        // Get the IDs of the selected Selections (based on checkboxes)
+        var selectedCheckboxes = document.querySelectorAll('input[name="selections-checkboxes"]:checked');
+        var selectedIds = [];
+        for (var i = 0; i < selectedCheckboxes.length; i++) {
+            selectedIds.push(selectedCheckboxes[i].value);
         }
+        return selectedIds
+    }
 
-        /**
-         * Reactivates the selected Selections. If override_selection_id is provided, reactivates that selection instead of the selected ones.
-         * @param {string} [override_selection_id] - The ID of the selection to reactivate.
-         * 
-         * @returns {Promise<void>} - A promise that resolves when reactivation is complete.
-         * 
-         * @throws {Error} - If there was an error reactivating the selection.
-         */
-        
-        async function reactivateSelectedRows(override_selection_id = null) {
-            var selectionIds = getSelectedSelectionIds();
-            if (override_selection_id) selectionIds = [override_selection_id];
+    /**
+     * Reactivates the selected Selections. If override_selection_id is provided, reactivates that selection instead of the selected ones.
+     * @param {string} [override_selection_id] - The ID of the selection to reactivate.
+     * 
+     * @returns {Promise<void>} - A promise that resolves when reactivation is complete.
+     * 
+     * @throws {Error} - If there was an error reactivating the selection.
+     */
 
-            try {
-                const response = await $.ajax({
-                    url: '/selection/reactivate',
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ selection_ids: selectionIds }),
-                    success: function (data, textStatus, jqXHR) {
-                        window.location.href = window.location.href
-                    },
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.error('Error deactivating selection:', textStatus, errorThrown);
-                    }
-                });
-            } catch (error) {
-                console.error('Error deactivating selection:', error);
-            }
+    async function reactivateSelectedRows(override_selection_id = null) {
+        var selectionIds = getSelectedSelectionIds();
+        if (override_selection_id) selectionIds = [override_selection_id];
+
+        try {
+            const response = await $.ajax({
+                url: '/selection/reactivate',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ selection_ids: selectionIds }),
+                success: function (data, textStatus, jqXHR) {
+                    window.location.href = window.location.href
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error('Error deactivating selection:', textStatus, errorThrown);
+                }
+            });
+        } catch (error) {
+            console.error('Error deactivating selection:', error);
         }
+    }
 
-        /**
-         * Reactivates the selection with the given ID.
-         * 
-         * Calls {@link reactivateSelectedRows} with the given selection ID.
-         * 
-         * @param {string} selectionId - The ID of the selection to reactivate.
-         * @param {boolean} [ignore_reload=false] - If true, the page will not be reloaded after reactivation.
-         * 
-         * @throws {Error} - If there was an error reactivating the selection.
-         */
-        async function reactivateSelection(selectionId, ignore_reload = false) {
-            reactivateSelectedRows(selectionId);
+    /**
+     * Reactivates the selection with the given ID.
+     * 
+     * Calls {@link reactivateSelectedRows} with the given selection ID.
+     * 
+     * @param {string} selectionId - The ID of the selection to reactivate.
+     * @param {boolean} [ignore_reload=false] - If true, the page will not be reloaded after reactivation.
+     * 
+     * @throws {Error} - If there was an error reactivating the selection.
+     */
+    async function reactivateSelection(selectionId, ignore_reload = false) {
+        reactivateSelectedRows(selectionId);
 
+    }
+
+    /**
+     * Sends a POST request to deactivate a selection with the given ID.
+     * 
+     * This function sends a request to the server using jQuery's `$.ajax` method,
+     * and upon receiving a response, disables the corresponding table row.
+     * 
+     * @async
+     * @function deactivateSelection
+     * @param {number} selectionId - The ID of the selection to be deactivated.
+     * @return {Promise} A Promise that resolves when the request is complete.
+     */
+    async function deactivateSelection(selectionId, ignore_reload = false) {
+        deactivateSelectedRows(selectionId);
+    }
+
+    /**
+     * Sends a POST request to deactivate the selected selections or a single selection specified by `override_selection_id`.
+     * 
+     * This function sends a request to the server using jQuery's `$.ajax` method,
+     * and upon receiving a response, reloads the page with the updated selection status.
+     * 
+     * @async
+     * @function deactivateSelectedRows
+     * @param {number} [override_selection_id] - The ID of the selection to be deactivated.
+     * @return {Promise} A Promise that resolves when the request is complete.
+     */
+    async function deactivateSelectedRows(override_selection_id = null) {
+        var selectionIds = getSelectedSelectionIds();
+        if (override_selection_id) selectionIds = [override_selection_id];
+
+        try {
+            const response = await $.ajax({
+                url: '/selection/deactivate',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ selection_ids: selectionIds }),
+                success: function (data, textStatus, jqXHR) {
+                    window.location.href = window.location.href
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error('Error deactivating selection:', textStatus, errorThrown);
+                }
+            });
+        } catch (error) {
+            console.error('Error deactivating selection:', error);
         }
-
-        /**
-         * Sends a POST request to deactivate a selection with the given ID.
-         * 
-         * This function sends a request to the server using jQuery's `$.ajax` method,
-         * and upon receiving a response, disables the corresponding table row.
-         * 
-         * @async
-         * @function deactivateSelection
-         * @param {number} selectionId - The ID of the selection to be deactivated.
-         * @return {Promise} A Promise that resolves when the request is complete.
-         */
-        async function deactivateSelection(selectionId, ignore_reload = false) {
-            deactivateSelectedRows(selectionId);
-        }
-
-        /**
-         * Sends a POST request to deactivate the selected selections or a single selection specified by `override_selection_id`.
-         * 
-         * This function sends a request to the server using jQuery's `$.ajax` method,
-         * and upon receiving a response, reloads the page with the updated selection status.
-         * 
-         * @async
-         * @function deactivateSelectedRows
-         * @param {number} [override_selection_id] - The ID of the selection to be deactivated.
-         * @return {Promise} A Promise that resolves when the request is complete.
-         */
-        async function deactivateSelectedRows(override_selection_id = null) {
-            var selectionIds = getSelectedSelectionIds();
-            if (override_selection_id) selectionIds = [override_selection_id];
-
-            try {
-                const response = await $.ajax({
-                    url: '/selection/deactivate',
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ selection_ids: selectionIds }),
-                    success: function (data, textStatus, jqXHR) {
-                        window.location.href = window.location.href
-                    },
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.error('Error deactivating selection:', textStatus, errorThrown);
-                    }
-                });
-            } catch (error) {
-                console.error('Error deactivating selection:', error);
-            }
-        }
+    }
 
 
 

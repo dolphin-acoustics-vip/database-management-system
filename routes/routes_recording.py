@@ -14,7 +14,7 @@ from io import StringIO
 
 # Local application imports
 import database_handler
-from database_handler import get_file_space_path, Session, GOOGLE_API_KEY, parse_alchemy_error, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+from database_handler import get_file_space_path, Session, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 
 from models import *
 from exception_handler import *
@@ -35,18 +35,14 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
 
     :return: The Recording object that was inserted or updated
     """
-    
-    time_start = request.form['time_start']
 
     if recording_id is not None:
         new_recording = session.query(Recording).filter_by(id=recording_id).first()
     else:
         new_recording = Recording()
 
-    new_recording.set_start_time(time_start)
-    new_recording.set_duration(0)
-    new_recording.set_encounter_id(encounter_id)
-    new_recording.set_user_id(current_user.id)
+    new_recording.set_start_time(request.form['time_start'])
+    new_recording.set_encounter_id(session, encounter_id)
     session.add(new_recording)
     session.flush()
 
@@ -58,17 +54,13 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_file = File()
         session.add(new_file)
         new_recording.recording_file = new_file
-        new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename, get_file_space_path())
+        new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename)
         session.commit()
         
     # If a user assignment is to be made for the recording
     if 'assign_user_id' in request.form:
         assign_user_id = request.form['assign_user_id'] 
-        try:
-            user_id_uuid = uuid.UUID(assign_user_id)
-            user_obj = session.query(User).filter_by(id=user_id_uuid).first()
-        except ValueError:
-            user_obj=None
+        user_obj = session.query(User).filter_by(id=assign_user_id).first()
         if user_obj is not None:
             assignment = Assignment()
             assignment.recording_id = new_recording.id
@@ -76,7 +68,6 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
             session.add(assignment)
             new_recording.update_status_upon_assignment_add_remove(session)
             session.commit()
-    
     return new_recording
 
 
@@ -109,14 +100,13 @@ def recording_selection_table_add(encounter_id,recording_id):
                 session.add(new_file)
                 recording.selection_table_file = new_file 
                 # Validate the selection table - if invalid then delete the selection table file
-                error_msg = recording.validate_selection_table(session)
-                
+                recording.validate_selection_table(session)
                 recording.update_selection_traced_status(session)
                 session.commit()
             else:
-                handle_sqlalchemy_exception(session, Exception("The form did not send a selection table file."))
+                raise WarningException("The form did not send a selection table file.")
         except (Exception, SQLAlchemyError) as e:
-            handle_sqlalchemy_exception(session, e)
+            handle_exception(session, e, prefix="Error adding selection table")
         
     return redirect(url_for('recording.recording_view', recording_id=recording_id))
  
@@ -180,19 +170,15 @@ def recording_selection_table_delete(encounter_id, recording_id):
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
             file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
-
             recording.reset_selection_table_values(session)
             recording.update_selection_traced_status(session)
             file.move_to_trash(session)
             recording.selection_table_file = None
             session.commit()
             flash(f'Deleted Selection Table', 'success')
-        except SQLAlchemyError as e:
-            handle_sqlalchemy_exception(session, e)
-        except Exception as e:
-            handle_sqlalchemy_exception(session, e)
-        finally:
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
+        except (SQLAlchemyError,Exception) as e:
+            handle_exception(session, e)
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @require_live_session
@@ -208,10 +194,10 @@ def recording_insert(encounter_id):
             recording_obj = insert_or_update_recording(session, request, encounter_id)
             session.add(recording_obj)
             session.commit()
-            flash(f'Added recording: {recording_obj.id}', 'success')
+            flash(f'Added recording {recording_obj.get_start_time()} for encounter {recording_obj.encounter.get_unique_name()}', 'success')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
-        except SQLAlchemyError as e:
-            handle_sqlalchemy_exception(session, e)
+        except (SQLAlchemyError,Exception) as e:
+            handle_exception(session, e, 'Error inserting recording')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
     
@@ -222,10 +208,6 @@ def recording_view(recording_id):
     """
     Renders the recording view page for a specific encounter and recording.
     """
-    
-    if request.args.get('snapshot_date'):
-        save_snapshot_date_to_session(request.args.get('snapshot_date'))
-
     with Session() as session:
         
         recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
@@ -256,10 +238,8 @@ def update_notes(recording_id):
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         notes = request.form.get('notes')
-        print(notes)
         
         recording.notes = notes
-        print(recording.notes)
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))  # Redirect to the recording view page
 
@@ -332,9 +312,8 @@ def recording_update(recording_id):
             session.commit()
             flash(f'Edited recording: {recording_obj.id}', 'success')                
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
-        except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
+        except (SQLAlchemyError,Exception) as e:
+            exception_handler.handle_exception(session,e)
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['GET'])
@@ -402,26 +381,25 @@ def recording_delete_selections():
     Returns a JSON response with a message indicating the number of selections deleted.
     """
     data = request.get_json()
+
     selection_ids = data.get('selectionIds', [])
+    if selection_ids == None or len(selection_ids) == 0:
+        handle_exception(session, WarningException('No selections selected for deletion.'))
     
     with Session() as session:
-        try:
-            counter=0
-            for selection_id in selection_ids:
-                selection_id = uuid.UUID(selection_id)  # Convert the string to a UUID object
-
+        counter=0
+        for selection_id in selection_ids:
+            try:
                 selection = session.query(Selection).filter_by(id=selection_id).first()
-                selection_number = selection.selection_number
+                raise Exception('sdighwoieg')
                 selection.delete(session)
+                session.commit()
                 counter += 1
-            flash(f'Deleted {counter} selections', 'success')
+            except (SQLAlchemyError,Exception) as e:
+                handle_exception(session,e,prefix="Error deleting selection")
+        flash(f'Deleted {counter} selections', 'success')
+        return jsonify({'message': 'Bulk delete completed'}), 200
 
-            session.commit()
-            return jsonify({'message': 'Bulk delete completed'}), 200
-        except SQLAlchemyError as e:
-            session.rollback()
-            flash(parse_alchemy_error(e), 'error')
-            return jsonify({'error': parse_alchemy_error(e)}), 500
 
   
 

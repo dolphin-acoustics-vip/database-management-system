@@ -1,4 +1,15 @@
-{% macro recording_table(show_message) %}
+<!--Create an entry box where one can search for users
+and they appear on a dropdown. 
+
+This macro depends on the existence of a route /api/users which takes
+a body {search:str} where search is the string currently entered in the
+dropdown. 
+
+Upon selection of a user, the function onUserSelectionDropdownComplete(user_id, user)
+is called. This function must be defined in the code that called this macro. Failure
+to do so will result in critical error.-->
+
+{% macro user_search(show_message) %}
 
 <style>
     .user-item {

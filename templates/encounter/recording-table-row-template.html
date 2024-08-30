@@ -1,4 +1,4 @@
-{% macro recording_table(recordings) %}
+{% macro recording_table_row(recordings) %}
 <div class="table-responsive">
     <table class="table-striped">
         <tr>
@@ -9,13 +9,8 @@
         {% for recording in recordings %}
         <tr>
             <td>
-
-
-
                 <label for="start-time-{{ recording.id }}">{{ recording.get_start_time() }}</label><br>
-
             </td>
-
             </td>
             {% if recording.recording_file != None %}
             <td>
@@ -33,7 +28,6 @@
                     Selections</a><br>
 
             </td>
-
         </tr>
         {% endfor %}
     </table>

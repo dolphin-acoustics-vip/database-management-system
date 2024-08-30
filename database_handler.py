@@ -10,33 +10,50 @@ from sqlalchemy import event
 from flask_login import login_user,login_required, current_user, login_manager
 from jinja2 import Environment
 import exception_handler, datetime
+from logger import logger
+import sys
 
 env = Environment()
 env.globals['getattr'] = getattr
 
+startup_error_flag = False
+
 DATA_DIR = 'data'
 TEMP_DIR = 'tempdir'
+TRASH_DIR = 'trash'
 
 # Define the file space folder and get the Google API key from a file
+FILE_SPACE_FILENAME = 'file_space_path.txt'
 FILE_SPACE_PATH = ''
-if os.path.exists('file_space_path.txt'):
-    with open('file_space_path.txt', 'r') as f:
+if os.path.exists(FILE_SPACE_FILENAME):
+    with open(FILE_SPACE_FILENAME, 'r') as f:
         FILE_SPACE_PATH = f.read()
+        if FILE_SPACE_PATH == None or FILE_SPACE_PATH.strip() == '':
+            logger.critical(f"File space path found in '{FILE_SPACE_FILENAME}' however the file is empty. Cannot proceed.")
+            startup_error_flag = True
+        elif not os.path.exists(FILE_SPACE_PATH):
+            logger.critical(f"File space path found in '{FILE_SPACE_FILENAME}' however the path '{FILE_SPACE_PATH}' does not exist. Cannot proceed.")
+            startup_error_flag = True
+        else:
+            logger.info(f"Assigned file space '{FILE_SPACE_PATH}'")
+else:
+    logger.critical(f"File space path configuration file not found in '{FILE_SPACE_FILENAME}'")
+    startup_error_flag = True
 
-# TODO: remove
-GOOGLE_API_KEY = ''
-if os.path.exists('google_api_key.txt'):
-    with open('google_api_key.txt', 'r') as f:
-        GOOGLE_API_KEY = f.read()
+def get_trash_path():
+    if not os.path.exists(os.path.join(FILE_SPACE_PATH, TRASH_DIR)):
+        os.makedirs(os.path.join(FILE_SPACE_PATH, TRASH_DIR))
+    return os.path.join(FILE_SPACE_PATH, TRASH_DIR)
 
 def get_file_space_path():
+    if not os.path.exists(os.path.join(FILE_SPACE_PATH, DATA_DIR)):
+        os.makedirs(os.path.join(FILE_SPACE_PATH, DATA_DIR))
     return os.path.join(FILE_SPACE_PATH, DATA_DIR)
 
 def get_tempdir():
     if not os.path.exists(os.path.join(FILE_SPACE_PATH, TEMP_DIR)):
         os.makedirs(os.path.join(FILE_SPACE_PATH, TEMP_DIR))
     return os.path.join(FILE_SPACE_PATH, TEMP_DIR)
-
 
 def get_snapshot_date_from_session():
     """
@@ -50,6 +67,38 @@ def save_snapshot_date_to_session(snapshot_date):
     """
     client_session['snapshot_date'] = snapshot_date
 
+def clean_directory(root_directory):
+    """
+    Walk through a given directory and remove any empty directories.
+
+    :param root_directory: The root directory to start cleaning
+    :type root_directory: str
+    """
+    # Get the root directory of the project
+    for root, dirs, files in os.walk(root_directory, topdown=False):
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            # If there exist no sub directories, remove it
+            if not os.listdir(dir_path):
+                os.rmdir(dir_path)
+
+
+if not os.environ['STADOLPHINACOUSTICS_USER']:
+    logger.critical('Environment variable STADOLPHINACOUSTICS_USER not found.')
+    startup_error_flag = True
+if not os.environ['STADOLPHINACOUSTICS_PASSWORD']:
+    logger.critical('Environment variable STADOLPHINACOUSTICS_PASSWORD not found.')
+    startup_error_flag = True
+if not os.environ['STADOLPHINACOUSTICS_HOST']:
+    logger.critical('Envirionemnt variable STADOLPHINACOUSTICS_HOST not found.')
+    startup_error_flag = True
+if not os.environ['STADOLPHINACOUSTICS_DATABASE']:
+    logger.critical('Environment variable STADOLPHINACOUSTICS_DATABASE not found.')
+    startup_error_flag = True
+
+if startup_error_flag:
+    logger.fatal("Exiting program due to startup error(s)")
+    sys.exit()
 
 # Create a Flask app
 app = Flask(__name__)
@@ -82,10 +131,9 @@ with app.app_context():
         """
         # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
         for obj in session.dirty.union(session.new):
+            print("BEFORE COMMIT ", obj.__class__.__name__)
             if obj.__class__.__name__ == 'Recording' or obj.__class__.__name__ == 'Encounter' or obj.__class__.__name__ == 'File' or obj.__class__.__name__ == 'RecordingPlatform' or obj.__class__.__name__ == 'DataSource' or obj.__class__.__name__ == 'Selection' or obj.__class__.__name__ == 'Species':
                 obj.updated_by_id = current_user.id
-
-
 
 # A number of annotations that can be applied to flask route methods to restrict access to certain
 # user access level permissions.
@@ -160,39 +208,9 @@ def load_user(user_id: str):
     try:
         from models import User
         # Since the user_id is just the primary key of the user table, use it in the query for the user
-        return User.query.get(uuid.UUID(user_id))
+        return User.query.get(user_id)
     except OperationalError:
         return None
-
-
-def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError) -> str:
-    """
-    Parse SQLAlchemy errors and return a human-readable message which can be displayed in the UI
-    where necessary. This method can parse database errors such as illegal duplicates, null values,
-    foreign key constraints, operational errors, and programming errors. Where an error is
-    unrecognised, the default sqlalchemy error message is returned with a prefix
-    """
-    print(error)
-    if isinstance(error, sqlalchemy.exc.OperationalError) or isinstance(error, sqlalchemy.exc.IntegrityError) or isinstance(error, sqlalchemy.exc.ProgrammingError):
-        error_message = str(error)
-        if "cannot be null" in error_message:
-            column_name = error_message.split("Column '")[1].split("' cannot be null")[0]
-            return "Error: {} cannot be null. Please provide a valid value for {}.".format(column_name, column_name)
-        elif error.orig.args[0] == 1062 and "Duplicate entry" in error_message:
-            duplicate_value = error_message.split("Duplicate entry ")[1].split(" for key")[0]
-            duplicate_attribute = error_message.split("for key '")[1].split("'")[0]
-            return "Duplicate entry: {} for {}.".format(duplicate_value, duplicate_attribute)
-        else:
-            foreign_key_constraint = error_message.split('`')[3]
-            return "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)
-    elif isinstance(error, sqlalchemy.exc.OperationalError):
-        return "Operational error occurred: {}.".format(error.args[0])
-    elif isinstance(error, sqlalchemy.exc.ProgrammingError):
-        return "Programming error occurred: {}.".format(error.args[0])
-    else:
-        return "An error occurred: {}.".format(str(error))
-
-
 
 
 
@@ -224,7 +242,6 @@ def get_system_time_request_recording(session, user_id=None, assigned_user_id=No
     query_str += " GROUP BY rec.id, rec.start_time, enc.id, enc.encounter_name, enc.location, sp.id, sp.species_name, assignment.created_datetime, assignment.completed_flag"
 
     query = db.text(query_str)
-    print(query)
     result = session.execute(query)
     # Fetch all results
     records_raw = result.fetchall()
@@ -288,7 +305,6 @@ def create_system_time_between_request(session, db_object, start_date, end_date,
 
     
     query = db.text(query_str)
-    print(query)
     result = session.execute(query)
     
     # Fetch all results
@@ -296,11 +312,8 @@ def create_system_time_between_request(session, db_object, start_date, end_date,
 
     # Create a list of dictionaries with column names as keys
     recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
-    print('I GOT HERE')
     for recording_history_item in recording_history:
         if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
-            print('QUERY USER')
-            print(session.query(User).filter_by(id=recording_history_item['updated_by_id']).first() )
             recording_history_item['updated_by'] = session.query(User).filter_by(id=recording_history_item['updated_by_id']).first()  
         else:
             recording_history_item['updated_by'] = None 

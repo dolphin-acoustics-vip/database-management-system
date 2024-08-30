@@ -18,27 +18,33 @@ from flask_login import login_user,login_required, current_user, login_manager
 from flask import g
 
 # Local application imports
-from database_handler import Session, FILE_SPACE_PATH, GOOGLE_API_KEY, app
+from database_handler import Session, FILE_SPACE_PATH, app
 from models import *
 from routes.routes_admin import routes_admin
 from routes.routes_encounter import routes_encounter
 from routes.routes_recording import routes_recording
 from routes.routes_selection import routes_selection
-from routes.routes_contour import routes_contour
 from routes.routes_auth import routes_auth
 from routes.routes_datahub import routes_datahub
 from routes.routes_healthcentre import routes_healthcentre
-from exception_handler import NotFoundException
+from exception_handler import NotFoundException, CriticalException
 from logger import logger
 
 app.register_blueprint(routes_admin)
 app.register_blueprint(routes_encounter)
 app.register_blueprint(routes_recording)
 app.register_blueprint(routes_selection)
-app.register_blueprint(routes_contour)
 app.register_blueprint(routes_auth)
 app.register_blueprint(routes_datahub)
 app.register_blueprint(routes_healthcentre)
+
+
+@app.before_request
+def before_request():
+    """
+    Store the logged in user information in each request.
+    """
+    g.user = current_user
 
 @app.errorhandler(OperationalError)
 def handle_operational_error(ex):
@@ -86,15 +92,15 @@ def gateway_timeout(e):
     logger.critical('Gateway timeout: ' + str(e))
     return "Gateway timeout. Please try again later.", 504
 
+@app.errorhandler(CriticalException)
+def critical_exception(e):
+    logger.exception('Critical exception')
+    return render_template('general-error.html', error_message=str(e), current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Back")
+
 @app.errorhandler(NotFoundException)
 def not_found(e):
     logger.warning('Not found exception: ' + str(e))
-    return render_template('error.html', error_code=404, error=str(e), goback_link='/home', goback_message="Home")
-
-# Generic Error Handler
-# @app.errorhandler(Exception)
-# def generic_error_handler(e):
-#     return "An error occurred that could not be automatically resolved. Please contact your system administrator with instructions to reproduce it and try again later.", 500
+    return render_template('error.html', error_code=404, error=str(e) + "<br>" + str(e.details), goback_link=request.referrer, goback_message="Go Back")
 
 @app.route('/favicon.ico')
 def favicon():
@@ -102,29 +108,22 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-@app.route('/file-details/<file_id>')
+@app.route('/file-details/<file_id>', methods=['GET'])
 def get_file_details(file_id):
+    """
+    A route to render a template to see generic information on a particular file.
+    This includes information like the file's name, path, original name etc. An
+    argument can be passed in the request, file_details, which is displayed at
+    the top of the page.
+
+    :param file_id: the ID of the file to render information for
+    :type file_id: str 
+    """
     file_details = request.args.get('file_details')
+    if not file_details: file_details = ''
     with Session() as session:
         file_obj = session.query(File).filter_by(id=file_id).first()
         return render_template('file-info.html', file=file_obj, file_details=file_details, redirect_link=request.referrer)
-
-@app.route('/image/<path:path>')
-def get_image(path):
-    # Path to the PNG file
-    image_path = path
-
-    # Return the PNG file as a response
-    return send_file(image_path, mimetype='image/png')
-
-
-@app.before_request
-def before_request():
-    """
-    Before each webapp request this function will be called. It will store user information in the `g` object
-    which can then be accessed by the HTML templates.
-    """
-    g.user = current_user
 
 
 @app.route('/enter-snapshot-date-in-session', methods=['GET'])
@@ -134,10 +133,9 @@ def enter_snapshot_date_in_session():
     to enter the snapshot date into the session so that it can be
     passed to new requests.
     """
-    snapshot_date = request.args.get('archive-mode-date')
-    redirect_link = request.args.get('redirect-link')
+    snapshot_date = request.args.get('snapshot_date')
+    redirect_link = request.args.get('redirect_link')
     client_session['snapshot_date'] = snapshot_date
-    print(client_session['snapshot_date'])
     return redirect(redirect_link)
 
 def remove_snapshot_date_from_url(url):

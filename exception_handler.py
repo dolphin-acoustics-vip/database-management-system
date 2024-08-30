@@ -2,8 +2,63 @@ from flask import flash
 import sqlalchemy
 from flask import session as client_session
 from logger import logger
+from sqlalchemy.exc import DBAPIError
 
-def parse_alchemy_error(error):
+
+# A number of custom exceptions have been defined which
+# are raised for different reasons. See specific pydocs
+# of each exception for more details.
+
+
+class CriticalException(Exception):
+    def __init__(self, message:str):
+        """
+        Raise any exception that is an 'unfixable' error. 
+        For example if an argument in a request has become
+        corrupted and so a database query returns None. 
+
+        This exception is handled in app.py by redirecting
+        the user to a custom error page.
+        """
+        super().__init__(message)
+
+class WarningException(Exception):
+    def __init__(self, message:str):
+        """
+        Raise any exception that is due to a user fault.
+        For example an incorrect data entry that is caught
+        before a database query.
+
+        This exception is handled in handle_exception() by
+        flashing the message on the screen.
+        """
+        super().__init__(message)
+
+
+class NotFoundException(Exception):
+    def __init__(self, message, details=""):
+        super().__init__(message)
+        self.details=details
+        snapshot_date=client_session.get('snapshot_date')
+    
+    def get_details(self):
+        return self.details
+
+
+
+def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError | sqlalchemy.exc.OperationalError | sqlalchemy.exc.ProgrammingError) -> str:
+    """
+    Extract important information from an sqlalchemy error. Currently the method
+    supports the following error types:
+    - IntegrityError (constraints ignored)
+    - OperationalError (database disconnection)
+    - ProgrammingError (misformed query)
+
+    :param error: the SQLAlchemy error to be parsed
+    :type error: sqlalchemy.exc.DBAPIError
+    :return: a string with the parsed error message
+    """
+
     if isinstance(error, sqlalchemy.exc.IntegrityError):
         error_message = str(error)
         if "cannot be null" in error_message:
@@ -25,47 +80,28 @@ def parse_alchemy_error(error):
         return "An error occurred: {}.".format(str(error))    
 
 
-def handle_exception(exception: Exception | str, session=None) -> None:
-    """
-    Handle exception and rollback the session.
-    
-    Parameters:
-    - exception: Exception or string
-    - session: SQLAlchemy session
-    
-    Returns:
-    - string: Parsed error message
-    """
-    
-    flash(str(exception), 'error')
-    if session:
-        session.rollback()
-    return str(exception)
 
 
-def handle_exception(session, exception: Exception, prefix="") -> None:
+def handle_exception(session, exception, prefix="") -> str:
     """
     Handle exception and rollback the session. Where possible the
     exception is dissected and a human-readable message is passed
-    to the Flask flash() method. Otherwise, the default exception
-    string is passed to the Flask flash() method. Depending on the
-    severity of the exception, it is logged in the logger.
+    to the Flask flash() method. For an unknown or severe error,
+    a new Exception is raised to then be caught by app.py.
 
     :param session: SQLAlchemy session
-    :param exception: Exception to be processed
-    :param prefix: Prefix to be added to the error message
+    :param exception: Exception or SQLAlchemy DBAPIError to be processed
+    :type exception: sqlalchemy.exc.DBAPIError | Exception
+    :param prefix: Prefix to be added before the error message (default empty)
+    :type prefix: str
 
     :return: error_string: Parsed error message
     """
     return handle_sqlalchemy_exception(session, exception, prefix=prefix)
 
-def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQLAlchemyError, prefix="") -> None:
+def handle_sqlalchemy_exception(session, sqlAlchemy_exception, prefix="") -> None:
     from models import File
-
-    if isinstance(sqlAlchemy_exception, sqlalchemy.exc.IntegrityError):
-        error_string = parse_alchemy_error(sqlAlchemy_exception)
-    else:
-        error_string = str(sqlAlchemy_exception)
+    from sqlalchemy.exc import IntegrityError
 
     # Access the newly added File objects
     new_file_objects = [obj for obj in session.new if isinstance(obj, File)]
@@ -77,14 +113,27 @@ def handle_sqlalchemy_exception(session, sqlAlchemy_exception: sqlalchemy.exc.SQ
 
     for file_object in new_file_objects:
         file_object.rollback(session)
-    if prefix != "":
-        error_string = prefix + ". " + error_string
-    flash(error_string, 'error')
-    logger.warning(error_string)
-    session.rollback()
-    return error_string
 
-class NotFoundException(Exception):
-    def __init__(self, message):
-        super().__init__(message)
-        snapshot_date=client_session.get('snapshot_date')
+    session.rollback()
+
+    error_string = prefix + ". " if prefix else ""
+    
+    if isinstance(sqlAlchemy_exception, IntegrityError):
+        error_string += parse_alchemy_error(sqlAlchemy_exception)
+        flash(error_string, category='error')
+    elif isinstance(sqlAlchemy_exception, WarningException):
+        error_string += str(sqlAlchemy_exception)
+        flash(error_string, category='error')
+    elif isinstance(sqlAlchemy_exception, CriticalException):
+        error_string += str(sqlAlchemy_exception)
+        raise CriticalException(error_string)
+    elif isinstance(sqlAlchemy_exception, Exception):
+        error_string += str(sqlAlchemy_exception)
+        logger.exception(error_string)
+        raise sqlAlchemy_exception
+    else:
+        error_string += str(sqlAlchemy_exception)
+        flash(error_string, category='error')
+        logger.exception(error_string)
+
+    return error_string
