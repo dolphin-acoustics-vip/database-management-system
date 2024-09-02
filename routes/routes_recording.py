@@ -1,7 +1,6 @@
 # Standard library imports
 import pandas as pd
 import uuid, os, re
-import shared_functions
 
 # Third-party imports
 from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file, url_for, send_from_directory
@@ -413,7 +412,7 @@ def extract_date():
     :return date: The date extracted from the filename in JSON format {date:value}, or {date:None}.
     """
     filename = request.args.get('filename')
-    date = shared_functions.parse_date(filename)
+    date = database_handler.parse_date(filename)
     return jsonify(date=date)
 
 @routes_recording.route('/assign_recording/<user_id>/<recording_id>', methods=['GET'])

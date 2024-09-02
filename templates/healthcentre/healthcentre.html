@@ -77,7 +77,7 @@
         {% from 'partials/species-checkbox.html' import species_checkbox %}
         {{ species_checkbox(species_list) }}
         <label class="bold">User filter</label>
-        {% from 'partials/user_search.html' import user_search %}
+        {% from 'partials/user-search.html' import user_search %}
         {{ user_search() }}
         <button id="clear-user-filter-button" hidden onclick="clearUserFilter()">Clear User Filter</button>
         <h2 id="health-score-title">Health Score</h2>

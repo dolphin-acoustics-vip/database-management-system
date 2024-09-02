@@ -43,7 +43,7 @@ def login_post():
                 return redirect(url_for('auth.login'))
             login_user(user, remember=False)
             logger.info(f'User {user.id} logged in')
-            return redirect(url_for('home'))
+            return redirect(url_for('general.home'))
         else:
             flash('Invalid username or password', 'error')
             return redirect(url_for('auth.login'))
@@ -69,7 +69,7 @@ def login_temporary_post():
                 return redirect(url_for('auth.access_code_login'))
             login_user(user, remember=False)
             logger.info(f'Temprary user {user.id} logged in')
-            return redirect(url_for('home'))
+            return redirect(url_for('general.home'))
         else:
             flash('Invalid access code or password', 'error')
             return redirect(url_for('auth.access_code_login'))
@@ -82,4 +82,4 @@ def login():
 def logout():
     logout_user()
     client_session.clear()
-    return redirect(url_for('home'))
+    return redirect(url_for('general.home'))

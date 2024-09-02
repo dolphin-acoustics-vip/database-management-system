@@ -1,7 +1,0 @@
-NOTE: the following is taken from an e-mail received from Julie Oswald on June 18 2024. Enclosed were RoccaContourDataBlock.java and RoccaContourDataUnit.java. The e-mail is from the author of the Java code, Michael Oswald.
-
-The code to calculate all of the whistle statistics is found in the RoccaContourDataBlock.java file, from lines 337-895 (just search for the calculateStatistics() method). 
-
-For each time slice, there is a RoccaContourDataUnit object.  It holds the time, frequency, duty cycle, energy and window rms values for that time slice (so if you're looking at one of the contour files, each row is a RoccaContourDataUnit object).  I've also attached the RoccaContourDataUnit file here for reference.
-
-The code that calculates the stats just loops through the RoccaContourDataUnits one at a time, rabs the frequency/time/duty cycle, etc and works through the different algorithms.  The loop starts on line 415.  You'll recognise the RoccaContourDataUnit object in the code as the variable named rcdu.

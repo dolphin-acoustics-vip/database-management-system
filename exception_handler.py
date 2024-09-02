@@ -10,6 +10,7 @@ from sqlalchemy.exc import DBAPIError
 # of each exception for more details.
 
 
+
 class CriticalException(Exception):
     def __init__(self, message:str):
         """

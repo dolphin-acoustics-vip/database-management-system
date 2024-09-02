@@ -4,8 +4,6 @@
 
 <head>
     <title>View Selections</title>
-    <link rel="stylesheet" href="../../../../static/css/hero-section.css">
-    <link rel="stylesheet" href="../../../../static/css/general-style.css">
 </head>
 
 <body>
@@ -77,14 +75,14 @@
 
         <hr>
         {% if selection.selection_file %}
-            <a class="button small" href="{{url_for('download_file', relative_path=selection.selection_file.get_full_relative_path())}}">Download Selection File</a>
-            <a class="button small" href="{{ url_for('get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name(' - ') }}&redirect_link={{ request.referrer }}">See Selection File Details</a>
+            <a class="button small" href="{{url_for('general.download_file', relative_path=selection.selection_file.get_full_relative_path())}}">Download Selection File</a>
+            <a class="button small" href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name(' - ') }}&redirect_link={{ request.referrer }}">See Selection File Details</a>
             {% else %}
             <p style="margin-right:10px;">This selection has no selection file.</p>
         {% endif %}
         {% if selection.contour_file %}
-            <a class="button small" href="{{url_for('download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download Contour File</a>
-            <a class="button small" href="{{ url_for('get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See Contour File Details</a>
+            <a class="button small" href="{{url_for('general.download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download Contour File</a>
+            <a class="button small" href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See Contour File Details</a>
 
             {% else %}
             <p style="margin-right:10px;">This selection has no contour file.</p>	

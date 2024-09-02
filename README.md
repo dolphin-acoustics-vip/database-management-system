@@ -19,9 +19,9 @@ The Web App has been developed on, and for, a Lunix based system (Debian 12). It
 - All Python libraries in [requirements.txt](requirements.txt)
 - MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive)
 
-Note: MariaDB version **must** be of the stated version. Tables use the UUID package which is not available in some versions of maria db. See [here](https://mariadb.com/kb/en/installing-mariadb-deb-files/).
+> Note: MariaDB version **must** be of the stated version. Older versions of Maria DB may not have all the features required for the functioning of this program.
 
-Note: mysqlclient must have its dependencies installed before pip3 installing itself. See [here](https://pypi.org/project/mysqlclient/)
+>Note: mysqlclient must have its dependencies installed before pip3 installing itself.
 
 ### Installing Maria DB v10.5.23 on Linux
 
@@ -78,7 +78,7 @@ The storage of such data was split into two separate streams which were then man
 *High level data flow diagram of the DBMS*
 
 <a name="structure-and-setup"></a>
-## Structure and setup
+## Setting Up OCEAN
 > ⚠️ **Warning** development must be completed on a native linux system or linux subsystem.
 
 This repository includes all code pertaining to the Web App. Instructions exist below for setting up the python virtual environment to successfully run the Web App, as well as initialising the Meta Base and File Space so it can run in tandem with the Web App.
@@ -107,9 +107,15 @@ From the root folder, the virtual environment can then be started using the foll
 
  `pip3 install -r requirements.txt`
 
+ If you make changes to the library and want to generate a new [requirements.txt](requirements.txt) file, open the virtual environment and run the following command:
+
+ `pip3 freeze > requirements.txt`
+
 <a name="setting-up-the-file-space"></a>
 ### Setting up the File Space
 The File Space is simply a designated path on the file system of the server (the machine running the Web App). To set this folder, insert the relative or absolute path into [file_space_path.txt](file_space_path.txt) in the program root. For testing purposes it is recommended to use a relative path such as `filespace` as the File Space.
+
+Note that by default `filespace` is a relative path, however should you enter an absolute path (for example one beginning with `C:`), this will automatically be recognised.
 
 ### Connecting the Web App to the Meta Base
 The python script [db.py](db.py) handles all database connection. For security reasons, all database connection parameters are stored in global environment variables. 
@@ -126,6 +132,25 @@ The password for a particular host and user can be set using the following comma
 
 `ALTER USER '<user>'@'<host>' IDENTIFIED BY '<password>';
 `
+
+### Program configuration for the Meta Base connection
+
+In the mainline of `app.py`, the following code is written:
+
+```
+if __name__ == '__main__':
+    app = create_app('config.DevelopmentConfig')
+    if app is None:
+        logger.fatal('Exiting program...')
+        exit(1)
+    logger.info('Starting application')
+    app.run()
+```
+
+When placing the application into a live environment (such as production), the parameter of `create_app` must be changed to `config.ProductionConfig`. This will automatically configure the program as required. 
+>**Note**: the database connection requirements above must be followed whether in `DevelopmentConfig` or `ProductionConfig`
+
+
 
 ### Other setup instructions
 To start the server, run [app.py](app.py) from within the Python virtual environment from the root directory.
@@ -235,4 +260,15 @@ The `delete()` method in `Encounter`, `Recording`, and `Selection` are responsib
 
 > ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
 
+# Testing
+Testing is found in the [testing](/testing) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework, and can be run using commands such as `pytest testing/test.py`.
 
+The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests. 
+
+Furthermore, the test environment uses a local Maria DB installation to run the program. The following system variables must be set for the testing environment to work as required:
+
+The following are system variables that must be set:
+- `TESTING_STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost`)
+- `TESTING_STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root`)
+- `TESTING_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database (must be set in the MariaDB shell)
+- `TESTING_STADOLPHINACOUSTICS_DATABASE` to set the name of the database (must be created in the MariaDB shell)

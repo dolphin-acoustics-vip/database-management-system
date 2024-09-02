@@ -22,7 +22,7 @@ def encounter():
             return render_template('encounter/encounter.html', encounter_list=encounter_list)
         except SQLAlchemyError as e:
             exception_handler.handle_sqlalchemy_exception(session, e)
-            return redirect(url_for('home'))
+            return redirect(url_for('general.home'))
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
 @login_required

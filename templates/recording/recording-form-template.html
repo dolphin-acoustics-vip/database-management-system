@@ -16,7 +16,7 @@
     <a style="margin-right: 0.25rem" class="button small"
         href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a>
     <a style="margin-left: 0.25rem" class="button small"
-        href="{{ url_for('get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.get_unique_name(' - ')}}">File
+        href="{{ url_for('general.get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.get_unique_name(' - ')}}">File
         Details</a>
 
     <form

@@ -1,22 +1,20 @@
-# Standard library imports
-import os, uuid
-from flask import Flask, session, redirect, render_template, session as client_session, request
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import joinedload, sessionmaker
-import sqlalchemy
-from flask_login import LoginManager, login_user, login_required,  current_user, login_manager
+# db_handler.py
+from datetime import datetime
 from functools import wraps
-from sqlalchemy import event
-from flask_login import login_user,login_required, current_user, login_manager
-from jinja2 import Environment
-import exception_handler, datetime
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from flask_sqlalchemy import SQLAlchemy
+import sqlalchemy
+from flask_login import LoginManager, current_user
+from flask import abort, g, render_template, request, session as client_session
+import os
+import exception_handler
 from logger import logger
-import sys
 
-env = Environment()
-env.globals['getattr'] = getattr
 
-startup_error_flag = False
+###
+# INITIALISING FILE SPACE
+###
 
 DATA_DIR = 'data'
 TEMP_DIR = 'tempdir'
@@ -55,6 +53,88 @@ def get_tempdir():
         os.makedirs(os.path.join(FILE_SPACE_PATH, TEMP_DIR))
     return os.path.join(FILE_SPACE_PATH, TEMP_DIR)
 
+
+###
+# INITIALISE DATABASE
+###
+
+db = SQLAlchemy()
+
+def init_db(app, create_database=None):
+    """
+    Initialise the database using the given Flask app.
+    
+    The function can also create the database if a file path to a SQL script is provided in the
+    create_database parameter. The SQL script should contain the schema for the database.
+    
+    The function also sets up the Flask-Login extension. The load_user function is used by
+    Flask-Login to find a user by their id. The function takes a user_id as an argument and
+    returns the user object if found, otherwise None.
+    
+    :param app: the Flask app
+    :type app: Flask
+    :param (optional) create_database: the path to a SQL script to create the database
+    :type create_database: str
+    :return: the database object
+    :rtype: SQLAlchemy
+    """
+
+    db.init_app(app)
+    
+    if create_database:
+        with app.app_context():
+            with db.engine.connect() as conn:
+                with app.open_resource(create_database, mode='r') as f:
+                    sql_script = f.read()
+                    conn.execute(db.text(sql_script))
+    
+            @sqlalchemy.event.listens_for(Session, 'before_commit')
+            def before_commit(session: sessionmaker):
+                """
+                Catch the session.commit command from all areas of the program to add logged in user data to the row(s)
+                being committed in the database. This method will go through all UPDATE and INSERT commands in a 
+                session and will only add user data to the tables that have a column for it.
+                """
+                # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
+                for obj in session.dirty.union(session.new):
+                    if obj.__class__.__name__ == 'Recording' or obj.__class__.__name__ == 'Encounter' or obj.__class__.__name__ == 'File' or obj.__class__.__name__ == 'RecordingPlatform' or obj.__class__.__name__ == 'DataSource' or obj.__class__.__name__ == 'Selection' or obj.__class__.__name__ == 'Species':
+                        obj.updated_by_id = current_user.id
+
+
+    # Setup user login
+    login_manager = LoginManager()
+    login_manager.login_view = 'auth.login'
+    login_manager.init_app(app)
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        """
+        User loader function for Flask-Login extension. This function is used to find a
+        user by their id. The function takes a user_id as an argument and returns the user
+        object if found, otherwise None.
+        """
+        from sqlalchemy.exc import OperationalError
+        try:
+            from models import User
+            # Since the user_id is just the primary key of the user table, use it in the query for the user
+            return User.query.get(user_id)
+        except OperationalError:
+            return None
+
+
+
+    return db
+
+def get_engine():
+    return db.engine
+
+def get_session():
+    engine = get_engine()
+    Session = sessionmaker(bind=engine, autoflush=False)
+    return Session()
+
+Session = get_session
+
+
 def get_snapshot_date_from_session():
     """
     Gets the snapshot date from the session.
@@ -83,58 +163,6 @@ def clean_directory(root_directory):
                 os.rmdir(dir_path)
 
 
-if not os.environ['STADOLPHINACOUSTICS_USER']:
-    logger.critical('Environment variable STADOLPHINACOUSTICS_USER not found.')
-    startup_error_flag = True
-if not os.environ['STADOLPHINACOUSTICS_PASSWORD']:
-    logger.critical('Environment variable STADOLPHINACOUSTICS_PASSWORD not found.')
-    startup_error_flag = True
-if not os.environ['STADOLPHINACOUSTICS_HOST']:
-    logger.critical('Envirionemnt variable STADOLPHINACOUSTICS_HOST not found.')
-    startup_error_flag = True
-if not os.environ['STADOLPHINACOUSTICS_DATABASE']:
-    logger.critical('Environment variable STADOLPHINACOUSTICS_DATABASE not found.')
-    startup_error_flag = True
-
-if startup_error_flag:
-    logger.fatal("Exiting program due to startup error(s)")
-    sys.exit()
-
-# Create a Flask app
-app = Flask(__name__)
-
-# TODO: use an actual secret key
-app.secret_key = 'kdgnwinhuiohji3275y3hbhjex?1'
-
-# Configure the database connection using SQLAlchemy and MariaDB
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
-
-# USED FOR THE Docker TEST ENVIRONMENT:
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:test123@127.0.0.1:3306/test_database'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Initialize the SQLAlchemy database
-db = SQLAlchemy(session_options={"autoflush": False})
-db.init_app(app)
-
-# Create the engine and session within a route or a view function
-with app.app_context():
-    engine = db.get_engine()
-    Session = sessionmaker(bind=engine, autoflush=False)
-    
-    @sqlalchemy.event.listens_for(Session, 'before_commit')
-    def before_commit(session: sessionmaker):
-        """
-        Catch the session.commit command from all areas of the program to add logged in user data to the row(s)
-        being committed in the database. This method will go through all UPDATE and INSERT commands in a 
-        session and will only add user data to the tables that have a column for it.
-        """
-        # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
-        for obj in session.dirty.union(session.new):
-            print("BEFORE COMMIT ", obj.__class__.__name__)
-            if obj.__class__.__name__ == 'Recording' or obj.__class__.__name__ == 'Encounter' or obj.__class__.__name__ == 'File' or obj.__class__.__name__ == 'RecordingPlatform' or obj.__class__.__name__ == 'DataSource' or obj.__class__.__name__ == 'Selection' or obj.__class__.__name__ == 'Species':
-                obj.updated_by_id = current_user.id
-
 # A number of annotations that can be applied to flask route methods to restrict access to certain
 # user access level permissions.
 
@@ -144,7 +172,7 @@ def exclude_role_1(func):
         if current_user.is_authenticated and current_user.role_id != 1:
             return func(*args, **kwargs)
         else:
-            return render_template("unauthorized.html", user=current_user)
+            abort(403)
     return wrapper
                    
 def exclude_role_2(func):
@@ -153,7 +181,7 @@ def exclude_role_2(func):
         if current_user.is_authenticated and current_user.role_id != 2:
             return func(*args, **kwargs)
         else:
-            return render_template("unauthorized.html", user=current_user)
+            abort(403)
     return wrapper
 
 def exclude_role_3(func):
@@ -162,7 +190,7 @@ def exclude_role_3(func):
         if current_user.is_authenticated and current_user.role_id != 3:
             return func(*args, **kwargs)
         else:
-            return render_template("unauthorized.html", user=current_user)
+            abort(403)
     return wrapper
 
 def exclude_role_4(func):
@@ -171,7 +199,7 @@ def exclude_role_4(func):
         if current_user.is_authenticated and current_user.role_id != 4:
             return func(*args, **kwargs)
         else:
-            return render_template("unauthorized.html", user=current_user)
+            abort(403)
     return wrapper 
 
 def require_live_session(func):
@@ -194,36 +222,29 @@ def require_live_session(func):
 
 
 
-# Setup user login
-login_manager = LoginManager()
-login_manager.login_view = 'auth.login'
-login_manager.init_app(app)
-@login_manager.user_loader
-def load_user(user_id: str):
+def get_system_time_request_recording(session:sessionmaker, user_id:str=None, assigned_user_id:str=None, created_date_filter:str=None, species_filter_str:str=None, override_snapshot_date:str=None):
     """
-    Retrieve the user relation for the database for a particular user_id. Return value is an 
-    instance of the User class, or None if the user_id is not found.
+    Retrieves all recording records for the given filters. The recording table is joined with a number of other tables including encounter, species, and user to
+    provide additional information. See method in detail to learn more about variable names assigned to columns of the other tables in the join.
+
+    If a created_date_filter is passed, the query will be filtered only by selections which lie between the date they were created and today (or the snapshot
+    date if currently in the user session).
+
+    :param session: the sqlalchemy session object
+    :param user_id: the id of the user to filter by if specified
+    :param assigned_user_id: the id of the assigned user to filter by if specified
+    :param created_date_filter: the date after which the recordings are to be filtered if specified
+    :param species_filter_str: a comma separated string of species ids to filter by if specified
+    :param override_snapshot_date: if specified, use this instead of the snapshot_date from the session cookies
+    :return: a list of dictionaries with column names as keys
+    :rtype: list
     """
-    from sqlalchemy.exc import OperationalError
-    try:
-        from models import User
-        # Since the user_id is just the primary key of the user table, use it in the query for the user
-        return User.query.get(user_id)
-    except OperationalError:
-        return None
-
-
-
-def get_system_time_request_recording(session, user_id=None, assigned_user_id=None, created_date_filter=None, species_filter_str=None, override_snapshot_date=None):
     from models import Recording
     snapshot_date=client_session.get('snapshot_date') if override_snapshot_date is None else override_snapshot_date
 
     columns = "rec.id, rec.created_datetime, rec.start_time, rec.status, enc.id enc_id, enc.encounter_name enc_encounter_name, enc.location enc_location, sp.id sp_id, sp.species_name sp_species_name, assignment.created_datetime assignment_created_datetime, assignment.completed_flag assignment_completed_flag, COUNT(CASE WHEN sel.traced = 1 AND sel.deactivated = 0 THEN sel.id END) traced_count, COUNT(CASE WHEN sel.deactivated = 1 THEN sel.id END) deactivated_count, COUNT(CASE WHEN sel.traced IS NULL AND sel.deactivated = 0 THEN sel.id END) untraced_count, assignment_user.id assignment_user_id, assignment_user.name assignment_user_name, assignment_user.login_id assignment_user_login_id"
-
     joins = "LEFT JOIN encounter AS enc ON rec.encounter_id = enc.id LEFT JOIN species AS sp ON enc.species_id = sp.id LEFT JOIN assignment ON rec.id = assignment.recording_id LEFT JOIN user AS assignment_user ON assignment.user_id = assignment_user.id LEFT JOIN selection AS sel ON rec.id = sel.recording_id"
 
-    # COUNT(sel_untraced.id) untraced_count, 
-    # LEFT JOIN selection AS sel_untraced ON rec.id = sel_untraced.recording_id AND sel_untraced.traced IS NULL AND sel_untraced.deactivated = 0
     if snapshot_date: query_str="SELECT {} FROM {} FOR SYSTEM_TIME AS OF '{}' AS sel".format(columns, Recording.__tablename__, snapshot_date)
     else: query_str="SELECT {} FROM {} AS rec".format(columns, Recording.__tablename__)
     query_str += " {}".format(joins)
@@ -240,19 +261,30 @@ def get_system_time_request_recording(session, user_id=None, assigned_user_id=No
         query_str += " {} sp.id IN ({})".format(next_clause, species_filter_str)
 
     query_str += " GROUP BY rec.id, rec.start_time, enc.id, enc.encounter_name, enc.location, sp.id, sp.species_name, assignment.created_datetime, assignment.completed_flag"
-
     query = db.text(query_str)
     result = session.execute(query)
-    # Fetch all results
     records_raw = result.fetchall()
-    # Create a list of dictionaries with column names as keys
     records = [{column: value for column, value in zip(result.keys(), record)} for record in records_raw]
-    
     return records
 
-def get_system_time_request_with_joins(session, user_id=None, assigned_user_id=None, created_date_filter=None, species_filter_str=None, override_snapshot_date=None):
+def get_system_time_request_selection(session, user_id:str=None, assigned_user_id:str=None, created_date_filter:str=None, species_filter_str:str=None, override_snapshot_date:str=None):
+    """
+    Retrieves all selection records for the given filters and snapshot date. The selection object is joined with a number of other tables including encounter, species, and user to
+    provide additional information. See method in detail to learn more about variable names assigned to columns of the other tables in the join.
+
+    If a created_date_filter is passed, the query will be filtered only by selections which lie between the date they were created and today (or the snapshot
+    date if currently in the user session).
+
+    :param session: The database session to use for the query.
+    :param user_id: The user ID to filter by (optional).
+    :param assigned_user_id: The assigned user ID to filter by (optional).
+    :param created_date_filter: The date to filter by for selection created date (optional) - YYYY-MM-DD HH:MM:SS.ffffff
+    :param species_filter_str: The comma-separated species IDs to filter by (optional).
+    :param override_snapshot_date: The snapshot date to use instead of the client session's snapshot date (optional) - YYYY-MM-DD HH:MM:SS.ffffff
+
+    :return: A list of dictionaries representing the query results, with each dictionary containing the column names as keys.
+    """
     from models import Selection
-    
     
     snapshot_date=client_session.get('snapshot_date') if override_snapshot_date is None else override_snapshot_date
 
@@ -287,45 +319,19 @@ def get_system_time_request_with_joins(session, user_id=None, assigned_user_id=N
     
     return records
 
+def create_system_time_request(session: sessionmaker, db_object, filters:dict=None, order_by:str=None,override_snapshot_date:datetime=None, one_result:bool=False):
+    """
+    Creates a database request to retrieve records from the specified database object at the current date and time, or if snapshot_date is
+    defined in the user session, at that date. A different snapshot date can be provided in the method arguments aswell.
 
-def page_not_found(error,redirect):
-    snapshot_date = client_session.get('snapshot_date')
-    return render_template('error.html', error_code=404, error=error, goback_link=redirect, goback_message="Home", snapshot_date=snapshot_date, user=current_user)
-
-def create_system_time_between_request(session, db_object, start_date, end_date, filters=None, order_by=None):
-    from models import User
-
-    query_str="SELECT *,row_start,row_end FROM {} FOR SYSTEM_TIME BETWEEN '{}' AND '{}'".format(db_object.__tablename__, start_date, end_date)
-    if filters:
-        filter_str = " AND ".join(["{} = '{}'".format(key, value) for key, value in filters.items()])
-        query_str += " WHERE " + filter_str
-
-    if order_by:
-        query_str += " ORDER BY " + order_by
-
-    
-    query = db.text(query_str)
-    result = session.execute(query)
-    
-    # Fetch all results
-    records = result.fetchall()
-
-    # Create a list of dictionaries with column names as keys
-    recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
-    for recording_history_item in recording_history:
-        if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
-            recording_history_item['updated_by'] = session.query(User).filter_by(id=recording_history_item['updated_by_id']).first()  
-        else:
-            recording_history_item['updated_by'] = None 
-    # Sort the data by 'row_start' dates
-    recording_history.sort(key=lambda x: x['row_start'])
-    
-
-
-    return recording_history
-
-
-def create_system_time_request(session, db_object, filters=None, order_by=None,override_snapshot_date=None, one_result=False):
+    :param session: The database session to use for the query.
+    :param db_object: The database class to query (SQLAlchemy ORM).
+    :param (optional) filters: A dictionary of filters to apply to the query. The keys are the column names, and the values are the filter values.
+    :param (optional) order_by: A string specifying the column to order the results by. order_by is appended to the SQL parameter "ORDER BY " + order_by.
+    :param (optional) override_snapshot_date: The snapshot date to use for the query. If not provided, the snapshot date from the client session is used.
+    :param (optional) one_result: A boolean indicating whether to return a single result as a single database object (True) or all results as a list of database objects (False, default).
+    :return: A list of database objects (if one_result=False) or a single database object (if one_result=True) representing the query results.
+    """
     snapshot_date=client_session.get('snapshot_date') if override_snapshot_date is None else override_snapshot_date
     if snapshot_date: query_str="SELECT * FROM {} FOR SYSTEM_TIME AS OF '{}'".format(db_object.__tablename__, snapshot_date)
     else: query_str="SELECT * FROM {}".format(db_object.__tablename__)
@@ -346,14 +352,63 @@ def create_system_time_request(session, db_object, filters=None, order_by=None,o
 
     return queried_db_object
 
-
-
-def create_all_time_request(session, db_object, filters=None, order_by=None):
-    from models import User
-    # Write the raw SQL query to select all records from the recording table for all system time versions
-    # Execute the raw SQL query with the recording_id parameter
+def parse_value(key, value, prev_value):
+    """
+    Returns a string indicating the type of change made to a database value.
     
-    query_str="SELECT *,row_start FROM {} FOR SYSTEM_TIME ALL".format(db_object.__tablename__)
+    Given a key, a new value and a previous value, this function returns a string
+    describing the type of change. The string is in the format 'ACTION key',
+    where ACTION is one of 'UPDATE', 'ADD', or 'DELETE'.
+
+    If the value is a datetime object, the string is in the format 'UPDATE key VALUE',
+    where VALUE is the new value.
+
+    If the value is None, and the previous value is not None, the string is 'DELETE key'.
+    If the value is not None, and the previous value is None, the string is 'ADD key'.
+    If the value is not None, and the previous value is not None, the string is 'UPDATE key'.
+    
+    If the value is not a datetime object, and an error occurs while trying to compare
+    the new and previous values, the string is in the format 'UPDATE key -> VALUE', where
+    VALUE is the new value.
+
+    :return: A string describing the type of change.
+    """
+    return_string = ""
+    if type(value) == datetime or type(prev_value) == datetime:
+        return_string = 'UPDATE ' + key + ' ' + str(value)
+    else:
+        try:
+            value = value if value else None
+            prev_value = prev_value if prev_value else None
+            
+            if value and prev_value == None:
+                return_string = 'ADD ' + key
+            elif value == None and prev_value:
+                return_string = 'DELETE ' + key
+            elif value and prev_value:
+                return_string = 'UPDATE ' + key
+            else:
+                return_string="TEST"
+        except (ValueError,AttributeError):
+            return_string = 'UPDATE ' + key + ' -> ' + str(value)
+    
+    return return_string
+
+
+def create_all_time_request(session: sessionmaker, db_class, filters=None, order_by=None):
+    """
+    Creates a database request to retrieve all records from the specified database object for all system time versions.
+
+    :param session: The database session to use for the query.
+    :param db_class: The database class to query (SQLAlchemy ORM).
+    :param (optional) filters: A dictionary of filters to apply to the query. The keys are the column names, and the values are the filter values.
+    :param (optional) order_by: A string specifying the column to order the results by. order_by is appended to the SQL parameter "ORDER BY " + order_by.
+
+    :return: A list of dictionaries representing the query results, with each dictionary containing the column names as keys.
+    """
+    from models import User
+
+    query_str="SELECT *,row_start FROM {} FOR SYSTEM_TIME ALL".format(db_class.__tablename__)
     
     if filters:
         filter_str = " AND ".join(["{} = '{}'".format(key, value) for key, value in filters.items()])
@@ -371,37 +426,17 @@ def create_all_time_request(session, db_object, filters=None, order_by=None):
 
     # Create a list of dictionaries with column names as keys
     recording_history = [{column: value for column, value in zip(result.keys(), record)} for record in records]
+    
+    # Retrieve the user objects for each updated_by_id
     for recording_history_item in recording_history:
         if recording_history_item['updated_by_id'] is not None and recording_history_item['updated_by_id'].strip() != "":
             recording_history_item['updated_by'] = session.query(User).filter_by(id=recording_history_item['updated_by_id']).first()  
         else:
             recording_history_item['updated_by'] = None 
+    
     # Sort the data by 'row_start' dates
     recording_history.sort(key=lambda x: x['row_start'])
     
-    def parse_value(key, value, prev_value):
-        return_string = ""
-        if type(value) == datetime or type(prev_value) == datetime:
-            return_string = 'UPDATE ' + key + ' ' + str(value)
-        else:
-            try:
-                value = value if value else None
-                prev_value = prev_value if prev_value else None
-                
-                if value and prev_value == None:
-                    return_string = 'ADD ' + key
-                elif value == None and prev_value:
-                    return_string = 'DELETE ' + key
-                elif value and prev_value:
-                    return_string = 'UPDATE ' + key
-                else:
-                    return_string="TEST"
-            except (ValueError,AttributeError):
-                return_string = 'UPDATE ' + key + ' -> ' + str(value)
-
-
-        
-        return return_string
     prev_element = None
     for element in recording_history:
         if prev_element is None:
@@ -410,8 +445,67 @@ def create_all_time_request(session, db_object, filters=None, order_by=None):
             changes = [parse_value(key, element[key], prev_element[key]) for key in element if element[key] != prev_element.get(key) and key not in ['row_start', 'updated_by_id', 'updated_by']]
             element['action'] = changes if changes else 'No changes'
         prev_element = element
-    #missing_selections, error_msg = recording.validate_selection_table(session)
-    #missing_selections=[]
-    #error_msg=""
 
     return recording_history
+
+
+
+def parse_snapshot_date(date_string: str):
+    """
+    Tries to parse a date string in one of the following formats:
+    
+    * %Y-%m-%d %H:%M:%S.%f
+    * %Y-%m-%d %H:%M:%S
+    * %Y-%m-%d %H:%M
+    * %Y-%m-%dT%H:%M:%S.%f
+    * %Y-%m-%dT%H:%M:%S
+    * %Y-%m-%dT%H:%M
+    
+    If the date string is not in one of these formats, raises a ValueError with message "Invalid date format".
+    """
+    formats = ["%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"]
+    for date_format in formats:
+        try:
+            return datetime.strptime(date_string, date_format)
+        except ValueError:
+            pass
+    raise ValueError("Invalid date format")
+
+
+
+def parse_date(date_string: str) -> datetime:
+    """
+    This function takes a string and attempts to parse it as a date. This method is used 
+    wherever it is necessary to read a date from a filename.
+    The date can be in two formats:
+    - yyyymmdd_HHMMSS
+    - yymmdd-HHMMSS
+    
+    :param date_string: The string to parse as a date
+    :type date_string: str
+    :return: The parsed date
+    """
+    import re
+    match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
+    if match:
+        year = match.group(1)
+        month = match.group(2)
+        day = match.group(3)
+        hour = match.group(4)
+        minute = match.group(5)
+        second = match.group(6)
+        date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+        date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
+    if not match:
+        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
+        if match:
+            year = match.group(1)
+            month = match.group(2)
+            day = match.group(3)
+            hour = match.group(4)
+            minute = match.group(5)
+            second = match.group(6)
+            date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+            date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
+
+    return date

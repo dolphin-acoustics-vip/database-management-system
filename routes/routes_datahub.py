@@ -81,7 +81,7 @@ def get_selection_statistics():
 
     # Snapshot date limits the statistics to be retrieved to a certain point in history (or now if None).
     snapshot_date=client_session.get('snapshot_date')
-    snapshot_date_datetime = shared_functions.parse_snapshot_date(snapshot_date) if snapshot_date else None
+    snapshot_date_datetime = database_handler.parse_snapshot_date(snapshot_date) if snapshot_date else None
     if snapshot_date_datetime is None:
         snapshot_date_datetime = datetime.now()
 
@@ -97,7 +97,7 @@ def get_selection_statistics():
     end_date_time = snapshot_date_datetime
 
     with Session() as session:
-        records = database_handler.get_system_time_request_with_joins(session, user_id=user_id, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
+        records = database_handler.get_system_time_request_selection(session, user_id=user_id, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
         
         # Grab user filter information which is returned in the statistics (for informational purposes)
         if user_id:

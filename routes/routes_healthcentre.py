@@ -30,7 +30,7 @@ def get_data_warnings():
     from models import Selection
     snapshot_date=client_session.get('snapshot_date')
 
-    snapshot_date_datetime = shared_functions.parse_snapshot_date(snapshot_date) if snapshot_date else None
+    snapshot_date_datetime = database_handler.parse_snapshot_date(snapshot_date) if snapshot_date else None
     if snapshot_date_datetime is None:
         snapshot_date_datetime = datetime.now()
 
@@ -49,7 +49,7 @@ def get_data_warnings():
     
     with Session() as session:
 
-        records = database_handler.get_system_time_request_with_joins(session, user_id=None, assigned_user_id=assigned_user_id, created_date_filter=created_date_filter_datetime, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
+        records = database_handler.get_system_time_request_selection(session, user_id=None, assigned_user_id=assigned_user_id, created_date_filter=created_date_filter_datetime, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
         if assigned_user_id:
             user = session.query(User).filter_by(id=uuid.UUID(assigned_user_id)).first()
             user_name= user.name

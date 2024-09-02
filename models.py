@@ -70,90 +70,26 @@ def parse_string_notempty(string:str, field:str) -> str:
     else:
         return string.strip()
 
-class User(db.Model, UserMixin):
-    id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
-    login_id = db.Column(db.String(100), unique=True)
-    password = db.Column(db.String(100))
-    name = db.Column(db.String(1000))
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
-    is_active = db.Column(db.Boolean, default=True)
-    is_temporary = db.Column(db.Boolean, default=False)
-    expiry = db.Column(db.DateTime(timezone=True))
-    
-    role=db.relationship('Role', backref='users', lazy=True)
 
-    def set_login_id(self, value):
-        self.login_id = value
-    
-    def set_role_id(self, value):
-        self.role_id = value
-    
-    def set_expiry(self, value):
-        self.expiry = value
-    
-    def set_password(self, value):
-        self.password = value
-    
-    def set_name(self, value):
-        self.name = value
-    
-    def get_login_id(self):
-        return '' if self.login_id is None else self.login_id
+class DataSource(db.Model):
+    __tablename__ = 'data_source'
 
-    def activate(self):
-        """
-        Activate user (by setting is_active to true)
-        """
-        self.is_active = True
-    
-    def deactivate(self):
-        """
-        Deactivate user (by setting is_active to false)
-        """
-        self.is_active = False
+    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
+    name = db.Column(db.String(255))
+    phone_number1 = db.Column(db.String(20), unique=True)
+    phone_number2 = db.Column(db.String(20), unique=True)
+    email1 = db.Column(db.String(255), nullable=False, unique=True)
+    email2 = db.Column(db.String(255), unique=True)
+    address = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    type = db.Column(db.Enum('person', 'organisation'))
 
-class Role(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-
-class Species(db.Model):
-    __tablename__ = 'species'
-    id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
-    # TODO rename to scientific_name (refactor with actual database)
-    species_name = db.Column(db.String(100), nullable=False, unique=True)
-    genus_name = db.Column(db.String(100))
-    common_name = db.Column(db.String(100))
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
-
-    def update_call(self,session):
-        """
-        Call update_call() in all Encounter objects linked to the Species object.
-        This method should be called when a metadata change occurs in the Species
-        object that requires files (in Recording and Selection) be given a new
-        path based on that metadata.
-        """
-        encounters = session.query(Encounter).filter_by(species=self).all()
-        for encounter in encounters:
-            encounter.update_call(session)
-
-    def get_species_name(self):
-        return '' if self.species_name is None else self.species_name
-
-    def set_species_name(self, value):
-        self.species_name = None if value.strip() == '' else value.strip()
+    def __repr__(self):
+        return '<DataSource %r>' % self.name
     
-    def get_genus_name(self):
-        return '' if self.genus_name is None else self.genus_name
-    
-    def set_genus_name(self, value):
-        self.genus_name = None if value.strip() == '' else value.strip()
 
-    def get_common_name(self):
-        return '' if self.common_name is None else self.common_name
-    
-    def set_common_name(self, value):
-        self.common_name = None if value.strip() == '' else value.strip()
 
 class Encounter(db.Model):
     __tablename__ = 'encounter'
@@ -304,11 +240,12 @@ class Encounter(db.Model):
         return self.local_timezone
 
 
+
 class File(db.Model):
     __tablename__ = 'file'
 
     id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
-    path = db.Column(db.String, nullable=False)
+    path = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     uploaded_date = db.Column(db.DateTime(timezone=True))
     extension = db.Column(db.String(10), nullable=False)
@@ -547,6 +484,9 @@ class File(db.Model):
                 raise IOError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
             return False
 
+
+
+
 class Recording(db.Model):
     __tablename__ = 'recording'
 
@@ -558,7 +498,7 @@ class Recording(db.Model):
     encounter_id = db.Column(db.String(36), db.ForeignKey('encounter.id'), nullable=False)
     ignore_selection_table_warnings = db.Column(db.Boolean, default=False)
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
-    created_datetime = db.Column(db.DateTime(timezone=True), nullable=False, server_default="current_timestamp()")
+    created_datetime = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
     recording_file = db.relationship("File", foreign_keys=[recording_file_id])
     selection_table_file = db.relationship("File", foreign_keys=[selection_table_file_id])
     encounter = db.relationship("Encounter", foreign_keys=[encounter_id])
@@ -812,7 +752,22 @@ class Recording(db.Model):
         for selection in selections:
             selection.reset_selection_table_values(session)
 
+
+
+class RecordingPlatform(db.Model):
+    __tablename__ = 'recording_platform'
+
+    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
+    def __repr__(self):
+        return '<RecordingPlatform %r>' % self.name
     
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+
 """
 
 class RecordingAudit(Audit, Recording, db.Model):
@@ -826,12 +781,12 @@ class Selection(db.Model):
 
     id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
     selection_number = db.Column(db.Integer, nullable=False)
-    selection_file_id = db.Column(db.String, db.ForeignKey('file.id'), nullable=False)
+    selection_file_id = db.Column(db.String(36), db.ForeignKey('file.id'), nullable=False)
     recording_id = db.Column(db.String(36), db.ForeignKey('recording.id'), nullable=False)
-    contour_file_id = db.Column(db.String, db.ForeignKey('file.id'))
-    ctr_file_id = db.Column(db.String, db.ForeignKey('file.id'))
-    spectogram_file_id = db.Column(db.String, db.ForeignKey('file.id'))
-    plot_file_id = db.Column(db.String, db.ForeignKey('file.id'))
+    contour_file_id = db.Column(db.String(36), db.ForeignKey('file.id'))
+    ctr_file_id = db.Column(db.String(36), db.ForeignKey('file.id'))
+    spectogram_file_id = db.Column(db.String(36), db.ForeignKey('file.id'))
+    plot_file_id = db.Column(db.String(36), db.ForeignKey('file.id'))
     sampling_rate = db.Column(db.Float, nullable=False)
     traced = db.Column(db.Boolean, nullable=True, default=None)
     deactivated = db.Column(db.Boolean, nullable=True, default=False)
@@ -840,7 +795,7 @@ class Selection(db.Model):
     default_hop_size = db.Column(db.Integer)
 
     ### Selection Table data ###
-    view = db.Column(db.String)
+    view = db.Column(db.Text)
     channel = db.Column(db.Integer)
     begin_time = db.Column(db.Float)
     end_time = db.Column(db.Float)
@@ -849,7 +804,7 @@ class Selection(db.Model):
     delta_time = db.Column(db.Float)
     delta_frequency = db.Column(db.Float)
     average_power = db.Column(db.Float)
-    annotation = db.Column(db.String, nullable=False)
+    annotation = db.Column(db.Text, nullable=False)
 
     ### Contour Statistics data ###
     freq_max = db.Column(db.Float, nullable=True, default=None)
@@ -1283,36 +1238,93 @@ class Selection(db.Model):
         self.selection_number = value
 
 
-class DataSource(db.Model):
-    __tablename__ = 'data_source'
 
-    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    name = db.Column(db.String(255))
-    phone_number1 = db.Column(db.String(20), unique=True)
-    phone_number2 = db.Column(db.String(20), unique=True)
-    email1 = db.Column(db.String(255), nullable=False, unique=True)
-    email2 = db.Column(db.String(255), unique=True)
-    address = db.Column(db.Text)
-    notes = db.Column(db.Text)
-    type = db.Column(db.Enum('person', 'organisation'))
-
+class Species(db.Model):
+    __tablename__ = 'species'
+    id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
+    # TODO rename to scientific_name (refactor with actual database)
+    species_name = db.Column(db.String(100), nullable=False, unique=True)
+    genus_name = db.Column(db.String(100))
+    common_name = db.Column(db.String(100))
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
-    def __repr__(self):
-        return '<DataSource %r>' % self.name
+
+    def update_call(self,session):
+        """
+        Call update_call() in all Encounter objects linked to the Species object.
+        This method should be called when a metadata change occurs in the Species
+        object that requires files (in Recording and Selection) be given a new
+        path based on that metadata.
+        """
+        encounters = session.query(Encounter).filter_by(species=self).all()
+        for encounter in encounters:
+            encounter.update_call(session)
+
+    def get_species_name(self):
+        return '' if self.species_name is None else self.species_name
+
+    def set_species_name(self, value):
+        self.species_name = None if value.strip() == '' else value.strip()
     
-
-
-class RecordingPlatform(db.Model):
-    __tablename__ = 'recording_platform'
-
-    id = db.Column(db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
-    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
-    def __repr__(self):
-        return '<RecordingPlatform %r>' % self.name
+    def get_genus_name(self):
+        return '' if self.genus_name is None else self.genus_name
     
+    def set_genus_name(self, value):
+        self.genus_name = None if value.strip() == '' else value.strip()
+
+    def get_common_name(self):
+        return '' if self.common_name is None else self.common_name
+    
+    def set_common_name(self, value):
+        self.common_name = None if value.strip() == '' else value.strip()
+
+
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.String(36), primary_key=True, default=uuid.uuid4)
+    login_id = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    name = db.Column(db.String(1000))
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    is_active = db.Column(db.Boolean, default=True)
+    is_temporary = db.Column(db.Boolean, default=False)
+    expiry = db.Column(db.DateTime(timezone=True))
+    
+    role=db.relationship('Role', backref='users', lazy=True)
+
+    def set_login_id(self, value):
+        self.login_id = value
+    
+    def set_role_id(self, value):
+        self.role_id = value
+    
+    def set_expiry(self, value):
+        self.expiry = value
+    
+    def set_password(self, value):
+        self.password = value
+    
+    def set_name(self, value):
+        self.name = value
+    
+    def get_login_id(self):
+        return '' if self.login_id is None else self.login_id
+
+    def activate(self):
+        """
+        Activate user (by setting is_active to true)
+        """
+        self.is_active = True
+    
+    def deactivate(self):
+        """
+        Deactivate user (by setting is_active to false)
+        """
+        self.is_active = False
+
+
+
+
 class Assignment(db.Model):
     __tablename__ = 'assignment'
     
@@ -1321,7 +1333,7 @@ class Assignment(db.Model):
     row_start = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
     user = db.relationship("User", foreign_keys=[user_id])
     recording = db.relationship("Recording", foreign_keys=[recording_id])
-    created_datetime = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
+    created_datetime = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
     completed_flag = db.Column(db.Boolean, default=False)
 
 

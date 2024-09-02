@@ -65,7 +65,7 @@ Variables required:
                 <td>{{ encounter['action'] }}</td>
                 <td>{{ encounter['updated_by'].name }}</td>
                 <td><a
-                    href="{{ url_for('enter_snapshot_date_in_session', snapshot_date=encounter['row_start'], redirect_link=url_for('encounter.encounter_view', encounter_id=encounter['id']))}}">HERE</a>
+                    href="{{ url_for('general.enter_snapshot_date_in_session', snapshot_date=encounter['row_start'], redirect_link=url_for('encounter.encounter_view', encounter_id=encounter['id']))}}">HERE</a>
                 </td>
               </tr>
               {% endfor %}

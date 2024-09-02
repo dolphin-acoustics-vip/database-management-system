@@ -16,8 +16,8 @@
     <header>
       <div class="header-container ">
         <div class="brand-logo">
-          <a href="{{ url_for('home') }}">
-            <img src="{{ url_for('serve_resource', filename='OCEAN-banner.png') }}" alt="">
+          <a href="{{ url_for('general.home') }}">
+            <img src="{{ url_for('general.serve_resource', filename='OCEAN-banner.png') }}" alt="">
           </a>
         </div>
         <div class="brand-title">
@@ -32,7 +32,7 @@
 
       {% if session['snapshot_date'] %}
       <div id="warning-bar" style="background-color: red; color: white; padding: 10px; margin-top: 10px;">
-        Archive mode: viewing snapshot date {{ session['snapshot_date'] }} (<a href="{{ url_for('reset_snapshot_in_session') }}">Exit View</a>)
+        Archive mode: viewing snapshot date {{ session['snapshot_date'] }} (<a href="{{ url_for('general.reset_snapshot_in_session') }}">Exit View</a>)
       </div>
       {% endif %}
       <div class="blue-bar">

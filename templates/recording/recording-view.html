@@ -88,7 +88,7 @@
                                     <td>{{ recording['action'] }}</td>
                                     <td>{{ recording['updated_by'].name }}</td>
                                     <td><a
-                                        href="{{ url_for('enter_snapshot_date_in_session', snapshot_date=recording['row_start'], redirect_link=url_for('recording.recording_view', recording_id=recording['id']))}}">HERE</a>
+                                        href="{{ url_for('general.enter_snapshot_date_in_session', snapshot_date=recording['row_start'], redirect_link=url_for('recording.recording_view', recording_id=recording['id']))}}">HERE</a>
                                     </td>
                                
                                 </tr>
@@ -202,7 +202,7 @@
                         href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download
                         TXT</a>
                     <a style="margin-left: 0.25rem" class="button small"
-                        href="{{ url_for('get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.get_unique_name(' - ')}}">File
+                        href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.get_unique_name(' - ')}}">File
                         Details</a>
                     <a style="margin-left: 0.25rem;" class="button small"
                         href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download
@@ -261,7 +261,7 @@
                                 <td>
                                     {% if selection.selection_file %}
                                     <a class="button" style="float:left;"
-                                        href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a>
+                                        href="{{ url_for('general.download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a>
                                     {% else %}
                                     <section id="encounter-summary"> No selection file available</section>
                                     {% endif %}
@@ -281,7 +281,7 @@
                                 <td>
                                     {% if selection.contour_file %}
                                     <a class="button"
-                                        href="{{ url_for('download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
+                                        href="{{ url_for('general.download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
                                     {% endif %}
                                     {% if not session['snapshot_date'] %}
 

@@ -1,6 +1,5 @@
 # Standard library imports
 import re
-import shared_functions
 import tempfile
 
 # Third-party imports
@@ -65,11 +64,17 @@ def contour_file_delete(selection_id: str):
     :return: redirects to the recording view of the recording associated with the selection.
     """
     with Session() as session:
-        selection_obj = session.query(Selection).filter_by(id=selection_id).first()
-        selection_obj.delete_contour_file(session)
-        selection_obj.update_traced_status()
-        session.commit()
-        return redirect(url_for('recording.recording_view', recording_id=selection_obj.recording.id))
+        try:
+            selection_obj = session.query(Selection).filter_by(id=selection_id).first()
+            if selection_obj:
+                selection_obj.delete_contour_file(session)
+                selection_obj.update_traced_status()
+                session.commit()
+            else:
+                raise WarningException(f"Unable to delete contour file due to internal error.")
+        except (SQLAlchemyError,Exception) as e:
+            exception_handler.handle_exception(session, e, "Error deleting contour file")
+        return redirect(request.referrer)
 
 def insert_or_update_contour(session: sessionmaker, selection: Selection, contour_file: FileStorage):
     """
@@ -152,7 +157,7 @@ def process_contour():
             messages.append("<span style='color: red;'>Could not cross-reference selection number.</span>")
             valid = False
         
-        date = shared_functions.parse_date(filename)
+        date = database_handler.parse_date(filename)
         # Check if the selection start time matches that of its recording
         recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
         if not recording.match_start_time(date):
@@ -230,7 +235,7 @@ def process_selection():
 
         # Check if the selection start time matches that of its recording
         recording = session.query(Recording).filter(db.text("id = :recording_id")).params(recording_id=recording_id).first()
-        date = shared_functions.parse_date(filename)
+        date = database_handler.parse_date(filename)
         if not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
         else:
@@ -495,23 +500,6 @@ def extract_selection_stats_for_encounter(encounter_id):
             selections += database_handler.create_system_time_request(session, Selection, {"recording_id":recording.id})
         return write_contour_stats(selections, filename=f"ContourStats-{encounter.encounter_name}.csv")
 
-def validate_uuid(uuid_str):
-    """
-    Validate a UUID string.
-
-    Args:
-        uuid_str: The string to validate as a UUID
-
-    Returns:
-        The input string if it is a valid UUID, None otherwise
-    """
-    import uuid
-    try:
-        uuid.UUID(uuid_str)
-        return uuid_str
-    except ValueError:
-        return None
-
 @routes_selection.route('/selection/deactivate', methods=['POST'])
 @require_live_session
 @login_required
@@ -524,14 +512,20 @@ def deactivate_selections():
     Returns a JSON response with a message indicating success or failure.
     """
     with Session() as session:
-        selection_ids_str = request.json.get('selection_ids', [])
-        selection_ids = [validate_uuid(selection_id) for selection_id in selection_ids_str]
+        selection_ids = request.json.get('selection_ids', [])
         if not selection_ids:
             return jsonify({'error': 'No selection IDs provided'}), 400
         selections = session.query(Selection).filter(Selection.id.in_(selection_ids)).all()
+        success_counter = 0
         for selection in selections:
-            selection.deactivate()
+            try:
+                selection.deactivate()
+                success_counter += 1
+            except Exception as e:
+                flash(f'Error deactivating selection {selection.selection_number}: {str(e)}', 'error')
         session.commit()
+        if success_counter > 0:
+            flash(f'{success_counter} selections deactivated successfully', 'success')
         return jsonify({'success': True})
     
 @routes_selection.route('/selection/reactivate', methods=['POST'])
@@ -546,12 +540,18 @@ def reactivate_selections():
     Returns a JSON response with a message indicating success or failure.
     """
     with Session() as session:
-        selection_ids_str = request.json.get('selection_ids', [])
-        selection_ids = [validate_uuid(selection_id) for selection_id in selection_ids_str]
+        selection_ids = request.json.get('selection_ids', [])
         if not selection_ids:
             return jsonify({'error': 'No selection IDs provided'}), 400
         selections = session.query(Selection).filter(Selection.id.in_(selection_ids)).all()
+        success_counter = 0
         for selection in selections:
-            selection.reactivate()
+            try:
+                selection.reactivate()
+                success_counter += 1
+            except Exception as e:
+                flash(f'Error reactivating selection {selection.selection_number}: {str(e)}', 'error')
         session.commit()
+        if success_counter > 0:
+            flash(f'{success_counter} selections reactivated successfully', 'success')
         return jsonify({'success': True})
