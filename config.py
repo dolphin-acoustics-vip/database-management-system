@@ -14,7 +14,7 @@ class DevelopmentConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ['TESTING_STADOLPHINACOUSTICS_USER']}:{os.environ['TESTING_STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['TESTING_STADOLPHINACOUSTICS_HOST']}/{os.environ['TESTING_STADOLPHINACOUSTICS_HOST']}"
+    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ['TESTING_STADOLPHINACOUSTICS_USER']}:{os.environ['TESTING_STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['TESTING_STADOLPHINACOUSTICS_HOST']}/{os.environ['TESTING_STADOLPHINACOUSTICS_DATABASE']}"
     WTF_CSRF_ENABLED = False  # Disable CSRF for easier testing
 
 class ProductionConfig(Config):

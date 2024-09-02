@@ -38,6 +38,17 @@ else:
     logger.critical(f"File space path configuration file not found in '{FILE_SPACE_FILENAME}'")
     startup_error_flag = True
 
+def get_engine():
+    return db.engine
+
+def get_session():
+    engine = get_engine()
+    Session = sessionmaker(bind=engine, autoflush=False)
+    return Session()
+
+Session = get_session
+
+
 def get_trash_path():
     if not os.path.exists(os.path.join(FILE_SPACE_PATH, TRASH_DIR)):
         os.makedirs(os.path.join(FILE_SPACE_PATH, TRASH_DIR))
@@ -88,7 +99,7 @@ def init_db(app, create_database=None):
                     sql_script = f.read()
                     conn.execute(db.text(sql_script))
     
-            @sqlalchemy.event.listens_for(Session, 'before_commit')
+            @sqlalchemy.event.listens_for(get_session(), 'before_commit')
             def before_commit(session: sessionmaker):
                 """
                 Catch the session.commit command from all areas of the program to add logged in user data to the row(s)
@@ -124,15 +135,6 @@ def init_db(app, create_database=None):
 
     return db
 
-def get_engine():
-    return db.engine
-
-def get_session():
-    engine = get_engine()
-    Session = sessionmaker(bind=engine, autoflush=False)
-    return Session()
-
-Session = get_session
 
 
 def get_snapshot_date_from_session():

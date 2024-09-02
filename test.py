@@ -1,12 +1,7 @@
-# tests/conftest.py
-
 import pytest
-from app import create_app
+from main import create_app
 from database_handler import db, get_session
-import database_handler
 from models import User
-
-
 
 @pytest.fixture
 def app():
