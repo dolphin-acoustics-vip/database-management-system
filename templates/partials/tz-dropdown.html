@@ -1,0 +1,68 @@
+
+{% macro tz_dropdown(dropdown_id, default_timezone) %}
+
+<div style="display: flex;">
+  <select id="{{dropdown_id}}" name="{{dropdown_id}}" style="display: inline-block;" required></select>
+  <button class="gray small" type="button" title="Toggle the timezone dropdown to see timezones at 0.25 hour increments. To toggle back to 1 hour increments the dropdown must be set to a whole number timezone (such as GMT+8.00)" id="toggle-complex-timezone-{{dropdown_id}}" onclick="toggleComplexTimezone('{{dropdown_id}}', document.getElementById('{{dropdown_id}}').value)" style="display: inline-block;"></button>
+</div><br>
+
+
+
+  <script>
+    var complexTimezone = false;
+    function toggleComplexTimezone(dropdown_id, default_timezone) {
+      var select = document.getElementById(dropdown_id);
+      var button = document.getElementById("toggle-complex-timezone-" + dropdown_id);
+      select.innerHTML = '';
+
+      var found = false;
+
+      if (complexTimezone) {
+        // some pacific islands have a greater UTC offset than 12
+        for (var i = -12; i < 15; i++) {
+          for (var j = 0; j < 4; j++) {
+            var value = i * 60 + j * 15;
+            var text = "GMT" + (i >= 0 ? "+" : "") + (i + j * 0.25).toFixed(2);
+            select.add(new Option(text, value));
+            if (value == default_timezone) {
+              select.value = value;
+              found = true;
+            }
+          }
+        }
+        button.innerHTML = "See Less Timezones";
+      } else {
+        for (var i = -12; i < 13; i++) {
+          var value = i * 60;
+          var text = "GMT" + (i >= 0 ? "+" : "") + i;
+          select.add(new Option(text, value));
+          if (value == default_timezone) {
+            select.value = value;
+            found = true;
+          }
+        }
+        button.innerHTML = "See More Timezones";
+      }
+      console.log(default_timezone, 'DEFAULT')
+      if (default_timezone == 'None') {
+        select.value=null
+        
+      } else {
+      console.log(found, complexTimezone)
+      if (!found) {
+        if (!complexTimezone) {
+          complexTimezone = !complexTimezone;
+          toggleComplexTimezone(dropdown_id, default_timezone);
+        } else {
+          select.add(new Option("Invalid", "invalid"));
+          select.value = "invalid";
+        }
+      } else {
+
+      complexTimezone = !complexTimezone;
+  }}}
+
+    // Initialize the dropdown
+    toggleComplexTimezone("{{dropdown_id}}", "{{default_timezone}}");
+  </script>
+{% endmacro %}

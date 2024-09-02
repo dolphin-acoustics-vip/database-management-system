@@ -1,0 +1,55 @@
+<!--Create a checkbox selection with all 
+species provided in species_list.-->
+
+{% macro species_checkbox(species_list) %}
+<label class="bold" id="species-select-title">Select individual species</label>
+<style>
+    .form-check {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0;
+
+    }
+  
+    .form-check-label {
+      margin-left: 2rem;
+    }
+    .form-check-input {
+        padding: 0%;
+        margin: 0%;
+        width: 30px;
+
+    }
+  </style>
+
+{% for species in species_list %}
+<div class="form-check">
+  <input class="form-check-input" type="checkbox" id="species-checkbox-{{ species.id }}" value="{{ species.id }}" onclick="onSpeciesCheckboxClick()">
+  <label class="form-check-label" for="species-checkbox-{{ species.id }}">
+    {{ species.get_species_name() }}
+  </label>
+</div>
+{% endfor %}
+<script>
+function onSpeciesCheckboxClick() {
+    const checkboxes = document.querySelectorAll('.form-check-input');
+    const allChecked = Array.from(checkboxes).every((checkbox) => checkbox.checked);
+  
+  
+    const checkedSpeciesIds = Array.from(checkboxes)
+      .filter((checkbox) => checkbox.checked && checkbox.value !== 'on')
+      .map((checkbox) => checkbox.value);
+    
+    species_filter = checkedSpeciesIds.join(',');
+      if (checkedSpeciesIds.length === 0) {
+          species_filter = null
+          $('#species-select-title').text('Select Species to filter (currently no filter)')
+      } else {
+          $('#species-select-title').text('Select Species to filter (currently ' + checkedSpeciesIds.length + ' selected)')
+      }
+      speciesCheckboxRefresh(species_filter);
+  }
+</script>
+
+{% endmacro %}

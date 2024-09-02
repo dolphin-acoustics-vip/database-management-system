@@ -1,5 +1,6 @@
 > ⚠️ **Warning:** this project is still in a developmental stage. Some sections of the code and documentation may be incomplete.
 
+
 # Dolphin Acoustics VIP Database Management System
 
 The Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews (the Project).
@@ -16,7 +17,46 @@ The Web App has been developed on, and for, a Lunix based system (Debian 12). It
 
 - Python 3.10.12 (Linux) from [here](https://www.python.org/downloads/release/python-31012/)
 - All Python libraries in [requirements.txt](requirements.txt)
-- MariaDB 11.3.2 from [here](https://mariadb.org/download/?t=mariadb&p=mariadb&r=11.3.2&os=windows&cpu=x86_64&pkg=msi&mirror=heanet-ltd)
+- MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive)
+
+> Note: MariaDB version **must** be of the stated version. Older versions of Maria DB may not have all the features required for the functioning of this program.
+
+>Note: mysqlclient must have its dependencies installed before pip3 installing itself.
+
+### Installing Maria DB v10.5.23 on Linux
+
+Maria DB 10.5.23 is an old version that is used to maintain compatability with the intended production environment of OCEAN. The best way to set up your test environment with this version is to use a container such as Docker. See details below on how to install the required MariaDB version using Docker.
+
+Note that this guide was made using Ubuntu 22.04 (Jammy)
+
+Ensure all current MariaDB servers are removed
+
+`sudo apt-get purge mariadb-server*`
+
+Install Docker
+
+`sudo apt-get update`
+`sudo apt-get install docker.io`
+
+Pull the MariaDB image
+
+`sudo docker pull mariadb:10.5.23`
+
+Start a Maria DB container using the image and persist it
+
+`docker run --name mariadb-10.5.23 -e MYSQL_ROOT_PASSWORD=<Password> -v </my/own/datadir>:/var/lib/mysql -p 3306:3306 -d mariadb:10.5.23`
+
+Note: replace <Password> with the password that will be used to access the database.
+Note: replace </my/own/datadir> with the desired persistent container location on your drive (this will be mapped to the SQL path, /var/lib/mysql).
+
+Access the MariaDB server environment
+
+`sudo docker exec -it mariadb-10.5.23 mysql -u root -p`
+Note: you will be prompted to enter the password you made above.
+
+
+
+
 
 ## Project description
 The DBMS was developed to store data with its metadata in a homogenised system that could be easily interacted with by members of the Project (the Team). Certain functionalities of the DBMS include:
@@ -27,7 +67,6 @@ The DBMS was developed to store data with its metadata in a homogenised system t
 - Storage of aggregate contour statistics (csv)
 - export of contour files in a different format (ctr)
 - quality assurance at each stage of the pipeline
-> **Note:** not all functionalities listed above have been implemented. In addition, the list above is neither detailed nor exhaustive. For a live record of all feature requests, please view the GitHub issues page. For more detail  on the design of each of these stages, please view the DBMS April 2024 handover document.
 
 The storage of such data was split into two separate streams which were then managed by a Web App:
 - storing file metadata in a database (the Meta Base)
@@ -39,7 +78,7 @@ The storage of such data was split into two separate streams which were then man
 *High level data flow diagram of the DBMS*
 
 <a name="structure-and-setup"></a>
-## Structure and setup
+## Setting Up OCEAN
 > ⚠️ **Warning** development must be completed on a native linux system or linux subsystem.
 
 This repository includes all code pertaining to the Web App. Instructions exist below for setting up the python virtual environment to successfully run the Web App, as well as initialising the Meta Base and File Space so it can run in tandem with the Web App.
@@ -54,19 +93,29 @@ Once downloaded, the Meta Base may be initialised and a new database created. Th
 
 <a name="creating-the-virtual-development-environment"></a>
 ### Creating the virtual development environment
-The Web App was developed using an array of libraries defined [above](#requirements). To create a virtual environment and install all the required libraries, the following code must be run in the Web App root folder:
+The Web App was developed using an array of libraries defined [above](#requirements). To create a virtual environment and install all the required libraries, follow the instructions below.
 
-`python3 virtualenv venv && venv/bin/pip install -r requirements.txt`
+Create the virtual environment. Note that for the purposes of this guide the virtual environment has been assigned the name `virtualenv`:
+
+`python3 -m venv virtualenv`
 
 From the root folder, the virtual environment can then be started using the following command:
 
- `source venv/bin/activate`
+ `source virtualenv/bin/activate`
 
-> ⚠️ **Warning:** to prevent clutter on the git repository, please ensure the virtual environment folder name is placed in the [gitignore](.gitignore) file.
+ Once you verify that the virtual environemnt is installed, and has been activated, run the following command to install all requirements listed in [requirements.txt](requirements.txt).
+
+ `pip3 install -r requirements.txt`
+
+ If you make changes to the library and want to generate a new [requirements.txt](requirements.txt) file, open the virtual environment and run the following command:
+
+ `pip3 freeze > requirements.txt`
 
 <a name="setting-up-the-file-space"></a>
 ### Setting up the File Space
 The File Space is simply a designated path on the file system of the server (the machine running the Web App). To set this folder, insert the relative or absolute path into [file_space_path.txt](file_space_path.txt) in the program root. For testing purposes it is recommended to use a relative path such as `filespace` as the File Space.
+
+Note that by default `filespace` is a relative path, however should you enter an absolute path (for example one beginning with `C:`), this will automatically be recognised.
 
 ### Connecting the Web App to the Meta Base
 The python script [db.py](db.py) handles all database connection. For security reasons, all database connection parameters are stored in global environment variables. 
@@ -84,74 +133,63 @@ The password for a particular host and user can be set using the following comma
 `ALTER USER '<user>'@'<host>' IDENTIFIED BY '<password>';
 `
 
-### Other setup instructions
-If Google Maps are desired to view encounter coordinates, a Maps Embed API key is required to be placed in [google_api_key.txt](google_api_key.txt) in the program root. See [here](https://developers.google.com/maps/documentation/embed/get-api-key) for more details.
+### Program configuration for the Meta Base connection
 
+In the mainline of `app.py`, the following code is written:
+
+```
+if __name__ == '__main__':
+    app = create_app('config.DevelopmentConfig')
+    if app is None:
+        logger.fatal('Exiting program...')
+        exit(1)
+    logger.info('Starting application')
+    app.run()
+```
+
+When placing the application into a live environment (such as production), the parameter of `create_app` must be changed to `config.ProductionConfig`. This will automatically configure the program as required. 
+>**Note**: the database connection requirements above must be followed whether in `DevelopmentConfig` or `ProductionConfig`
+
+
+
+### Other setup instructions
 To start the server, run [app.py](app.py) from within the Python virtual environment from the root directory.
 
 
-## The Meta Base
-The metadata for each file is stored in a MariaDB database, otherwise called the Meta Base. See [Initialising the Meta Base](#initialising-the-meta-base).
-
-The Meta Base currently models most data from the point of an audio recording to storing selections. An entity relationship diagram for the current Meta Base is shown below, where each entity contains attributes and foreign key references to other tables.
-
-![ER Diagram](documentation/readme-resources/er-diagram.png)
-
-Each tuple in all tables are given a Universally Unique Identifier ([UUID](https://www.cockroachlabs.com/blog/what-is-a-uuid/)) such that foreign key references are simpler to implement. Additional unique and nullity constraints are also enforced on each table to standardise data quality assurance (please see [create_database.sql](create_database.sql) for more information).
-
-The following subsections describe the tables from the ER diagram in more detail.
-
-#### Encounter
-Stores information on a marine animal encounter. Categorical information is stored using foreign keys to separate tables (*species*, *data_source*, and *recording_platform*) while other information in attributes.
-
-#### File
-Stores general metadata on a file stored in the File Space, such as the filename, extension, and upload date. Each file is given a unique UUID that is referenced by other entities that require file storage.
-
-#### Recording
-Stores information on each recording in an encounter. Intuitively, each *recording* references an *encounter* (many-to-one). 
-
-#### Selection
-Stores a particular selection (otherwise known as clip) from a recording. Intuitively, each *selection* references a *recording*.
-
-
-## The File Space
-All data files stored by the user in the DBMS are placed in the File Space. The File Space should already be initialised [above](#setting-up-the-file-space).
-
-> ⚠️ **Warning:** the File Space should rarely be manually modified by the Developer and never by the User. This is because changing file paths would invalidate the file references in the Meta Base.
-
-An important aspect of the File Space is its heirarchical structure, and the fact that can be understood by the user. Namely, when a file is added to the DBMS, it is placed in an intuitive location within the File Space. With read-only permissions, a user could then access files without using the Web App as an intermediary.
-
-The structure of the file space is shown below, notingt that the contour WAV file is not yet developed in the DBMS. 
-
-![File Space](documentation/readme-resources/file-space.png)
-
-*The File Space shown in a diagramattic form. Note that the naming conventions are for demonstration purposes only and do not accurately reflect the implementation of the File Space*
-
-
-## The Web App
+# The Web App
 The Web App brings together the Meta Base and the File Space into a single user interface. The Web App utilises the Flask library.
 
 The following folders exist in the Web App's root directory (note that a *module* refers to a compartamentalised section of code pertaining to a specific functionality such as encounter, recording or selection):
 - [resources](resources) contains additional files required in the Web App such as images.
 - [routes](routes) contains all the Flask route blueprints for separate modules.
-- [static](static) contains all CSS scripts used in the user interface.
+- [static](static) contains all CSS scripts and Javascript code used in the user interface.
 - [templates](templates) contains all HTML scripts used in the user interface.
-- [db.py](db.py) handles database connection and the loading of external files such as [file_space_path.txt](file_space_path.txt) and [google_api_key.txt](google_api_key.txt).
+- [db.py](db.py) handles database connection and the loading of external files such as [file_space_path.txt](file_space_path.txt).
 - [app.py](app.py) is the mainline which calls `db.py` and loads all `routes`.
 
-### Templates and static files
+The following files exist outside the aforementioned folders:
+- `app.py` runs the web app.
+- `db.py` initialises the database and calls `models.py` to setup the ORM structure.
+- `models.py` contains all classes representing the tables in the database.
+- `shared_functions.py` contains some methods such as those required to parse dates and create more complex SQL queries beyond the SQLAlchemy ORM model.
+- `logger.py` handles the setup of a logger.
+- `exception_handler.py` defines custom exceptions and contains methods called when exceptions are found in other parts of the program.
+- `contour_statistics.py` does all contour stats calculations.
+- `maintenance.py` is another flask app that can be called whenever the main application needs to be taken down for maintenance.
+
+## Templates and static files
 Templates are pre-designed layouts that arrange content on a webpage, usually written in HTML. Found in the `templates` folder, templates are structured into modular sub-categories for set functions.
 
 The template [templates/partials/header.html]() defines a reusable header at the top of each page.
 
-Styling (or CSS) files are stored in the `static` folder. These files are referenced in each of the templates through a resource route specified in [app.py](app.py).
+Styling (or CSS) and Javascript files are stored in the `static` folder. These files are referenced in each of the templates through a resource route specified in [app.py](app.py).
 
-### Routes
+## Routes
 Routes are a server-side URL schema which describe interfaces through which a client can interact with a web app. Routes follow a Hypertext Transfer Protocol (HTTP) through which requests such as `GET` and `POST` can be made. Any request sent to the server that matches a defined URL schema is handed to the associated method defined in [routes](). 
 
 > The majority of routes exist in the folder [routes](), however the mainline [app.py]() also contains some basic routes such as `/home` and `/`, where the latter redirects to the prior.
 
-#### Requests
+### Requests
 HTTP has a large number of possible request types. For simplicity, the Web App uses:
 - `GET` to load templates and/or send information to the client;
 - `POST` to send information from the client to the server, usually to complete a CRUD operation in the Meta Base.
@@ -163,18 +201,74 @@ The classes for each relation are written in [models.py](models.py) using the [F
 
 Additional methods also exist within each ORM class as to provide APIs for the program to interact with the database, such as:
 
-#### `update_call()` 
-This method is a generic method that could be used to implement clean-up or quality-assurance checks. In addition, calling the `update_call()` method in a master would subsequently call `update_call()` in all its slaves. 
-
-> An example of the update_call method being used is when metadata of a *species* is changed. Each *encounter*, *recording*, and *selection* that are slave to that *species* would have their own `update_call()` methods added to the call stack. Functionality written in these methods would then update the files in the File Space to include the updated species data.
-
-
-#### `delete()`
-This method prevents foreign key error references upon delete. Upon the deletion request of a master object (by calling `delete()` in the master), the  `delete()` method in each slave is added to the call stack, which ensures all slaves are removed from the database before a master.
-
-> ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
-
 ### Session handling
 As data must be synchronised between the File Space and Meta Base, atomicity is crucial. An atomic database transaction is one where either all required operations occur or none at all.
 
 To implement atomicity in the Web App, all database operations are bundled into sessions. If an error is produced in interacting with the File Space, any metadata changes pertaining to the request are rolled back. 
+
+To prevent orphaned files from appearing in the database, all database changes are flushed (`flush()`) before any files are moved. This way, any issues appearing due to the flush are caught and handled (or passed to the user) before creating irreversible file changes.
+
+# Data Model
+
+## Overview
+
+The data is stored in a MariaDB database using SQLAlchemy. Each table is represented by a class in Python, defined in [models.py](../models.py). 
+
+## Unique IDs
+
+Most tables use unique IDs as primary keys, generated using MariaDB's UUID() method. This creates a 36-character string in the format `XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX`. Unique constraints are also defined separately on specific attributes to ensure data integrity.
+
+## File Storage
+
+> ⚠️ **Warning:** the File Space should rarely be manually modified by the Developer and never by the User. This is because changing file paths would invalidate the file references in the Meta Base.
+
+![File Space](documentation/readme-resources/file-space.png)
+
+*The File Space shown in a diagramattic form. Note that the naming conventions are for demonstration purposes only and do not accurately reflect the implementation of the File Space*
+
+Files are stored in unique paths, with each file represented by a `File` class object. All data files stored by the user in the DBMS are placed in the File Space. The File Space should already be initialised [above](#setting-up-the-file-space). The following techniques are used for file storage:
+
+### Creating a Unique Path
+
+When a file needs to be saved, a new `File` object is created and referenced as a foreign key in its parent class. The parent class provides the path (directory and filename) to the `File` object. This ensures that each file is associated with a specific parent object and can be easily retrieved.
+
+* Filenames are generated using methods in the parent class. This allows for consistent naming conventions and ensures that filenames are unique within a given directory.
+* Directories are generated using methods in the parent class. This allows for a hierarchical organization of files and ensures that files are stored in a logical and consistent manner.
+
+The directory and filename are then passed to the `File` object using `insert_path_and_filename()`. This method updates the `File` object with the generated path and filename, ensuring that the file is stored in the correct location.
+
+### Changing Paths
+
+When metadata changes, the file location must be updated to reflect the new metadata. The `Encounter`, `Recording`, and `Selection` classes are responsible for updating their file locations using the `update_call()` method.
+
+* The `update_call()` method is called when metadata changes, such as when the `Encounter` name is updated.
+* The `update_call()` method calls the `move_file()` method in child `File` objects, which updates the file location to reflect the new metadata.
+
+This ensures that files are always stored in a location that reflects the current metadata, and that files can be easily retrieved using the updated metadata.
+
+### Handling Duplicate Files
+
+If a file already exists in the target path, the existing file is renamed using `File.rename_loose_file()`. This prefixes a unique ID to the existing file, allowing the file to be moved to the desired location.
+
+>Note: This should never happen, as file paths are chosen to be unique alongside the database metadata. However, in the unlikely event that a duplicate file is detected, this mechanism ensures that the file is renamed and can be stored in the desired location. An error is written to the log in this case, indicating that a duplicate file was detected and renamed. This allows for easy identification and resolution of any issues related to duplicate files.
+
+### Handling File Deletion
+
+The `delete()` method prevents foreign key error references upon delete. Upon the deletion request of a master object (by calling `delete()` in the master), the  `delete()` method in each child is added to the call stack, which ensures all slaves are removed from the database before a master.
+
+The `delete()` method in `Encounter`, `Recording`, and `Selection` are responsible for removing all their own files before returning to the master.
+
+> ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
+
+# Testing
+Testing is found in the [testing](/testing) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework, and can be run using commands such as `pytest testing/test.py`.
+
+The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests. 
+
+Furthermore, the test environment uses a local Maria DB installation to run the program. The following system variables must be set for the testing environment to work as required:
+
+The following are system variables that must be set:
+- `TESTING_STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost`)
+- `TESTING_STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root`)
+- `TESTING_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database (must be set in the MariaDB shell)
+- `TESTING_STADOLPHINACOUSTICS_DATABASE` to set the name of the database (must be created in the MariaDB shell)

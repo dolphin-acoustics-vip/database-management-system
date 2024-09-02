@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Administration Portal</title>
+    <link rel="stylesheet" href="../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../static/css/general-style.css">
+</head>
+
+<div class="outer-div">
+{% block content %}
+<h1 class="title">
+  Welcome, {{ user.name }}!
+</h1>
+  Role: {{ user.role.name }}
+{% endblock %}
+</div>
+
+<button class="button is-primary" onclick="window.location.href='{{ url_for('auth.logout') }}'">Logout</button>
+
+</html>

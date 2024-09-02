@@ -4,74 +4,475 @@
 
 <head>
     <title>View Selections</title>
-    <link rel="stylesheet" href="../../../../static/css/hero-section.css">
-    <link rel="stylesheet" href="../../../../static/css/general-style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 </head>
 
 <body>
     <div class="outer-div">
-        <h2>Recording Summary</h2>
-        <p>Start date: {{ recording.get_start_time_string() }}</p>
-        <p>Encounter: {{ recording.encounter.encounter_name }} ({{recording.encounter.location}})</p>
-        <p>Number of selections: {{ recording.get_number_of_selections() }}</p>
 
-        <h2>Add selections</h2>
-        <form id="uploadForm" onsubmit="return false;" enctype="multipart/form-data">
-            <input type="file" name="selection-files" id="selection-files" multiple>
-            <p id="bulk-upload-status-message" hidden="true">Status message</p>
-            <button id="bulk-upload-validate" style="margin-bottom: 5px;" onclick="checkValidSelections(event)"
-                hidden="true">Validate</button>
-            <input id="bulk-upload" style="margin-bottom: 5px;" type="submit" value="Upload" hidden="true">
-            <button id="bulk-upload-clear" style="margin-bottom: 5px;" onclick="clearBulkUpload(event)"
-                hidden>Reset</button>
-            <table id="selection-table" hidden="true">
-                <thead>
-                    <tr>
-                        <th>Filename</th>
-                        <th>Selection Number</th>
-                        <th>Validity</th>
-                        <th>Information</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </form>
 
-        <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
-        {% if selections|length > 0 %}
-        <input type="submit" value="Delete Selected" onclick="deleteSelectedSelections()"><br><br>
-        <table>
-            <tr>
-                <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
-                <th>Selection</th>
-                <th>Actions</th>
-            </tr>
-            <form id="deleteForm" onsubmit="return false;">
-                {% for selection in selections %}
-                <tr>
-                    <td><input class="rowCheckbox" type="checkbox" name="selectedSelections" value="{{ selection.id }}"></td>
-                    <td>{{ selection.selection_number }}</td>
-                    <td>
-                        {% if selection.selection_file %}
-                        <a href="{{ url_for('download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a><br>
-                        {% else %}
-                        <section id="encounter-summary"> No selection file available</section>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
+        {% if current_user.role_id in [1, 2] %}
+
+        <h2>Administration Actions</h3>
+            {% if not session['snapshot_date'] %}
+            <h3>Edit Recording Metadata</h3>
+            <form action="{{ url_for('recording.recording_update', recording_id=recording.id)}}" method="post"
+                enctype="multipart/form-data">
+                {% from 'recording/recording-form-template.html' import recording_form %}
+                {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
+                local_timezone=recording.encounter.local_timezone, recording=recording) }}
+                <button class="blue" type="submit" style="margin-top: 0.7rem;">Update</button><br>
             </form>
-        </table>
-        <a href="{{url_for('download_folder', relative_path=recording.generate_relative_path_for_selections())}}">Download All</a>
-        {% else %}
-        <p>This recording has no selections. Please use the form above to add selections.</p>
-        {% endif %}
+
+            <h3>Review</h3>
+            <label>Status: {{recording.status}} {% if recording.status_change_datetime %}
+                ({{recording.status_change_datetime}}) {% endif %}</label>
+            <div stype="display: flex;">
+                {% if recording.is_complete() == False %}
+                <form action="{{url_for('recording.mark_as_complete', recording_id=recording.id)}}" method="get">
+                    <button class="gray small" type="submit" id="mark-as-complete-button">Mark as Complete</button>
+                </form>
+                {% endif %}
+                {% if recording.is_on_hold() == False %}
+                <form action="{{url_for('recording.mark_as_on_hold', recording_id=recording.id)}}" method="get">
+                    <button class="gray small" type="submit" id="mark-as-on-hold-button">Reject</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% if not session['snapshot_date'] %}
+
+            <h3 style="margin-top: 20px;">Assign Users</h3>
+            {% from 'partials/user-search.html' import user_search %}
+            {{ user_search(show_message=true) }}
+            {% endif %}
+            <div class="table-responsive">
+                <table class="table-striped">
+                    {% for assigned_user in assigned_users %}
+                    <tr>
+                        <td style="color: gray;">{{assigned_user.user.name}} ({{assigned_user.user.login_id}})</td>
+                        <td>{% if assigned_user.completed_flag %} <button class="gray small user-row" id="user-row"
+                                style="width:100%;" data-user-id="{{assigned_user.user_id}}"
+                                data-recording-id="{{assigned_user.recording_id}}"
+                                onclick="flagAssignmentIncomplete()">Remove Completed Flag</button> {% else %} <button
+                                class="gray small user-row" id="user-row" style="width:100%;"
+                                data-user-id="{{assigned_user.user_id}}"
+                                data-recording-id="{{assigned_user.recording_id}}"
+                                onclick="flagAssignmentComplete()">Flag as Completed</button> {% endif %}</td>
+                        <td><button class="gray small user-row" id="user-row" style="width:100%;"
+                                data-user-id="{{assigned_user.user_id}}"
+                                data-recording-id="{{assigned_user.recording_id}}" onclick="removeAssignment()">Unassign
+                                User</button></td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <section>
+                <div class="audit-history">
+                    <h3>Audit History</h3>
+                    <div class="table-responsive">
+                        <table class="table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                    <th>User</th>
+                                    <th>View Snapshot</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recording in recording_history %}
+                                <tr>
+                                    <td>{{ recording['row_start'] }}</td>
+                                    <td>{{ recording['action'] }}</td>
+                                    <td>{{ recording['updated_by'].name }}</td>
+                                    <td><a
+                                        href="{{ url_for('general.enter_snapshot_date_in_session', snapshot_date=recording['row_start'], redirect_link=url_for('recording.recording_view', recording_id=recording['id']))}}">HERE</a>
+                                    </td>
+                               
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            {% endif %}
+            <h2>Recording Summary</h2>
+            {% if recording.is_complete() == True %}
+
+            <label>Assignment Status: REVIEWED {% if recording.status_change_datetime %}
+                ({{recording.status_change_datetime}}) {% endif %}</label>
+            {% else %}
+            {% if logged_in_user_assigned %}
+
+            {% if logged_in_user_assigned.completed_flag == True %}
+
+            <label>Assignment Status: COMPLETE (Awaiting Review)</label>
+            <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="get">
+                <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
+            </form>
+            {% else %}
+            <label>Assignment Status: IN PROGRESS </label>
+
+            <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="get">
+
+                <button type="submit" id="flag-as-complete-button"
+                    onclick="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}">Flag as
+                    Complete</button>
+            </form>
+            {% endif %}
+            {% else %}
+            <label>Assignment Status: NOT ASSIGNED TO CURRENT USER</label>
+            {% endif %}
+            {% endif %}
+            <label>Start date: {{ recording.start_time }}</label>
+            <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
+                recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
+            <label>Number of selections: {{ recording.get_number_of_selections() }}</label>
+            <label>Number of contours: {{ recording.get_number_of_contours() }}</label>
+
+            <form action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
+                <label for="notes">Notes:</label>
+                <textarea id="notes" name="notes" rows="4" cols="50" {% if session['snapshot_date'] %}disabled{% endif
+                    %}>{% if recording.notes %} {{ recording.notes }} {% endif %}</textarea>
+                {% if not session['snapshot_date'] %}
+                <button class="gray small" type="submit">Update Notes</button>
+                {% endif %}
+            </form><br>
+
+            {% set identifier_heading = "Selection Number" %}
+            {% set unique_id = "selection-number"%}
+            {% set process_route = "process_selection" %}
+            {% set insert_route = "selection.selection_insert_bulk" %}
+            {% if current_user.role_id in [1, 2] %}
+
+            <h3>Download Options</h3>
+
+            <form
+                action="{{url_for('selection.extract_selection_stats_for_encounter', encounter_id=recording.encounter.id)}}"
+                method="get">
+                <button class="link small" type="submit">Download Contour Stats For Encounter</button>
+                <form action="/recording/{{recording.id}}/extract_selection_stats" method="get">
+                    <button class="link small" type="submit">Download Contour Stats</button>
+                </form>
+                <form action="/recording/{{recording.id}}/recalculate-contour-statistics" method="get">
+                    <button class="link small" type="submit">Recalculate Contour Statistics</button>
+                </form>
+
+                <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
+                    <button class="link small" type="submit">Download CTR Files</button>
+                </form>
+
+                <form action="{{url_for('recording.download_contour_files', recording_id=recording.id)}}" method="get">
+                    <button class="link small" type="submit">Download Contour Files</button>
+                </form>
+
+                <form action="{{url_for('recording.download_selection_files', recording_id=recording.id)}}"
+                    method="get">
+                    <button class="link small" type="submit">Download Selection Files</button>
+                </form>
+
+
+                {% endif %}
+
+
+
+
+                {% if not session['snapshot_date'] %}
+
+                <h3>Add selections</h3>
+                {% include 'recording/multi-file-upload-template.html' %}
+
+                {% set identifier_heading = "Contour Number" %}
+                {% set unique_id = "contour-number"%}
+                {% set process_route = "process_contour" %}
+                {% set insert_route = "selection.contour_insert_bulk" %}
+                <h3>Add contours</h3>
+                {% include 'recording/multi-file-upload-template.html' %}
+
+                {% endif %}
+
+                <h3>Manage selection table</h3>
+                {% if recording.selection_table_file %}
+                <div style="display:flex;">
+                    <a class="button small"
+                        href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download
+                        TXT</a>
+                    <a style="margin-left: 0.25rem" class="button small"
+                        href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.get_unique_name(' - ')}}">File
+                        Details</a>
+                    <a style="margin-left: 0.25rem;" class="button small"
+                        href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download
+                        CSV</a>
+                </div>
+                {% if not session['snapshot_date'] %}
+
+                <form id="delete-selection-table-form" encounter-id="{{recording.encounter_id}}"
+                    selection-table-id="{{recording.selection_table_id}}"
+                    action="{{ url_for('recording.recording_selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
+                    method="post">
+                    <button class="gray small" style="margin-top: 10px;" type="submit">Delete Selection Table</button>
+                </form>
+
+                {% endif %}
+
+                {% else %}
+                <form
+                    action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
+                    method="post" enctype="multipart/form-data">
+                    <div style="display:flex;">
+                        <input class="small" type="file" name="selection-table-file" id="selection-table-file">
+                        <button class="gray small" type="submit">Upload</button>
+                    </div>
+                </form>
+                {% endif %}
+
+                <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
+                {% if selections|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table-striped">
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
+                            <th></th>
+                            <th>Selection</th>
+                            <th>Selection File</th>
+                            <th>Annotation</th>
+                            <th>Contour</th>
+                            <th>Confirmation</th>
+                        </tr>
+                        <form id="recording-delete-form" onsubmit="return false;">
+                            {% for selection in selections %}
+                            <tr id="row-{{ selection.id }}" {% if selection.deactivated %} style="color: red;" {% endif
+                                %}>
+                                <td><input class="rowCheckbox" type="checkbox" name="selections-checkboxes"
+                                        value="{{ selection.id }}">
+                                </td>
+                                <td><a class="button"
+                                        href="{{ url_for('selection.selection_view', selection_id=selection.id)}}">View</a>
+                                </td>
+                                <td>
+                                    <label style="float:left; margin-right:15px;">{{ selection.selection_number }}{% if
+                                        selection.deactivated %} (Deactivated){% endif %}</label>
+
+                                </td>
+                                <td>
+                                    {% if selection.selection_file %}
+                                    <a class="button" style="float:left;"
+                                        href="{{ url_for('general.download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a>
+                                    {% else %}
+                                    <section id="encounter-summary"> No selection file available</section>
+                                    {% endif %}
+
+                                </td>
+                                {% if selection.deactivated %}
+                                <td colspan="3">
+                                    <div style="display:inline-flex; width: 100%;">
+                                        <button class="gray small"
+                                            onclick="reactivateSelection('{{ selection.id }}')">Reactivate</button>
+                                    </div>
+                                </td>
+                                {% else %}
+                                <td>
+                                    <label>{{ selection.annotation }}</label>
+                                </td>
+                                <td>
+                                    {% if selection.contour_file %}
+                                    <a class="button"
+                                        href="{{ url_for('general.download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
+                                    {% endif %}
+                                    {% if not session['snapshot_date'] %}
+
+                                    <form
+                                        action="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}"
+                                        class="contour-delete-form" id="contour-delete-form-{{selection.id}}"
+                                        method="get">
+                                        {% if selection.contour_file %}
+                                        <button class="link" type="submit">Delete</button>
+                                        {% endif %}
+                                    </form>
+                                    <script>
+                                        $("#contour-delete-form-{{selection.id}}").submit(function (event) {
+                                            if (!confirm("Are you sure you want to delete the contour file?")) {
+                                                event.preventDefault();
+                                            }
+                                        });
+                                    </script>
+
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="selection-row" data-selection-id="{{selection.id}}">
+
+                                        {% if selection.traced == None %}
+                                        {% if selection.contour_file %}
+                                        {% else %}
+                                        <button class="gray small confirm-no-file-upload" style="width: 100%" {% if
+                                            session['snapshot_date'] %} disabled {% endif %}>Confirm No File
+                                            Upload</button>
+                                        {% endif %}
+                                        <p id="traced-status-label" hidden>Confirmed</label>
+                                            {% else %}
+                                        <p id="traced-status-label">Confirmed</label>
+                                            {% endif %}
+                                    </div>
+
+
+
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </form>
+                    </table>
+                </div>
+                {% if not session['snapshot_date'] %}
+                <button class="gray small" style="width: 25%; margin-top: 0.3rem;" onclick="deleteSelectedRows()">Delete
+                    Selected</button>
+                <button class="gray small" style="width: 25%; margin-top: 0.3rem;"
+                    onclick="deactivateSelectedRows()">Deactivate Selected</button>
+                <button class="gray small" style="width: 25%; margin-top: 0.3rem;"
+                    onclick="reactivateSelectedRows()">Reactivate Selected</button>
+
+                {% endif %}
+                {% else %}
+                <label>This recording has no selections. Please use the form above to add selections.</label>
+                {% endif %}
+                {% if not session['snapshot_date'] %}
+                <form type="hidden" id="recording-delete-form_{{ recording.id }}" method="GET"
+                    action="{{ url_for('recording.recording_delete', encounter_id=recording.encounter_id, recording_id=recording.id) }}">
+                    <input type="hidden" name="_method" value="GET">
+                    <button class="link small" id="delete-recording-button" title="Delete the entire recording."
+                        type="submit" style="margin-top: 1rem;" data-recording-id="{{ recording.id }}"
+                        delete-info="{{recording.get_start_time_string()}}">Delete Recording</button>
+                </form>
+                {% endif %}
     </div>
+
 </body>
 
 <script>
+
+    $("#delete-recording-button").on("click", function (event) {
+        // Get the recording ID from the button's data attribute
+        var recordingId = $(this).data("recording-id");
+        var deleteInfo = $(this).attr('delete-info');
+
+        // Confirm deletion with the user
+        if (confirm("Are you sure you want to delete recording: " + deleteInfo + "?\nThis will delete ALL selections and CANNOT be undone.")) {
+            // If confirmed, submit the delete form
+            $("#recording-delete-form_" + recordingId).submit();
+        } else {
+            // If not confirmed, prevent the default form submission
+            event.preventDefault();
+        }
+    });
+
+    $("#delete-selection-table-form").submit(function (event) {
+        if (!confirm("Are you sure you want to delete the selection table?")) {
+            event.preventDefault();
+        }
+    });
+
+    /**
+     * Flags a user's assignment as complete by sending a GET request to the /flag-as-completed endpoint.
+     * When the request is complete, the page is reloaded.
+     * The function is called when the user clicks the "Flag Complete" button.
+     * @param {Event} event - The click event
+     */
+    flagAssignmentComplete = function () {
+        var xhr = new XMLHttpRequest();
+        const recordingId = event.target.closest('.user-row').dataset.recordingId;
+        const userId = event.target.closest('.user-row').dataset.userId
+        xhr.open('GET', '/recording/' + recordingId + '/' + userId + '/flag-as-completed', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            window.location.href = window.location.href;
+        }
+        xhr.send();
+    }
+
+    /**
+     * Unflags a user's assignment as complete by sending a GET request to the /unflag-as-completed endpoint.
+     * When the request is complete, the page is reloaded.
+     * The function is called when the user clicks the "Unflag Complete" button.
+     * @param {Event} event - The click event
+     */
+    flagAssignmentIncomplete = function () {
+        var xhr = new XMLHttpRequest();
+        const recordingId = event.target.closest('.user-row').dataset.recordingId;
+        const userId = event.target.closest('.user-row').dataset.userId
+        xhr.open('GET', '/recording/' + recordingId + '/' + userId + '/unflag-as-completed', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            window.location.href = window.location.href;
+        }
+        xhr.send();
+    }
+
+    /**
+     * Removes a user assignment for a recording. The user and recording IDs are obtained
+     * from the closest .user-row element.
+     *
+     * @listens click
+     * @this {HTMLElement} The element that was clicked
+     */
+    removeAssignment = function () {
+        var xhr = new XMLHttpRequest();
+        const recordingId = event.target.closest('.user-row').dataset.recordingId;
+        const userId = event.target.closest('.user-row').dataset.userId
+        xhr.open('GET', '/unassign_recording/' + userId + '/' + recordingId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            window.location.href = window.location.href;
+        }
+        xhr.send();
+    }
+
+    /**
+     * Assigns a user to the recording and reloads the page.
+     * @param {number} user_id - The ID of the user to assign.
+     * @param {Object} user - The user object from the user selection dropdown.
+     */
+    function onUserSelectionDropdownComplete(user_id, user) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/assign_recording/' + user.id + '/' + '{{recording.id}}', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            window.location.href = window.location.href;
+        }
+        xhr.send();
+    }
+
+    const selectionRows = document.querySelectorAll('.selection-row');
+
+    selectionRows.forEach(row => {
+        row.addEventListener('click', event => {
+            if (event.target.classList.contains('confirm-no-file-upload')) {
+                event.target.innerHTML = "Loading..."
+                event.target.disabled = true
+
+                const selectionId = event.target.closest('.selection-row').dataset.selectionId;
+                fetch(`/selection/${selectionId}/confirm_no_contour_upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const label = event.target.closest('.selection-row').querySelector('#traced-status-label');
+                            label.hidden = false;
+                            event.target.hidden = true
+                        }
+                    });
+            }
+        });
+    });
+
     /**
      * Toggles the selection of all rows based on the state of the "Select All" checkbox.
      */
@@ -96,12 +497,136 @@
 
 
     /**
-     * Deletes the selected selections in bulk using an AJAX request.
+     * The following code concerns the dynamic action of activating or deactivating selections. 
+    **/
+
+    /**
+     * Returns an array of IDs of the currently selected Selections.
+     * The selected Selections are determined by the checkboxes with name "selections-checkboxes".
+     * @return {Array<number>} An array of IDs of the selected Selections.
      */
-    async function deleteSelectedSelections() {
+    function getSelectedSelectionIds() {
+        // Get the IDs of the selected Selections (based on checkboxes)
+        var selectedCheckboxes = document.querySelectorAll('input[name="selections-checkboxes"]:checked');
+        var selectedIds = [];
+        for (var i = 0; i < selectedCheckboxes.length; i++) {
+            selectedIds.push(selectedCheckboxes[i].value);
+        }
+        return selectedIds
+    }
+
+    /**
+     * Reactivates the selected Selections. If override_selection_id is provided, reactivates that selection instead of the selected ones.
+     * @param {string} [override_selection_id] - The ID of the selection to reactivate.
+     * 
+     * @returns {Promise<void>} - A promise that resolves when reactivation is complete.
+     * 
+     * @throws {Error} - If there was an error reactivating the selection.
+     */
+
+    async function reactivateSelectedRows(override_selection_id = null) {
+        var selectionIds = getSelectedSelectionIds();
+        if (override_selection_id) selectionIds = [override_selection_id];
+
+        try {
+            const response = await $.ajax({
+                url: '/selection/reactivate',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ selection_ids: selectionIds }),
+                success: function (data, textStatus, jqXHR) {
+                    window.location.href = window.location.href
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error('Error deactivating selection:', textStatus, errorThrown);
+                }
+            });
+        } catch (error) {
+            console.error('Error deactivating selection:', error);
+        }
+    }
+
+    /**
+     * Reactivates the selection with the given ID.
+     * 
+     * Calls {@link reactivateSelectedRows} with the given selection ID.
+     * 
+     * @param {string} selectionId - The ID of the selection to reactivate.
+     * @param {boolean} [ignore_reload=false] - If true, the page will not be reloaded after reactivation.
+     * 
+     * @throws {Error} - If there was an error reactivating the selection.
+     */
+    async function reactivateSelection(selectionId, ignore_reload = false) {
+        reactivateSelectedRows(selectionId);
+
+    }
+
+    /**
+     * Sends a POST request to deactivate a selection with the given ID.
+     * 
+     * This function sends a request to the server using jQuery's `$.ajax` method,
+     * and upon receiving a response, disables the corresponding table row.
+     * 
+     * @async
+     * @function deactivateSelection
+     * @param {number} selectionId - The ID of the selection to be deactivated.
+     * @return {Promise} A Promise that resolves when the request is complete.
+     */
+    async function deactivateSelection(selectionId, ignore_reload = false) {
+        deactivateSelectedRows(selectionId);
+    }
+
+    /**
+     * Sends a POST request to deactivate the selected selections or a single selection specified by `override_selection_id`.
+     * 
+     * This function sends a request to the server using jQuery's `$.ajax` method,
+     * and upon receiving a response, reloads the page with the updated selection status.
+     * 
+     * @async
+     * @function deactivateSelectedRows
+     * @param {number} [override_selection_id] - The ID of the selection to be deactivated.
+     * @return {Promise} A Promise that resolves when the request is complete.
+     */
+    async function deactivateSelectedRows(override_selection_id = null) {
+        var selectionIds = getSelectedSelectionIds();
+        if (override_selection_id) selectionIds = [override_selection_id];
+
+        try {
+            const response = await $.ajax({
+                url: '/selection/deactivate',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ selection_ids: selectionIds }),
+                success: function (data, textStatus, jqXHR) {
+                    window.location.href = window.location.href
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error('Error deactivating selection:', textStatus, errorThrown);
+                }
+            });
+        } catch (error) {
+            console.error('Error deactivating selection:', error);
+        }
+    }
+
+
+
+    /**
+     * Deletes the selected selections from the recording.
+     * 
+     * This function first prompts the user to confirm the deletion of the selected selections.
+     * If confirmed, it sends a DELETE request to the server with the selected selection IDs, 
+     * and upon receiving a response, reloads the page with the updated selection list.
+     * 
+     * @async
+     * @function deleteSelectedRows
+     * @return {Promise} A Promise that resolves when the request is complete.
+     */
+    async function deleteSelectedRows() {
+
         // Get the delete form and all selected checkboxes
-        var form = document.getElementById('deleteForm');
-        var selectedCheckboxes = document.querySelectorAll('input[name="selectedSelections"]:checked');
+        var form = document.getElementById('recording-delete-form');
+        var selectedCheckboxes = document.querySelectorAll('input[name="selections-checkboxes"]:checked');
 
         // Create an empty array to store the selected ids
         var selectedIds = [];
@@ -110,9 +635,13 @@
         for (var i = 0; i < selectedCheckboxes.length; i++) {
             selectedIds.push(selectedCheckboxes[i].value);
         }
+        // Check first with user
+        if (!confirm('Are you sure you want to delete these ' + selectedIds.length + ' selections? This CANNOT be undone.')) {
+            return;
+        }
 
         // Define the URL for the delete request
-        var url = "{{ url_for('recording.recording_delete_selections', recording_id=recording.id) }}";
+        var url = "{{ url_for('recording.recording_delete_selections') }}";
 
         // Create an XMLHttpRequest object for making the delete request
         var xhr = new XMLHttpRequest();
@@ -128,13 +657,14 @@
         xhr.send(JSON.stringify({ selectionIds: selectedIds }));
     }
 
-    
+
+
     /**
      * Selects or deselects all checkboxes based on the state of the Shift key and the last checked checkbox.
      */
 
     var lastChecked;
-    var checkboxes = Array.from(document.querySelectorAll('input[name="selectedSelections"]'));
+    var checkboxes = Array.from(document.querySelectorAll('input[name="selections-checkboxes"]'));
 
     // Add a click event listener to each checkbox
     checkboxes.forEach(function (checkbox) {
@@ -144,330 +674,19 @@
                 // Calculate the start and end positions of the range of checkboxes to be selected
                 var start = checkboxes.indexOf(lastChecked);
                 var end = checkboxes.indexOf(event.target);
-                
+
                 // Select the checkboxes within the calculated range
                 checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
                     .forEach(function (checkbox) {
                         checkbox.checked = event.target.checked;
                     });
             }
-            
+
             // Update the lastChecked variable to the currently clicked checkbox
             lastChecked = event.target;
         });
     });
 
-
-    // Define an array to store the files to be submitted
-    var filesToSubmit = [];
-    // Define an array to store the files to be deleted
-    var filesToDelete = [];
-    var selectionFilesInput = document.getElementById('selection-files');
-    var selectionTable = document.getElementById('selection-table');
-
-    function changeFileToSubmitSelectionNumber(fileName, selectionNumber) {
-        filesToSubmit.forEach((item) => {
-            if (item.file.name === fileName) {
-                item.selectionNumber = selectionNumber;
-            }
-        });
-
-    }
-
-    // Function to add a file to the filesToSubmit array
-    function addFileToSubmit(file, selectionNumber) {
-        filesToSubmit.push({ file, selectionNumber });
-    }
-
-    // Function to remove a file from the filesToSubmit array
-    function removeFileFromSubmit(file) {
-        var index = filesToSubmit.findIndex(item => item.file === file);
-        if (index !== -1) {
-            filesToSubmit.splice(index, 1);
-        }
-    }
-
-    // Function to add a file to the filesToDelete array
-    function addFileToDelete(file) {
-        filesToDelete.push(file);
-    }
-
-    // Function to remove a file from the filesToDelete array
-    function removeFileFromDelete(file) {
-        var index = filesToDelete.indexOf(file);
-        if (index !== -1) {
-            filesToDelete.splice(index, 1);
-        }
-    }
-
-    selectionFilesInput.addEventListener('change', function () {
-        if (this.files.length > 0) {
-            // Populate the selectionTable with the selected files
-            populateSelectionTable();
-        } else {
-            // Clear the selectionTable if no files are selected
-            clearSelectionTable();
-        }
-    });
-
-
-    /**
-     * Validates selections and updates the selections table based on the validation results.
-     * @param {Event} event - The event object.
-     */
-    function checkValidSelections(event) {
-        console.log('check Valid');
-        event.preventDefault(); // Prevent default form submission behavior
-
-        // Get table rows and initialize variables
-        var tableRows = document.querySelectorAll('#selection-table tbody tr');
-        var rowCount = tableRows.length;
-        var allValid = true;
-        var completedCount = 0;
-
-        // Update UI elements
-        updateUIBeforeValidation();
-
-        // Iterate through table rows
-        tableRows.forEach(function (row) {
-            validateRow(row, function(valid, messages, fileName, updatedSelectionNumber) {
-                if (!valid) { allValid = false; }
-                updateCellContents(row, valid, messages);
-                changeFileToSubmitSelectionNumber(fileName, updatedSelectionNumber);
-
-                // Increment the completed count
-                completedCount++;
-                updateValidationProgress(completedCount, rowCount, allValid);
-            });
-        });
-    }
-
-    /**
-     * Validates a single row and executes a callback with the result.
-     * @param {HTMLElement} row - The table row to validate.
-     * @param {Function} callback - The callback function to execute with the validation result.
-     */
-    function validateRow(row, callback) {
-        var cell1 = row.cells[0];
-        var cell2 = row.cells[1];
-        var cell3 = row.cells[2];
-        var cell4 = row.cells[3];
-        var cell5 = row.cells[5];
-
-        var fileName = cell1.textContent;
-        var input = cell2.querySelector('input');
-        console.log(input.value);
-        var selectionNumber = input.value;
-
-        var data = {
-            filename: fileName,
-            selection_number: selectionNumber
-        };
-
-        
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/process_selection?recording_id=' + encodeURIComponent('{{recording.id}}') + '&filename=' + encodeURIComponent(data.filename) + "&selection_number=" + encodeURIComponent(data.selection_number), true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                var messages = response.messages;
-                console.log(messages);
-                var updatedSelectionNumber = response.selection_number;
-                var valid = response.valid;
-                callback(valid, messages, fileName, updatedSelectionNumber);
-            }
-        };
-        xhr.send(JSON.stringify(data));
-    }
-
-    /**
-     * Updates the UI elements before starting the validation process.
-     */
-    function updateUIBeforeValidation() {
-        document.getElementById("bulk-upload").hidden = true;
-        document.getElementById("bulk-upload-validate").hidden = true;
-        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait";
-        document.getElementById("bulk-upload-status-message").hidden = false;
-        document.getElementById("bulk-upload-clear").hidden = true;
-    }
-
-    /**
-     * Updates the contents of the cells based on validation result.
-     * @param {HTMLElement} row - The table row.
-     * @param {boolean} valid - Whether the row is valid.
-     * @param {string[]} messages - Array of messages.
-     */
-    function updateCellContents(row, valid, messages) {
-        var cell3 = row.cells[2];
-        var cell4 = row.cells[3];
-
-        cell3.innerHTML = valid ? "Valid" : '<span style="color: red;">Invalid</span>';
-        cell4.innerHTML = messages.join('<br>');
-    }
-
-    /**
-     * Updates the progress of validation.
-     * @param {number} completedCount - Number of completed rows.
-     * @param {number} rowCount - Total number of rows.
-     * @param {boolean} allValid - Whether all rows are valid.
-     */
-    function updateValidationProgress(completedCount, rowCount, allValid) {
-        document.getElementById("bulk-upload-status-message").innerHTML = "Validating... Please wait (" + Math.round(100 * completedCount / rowCount) + "%).";
-
-        if (completedCount === rowCount) {
-            if (allValid) {
-                document.getElementById("bulk-upload").hidden = false;
-                document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: green;">All entries are valid</span>';
-                document.getElementById('bulk-upload-validate').hidden = false;
-            } else {
-                document.getElementById("bulk-upload").hidden = true;
-                document.getElementById('bulk-upload-status-message').innerHTML = '<span style="color: red;">One or more entires are invalid</span><br>All entries must be valid before submission.<br>Please update or remove invalid rows and re-validate.';
-                document.getElementById('bulk-upload-status-message').hidden = false;
-                document.getElementById('bulk-upload-validate').hidden = false;
-            }
-            document.getElementById("bulk-upload-clear").hidden = false;
-        }
-    }
-
-    /**
-     * Populates the selection table with file data.
-     */
-    function populateSelectionTable() {
-        var files = selectionFilesInput.files;
-        var tableBody = selectionTable.tBodies[0];
-        var rowCount = files.length;
-        var completedCount = 0;
-        var allValid = true;
-
-        updateUIBeforeValidation();
-
-        // Clear existing rows
-        tableBody.innerHTML = '';
-
-        // Loop through the selected files and add rows to the table
-        for (var i = 0; i < files.length; i++) {
-            (function(file) {
-                var row = tableBody.insertRow();
-                var cell1 = row.insertCell(0);
-                var cell2 = row.insertCell(1);
-                var cell3 = row.insertCell(2);
-                var cell4 = row.insertCell(3);
-                var cell5 = row.insertCell(4);
-
-                cell1.textContent = file.name;
-                
-                var input = document.createElement('input');
-                input.type = 'text';
-                input.value = '';
-
-                cell2.appendChild(input);
-
-                validateRow(row, function(valid, messages, fileName, updatedSelectionNumber) {
-                    if (!valid) { allValid = false; }
-
-                    input.value = updatedSelectionNumber || '';
-                    input.placeholder = 'Enter Selection Number';
-                    updateCellContents(row, valid, messages);
-                    cell5.innerHTML = '<button style="width:100%;" onclick="deleteFile(this)">Remove</button>';
-                    addFileToSubmit(file, updatedSelectionNumber);
-
-                    completedCount++;
-                    updateValidationProgress(completedCount, rowCount, allValid);
-                });
-            })(files[i]);
-        }
-
-        document.getElementById('selection-table').hidden = false;
-        document.getElementById('selection-files').hidden = true;
-    }
-
-    // Clears the selection table by removing all the rows from the table body.
-    function clearSelectionTable() {
-        var tableBody = selectionTable.tBodies[0];
-        tableBody.innerHTML = '';
-    }
-
-    /**
-    Deletes a file from the table based on the button clicked.
-    @param {Element} button - The button element that triggered the file deletion.
-    This function efficiently deletes a file from the table and updates the necessary arrays.
-    */
-    function deleteFile(button) {
-        // Get the row that contains the button clicked
-        var row = button.closest('tr');
-        // Get the file name from the first cell of the row
-        var fileName = row.cells[0].textContent;
-        // Perform any necessary cleanup or additional actions before deleting the file
-        // Find the file object based on the file name
-        var fileToDelete = filesToSubmit.find(item => item.file.name === fileName);
-        if (fileToDelete) {
-            removeFileFromSubmit(fileToDelete); // Remove the file from filesToSubmit array
-            addFileToDelete(fileToDelete); // Add the file to filesToDelete array
-        }
-        // Remove the row from the table
-        row.remove();
-    }
-
-    document.getElementById('uploadForm').addEventListener('submit', function (event) {
-        // Call the function to update the file input before the form is submitted
-        updateFileInputForSubmission();
-    });
-
-    // Function to update file input for submission with selection numbers
-    function updateFileInputForSubmission() {
-        document.getElementById("bulk-upload-status-message").innerHTML = "Uploading... Please wait and do not close your browser."
-        document.getElementById("bulk-upload-status-message").hidden = false;
-        document.getElementById("bulk-upload").hidden = true;
-        document.getElementById("bulk-upload-validate").hidden = true;
-        document.getElementById("bulk-upload-clear").hidden = true;
-        var fileInput = document.getElementById('selection-files');
-        var formData = new FormData();
-        // Filter out the files that are marked for deletion
-        var filesToSubmitFiltered = filesToSubmit.filter(file => !filesToDelete.includes(file));
-        // Append the files to the form data along with their selection numbers
-        filesToSubmitFiltered.forEach((file, index) => {
-            formData.append('selection_files', file.file);
-            formData.append(`selection_numbers[${index}]`, file.selectionNumber); // Add selection number as a custom field
-        });
-
-        // Send the form data to the server
-        fetch("{{url_for('selection.selection_insert_bulk',encounter_id=recording.encounter.id, recording_id=recording.id)}}", {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => {
-                // Handle the server response
-                if (response.ok) {
-                    window.location.href = window.location.href;
-                } else {
-                    console.error('Failed to upload files');
-                    window.location.href = window.location.href;
-                }
-            })
-            .catch(error => {
-                console.error('Error uploading files:', error);
-            });
-    }
-
-
-
-    function clearBulkUpload(event) {
-        event.preventDefault(); // Prevent default button behavior
-
-        // Reset the file input field
-        document.getElementById('selection-files').value = "";
-        document.getElementById('selection-files').hidden = false;
-
-        // Hide the status message and table
-        document.getElementById('bulk-upload-status-message').hidden = true;
-        document.getElementById('selection-table').hidden = true;
-
-        // Hide the validate and upload buttons, and show the validate and clear buttons
-        document.getElementById('bulk-upload-validate').hidden = true;
-        document.getElementById('bulk-upload').hidden = true;
-        document.getElementById('bulk-upload-clear').hidden = true;
-    }
 
 
 </script>
