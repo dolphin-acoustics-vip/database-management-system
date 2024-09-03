@@ -378,7 +378,7 @@ CREATE TABLE `species` (
 
 LOCK TABLES `species` WRITE;
 /*!40000 ALTER TABLE `species` DISABLE KEYS */;
-INSERT INTO `species` VALUES ('1d90bd2f-d813-4581-a8c0-b42a9e88b8b7','Pseudorca craissidens','Pseudorca','False killer whale','b9e03621-3286-46c1-9c2c-429d5c5a6b25'),('c9e03621-0333-46c1-9c2c-429d5c5a6b25','Steno','Steno','Rough Toothed Dolphin','b9e03621-3286-46c1-9c2c-429d5c5a6b25');
+INSERT INTO `species` VALUES (uuid(),'Pseudorca craissidens','Pseudorca','False killer whale',''),(uuid(),'Steno','Steno','Rough Toothed Dolphin','');
 /*!40000 ALTER TABLE `species` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -411,7 +411,7 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES ('382526bb-f986-4c1f-ba5d-cd13420c3c40','test1@testmail.com','password','Test User',1,1,NULL,0),('8e229a6b-fd1d-4d90-b408-78c2b16d0918','test@testmail.com','password','Test User',1,1,NULL,0),('b9e03621-3286-46c1-9c2c-429d5c5a6b25','js521@st-andrews.ac.uk','test123','Jamie',1,1,'2025-09-02',0),('c9e03621-3286-46c1-9c2c-429d5c5a6b25','sullivanj041@gmail.com','test123','Jamie Copy',2,1,'2025-09-02',0),('d9e03621-3286-46c1-9c2c-429d5c5a6b25','general@gmail.com','test123','General',3,1,'2025-09-02',0);
+INSERT INTO `user` VALUES (uuid(),'admin@testmail.com','password','Init Admin',1,1,"3000-01-01",0);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

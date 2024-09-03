@@ -294,7 +294,8 @@ def admin_species_edit(species_id):
     METHODS: POST.
     """
     with Session() as session:
-        species_data = session.query(Species).filter_by(id=species_id).first()
+        #session.execute(sqlalchemy.text("LOCK TABLE species WRITE"))
+        species_data = session.query(Species).with_for_update().filter_by(id=species_id).first()
         if species_data:
             try:
                 species_name = request.form['species_name']
@@ -303,15 +304,16 @@ def admin_species_edit(species_id):
                 species_data.set_species_name(species_name)
                 species_data.set_genus_name(genus_name)
                 species_data.set_common_name(common_name)
-                species_data.update_call(session)
                 session.commit()
+                species_data.update_call()
                 flash('Species updated: {}'.format(species_name), 'success')
-            except Exception as e:
-                handle_sqlalchemy_exception(session, e)
+            except (SQLAlchemyError,Exception) as e:
+                handle_exception(session, e)
         else:
             flash('Species with ID {} not found'.format(species_id), 'error')
             session.rollback()
-        return redirect(url_for('admin.admin_dashboard'))
+
+    return redirect(url_for('admin.admin_dashboard'))
 
 
 @routes_admin.route('/admin/species/<species_id>/delete', methods=['POST'])
@@ -480,8 +482,9 @@ def admin_user_new():
     RESTRICTIONS: Live session.
     METHODS: GET.
     """
-    roles=database_handler.session.query(Role).all()
-    default_date = datetime.now() + timedelta(days=365)
+    with database_handler.get_session() as session:
+        roles=session.query(Role).all()
+        default_date = datetime.now() + timedelta(days=365)
 
     return render_template('admin/admin-user-new.html',roles=roles,default_date=default_date)    
 

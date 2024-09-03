@@ -243,7 +243,6 @@
                             <th>Contour</th>
                             <th>Confirmation</th>
                         </tr>
-                        <form id="recording-delete-form" onsubmit="return false;">
                             {% for selection in selections %}
                             <tr id="row-{{ selection.id }}" {% if selection.deactivated %} style="color: red;" {% endif
                                 %}>
@@ -284,14 +283,13 @@
                                         href="{{ url_for('general.download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
                                     {% endif %}
                                     {% if not session['snapshot_date'] %}
+                                    {% if selection.contour_file %}
 
                                     <form
                                         action="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}"
                                         class="contour-delete-form" id="contour-delete-form-{{selection.id}}"
                                         method="get">
-                                        {% if selection.contour_file %}
                                         <button class="link" type="submit">Delete</button>
-                                        {% endif %}
                                     </form>
                                     <script>
                                         $("#contour-delete-form-{{selection.id}}").submit(function (event) {
@@ -300,6 +298,8 @@
                                             }
                                         });
                                     </script>
+                                                                            {% endif %}
+
 
                                     {% endif %}
                                 </td>
@@ -325,7 +325,6 @@
                                 {% endif %}
                             </tr>
                             {% endfor %}
-                        </form>
                     </table>
                 </div>
                 {% if not session['snapshot_date'] %}

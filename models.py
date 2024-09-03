@@ -143,22 +143,28 @@ class Encounter(db.Model):
         species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
         return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}"
     
-    def update_call(self,session):
+    def update_call(self):
         """
         Call update_call() in all Recording objects linked to the Encounter object.
         This method should be called when a metadata change occurs in the Encounter
         object that requires files (in Recording and Selection) be given a new
         path based on that metadata.
         """
-        recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
-        for recording in recordings:
-            recording.update_call(session)
+        with database_handler.get_session() as session:
+            recordings = session.query(Recording).with_for_update().filter_by(encounter_id=self.id).all()
+            for recording in recordings:
+                recording.update_call()
 
-    def delete(self,session):
-        recordings = session.query(Recording).filter_by(encounter_id=self.id).all()
-        for recording in recordings:
-            recording.delete(session, keep_file_reference=True)
-        session.delete(self)
+    def delete_children(self):
+        """
+        Cascade delete all recordings in the encounter. Note this method will not delete the encounter itself.
+        Ensure you call session.delete() after calling this method in the caller.
+        """
+        with database_handler.get_session() as session:
+            recordings = session.query(Recording).with_for_update().filter_by(encounter_id=self.id).all()
+            for recording in recordings:
+                recording.delete_children(keep_file_reference=True)
+                session.delete(recording)
 
     def get_latitude(self):
         return '' if self.latitude is None else self.latitude
@@ -275,16 +281,14 @@ class File(db.Model):
         """
         return self.uploaded_date
 
-    def delete(self, session):
+    def delete(self):
         """
         Enact a soft delete for the file in this File object and commit the new trash path
         to the database.
         """
-        session.flush()
-        self.move_to_trash(session)
-        session.commit()
+        self.move_to_trash()
     
-    def update_call(self,session):
+    def update_call(self):
         """
         No other classes have dependencies on File so this method merely exists as
         a placeholder in case one of File's dependencies call it.
@@ -423,38 +427,36 @@ class File(db.Model):
     # def set_uploaded_by(self, value):
     #     self.uploaded_by = value
 
-    def move_to_trash(self,session):
+    def move_to_trash(self):
         """
         Moves the file to the trash folder.
 
         This function moves the file to the trash folder by renaming the file and adding a unique identifier to its name.
         TODO: keep a record of deleted file metadata
         """
-        session.flush()
-        trash_folder = get_trash_path()
         unique_name = str(uuid.uuid4())
-        os.makedirs(trash_folder, exist_ok=True)
         file_name = self.filename
-        trash_file_path = os.path.join(trash_folder,os.path.join(self.get_path(),unique_name + '_' + file_name + '.' + self.extension))
-        self.move_file(session, trash_file_path, get_file_space_path())
-        session.commit()
+        trash_file_path = os.path.join(self.get_directory(),file_name + '_' +  unique_name + '.' + self.extension)
+        self.move_file(trash_file_path, move_to_trash=True)
 
     def delete_file(self, session):
         os.path.remove(self.get_full_absolute_path())
 
-    def move_file(self, session, new_relative_file_path, root_path):
+    def move_file(self, new_relative_file_path, move_to_trash=False):
         """
         Move a file to a new location with the provided session.
 
         Parameters:
         - session: The session object to use for the database transaction
         - new_relative_file_path: The new relative file path to move the file to
-        - root_path: The root path where the file is currently located
         - return: False if the file already exists at the new location, None otherwise
         """
+        if move_to_trash: root_path = database_handler.get_trash_path()
+        else: root_path = database_handler.get_file_space_path()
+
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
-        current_relative_file_path = os.path.join(root_path, self.get_full_relative_path())
-        session.flush()
+        current_relative_file_path = os.path.join(database_handler.get_file_space_path(), self.get_full_relative_path())
+        
         # make the directory of the new_relative_file_path_with_root
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
@@ -465,11 +467,12 @@ class File(db.Model):
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
             self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
-            session.flush()
             self.rename_loose_file(self.path, self.filename, self.extension)
             if os.path.exists(current_relative_file_path):
                 os.rename(current_relative_file_path, new_relative_file_path_with_root)
-            session.commit()
+                logger.info(f"Moved file from {current_relative_file_path} to {new_relative_file_path_with_root}")
+            else:
+                logger.warning(f"Attempted to move file from {current_relative_file_path} to {new_relative_file_path_with_root} but file does not exist")
  
             
             parent_dir = os.path.dirname(current_relative_file_path)
@@ -480,8 +483,7 @@ class File(db.Model):
                     parent_dir = os.path.dirname(parent_dir)
             
         else:
-            if not os.path.samefile(new_relative_file_path_with_root, current_relative_file_path):
-                raise IOError(f"Attempted to populate a file that already exists: {new_relative_file_path_with_root}")
+            pass
             return False
 
 
@@ -569,20 +571,24 @@ class Recording(db.Model):
         contours = db.session.query(Selection).filter_by(recording_id=self.id).filter(Selection.contour_file != None).all()
         return len(contours)
 
-    def update_call(self, session):
-        self.move_file(session,get_file_space_path())
+    def update_call(self):
         if self.recording_file is not None:
-            self.recording_file.update_call(session)
+            with database_handler.get_session() as session:
+                recording_file = session.query(File).with_for_update().get(self.recording_file_id)
+                recording_file.move_file(self.generate_full_relative_path(extension="." + self.recording_file.extension))
+                session.commit()
         if self.selection_table_file is not None:
-            self.selection_table_file.update_call(session)
-
+            with database_handler.get_session() as session:
+                selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
+                selection_table_file.move_file(self.generate_full_relative_path(extension="." +self.selection_table_file.extension))
+                session.commit()
         
-        selections = session.query(Selection).filter_by(recording_id=self.id).all()
-        for selection in selections:
-            selection.update_call(session)
+        with database_handler.get_session() as session:
+            selections = session.query(Selection).with_for_update().filter_by(recording_id=self.id).all()
+            for selection in selections:
+                selection.update_call()
+            session.commit()
         
-            
-
     def load_selection_table_data(self,custom_file=None):
         
         if self.selection_table_file is not None or custom_file is not None:
@@ -653,34 +659,35 @@ class Recording(db.Model):
 
         
 
-    def delete(self, session, keep_file_reference=False):        
-        session.flush()
-        assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
-        for assignment in assignments:
-            assignment.delete(session)
-            session.commit()
-        if self.recording_file_id is not None:
-            self.recording_file.delete(session)
-            if not keep_file_reference: self.recording_file = None  # Remove the reference to the recording file
-        
-        if self.selection_table_file_id is not None:
-            self.selection_table_file.delete(session)
-            if not keep_file_reference: self.selection_table_file = None  # Remove the reference to the selection file
-        
-        selections = session.query(Selection).filter_by(recording_id=self.id).all()
-        for selection in selections:
-            selection.delete(session, keep_file_reference=keep_file_reference)
+    def delete_children(self, keep_file_reference=False):
+        """
+        Delete all files and selections associated to this recording. Note this will not delete the recording
+        itself. Make sure you call session.delete() after calling this method in the caller.
+        """        
+        with database_handler.get_session() as session:
+            assignments = session.query(Assignment).with_for_update().filter_by(recording_id=self.id).all()
+            for assignment in assignments:
+                assignment.delete()
+                session.commit()
+        with database_handler.get_session() as session:
+            if self.recording_file_id is not None:
+                recording_file = session.query(File).with_for_update().get(self.recording_file_id)
+                recording_file.delete()
+                if not keep_file_reference: self.recording_file = None  # Remove the reference to the recording file
+                session.commit()
+        with database_handler.get_session() as session:
+            if self.selection_table_file_id is not None:
+                selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
+                selection_table_file.delete()
+                if not keep_file_reference: self.selection_table_file = None  # Remove the reference to the selection file
+                session.commit()
+        with database_handler.get_session() as session:
+            selections = session.query(Selection).with_for_update().filter_by(recording_id=self.id).all()
+            for selection in selections:
+                selection.delete_children(keep_file_reference=keep_file_reference)
+                session.delete(selection)
+                session.commit()
 
-
-        session.delete(self)
-        session.commit()
-
-
-    def move_file(self, session, root_path):
-        if self.recording_file is not None:
-            self.recording_file.move_file(session,self.generate_full_relative_path(extension="." + self.recording_file.extension),root_path)
-        if self.selection_table_file is not None:
-            self.selection_table_file.move_file(session,self.generate_full_relative_path(extension="." +self.selection_table_file.extension),root_path)
 
     def generate_relative_path_for_selections(self):
         folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
@@ -1042,6 +1049,7 @@ class Selection(db.Model):
     def generate_ctr_file(self, session, contour_rows):
         import matplotlib.pyplot as plt
 
+
         def find_most_common_difference(arr):
             differences = []
             for i in range(len(arr) - 1):
@@ -1052,7 +1060,7 @@ class Selection(db.Model):
 
         
         if self.ctr_file:
-            self.ctr_file.move_to_trash(session )
+            self.ctr_file.move_to_trash()
             self.ctr_file = None
             
         temp_res = find_most_common_difference([unit.time_milliseconds for unit in contour_rows])/1000
@@ -1066,6 +1074,8 @@ class Selection(db.Model):
         file_obj.insert_path_and_filename_file_already_in_place(session, self.generate_relative_path(),self.generate_ctr_file_name().split(".")[0], "ctr")
         session.add(file_obj)
         self.ctr_file = file_obj
+
+        session.commit()
 
 
 
@@ -1143,7 +1153,6 @@ class Selection(db.Model):
         # Get the values for the 'Selection' and 'Annotation' columns
         selection_number = st_df.iloc[0, selection_index]
         annotation = st_df.iloc[0, annotation_index]
-        print(annotation)
         if isinstance(annotation, str):
             if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
                 self.annotation = annotation.upper()
@@ -1170,49 +1179,49 @@ class Selection(db.Model):
             
         session.commit()
 
-    def update_call(self, session):
-        self.move_file(session,get_file_space_path())
+    def update_call(self):
+        self.move_file()
 
-    def move_file(self, session, root_path):
+    def move_file(self):
         if self.selection_file is not None:
-            self.selection_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_filename())+"." +self.selection_file.extension,root_path)
+            with database_handler.get_session() as session:
+                selection_file = session.query(File).with_for_update().get(self.selection_file_id)
+                selection_file.move_file(os.path.join(self.generate_relative_path(),self.generate_filename())+"." +selection_file.extension)
+                session.commit()
         if self.contour_file is not None:
-            self.contour_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_contour_filename())+"." +self.contour_file.extension,root_path)
+            with database_handler.get_session() as session:
+                contour_file = session.query(File).with_for_update().get(self.contour_file_id)
+                contour_file.move_file(os.path.join(self.generate_relative_path(),self.generate_contour_filename())+"." +contour_file.extension)
+                session.commit()
         if self.ctr_file is not None:
-            self.ctr_file.move_file(session,os.path.join(self.generate_relative_path(),self.generate_ctr_file_name())+"." +self.ctr_file.extension,root_path)
+            with database_handler.get_session() as session:
+                ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
+                ctr_file.move_file(os.path.join(self.generate_relative_path(),self.generate_ctr_file_name())+"." +ctr_file.extension)
+                session.commit()
 
-
-    def delete(self, session,keep_file_reference=True):        
-        session.flush()
+    def delete_children(self,keep_file_reference=True):        
         if self.selection_file_id is not None:
-            self.selection_file.delete(session)
-            if not keep_file_reference: self.selection_file = None  # Remove the reference to the recording file
-        if self.contour_file_id is not None:
-            self.contour_file.delete(session)
-            if not keep_file_reference: self.contour_file = None
-        if self.ctr_file_id is not None:
-            self.ctr_file.delete(session)
-            if not keep_file_reference: self.ctr_file = None
-        if self.spectogram_file_id is not None:
-            self.spectogram_file.delete(session)
-            if not keep_file_reference: self.spectogram_file = None
-        if self.plot_file_id is not None:
-            self.plot_file.delete(session)
-            if not keep_file_reference: self.plot_file = None
-        session.delete(self)
-        session.commit()
+            with database_handler.get_session() as session:
+                selection_file = session.query(File).with_for_update().get(self.selection_file_id)
+                selection_file.delete()
+                if not keep_file_reference: self.selection_file = None  # Remove the reference to the recording file
+                session.commit()
+        self.delete_contour_file(keep_file_reference=keep_file_reference)
 
-
-    def delete_contour_file(self, session):
+    def delete_contour_file(self, keep_file_reference=True):
         if self.contour_file_id is not None:
-            self.contour_file.delete(session)
-            self.contour_file = None
+            with database_handler.get_session() as session:
+                contour_file = session.query(File).with_for_update().get(self.contour_file_id)
+                contour_file.delete()
+                if not keep_file_reference: self.contour_file = None
+                session.commit()
         if self.ctr_file_id is not None:
-            self.ctr_file.delete(session)
-            self.ctr_file = None
-        if self.plot_file_id is not None:
-            self.plot_file.delete(session)
-            self.plot_file = None
+            with database_handler.get_session() as session:
+                ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
+                ctr_file.delete()
+                if not keep_file_reference: self.ctr_file = None
+                session.commit()
+
             
     def generate_plot_filename(self):
         return f"Selectionplot-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_plot"
@@ -1249,16 +1258,17 @@ class Species(db.Model):
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
-    def update_call(self,session):
+    def update_call(self):
         """
         Call update_call() in all Encounter objects linked to the Species object.
         This method should be called when a metadata change occurs in the Species
         object that requires files (in Recording and Selection) be given a new
         path based on that metadata.
         """
-        encounters = session.query(Encounter).filter_by(species=self).all()
-        for encounter in encounters:
-            encounter.update_call(session)
+        with database_handler.get_session() as session:
+            encounters = session.query(Encounter).with_for_update().filter_by(species_id=self.id).all()
+            for encounter in encounters:
+                encounter.update_call()
 
     def get_species_name(self):
         return '' if self.species_name is None else self.species_name

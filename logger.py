@@ -19,7 +19,6 @@ tz = pytz.timezone('UTC')
 class TimezoneFormatter(logging.Formatter):
 
     def format(self, record):
-        print(current_user)
         if current_user and current_user.is_authenticated and not hasattr(record, 'user_id'):
             record.user_id = '- (user: ' + current_user.id + ')'
         elif not current_user and not hasattr(record, 'user_id'):

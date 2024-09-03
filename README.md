@@ -3,143 +3,83 @@
 
 # Dolphin Acoustics VIP Database Management System
 
-The Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews (the Project).
+The Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
 
-The ensuing documentation details the installation and structure of the code written for the DBMS.
+The ensuing documentation details the [installation](#installation) and [operation](#maintaining-and-operating-the-web-app) of the code.
 
-Familiarity with the data pipeline and implementation strategy found in the April 2024 DBMS handover document are required. General computer science competency, as well as more specific familiarity with the [requirements](#requirements) are also prerequesite.
+Familiarity with the data pipeline and implementation strategy found in the Project's GitHub Wiki are required. General computer science competency, as well as more specific familiarity with the [requirements](#requirements) are also prerequesite.
 
 <a name="requirements"></a>
 <a name="dependencies" depracated></a>
 ## Requirements
 
-The Web App has been developed on, and for, a Lunix based system (Debian 12). It is recommended to continue development on a Linux machine, whether physical or virtual. Listed below are dependencies of the DBMS:
+This section lists software and hardware requirements for the operation of the Program.
 
-- Python 3.10.12 (Linux) from [here](https://www.python.org/downloads/release/python-31012/)
+The Program has been developed on and for, a Linux based system running Debian 12. Further development, testing and production are to be done on the same (or similar) type system.
+
+- Python 3.10.12 from [here](https://www.python.org/downloads/release/python-31012/)
 - All Python libraries in [requirements.txt](requirements.txt)
-- MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive)
-
-> Note: MariaDB version **must** be of the stated version. Older versions of Maria DB may not have all the features required for the functioning of this program.
-
->Note: mysqlclient must have its dependencies installed before pip3 installing itself.
-
-### Installing Maria DB v10.5.23 on Linux
-
-Maria DB 10.5.23 is an old version that is used to maintain compatability with the intended production environment of OCEAN. The best way to set up your test environment with this version is to use a container such as Docker. See details below on how to install the required MariaDB version using Docker.
-
-Note that this guide was made using Ubuntu 22.04 (Jammy)
-
-Ensure all current MariaDB servers are removed
-
-`sudo apt-get purge mariadb-server*`
-
-Install Docker
-
-`sudo apt-get update`
-`sudo apt-get install docker.io`
-
-Pull the MariaDB image
-
-`sudo docker pull mariadb:10.5.23`
-
-Start a Maria DB container using the image and persist it
-
-`docker run --name mariadb-10.5.23 -e MYSQL_ROOT_PASSWORD=<Password> -v </my/own/datadir>:/var/lib/mysql -p 3306:3306 -d mariadb:10.5.23`
-
-Note: replace <Password> with the password that will be used to access the database.
-Note: replace </my/own/datadir> with the desired persistent container location on your drive (this will be mapped to the SQL path, /var/lib/mysql).
-
-Access the MariaDB server environment
-
-`sudo docker exec -it mariadb-10.5.23 mysql -u root -p`
-Note: you will be prompted to enter the password you made above.
-
-
-
-
+- MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive) (restricted by production environment)
 
 ## Project description
-The DBMS was developed to store data with its metadata in a homogenised system that could be easily interacted with by members of the Project (the Team). Certain functionalities of the DBMS include:
-- storage of raw audio recordings (wav)
-- storage of selections of the recordings (wav)
-- storage of aggregate selection tables (csv)
-- storage of contours of the selections (csv)
+The Program was developed to store data with its metadata in a homogenised system. The following are outlined a list of some features (a more comprehensive list is to be found on the GitHub Wiki):
+- Storage of raw audio recordings (wav)
+- Storage of selections of the recordings (wav)
+- Storage of aggregate selection tables (csv)
+- Storage of contours of the selections (csv)
 - Storage of aggregate contour statistics (csv)
-- export of contour files in a different format (ctr)
-- quality assurance at each stage of the pipeline
+- Export of contour files in a different format (ctr)
+- Quality assurance at each stage of the pipeline
 
-The storage of such data was split into two separate streams which were then managed by a Web App:
-- storing file metadata in a database (the Meta Base)
-- storing the files themselves in a file heirarchy (the File Space)
-
+Files and their metadata are stored in two separate locations: the Filespace and Database respectively. The Web App was then created to maintain data integrity between the two, and provide an interface for users.
 
 ![alt text](documentation/readme-resources/data-flow-high-level.png)
 
 *High level data flow diagram of the DBMS*
 
-<a name="structure-and-setup"></a>
-## Setting Up OCEAN
-> ⚠️ **Warning** development must be completed on a native linux system or linux subsystem.
+## Installation
+> ⚠️ **Warning** make sure you have read and understood the [requirements](#requirements) before continuing.
 
-This repository includes all code pertaining to the Web App. Instructions exist below for setting up the python virtual environment to successfully run the Web App, as well as initialising the Meta Base and File Space so it can run in tandem with the Web App.
+The [repository](/) of which this document is a part includes all code pertaining to the Program. The following steps are required whether the Program is in development or production, and must be followed closely to ensure a seamless installation:
 
-<a name="initialising-the-meta-base"></a>
-### Initialising the Meta Base
-> Please consult MariaDB documentation for instructions on how to complete the the following actions.
+1. [Create a virtual environment](#creating-a-virtual-development-environment)
+2. [Create and link the Database](#creating-and-linking-the-database)
+3. [Create and link the Filespace](#creating-and-linking-the-filespace)
+4. [Start the Web App](#starting-the-web-app)
 
-The Meta Base uses MariaDB as its server technology, which needs to be installed on a Linux machine or virtual machine before the Web App can be run successfully (see [dependencies](#dependencies)).
+### Creating a Virtual Development Environment
+The Program was developed using an array of libraries installed using the package installer for Python ([pip](https://pip.pypa.io/en/latest/)). It is recommended whether developing or in production to install all requirements in [requirements.txt](requirements.txt) in a [virtual environment](https://docs.python.org/3/library/venv.html).
 
-Once downloaded, the Meta Base may be initialised and a new database created. The database must then be populated by running the script in [create_database.sql](create_database.sql).
+**Commands to create and run the virtual environment**
 
-<a name="creating-the-virtual-development-environment"></a>
-### Creating the virtual development environment
-The Web App was developed using an array of libraries defined [above](#requirements). To create a virtual environment and install all the required libraries, follow the instructions below.
+```
+python3 -m venv virtualenv
+source virtualenv/bin/activate
+pip3 install -r requirements.txt
+```
 
-Create the virtual environment. Note that for the purposes of this guide the virtual environment has been assigned the name `virtualenv`:
-
-`python3 -m venv virtualenv`
-
-From the root folder, the virtual environment can then be started using the following command:
-
- `source virtualenv/bin/activate`
-
- Once you verify that the virtual environemnt is installed, and has been activated, run the following command to install all requirements listed in [requirements.txt](requirements.txt).
-
- `pip3 install -r requirements.txt`
+**Command to create the requirements text file**
 
  If you make changes to the library and want to generate a new [requirements.txt](requirements.txt) file, open the virtual environment and run the following command:
 
  `pip3 freeze > requirements.txt`
 
-<a name="setting-up-the-file-space"></a>
-### Setting up the File Space
-The File Space is simply a designated path on the file system of the server (the machine running the Web App). To set this folder, insert the relative or absolute path into [file_space_path.txt](file_space_path.txt) in the program root. For testing purposes it is recommended to use a relative path such as `filespace` as the File Space.
+### Creating and Linking the Database
 
-Note that by default `filespace` is a relative path, however should you enter an absolute path (for example one beginning with `C:`), this will automatically be recognised.
+>Note: the following section assumes the existence of a local (for development and testing) or external (for production) MariaDB instance.
 
-### Connecting the Web App to the Meta Base
-The python script [db.py](db.py) handles all database connection. For security reasons, all database connection parameters are stored in global environment variables. 
+To create the database, open a MariaDB shell and run the DDL script [create_database.sql](create_database.sql). This will create all empty tables apart from a single administrator user which can be used to log into the Web App initially.
 
-The following are the variables that must be set:
-- `STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost` for development environment)
-- `STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root` for development environment)
-- `STADOLPHINACOUSTICS_PASSWORD` to set the password of the database (must be set in the MariaDB shell)
-- `STADOLPHINACOUSTICS_DATABASE` to set the name of the database (must be created in the MariaDB shell)
-
-While it is recommended to set these variables manually, [set_os_variables.py](set_os_variables.py) was written to set them automatically. Please read and understand the code beforehand and use with caution.
-
-The password for a particular host and user can be set using the following command:
-
-`ALTER USER '<user>'@'<host>' IDENTIFIED BY '<password>';
-`
-
-### Program configuration for the Meta Base connection
-
-In the mainline of `app.py`, the following code is written:
+The database connection is made in [database_handler.py](database_handler.py), however configuration for the database is made in [config.py](config.py). Here exist three different profiles. In [main.py](main.py), the profile can be changed by changing the argument passed in the mainline:
 
 ```
 if __name__ == '__main__':
+    # For development configuration
     app = create_app('config.DevelopmentConfig')
+    # For testing configuration
+    app = create_app('config.TestingConfig')
+    # For production configuration
+    app = create_app('config.ProductionConfig')
     if app is None:
         logger.fatal('Exiting program...')
         exit(1)
@@ -147,59 +87,93 @@ if __name__ == '__main__':
     app.run()
 ```
 
-When placing the application into a live environment (such as production), the parameter of `create_app` must be changed to `config.ProductionConfig`. This will automatically configure the program as required. 
->**Note**: the database connection requirements above must be followed whether in `DevelopmentConfig` or `ProductionConfig`
+Each configuration required different global environment variables to be set to ensure an operational database connection.
 
 
+#### Configuring the Development Database
 
-### Other setup instructions
-To start the server, run [app.py](app.py) from within the Python virtual environment from the root directory.
+Set the following global environment variables:
+- `DEV_STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost` for development environment)
+- `DEV_STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root` for development environment)
+- `DEV_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database
+- `DEV_STADOLPHINACOUSTICS_DATABASE` to set the name of the database
 
+#### Configuring the Testing Database
 
-# The Web App
+Set the following global environment variables:
+- `TESTING_STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost` for the test environment)
+- `TESTING_STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root` for the test environment)
+- `TESTING_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database
+- `TESTING_STADOLPHINACOUSTICS_DATABASE` to set the name of the database
+
+#### Configuring the Production Database
+
+Set the following global environment variables:
+- `PROD_STADOLPHINACOUSTICS_HOST` to set the host of the database
+- `PROD_STADOLPHINACOUSTICS_USER` to set the user of the database
+- `PROD_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database
+- `PROD_STADOLPHINACOUSTICS_DATABASE` to set the name of the database
+
+### Creating and Linking the Filespace
+The File Space is simply a designated path on the server system. To set this folder, insert the relative or absolute path into [file_space_path.txt](file_space_path.txt) in the program root.
+
+Note that by default the path in [file_space_path.txt](file_space_path.txt) is relative, however should you enter an absolute path (for example one beginning with `C:`), this will automatically be recognised.
+
+No folders or files need to be inserted in the Filespace. However the Filespace folder itself must exist in the system before operating the Web App.
+
+### Starting the Web App
+
+To start the Web App on the server, activate the [Virtual Environment](#creating-a-virtual-development-environment) and run [main.py](main.py) from the root directory. No parameters are required. If all steps prior were completed satisfactorily the Flask application will run successfully. 
+
+>Note: if the Flask start-up message includes `Debug mode: on`, this likely means the program is being run in development or testing configuration.
+
+## Maintaining and Operating the Web App
 The Web App brings together the Meta Base and the File Space into a single user interface. The Web App utilises the Flask library.
 
 The following folders exist in the Web App's root directory (note that a *module* refers to a compartamentalised section of code pertaining to a specific functionality such as encounter, recording or selection):
-- [resources](resources) contains additional files required in the Web App such as images.
-- [routes](routes) contains all the Flask route blueprints for separate modules.
-- [static](static) contains all CSS scripts and Javascript code used in the user interface.
-- [templates](templates) contains all HTML scripts used in the user interface.
-- [db.py](db.py) handles database connection and the loading of external files such as [file_space_path.txt](file_space_path.txt).
-- [app.py](app.py) is the mainline which calls `db.py` and loads all `routes`.
+- [resources](resources) contains additional files required in the Web App such as images
+- [routes](routes) contains all the Flask route blueprints for separate modules
+- [static](static) contains all CSS scripts and Javascript code used in the user interface
+- [templates](templates) contains all HTML scripts used in the user interface
+- [logs](logs) contains all logging files automatically generated
 
 The following files exist outside the aforementioned folders:
-- `app.py` runs the web app.
-- `db.py` initialises the database and calls `models.py` to setup the ORM structure.
-- `models.py` contains all classes representing the tables in the database.
-- `shared_functions.py` contains some methods such as those required to parse dates and create more complex SQL queries beyond the SQLAlchemy ORM model.
-- `logger.py` handles the setup of a logger.
-- `exception_handler.py` defines custom exceptions and contains methods called when exceptions are found in other parts of the program.
-- `contour_statistics.py` does all contour stats calculations.
-- `maintenance.py` is another flask app that can be called whenever the main application needs to be taken down for maintenance.
+- [main.py](main.py) runs the Web App
+- [config.py](config.py) sets Flask environment variables for a development, testing or production environment
+- [database_handler.py](database_handler.py) initialises the database and SQLAlchemy ORM model provides APIs for custom database interaction
+- [models.py](models.py) contains all SQLAlchemy ORM database classes
+- [logger.py](models.py) handles the setup of a logger
+- [exception_handler.py](exception_handler.py) defines custom exceptions and contains methods to handle them
+- [contour_statistics.py](contour_statistics.py) completes all contour stats calculations
+- [maintenance.py](maintenance.py) is another flask app that can be called whenever the main application needs to be taken down for maintenance
+- [test.py](test.py) contains automated tests for the Web App
 
-## Templates and static files
-Templates are pre-designed layouts that arrange content on a webpage, usually written in HTML. Found in the `templates` folder, templates are structured into modular sub-categories for set functions.
+## Templates and Static Files
+Templates are layouts that arrange content on a webpage, usually written in HTML. Found in the `templates` folder, templates are structured into modular sub-categories for set functions.
 
-The template [templates/partials/header.html]() defines a reusable header at the top of each page.
+The template [templates/partials](/templates/partials/) folder has a number of modular templates which are used multiple times in other HTML code.
 
-Styling (or CSS) and Javascript files are stored in the `static` folder. These files are referenced in each of the templates through a resource route specified in [app.py](app.py).
+Styling (or CSS) and Javascript files are stored in the [static/css](/static/css) and [static/js](/static/js/) folders respectively. The files in these folders are loaded in templates by the [header.html](/templates/partials/header.html) module which is shown on each page. 
 
 ## Routes
-Routes are a server-side URL schema which describe interfaces through which a client can interact with a web app. Routes follow a Hypertext Transfer Protocol (HTTP) through which requests such as `GET` and `POST` can be made. Any request sent to the server that matches a defined URL schema is handed to the associated method defined in [routes](). 
+Routes are a server-side URL schema which describe interfaces through which a client can interact with a web app. Routes follow a Hypertext Transfer Protocol (HTTP) through which requests such as `GET`, `POST` and `DELETE` can be made. 
 
-> The majority of routes exist in the folder [routes](), however the mainline [app.py]() also contains some basic routes such as `/home` and `/`, where the latter redirects to the prior.
+Any request sent to the server that matches a defined URL schema is handed to the associated method defined in [routes](/routes/). All routes are brought together in [main.py](main.py).
 
-### Requests
-HTTP has a large number of possible request types. For simplicity, the Web App uses:
-- `GET` to load templates and/or send information to the client;
-- `POST` to send information from the client to the server, usually to complete a CRUD operation in the Meta Base.
+Routes are intuitively modularised by function (a general rule of thumb is that a particular section of the user interface will interact with routes from just a single module).
 
-### Object relational mapping
+> For example: viewing, adding, updating and removing recordings is done through routes in [routes_recording.py](/routes/routes_recording.py).
+
+### Object Relational Mapping
 When interacting with the Meta Base, an object relational mapping (ORM) is implemented. This allows all the database relations to be lazily and effortlessly loaded in a familiar object-oriented structure in Python.
 
 The classes for each relation are written in [models.py](models.py) using the [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/). This library offers seamless integration with the Flask library, that used to create the Web App. The structure of each model closely matches the Meta Base schema. 
 
-Additional methods also exist within each ORM class as to provide APIs for the program to interact with the database, such as:
+### Version History
+
+In the database creation script, you will notice a command used on all but the file and user tables: `WITH VERSION HISTORY`. This is a feature of MariaDB meaning a snapshot of the database can be viewed at any point in time since its creation. 
+
+This requires complex queries that cannot be completed in the SQLAlchemy ORM model. Therefore, [database_handler.py](database_handler.py) contains methods used throughout the program to query the database in a snapshot state. This is called Archive Mode and is implemented through storing `snapshot_date` in the session cookies (more can be read on Archive Mode in the GitHub Wiki).
 
 ### Session handling
 As data must be synchronised between the File Space and Meta Base, atomicity is crucial. An atomic database transaction is one where either all required operations occur or none at all.
@@ -260,7 +234,7 @@ The `delete()` method in `Encounter`, `Recording`, and `Selection` are responsib
 
 > ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
 
-# Testing
+## Testing
 Testing is found in the [testing](/testing) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework, and can be run using commands such as `pytest testing/test.py`.
 
 The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests. 
@@ -268,7 +242,3 @@ The test environment is automatically created, and is effectively an instance of
 Furthermore, the test environment uses a local Maria DB installation to run the program. The following system variables must be set for the testing environment to work as required:
 
 The following are system variables that must be set:
-- `TESTING_STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost`)
-- `TESTING_STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root`)
-- `TESTING_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database (must be set in the MariaDB shell)
-- `TESTING_STADOLPHINACOUSTICS_DATABASE` to set the name of the database (must be created in the MariaDB shell)

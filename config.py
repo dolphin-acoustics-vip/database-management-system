@@ -1,22 +1,27 @@
 import os
 import tempfile
+import secrets
 
 # config.py
 
 class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'your_default_secret_key')
-    # Add other general configurations
 
 class DevelopmentConfig(Config):
-    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
+    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('DEV_STADOLPHINACOUSTICS_USER')}:{os.environ.get('DEV_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('DEV_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('DEV_STADOLPHINACOUSTICS_DATABASE')}"
     DEBUG = True
+    secret_key = "not_so_secret_key"
+    SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ['TESTING_STADOLPHINACOUSTICS_USER']}:{os.environ['TESTING_STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['TESTING_STADOLPHINACOUSTICS_HOST']}/{os.environ['TESTING_STADOLPHINACOUSTICS_DATABASE']}"
-    WTF_CSRF_ENABLED = False  # Disable CSRF for easier testing
+    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('TESTING_STADOLPHINACOUSTICS_USER')}:{os.environ.get('TESTING_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('TESTING_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('TESTING_STADOLPHINACOUSTICS_DATABASE')}"
+    WTF_CSRF_ENABLED = False # Disable CSRF (ignore potential CSRF attacks when testing)
+    secret_key = "not_so_secret_key"
+    SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
 
 class ProductionConfig(Config):
-    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ['STADOLPHINACOUSTICS_USER']}:{os.environ['STADOLPHINACOUSTICS_PASSWORD']}@{os.environ['STADOLPHINACOUSTICS_HOST']}/{os.environ['STADOLPHINACOUSTICS_DATABASE']}"
+    SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('PROD_STADOLPHINACOUSTICS_USER')}:{os.environ.get('PROD_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('PROD_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('PROD_STADOLPHINACOUSTICS_DATABASE')}"
     DEBUG = False
+    secret_key = secrets.token_urlsafe(32)
+    SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
