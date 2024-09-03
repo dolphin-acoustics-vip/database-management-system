@@ -66,7 +66,6 @@ def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError | sqlalchemy.exc.Op
             column_name = error_message.split("Column '")[1].split("' cannot be null")[0]
             return "Error: {} cannot be null. Please provide a valid value for {}.".format(column_name, column_name)
         elif error.orig.args[0] == 1062 and "Duplicate entry" in error_message:
-            print(error_message)
             duplicate_value = error_message.split("Duplicate entry ")[1].split(" for key")[0]
             duplicate_attribute = error_message.split("for key '")[1].split("'")[0]
             return "Duplicate entry: {} for {}.".format(duplicate_value, duplicate_attribute)

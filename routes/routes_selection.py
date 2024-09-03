@@ -67,7 +67,7 @@ def contour_file_delete(selection_id: str):
         try:
             selection_obj = session.query(Selection).filter_by(id=selection_id).first()
             if selection_obj:
-                selection_obj.delete_contour_file(session)
+                selection_obj.delete_contour_file(False)
                 selection_obj.update_traced_status()
                 session.commit()
             else:
@@ -282,7 +282,7 @@ def contour_insert_bulk(recording_id):
     :type recording_id: str
     :return: a JSON response with a success message
     """
-    with Session() as session:
+    with database_handler.get_session() as session:
         counter = 0
         # Access the uploaded files
         files = request.files.getlist('files')
@@ -291,14 +291,14 @@ def contour_insert_bulk(recording_id):
         for i, file in enumerate(files):
             selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
             if selection.contour_file_id is not None:
-                handle_exception(session, Exception(f'Selection {ids[i]} already has a contour'), f'Error uploading contour {ids[i]}')
+                handle_exception(session, WarningException(f'Selection {ids[i]} already has a contour'), f'Error uploading contour {ids[i]}')
             else:
                 try:
                     insert_or_update_contour(session,selection, file)
                     session.commit()
                     counter += 1
                 except (SQLAlchemyError, Exception) as e:
-                    handle_exception(session, e, f'Error uploading contour {ids[i]}')
+                    handle_exception(session, e, WarningException(f'Error uploading contour {ids[i]}'))
         if counter > 0:
             flash(f'Added {counter} contours', 'success')
         return jsonify({'message': ''}), 200

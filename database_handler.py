@@ -112,24 +112,6 @@ def init_db(app, create_database=None):
                         obj.updated_by_id = current_user.id
 
 
-    # Setup user login
-    login_manager = LoginManager()
-    login_manager.login_view = 'auth.login'
-    login_manager.init_app(app)
-    @login_manager.user_loader
-    def load_user(user_id: str):
-        """
-        User loader function for Flask-Login extension. This function is used to find a
-        user by their id. The function takes a user_id as an argument and returns the user
-        object if found, otherwise None.
-        """
-        from sqlalchemy.exc import OperationalError
-        try:
-            from models import User
-            # Since the user_id is just the primary key of the user table, use it in the query for the user
-            return User.query.get(user_id)
-        except OperationalError:
-            return None
 
 
 

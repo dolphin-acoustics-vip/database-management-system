@@ -99,7 +99,7 @@ def general_exception(e):
 @routes_general.route('/favicon.ico')
 def favicon():
     """For the Web App's favicon"""
-    return send_from_directory(os.path.join(routes_general.root_path, 'static'),
+    return send_from_directory('resources',
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @routes_general.route('/file-details/<file_id>', methods=['GET'])

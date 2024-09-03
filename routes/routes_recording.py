@@ -54,7 +54,6 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         session.add(new_file)
         new_recording.recording_file = new_file
         new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename)
-        session.commit()
         
     # If a user assignment is to be made for the recording
     if 'assign_user_id' in request.form:
@@ -66,7 +65,6 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
             assignment.user_id = user_obj.id
             session.add(assignment)
             new_recording.update_status_upon_assignment_add_remove(session)
-            session.commit()
     return new_recording
 
 
@@ -305,10 +303,10 @@ def recording_update(recording_id):
     """
     with Session() as session:
         try:
-            recording = session.query(Recording).filter_by(id=recording_id).first()
+            recording = session.query(Recording).with_for_update().filter_by(id=recording_id).first()
             recording_obj = insert_or_update_recording(session, request, recording.encounter_id, recording_id)
-            recording_obj.update_call(session)
             session.commit()
+            recording_obj.update_call()
             flash(f'Edited recording: {recording_obj.id}', 'success')                
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (SQLAlchemyError,Exception) as e:
@@ -327,7 +325,8 @@ def recording_delete(encounter_id,recording_id):
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
-            recording.delete(session, keep_file_reference=True)
+            recording.delete_children(keep_file_reference=True)
+            session.delete(recording)
             session.commit()
             flash(f'Deleted recording: {recording.id}', 'success')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
@@ -354,7 +353,7 @@ def recording_file_delete(recording_id,file_id):
             file = session.query(File).filter_by(id=file_id).first()
             file_path = file.get_full_relative_path()
             try:
-                file.delete(session)
+                file.delete()
                 session.commit()
                 flash(f'Deleted file: {file_path}', 'success')
             except FileNotFoundError:
@@ -390,8 +389,9 @@ def recording_delete_selections():
         for selection_id in selection_ids:
             try:
                 selection = session.query(Selection).filter_by(id=selection_id).first()
-                raise Exception('sdighwoieg')
-                selection.delete(session)
+                selection.delete_children()
+                session.delete(selection)
+
                 session.commit()
                 counter += 1
             except (SQLAlchemyError,Exception) as e:

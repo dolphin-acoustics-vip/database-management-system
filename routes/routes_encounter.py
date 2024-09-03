@@ -128,7 +128,7 @@ def encounter_edit(encounter_id):
 def encounter_update(encounter_id):
     with Session() as session:
         try :
-            encounter = session.query(Encounter).join(Species).filter(Encounter.id == encounter_id).first()
+            encounter = session.query(Encounter).with_for_update().join(Species).filter(Encounter.id == encounter_id).first()
             encounter.set_encounter_name(request.form['encounter_name'])
             encounter.set_location(request.form['location'])
             encounter.set_species_id(session, request.form['species'])
@@ -140,8 +140,8 @@ def encounter_update(encounter_id):
             encounter.set_notes(request.form['notes'])
             encounter.set_file_timezone(request.form['file-timezone'])
             encounter.set_local_timezone(request.form['local-timezone'])
-            encounter.update_call(session)
             session.commit()
+            encounter.update_call()
             flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
             logger.info(f'Encounter updated: {encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
@@ -156,14 +156,15 @@ def encounter_update(encounter_id):
 @require_live_session
 def encounter_delete(encounter_id):
     with Session() as session:
-        encounter = session.query(Encounter).filter_by(id=encounter_id).first()
+        encounter = session.query(Encounter).with_for_update().filter_by(id=encounter_id).first()
         recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
         if len(recordings) > 0:
             flash('Encounter cannot be deleted. Please delete all recordings first.', 'error')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         else:
             try:
-                encounter.delete(session)
+                encounter.delete_children()
+                session.delete(encounter)
                 session.commit()
                 logger.info(f'Encounter deleted: {encounter.id}')
                 flash(f'Encounter deleted: {encounter.get_unique_name("-")}.', 'success')
