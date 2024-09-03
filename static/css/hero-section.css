@@ -1,4 +1,4 @@
-@media (min-width: 768px) {
+
     .hero-section {
         position: relative;
         height: 300px;
@@ -39,4 +39,3 @@
         padding: 0px 30px;
         font-size: calc(2.48832em + .56344*((100vw - 36em) / 39));
     }
-}

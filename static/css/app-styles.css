@@ -1,0 +1,101 @@
+/*
+Styles which are applied across the entire web app.
+They do not reference particular classes, but rather
+element types.
+*/
+
+html {
+    width: auto;
+    -webkit-text-size-adjust: 100%;
+  }
+body,h1,h2,h3,h4,p {
+    
+    font-family: "PT Sans", Helvetica, Arial, sans-serif;
+}
+h1 {
+    font-size: 1.5rem;
+    padding: 0;
+    margin: 1rem 0;
+    font-weight: bold;
+}
+h2 {
+    font-size: 1.2rem;
+    padding: 0;
+    margin: 1rem 0;
+    font-weight: bold;
+}
+h3 {
+    font-size: 1rem;
+    padding: 0;
+    margin: 1rem 0;
+    font-weight: bold;
+
+}
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f9fbfb;
+    font-size: 1rem; /* relative to the base font size */
+    line-height: 1.5em; /* relative to the font size */
+    color: #202024;
+}
+
+p {
+    font-size: 0.8rem; /* relative to the base font size */
+    padding: 2px;
+    margin: 0;
+}
+
+a {
+    font-size: 0.8rem;
+}
+
+form {
+    display: grid;
+    gap: 0px;
+}
+
+label {
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+    margin-top: 0.3rem;
+    font-weight: lighter;
+}
+
+
+header {
+    padding: 0;
+}
+
+
+.bold {
+    font-weight: bold;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow:visible;
+    table-layout:auto;
+    white-space: nowrap;
+}
+th, td, tr {
+    text-align: left;
+    padding: 3px 5px;
+    border: 1px solid #ddd;
+    font-size: 0.8rem;
+    line-height: 1.2rem;
+}
+
+
+@media screen and (max-width: 820px) {
+    label {
+        font-size: 0.8rem;
+    }
+    h1 {
+        font-size: 1.2rem;
+    }
+
+}

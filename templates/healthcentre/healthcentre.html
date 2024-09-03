@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+
+<head>
+    <title>Health Centre</title>
+    <style>
+        .statistic-box {
+            border: 2px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .enc-div-box {
+            border: 2px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .rec-div-box {
+            border: 2px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+
+        }
+
+        .selection-table {
+            border: 2px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        #health-score-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #eee;
+            margin: 20px;
+            padding: 10px;
+        }
+
+        #health-score-value {
+            font-size: 5em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .health-score-green {
+            color: rgb(0, 185, 0);
+        }
+
+        .health-score-yellow {
+            color: rgb(255, 166, 0);
+        }
+
+        .health-score-red {
+            color: #f00;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+</head>
+
+<body>
+    <div class="outer-div">
+        <h1>Health Centre</h1>
+        {% from 'partials/days-ago-selector.html' import days_ago_selector %}
+        {{ days_ago_selector() }}
+        {% from 'partials/species-checkbox.html' import species_checkbox %}
+        {{ species_checkbox(species_list) }}
+        <label class="bold">User filter</label>
+        {% from 'partials/user-search.html' import user_search %}
+        {{ user_search() }}
+        <button id="clear-user-filter-button" hidden onclick="clearUserFilter()">Clear User Filter</button>
+        <h2 id="health-score-title">Health Score</h2>
+        <div id="health-score-container">
+            <label id="health-score-value"></label>
+        </div>
+
+        <h3 id="warnings-title-text">
+            </h2>
+            <div id="warnings-table"></div>
+    </div>
+</body>
+
+<script>
+    var userFilterId = null
+    var species_filter = null
+    var startDateTime = null
+    var dayCount = null
+
+    function daysAgoSelectorComplete(StartDateTime, dayCount) {
+        startDateTime = StartDateTime
+        dayCount = dayCount
+        refreshHealthCentreData()
+    }
+
+    function speciesCheckboxRefresh(species_sel_list) {
+        species_filter = species_sel_list
+        refreshHealthCentreData()
+    }
+
+    async function onUserSelectionDropdownComplete(response) {
+        userFilterId = response
+        await refreshHealthCentreData(user_only = true)
+        $("#clear-user-filter-button").show()
+    }
+
+
+    async function refreshHealthCentreData() {
+        $('#warnings-title-text').text("Loading Warnings...")
+        $('#warnings-table').empty();
+        $.ajax({
+            url: '/healthcentre/get-data-warnings',
+            type: 'GET',
+            data: { start_date_time: null, user_id: null, assigned_user_filter_id: userFilterId, created_date_filter: startDateTime, day_count: dayCount, species_filter: species_filter },
+            success: function (result) {
+
+                $('#warnings-title-text').text("Details")
+                updateWarnings(result)
+            }
+        });
+    }
+    function clearUserFilter() {
+        userFilterId = null
+        refreshHealthCentreData();
+        clearUserDropdownInput(); // method from macro for user selection dropdown
+        $("#clear-user-filter-button").hide()
+    }
+
+    function updateWarnings(result) {
+        // Assuming the warnings are returned in the 'result' variable
+
+        // Clear the existing warnings HTML
+
+        $('#warnings-title-text').hide()
+        healthScore = result['health_score']
+        if (healthScore == null) {
+            $('#health-score-value').text("No data")
+            $('#health-score-container').hide()
+            $('#health-score-title').text("No data available")
+
+        } else {
+            $('#health-score-value').text(healthScore + "%")
+            $('#health-score-container').show()
+            console.log(result)
+            if (result['assigned_user_name'] != null) {
+                $('#health-score-title').text("Health Score for " + result['assigned_user_name'] + " (" + result['assigned_user_login_id'] + "), since " + startDateTime)
+            } else {
+                $('#health-score-title').text("Health Score since " + startDateTime)
+            }
+
+            // Apply color based on the score
+            console.log(healthScore, healthScore >= 90, healthScore >= 10)
+            if (healthScore >= 90) {
+                $('#health-score-value').removeClass('health-score-red');
+                $('#health-score-value').removeClass('health-score-yellow');
+                $('#health-score-value').addClass('health-score-green');
+            } else if (healthScore >= 70) {
+                $('#health-score-value').addClass('health-score-yellow');
+                $('#health-score-value').removeClass('health-score-green');
+                $('#health-score-value').removeClass('health-score-red');
+            } else {
+                $('#health-score-value').addClass('health-score-red');
+                $('#health-score-value').removeClass('health-score-green');
+                $('#health-score-value').removeClass('health-score-yellow');
+            }
+
+            // Generate the HTML for each level of the warning structure
+            generateWarningsHTML(result['warnings'], $('#warnings-table'));
+        }
+    }
+
+    function generateWarningsHTML(warnings, container) {
+        if (Object.keys(warnings).length == 0) {
+            $('#warnings-title-text').text('No warnings');
+            $('#warnings-title-text').show()
+            return;
+        }
+        for (const encId in warnings) {
+            const encWarnings = warnings[encId];
+
+            // Create the encounter div
+            const encDiv = $('<div>').addClass('enc-div-box').appendTo(container);
+            $('<h3>').text("Encounter: " + encWarnings['enc_name'] + ' - ' + encWarnings['enc_location'] + ' (' + encWarnings['enc_species'] + ")").appendTo(encDiv);
+
+            // Create the recordings div
+            //const recDiv = $('<div>').appendTo(encDiv);
+
+            for (const recId in encWarnings['recordings']) {
+                const recWarnings = encWarnings['recordings'][recId];
+
+                // Create the recording div
+                const recDiv = $('<div>').addClass('rec-div-box table-responsive').appendTo(encDiv);
+                $('<h4>').text("Recording: " + recWarnings['rec_name']).appendTo(recDiv);
+                // Create the button
+                const goToButton = $('<button>').text('Go To').addClass('ignore-table-button link small').attr('data-recording-id', recId).appendTo(recDiv);
+
+                // Add an event listener to the button
+                goToButton.on('click', function () {
+                    const recRoute = recWarnings['rec_route'];
+                    window.open(recRoute, '_blank');
+                });            // Create the selections table
+                const selTable = $('<table>').addClass('selection-table table-striped').appendTo(recDiv);
+
+                // Create the table header
+                const headerRow = $('<tr>').appendTo($('<thead>').appendTo(selTable));
+                $('<th>').text('Selection').appendTo(headerRow);
+                $('<th>').text('Warnings').appendTo(headerRow);
+
+                for (const selection_index in recWarnings['selections']) {
+                    const selection = recWarnings['selections'][selection_index]['selection']
+                    const warnings = recWarnings['selections'][selection_index]['warning']
+
+                    // Create the selection row
+                    const selRow = $('<tr>').appendTo($('<tbody>').appendTo(selTable));
+                    $('<td>').text(selection['selection_number']).appendTo(selRow);
+                    $('<td>').text(warnings.join(', ')).appendTo(selRow);
+                }
+            }
+        }
+    }
+
+</script>
