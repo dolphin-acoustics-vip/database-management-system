@@ -98,6 +98,14 @@ def init_db(app: Flask, run_script: str=None):
                     sql_script = f.read()
                     conn.execute(db.text(sql_script))
 
+        def add_user_data(session):
+            import models
+            for obj in session.dirty.union(session.new):
+                if type(obj) != models.File:
+                    if hasattr(obj, 'updated_by_id'):
+                        print("Updating user", type(obj), obj)
+                        obj.updated_by_id = current_user.id
+
         @sqlalchemy.event.listens_for(session_instance, 'before_commit')
         def before_commit(session: sessionmaker):
             """
@@ -105,10 +113,11 @@ def init_db(app: Flask, run_script: str=None):
             commit. This impacts all tables being updated or inserted in the database that
             contain an attribute updated_by_id (foreign key reference to the user table).
             """
-            # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
-            for obj in session.dirty.union(session.new):
-                if hasattr(obj, 'updated_by_id'):
-                    obj.updated_by_id = current_user.id
+            add_user_data(session)
+
+        @sqlalchemy.event.listens_for(session_instance, 'after_flush')
+        def after_flush(session: sessionmaker, flush_context):
+            add_user_data(session)
 
     return db
 

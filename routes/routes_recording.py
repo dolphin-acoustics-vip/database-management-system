@@ -39,10 +39,11 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_recording = session.query(Recording).filter_by(id=recording_id).first()
     else:
         new_recording = Recording()
+        session.add(new_recording)
 
     new_recording.set_start_time(request.form['time_start'])
     new_recording.set_encounter_id(session, encounter_id)
-    session.add(new_recording)
+    
     session.flush()
 
     # If a recording file has been given, add it to the Recording object
@@ -301,11 +302,13 @@ def recording_update(recording_id):
     """
     Updates a recording in the encounter with the specified encounter ID and recording ID.
     """
-    with Session() as session:
+    with database_handler.get_session() as session:
         try:
             recording = session.query(Recording).with_for_update().filter_by(id=recording_id).first()
             recording_obj = insert_or_update_recording(session, request, recording.encounter_id, recording_id)
+            print("COMMIT", session.dirty)
             session.commit()
+            print("FINISH COMMIT")
             recording_obj.update_call()
             flash(f'Edited recording: {recording_obj.id}', 'success')                
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
