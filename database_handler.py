@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from flask_sqlalchemy import SQLAlchemy
 import sqlalchemy
 from flask_login import LoginManager, current_user
-from flask import abort, g, render_template, request, session as client_session
+from flask import Flask, abort, g, render_template, request, session as client_session
 import os
 import exception_handler
 from logger import logger
@@ -41,11 +41,14 @@ else:
 def get_engine():
     return db.engine
 
-def get_session():
-    engine = get_engine()
-    Session = sessionmaker(bind=engine, autoflush=False)
-    return Session()
+session_instance = None
+engine = None
 
+def get_session():
+    global session_instance
+    return session_instance()
+
+# some parts of the program still call the old variable Session()
 Session = get_session
 
 
@@ -71,49 +74,41 @@ def get_tempdir():
 
 db = SQLAlchemy()
 
-def init_db(app, create_database=None):
+def init_db(app: Flask, run_script: str=None):
     """
-    Initialise the database using the given Flask app.
-    
-    The function can also create the database if a file path to a SQL script is provided in the
-    create_database parameter. The SQL script should contain the schema for the database.
-    
-    The function also sets up the Flask-Login extension. The load_user function is used by
-    Flask-Login to find a user by their id. The function takes a user_id as an argument and
-    returns the user object if found, otherwise None.
-    
-    :param app: the Flask app
-    :type app: Flask
-    :param (optional) create_database: the path to a SQL script to create the database
-    :type create_database: str
-    :return: the database object
-    :rtype: SQLAlchemy
+    Initialise the database for a Flask application. Set up a database
+    hook that adds user information to tables in the database before each
+    commit. And, if requested, run a DDL script on the database during initialisation.
+
+    :param (Flask) app: the Flask application
+    :param (str) run_script: (optional) the path to a DDL script to run on the database
     """
 
     db.init_app(app)
+
+    global engine
+    global session_instance
     
-    if create_database:
-        with app.app_context():
+    with app.app_context():
+        engine = get_engine()
+        session_instance = sessionmaker(bind=engine, autoflush=False)
+        if run_script:
             with db.engine.connect() as conn:
-                with app.open_resource(create_database, mode='r') as f:
+                with app.open_resource(run_script, mode='r') as f:
                     sql_script = f.read()
                     conn.execute(db.text(sql_script))
-    
-            @sqlalchemy.event.listens_for(get_session(), 'before_commit')
-            def before_commit(session: sessionmaker):
-                """
-                Catch the session.commit command from all areas of the program to add logged in user data to the row(s)
-                being committed in the database. This method will go through all UPDATE and INSERT commands in a 
-                session and will only add user data to the tables that have a column for it.
-                """
-                # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
-                for obj in session.dirty.union(session.new):
-                    if obj.__class__.__name__ == 'Recording' or obj.__class__.__name__ == 'Encounter' or obj.__class__.__name__ == 'File' or obj.__class__.__name__ == 'RecordingPlatform' or obj.__class__.__name__ == 'DataSource' or obj.__class__.__name__ == 'Selection' or obj.__class__.__name__ == 'Species':
-                        obj.updated_by_id = current_user.id
 
-
-
-
+        @sqlalchemy.event.listens_for(session_instance, 'before_commit')
+        def before_commit(session: sessionmaker):
+            """
+            A database hook that adds user information to tables in the database before each
+            commit. This impacts all tables being updated or inserted in the database that
+            contain an attribute updated_by_id (foreign key reference to the user table).
+            """
+            # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
+            for obj in session.dirty.union(session.new):
+                if hasattr(obj, 'updated_by_id'):
+                    obj.updated_by_id = current_user.id
 
     return db
 

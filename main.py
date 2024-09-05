@@ -71,7 +71,7 @@ def create_app(config_class=None):
     if config_class == 'config.TestingConfig':
         create_database_script = 'create_database.sql'
 
-    db = init_db(app, create_database=create_database_script)
+    db = init_db(app, run_script=create_database_script)
 
     # Register blueprints and error handlers
     app.register_blueprint(routes_general)
@@ -98,7 +98,7 @@ def create_app(config_class=None):
         """
         Store the logged in user information in each request.
         """
-        g.user = current_user
+        g.user = current_user 
 
     @app.errorhandler(403)
     def forbidden(e):
