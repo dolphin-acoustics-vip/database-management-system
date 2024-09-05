@@ -1,24 +1,30 @@
 <form id="{{unique_id}}-upload-form" onsubmit="return false;" enctype="multipart/form-data">
     <input class="small" type="file" name="{{unique_id}}-files" id="{{unique_id}}-files" multiple>
     <label id="{{unique_id}}-bulk-upload-status-message" hidden="true">Status message</label>
-    <button class="gray small" id="{{unique_id}}-bulk-upload-validate" style="margin-bottom: 5px;" hidden="true">Validate</button>
+    <button class="gray small" id="{{unique_id}}-bulk-upload-validate" style="margin-bottom: 5px;"
+        hidden="true">Validate</button>
     <button class="gray small" id="{{unique_id}}-bulk-upload-clear" style="margin-bottom: 5px;" hidden>Reset</button>
-    
-    <button class="blue small" id="{{unique_id}}-bulk-upload" style="margin-bottom: 5px;" type="submit" hidden="true">Upload</button>
+
+    <button class="blue small" id="{{unique_id}}-bulk-upload" style="margin-bottom: 5px;" type="submit"
+        hidden="true">Upload</button>
+    <div style="display:none; margin-bottom: 0.3rem;" class="progress" id="{{unique_id}}-submission-progress">
+        <div id="{{unique_id}}-submission-progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0"
+            aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
     <div class="table-responsive">
         <table class="table-striped" id="{{unique_id}}-table" hidden="true">
-        <thead>
-            <tr>
-                <th>Filename</th>
-                <th>{{identifier_heading}}</th>
-                <th>Validity</th>
-                <th>Information</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>{{identifier_heading}}</th>
+                    <th>Validity</th>
+                    <th>Information</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
 </form>
 
@@ -26,6 +32,15 @@
     // Enclose the script in a function to limit the scope to each time the template is embedded
     // in a page 
     (function () {
+
+        const progressBar = document.getElementById('{{unique_id}}-submission-progress-bar');
+
+        function updateProgress(progress) {
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+
+        }
+
 
         // Define an array to store the files to be submitted
         var filesToSubmit = [];
@@ -71,7 +86,6 @@
         // Function to add a file to the filesToSubmit array
         function addFileToSubmit(file, id) {
             filesToSubmit.push({ file, id });
-            console.log(filesToSubmit)
         }
 
         // Function to remove a file from the filesToSubmit array
@@ -301,32 +315,44 @@
          * Finally, it sends the form data to the server and handles the server response. If the response is OK, it reloads the page. Otherwise, it displays an error message.
          */
         async function updateFileInputForSubmission() {
-            document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Uploading... Please wait and do not close your browser."
+            document.getElementById("{{unique_id}}-submission-progress").style.display = "block"
+            document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Uploading... Please wait and do not close your browser.";
             document.getElementById("{{unique_id}}-bulk-upload-status-message").hidden = false;
             document.getElementById("{{unique_id}}-bulk-upload").hidden = true;
             document.getElementById("{{unique_id}}-bulk-upload-validate").hidden = true;
             document.getElementById("{{unique_id}}-bulk-upload-clear").hidden = true;
+
             var fileInput = document.getElementById('{{unique_id}}-files');
-            var formData = new FormData();
-
-            // Filter out the files that are marked for deletion
             var filesToSubmitFiltered = filesToSubmit.filter(file => !filesToDelete.includes(file));
-            // Append the files to the form data along with their selection numbers
-            await filesToSubmitFiltered.forEach((file, index) => {
-                formData.append('files', file.file);
-                formData.append(`ids[${index}]`, file.id); // Add selection number as a custom field
-            });
-            
-            // Send the form data to the server
-            fetch("{{ url_for(insert_route, recording_id=recording.id) }}", {
-                method: 'POST', 
-                body: formData
-            })
-            .then(response => {
-                // Refresh page
-                window.location.href = window.location.href;
+            var numberOfFilesToSubmit = filesToSubmitFiltered.length
+            var counter = 0
+            var successCounter = 0
 
-            })
+            for (var i = 0; i < filesToSubmitFiltered.length; i++) {
+                var file = filesToSubmitFiltered[i];
+                var formData = new FormData();
+                formData.append('file', file.file);
+                formData.append('id', file.id);
+                if (i == filesToSubmitFiltered.length - 1) {
+                    formData.append('last', true)
+                } else {
+                    formData.append('last', false)
+                }
+                formData.append('successCounter', successCounter)
+
+                response = await fetch("{{ url_for(insert_route, recording_id=recording.id) }}", {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const jsonData = await response.json();
+                successCounter = jsonData.successCounter
+                counter = counter + 1
+                updateProgress(Math.round((counter / numberOfFilesToSubmit) * 100))
+            }
+
+            // Refresh page after all files have been sent
+            window.location.href = window.location.href;
         }
 
 

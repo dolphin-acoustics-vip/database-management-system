@@ -40,6 +40,8 @@ def insert_or_update_selection(session: sessionmaker, selection_number: str, fil
         session.add(selection_obj)
         selection_obj.set_selection_number(selection_number)
     session.flush()
+    if selection_obj.selection_file_id is not None:
+        raise WarningException(f"Selection file for selection {selection_obj.selection_number} already exists.")
     selection_file = file
     selection_filename = selection_obj.generate_filename()
     selection_relative_path = selection_obj.generate_relative_path()
@@ -88,6 +90,8 @@ def insert_or_update_contour(session: sessionmaker, selection: Selection, contou
     """
     # Create a new File object for the contour file
     session.flush()
+    if selection.contour_file is not None:
+        raise WarningException(f"Contour file for selection {selection.selection_number} already exists.")
     new_file = File()
     new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_filename(), get_file_space_path())
     session.add(new_file)
@@ -282,26 +286,37 @@ def contour_insert_bulk(recording_id):
     :type recording_id: str
     :return: a JSON response with a success message
     """
-    with database_handler.get_session() as session:
-        counter = 0
-        # Access the uploaded files
-        files = request.files.getlist('files')
-        ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
-        # Process the files and add them to the Selection object
-        for i, file in enumerate(files):
-            selection = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
-            if selection.contour_file_id is not None:
-                handle_exception(session, WarningException(f'Selection {ids[i]} already has a contour'), f'Error uploading contour {ids[i]}')
-            else:
-                try:
-                    insert_or_update_contour(session,selection, file)
-                    session.commit()
+    last = request.form.get('last')
+    if last == 'true': last = True
+    else: last = False
+    counter = int(request.form.get('successCounter'))
+    success = True
+    with Session() as session:
+        try:
+            if 'file' in request.files and request.files['file'].filename != '':
+                # Access the uploaded files
+                file = request.files.get('file')
+                id = request.form.get('id')
+
+                # Insert or update the selection
+                current_selection_object = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=id, recording_id=recording_id).first()
+                if current_selection_object is not None:
+                    insert_or_update_contour(session, current_selection_object, file)
                     counter += 1
-                except (SQLAlchemyError, Exception) as e:
-                    handle_exception(session, e, WarningException(f'Error uploading contour {ids[i]}'))
-        if counter > 0:
-            flash(f'Added {counter} contours', 'success')
-        return jsonify({'message': ''}), 200
+                else:
+                    raise WarningException("Bad contour number in request")
+                session.commit()
+            else:
+                success = False
+                raise WarningException("Bad file in request")
+        except (Exception, SQLAlchemyError) as e:
+            success = False
+            handle_exception(session,e)
+        finally:
+            if last == True:
+                if counter > 0:
+                    flash(f"Uploaded {counter} contours", 'success')
+            return jsonify(successCounter=counter)
 
 @routes_selection.route('/recording/<recording_id>/selection/insert-bulk', methods=['POST'])
 @require_live_session
@@ -318,28 +333,45 @@ def selection_insert_bulk(recording_id):
     :type recording_id: str
     :return: a JSON response with a success message if the files are uploaded successfully
     """
+    
+    last = request.form.get('last')
+    if last == 'true': last = True
+    else: last = False
+    counter = int(request.form.get('successCounter'))
+    
+    success = True
     with Session() as session:
-        # Access the uploaded files
-        files = request.files.getlist('files')
-        ids = [request.form.get(f'ids[{i}]') for i in range(len(files ))]
-        counter = 0
-        # Process the files and add them to the Selection object
-        for i, file in enumerate(files):
-            try:
+        try:
+            if 'file' in request.files and request.files['file'].filename != '':
+                # Access the uploaded files
+                file = request.files.get('file')
+                id = request.form.get('id')
                 # Insert or update the selection
-                current_selection_object = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=ids[i], recording_id=recording_id).first()
+                current_selection_object = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=id, recording_id=recording_id).first()
+                
                 if current_selection_object is not None:
-                    insert_or_update_selection(session,ids[i], file, recording_id, selection_id=current_selection_object.id)
+                    insert_or_update_selection(session,id, file, recording_id, selection_id=current_selection_object.id)
                 else:
-                    insert_or_update_selection(session,ids[i], file, recording_id)
-                session.commit()
+                    insert_or_update_selection(session,id, file, recording_id)
                 counter += 1
-            except (SQLAlchemyError, Exception) as e:
-                handle_exception(session, e)
-        session.commit()
-        if counter > 0:
-            flash(f'Added {counter} selections', 'success')
-        return jsonify({'message': ''}), 200
+                session.commit()
+            else:
+                success = False
+                raise WarningException("Bad file in request")
+        except Exception as e:
+            success = False
+            handle_exception(session,e)
+        except SQLAlchemyError as e:
+            success = False
+            handle_exception(session,e)
+        finally:
+            if last == True:
+                if counter > 0:
+                    flash(f"Uploaded {counter} selections successfully", "success")
+            if success == False:
+                return jsonify({'message': '', 'successCounter': counter}), 200
+            else:
+                return jsonify({'message': '', 'successCounter': counter}), 200
 
 @routes_selection.route('/selection/<selection_id>/view', methods=['GET'])
 @login_required

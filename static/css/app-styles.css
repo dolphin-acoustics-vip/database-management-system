@@ -89,6 +89,9 @@ th, td, tr {
     line-height: 1.2rem;
 }
 
+.progress-bar {
+    background-color: #00539b;
+  }
 
 @media screen and (max-width: 820px) {
     label {
