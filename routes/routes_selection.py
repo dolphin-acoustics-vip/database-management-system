@@ -41,7 +41,7 @@ def insert_or_update_selection(session: sessionmaker, selection_number: str, fil
         selection_obj.set_selection_number(selection_number)
     session.flush()
     if selection_obj.selection_file_id is not None:
-        raise WarningException(f"Selection file for selection {selection_obj.selection_number} already exists.")
+        raise WarningException(f"Selection file for {selection_obj.get_unique_name()} already exists.")
     selection_file = file
     selection_filename = selection_obj.generate_filename()
     selection_relative_path = selection_obj.generate_relative_path()
@@ -249,6 +249,7 @@ def process_selection():
 
 @routes_selection.route('/serve_plot/<selection_id>')
 @login_required
+@require_live_session
 def serve_plot(selection_id: str):
     """
     A function that serves a spectrogram plot of a selection.
@@ -267,15 +268,16 @@ def serve_plot(selection_id: str):
         selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id}, one_result=True)
         # Create the file in a temporary path
         with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
-            plot_file_path = selection.create_temp_plot(session, temp_dir, fft_size, hop_size)
+            update_permissions = True if current_user.role_id != 4 else False
+            plot_file_path = selection.create_temp_plot(session, temp_dir, fft_size, hop_size, update_permissions=update_permissions)
             return send_file(plot_file_path, mimetype='image/png')
 
 
-@routes_selection.route('/recording/<recording_id>/contour/insert-bulk', methods=['POST'])
+@routes_selection.route('/recording/<recording_id>/contour-insert', methods=['POST'])
 @require_live_session
 @login_required
 @exclude_role_4
-def contour_insert_bulk(recording_id):
+def contour_insert(recording_id):
     """
     Handles a POST request to upload multiple contour files for a given recording. The request
     must include a form field with the name 'files' that contains the files to be uploaded. The
@@ -318,18 +320,23 @@ def contour_insert_bulk(recording_id):
                     flash(f"Uploaded {counter} contours", 'success')
             return jsonify(successCounter=counter)
 
-@routes_selection.route('/recording/<recording_id>/selection/insert-bulk', methods=['POST'])
+@routes_selection.route('/recording/<recording_id>/selection-insert', methods=['POST'])
 @require_live_session
 @login_required
 @exclude_role_4
-def selection_insert_bulk(recording_id):
+def selection_insert(recording_id):
     """
-    Handles a POST request to upload multiple selection files for a given recording. The request
-    must include a form field with the name 'files' that contains the files to be uploaded. The
-    files should be of the type FileStorage from werkzeug. On completion the client side should 
-    refresh the page so that status flash messages are shown.
+    A route to insert a selection file into the filespace. In the event that a selection
+    does not yet exist for a selection file, create a new selection in the database then
+    add the selection file.
 
-    :param recording_id: the id of the recording
+    Requires the following MANDATORY arguments in the HTTP request: 
+    - last: 'true' or 'false' on whether this request is the last (set to 'true' if just uploading one selection file)
+    - successCounter: the number of files that have been successfully uploaded
+    - id: the selection number of the file to be added
+    - file: the file to upload from the HTTP file browser
+
+    :param recording_id: the id of the recording to add the selection to
     :type recording_id: str
     :return: a JSON response with a success message if the files are uploaded successfully
     """
@@ -343,12 +350,9 @@ def selection_insert_bulk(recording_id):
     with Session() as session:
         try:
             if 'file' in request.files and request.files['file'].filename != '':
-                # Access the uploaded files
                 file = request.files.get('file')
                 id = request.form.get('id')
-                # Insert or update the selection
                 current_selection_object = session.query(Selection).filter(db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=id, recording_id=recording_id).first()
-                
                 if current_selection_object is not None:
                     insert_or_update_selection(session,id, file, recording_id, selection_id=current_selection_object.id)
                 else:
@@ -358,10 +362,7 @@ def selection_insert_bulk(recording_id):
             else:
                 success = False
                 raise WarningException("Bad file in request")
-        except Exception as e:
-            success = False
-            handle_exception(session,e)
-        except SQLAlchemyError as e:
+        except (Exception,SQLAlchemyError) as e:
             success = False
             handle_exception(session,e)
         finally:
@@ -388,8 +389,13 @@ def selection_view(selection_id):
 
     with Session() as session:
         selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id})[0]
+        
+
+        
         selection_history = database_handler.create_all_time_request(session, Selection, filters={"id":selection_id}, order_by="row_start")
         # Create a dictionary of all contour stats so they can be easily inserted into a table in the client side
+        
+
         selection_dict = {
             'freq_max': selection.freq_max,
             'freq_min': selection.freq_min,

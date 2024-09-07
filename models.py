@@ -116,7 +116,7 @@ class Encounter(db.Model):
         db.UniqueConstraint('encounter_name', 'location', 'project'),
     )
     
-    def get_unique_name(self, deimiter='-'):
+    def get_unique_name(self, delimiter='-'):
         """
         Generate a unique name using encounter_name, location and project which are defined in
         the schema as a unique constraint. The name is of the format:
@@ -126,7 +126,7 @@ class Encounter(db.Model):
         :param delimiter: the delimiter used to separate unique variables
         :type delimiter: str
         """
-        return f"Encounter {self.encounter_name}{deimiter}{self.location}{deimiter}{self.project} "
+        return f"{self.encounter_name}{delimiter}{self.location}{delimiter}{self.project}"
 
     def get_number_of_recordings(self):
         """
@@ -515,8 +515,8 @@ class Recording(db.Model):
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
-    def get_unique_name(self, separator):
-        return f"{self.encounter.get_unique_name(separator)}, Recording {self.start_time}"
+    def get_unique_name(self, delimiter="-"):
+        return f"{self.encounter.get_unique_name(delimiter)}: recording {self.start_time}"
 
     def is_complete(self):
         return True if self.status == 'Reviewed' else False
@@ -887,8 +887,8 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
-    def get_unique_name(self, separator):
-        return f"{self.recording.get_unique_name(separator)}, Selection {self.selection_number}"
+    def get_unique_name(self, delimiter="-"):
+        return f"{self.recording.get_unique_name(delimiter)}: selection {self.selection_number}"
 
     def calculate_sampling_rate(self):
         if self.selection_file:
@@ -946,33 +946,33 @@ class Selection(db.Model):
         self.calculate_sampling_rate()
         self.selection_file = selection_file
 
-    def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None):
+    def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None, update_permissions=False):
         import librosa
         import matplotlib.pyplot as plt
         import numpy as np
         import os
         from contour_statistics import ContourFile
         warning = ""
+        
         # Set default FFT and hop sizes if not provided
         if fft_size is None:
             n_fft = self.default_fft_size if self.default_fft_size else 2048
             if not self.default_fft_size:
                 self.default_fft_size = n_fft
-                session.commit()
         else:
             self.default_fft_size = fft_size
-            session.commit()
             n_fft = fft_size
 
         if hop_size is None:
             hop_length = self.default_hop_size if self.default_hop_size else 512
             if not self.default_hop_size:
                 self.default_hop_size = hop_length
-                session.commit()
         else:
             self.default_hop_size = hop_size
-            session.commit()
             hop_length = hop_size
+        
+        if update_permissions:
+            session.commit()
 
         # Load the audio file
         with open(self.selection_file.get_full_absolute_path(), 'rb') as selection_file:
@@ -995,8 +995,10 @@ class Selection(db.Model):
         spectogram_axs.set_ylabel('Frequency (hz)', fontsize=20)
         spectogram_axs.tick_params(axis='both', labelsize=14)
 
+        print("Contour file 2", self.contour_file, self.contour_file_id)
+
         # Plot the contour if it exists
-        if self.contour_file:
+        if self.contour_file_id:
             contour_file_obj = ContourFile(self.contour_file.get_full_absolute_path())
             contour_rows = contour_file_obj.contour_rows
             min_time_ms = min([unit.time_milliseconds for unit in contour_rows])

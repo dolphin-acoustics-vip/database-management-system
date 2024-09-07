@@ -117,6 +117,7 @@ Variables required:
       <p>This encounter has no recordings. Please use the form above to add recordings.</p>
       {% endif %}
     </section>
+    {% if g.user.role_id in [1, 2] %}
 
     {% if not session['snapshot_date'] %}
     <section id="delete-encounter"></section>
@@ -129,6 +130,7 @@ Variables required:
         delete-info="{{encounter.get_unique_name('-')}}">Delete Encounter</button>
     </form>
     </section>
+    {% endif %}
     {% endif %}
   </div>
 
