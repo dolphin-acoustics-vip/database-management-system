@@ -124,7 +124,6 @@ def handle_sqlalchemy_exception(session, sqlAlchemy_exception, prefix="") -> Non
     elif isinstance(sqlAlchemy_exception, WarningException):
         error_string += str(sqlAlchemy_exception)
         flash(error_string, category='error')
-        print("FLASH WARNING EXCEPTION", error_string)
     elif isinstance(sqlAlchemy_exception, CriticalException):
         error_string += str(sqlAlchemy_exception)
         raise CriticalException(error_string)

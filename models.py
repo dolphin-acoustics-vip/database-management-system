@@ -13,8 +13,7 @@ from sqlalchemy.sql import func
 from sqlalchemy import event
 
 # Local application imports
-import database_handler
-import exception_handler
+import database_handler, exception_handler, utils
 from database_handler import db, get_file_space_path, get_trash_path
 from logger import logger
 
@@ -65,6 +64,8 @@ def parse_string_notempty(string:str, field:str) -> str:
 
     :return: the parsed string stripped of its whitespace
     """
+    if type(string) != str:
+        raise exception_handler.WarningException(f'{field} must be a string.')
     if string == None or string.strip() == "":
         raise exception_handler.WarningException(f'{field} cannot be blank.')
     else:
@@ -98,8 +99,8 @@ class Encounter(db.Model):
     location = db.Column(db.String(100), nullable=False)
     species_id = db.Column(db.String(36), db.ForeignKey('species.id'), nullable=False)
     project = db.Column(db.String(100), nullable=False)
-    latitude = db.Column(db.String(20))
-    longitude = db.Column(db.String(20))
+    latitude = db.Column(db.Double)
+    longitude = db.Column(db.Double)
     data_source_id = db.Column(db.String(36), db.ForeignKey('data_source.id'), nullable=False)
     recording_platform_id = db.Column(db.String(36), db.ForeignKey('recording_platform.id'), nullable=False)
     notes = db.Column(db.String(1000))
@@ -170,13 +171,13 @@ class Encounter(db.Model):
         return '' if self.latitude is None else self.latitude
 
     def set_latitude(self, value):
-        self.latitude = None if value.strip() == '' else value.strip()
+        self.latitude = utils.validate_latitude(value)
     
-    def get_longitude(self):
-        return '' if self.longitude is None else self.longitude
-
     def set_longitude(self, value):
-        self.longitude = None if value.strip() == '' else value.strip()
+        self.longitude = utils.validate_longitude(value)
+
+    def get_longitude(self, value):
+        return '' if self.longitude is None else self.longitude
     
     def get_encounter_name(self):
         return '' if self.encounter_name is None else self.encounter_name
@@ -202,45 +203,25 @@ class Encounter(db.Model):
     def set_notes(self, value):
         self.notes = value.strip()
 
-    def set_species_id(self, session, species_id):
-        species = session.query(Species).filter(Species.id == species_id).first()
-        if species:
-            self.species = species
-        else:
-            raise exception_handler.WarningException('Invalid species.')
+    def set_species_id(self, species_id: str):
+        self.species_id = utils.validate_id(species_id)
     
     def set_data_source_id(self, session, data_source_id):
-        data_source = session.query(DataSource).filter(DataSource.id == data_source_id).first()
-        if data_source:
-            self.data_source = data_source
-        else:
-            self.data_source = None
-    
-    def set_recording_platform_id(self, session, recording_platform_id):
-        recording_platform = session.query(RecordingPlatform).filter(RecordingPlatform.id == recording_platform_id).first()
-        if recording_platform:
-            self.recording_platform = recording_platform
-        else:
-            self.recording_platform = None
+        data_source_id = utils.validate_id(data_source_id)
+        self.data_source_id = data_source_id
 
-    def check_valid_timezone(self, value):
-        if value is not None:
-            try:
-                value = int(value)
-            except ValueError:
-                raise exception_handler.WarningException("Timezone must be an integer.")
-        if value is not None and (value < -720 or value > 840):
-            raise exception_handler.WarningException("Timezone must be between GMT-12 and GMT+14 (inclusive).")
-        return value
+    def set_recording_platform_id(self, session, recording_platform_id):
+        recording_platform_id = utils.validate_id(recording_platform_id)
+        self.recording_platform_id = recording_platform_id
 
     def set_file_timezone(self, value):
-        self.file_timezone = self.check_valid_timezone(value)
+        self.file_timezone = utils.validate_timezone(value)
     
     def get_file_timezone(self):
         return self.file_timezone
     
     def set_local_timezone(self, value):
-        self.local_timezone = self.check_valid_timezone(value)
+        self.local_timezone = utils.validate_timezone(value)
     
     def get_local_timezone(self):
         return self.local_timezone

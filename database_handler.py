@@ -103,11 +103,17 @@ def init_db(app: Flask, run_script: str=None):
             for obj in session.dirty.union(session.new):
                 if type(obj) != models.File:
                     if hasattr(obj, 'updated_by_id'):
-                        obj.updated_by_id = current_user.id
+                        try:
+                            obj.updated_by_id = current_user.id
+                        except:
+                            pass
                 else:
                     # only insert user data in new File objects
                     if obj in session.new:
-                        obj.updated_by_id = current_user.id
+                        try:
+                            obj.updated_by_id = current_user.id
+                        except:
+                            pass
 
         @sqlalchemy.event.listens_for(session_instance, 'before_commit')
         def before_commit(session: sessionmaker):
