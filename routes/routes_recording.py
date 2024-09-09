@@ -98,7 +98,7 @@ def recording_selection_table_add(encounter_id,recording_id):
                 session.add(new_file)
                 recording.selection_table_file = new_file 
                 # Validate the selection table - if invalid then delete the selection table file
-                recording.validate_selection_table(session)
+                recording.load_and_validate_selection_table()
                 recording.update_selection_traced_status(session)
                 session.commit()
             else:

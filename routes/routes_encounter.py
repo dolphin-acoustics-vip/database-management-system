@@ -50,7 +50,7 @@ def encounter_insert():
     Inserts a new encounter into the database based on the provided form data.
     """
     with Session() as session:
-        encounter_form_data = utils.get_form_data({
+        encounter_form_data = utils.get_form_data(request, {
             'encounter_name': str,
             'location': str,
             'species': str,
@@ -83,7 +83,7 @@ def encounter_insert():
             new_encounter.set_location(location)
             new_encounter.set_project(project)
             new_encounter.set_notes(notes)
-            new_encounter.set_species_id(session, species_id)
+            new_encounter.set_species_id(species_id)
             new_encounter.set_latitude(latitude)
             new_encounter.set_longitude(longitude)
             new_encounter.set_data_source_id(session, data_source_id)
@@ -149,7 +149,7 @@ def encounter_update(encounter_id):
             encounter = session.query(Encounter).with_for_update().join(Species).filter(Encounter.id == encounter_id).first()
             encounter.set_encounter_name(request.form['encounter_name'])
             encounter.set_location(request.form['location'])
-            encounter.set_species_id(session, request.form['species'])
+            encounter.set_species_id(request.form['species'])
             encounter.set_project(request.form['project'])
             encounter.set_latitude(request.form['latitude-start'])
             encounter.set_longitude(request.form['longitude-start'])

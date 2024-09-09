@@ -235,10 +235,6 @@ The `delete()` method in `Encounter`, `Recording`, and `Selection` are responsib
 > ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
 
 ## Testing
-Testing is found in the [testing](/testing) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework, and can be run using commands such as `pytest testing/test.py`.
+Testing is found in the [testing](/testing) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework. Tests can be run with `python3 -m pytest tests` from the root directory.
 
-The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests. 
-
-Furthermore, the test environment uses a local Maria DB installation to run the program. The following system variables must be set for the testing environment to work as required:
-
-The following are system variables that must be set:
+The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests.

@@ -167,63 +167,72 @@ class Encounter(db.Model):
                 recording.delete_children(keep_file_reference=True)
                 session.delete(recording)
 
-    def get_latitude(self):
+    def get_latitude(self) -> float:
+        return self.latitude
+
+    def get_latitude_string(self) -> str:
         return '' if self.latitude is None else self.latitude
 
-    def set_latitude(self, value):
-        self.latitude = utils.validate_latitude(value)
+    def set_latitude(self, value: float):
+        self.latitude = utils.validate_latitude(value, allow_empty=True)
     
-    def set_longitude(self, value):
-        self.longitude = utils.validate_longitude(value)
+    def set_longitude(self, value: float):
+        self.longitude = utils.validate_longitude(value, allow_empty=True)
 
-    def get_longitude(self, value):
-        return '' if self.longitude is None else self.longitude
+    def get_longitude(self) -> float:
+        return self.longitude
     
-    def get_encounter_name(self):
+    def get_longitude_string(self) -> str:
+        return '' if self.longitude is None else str(self.longitude)
+    
+    def get_encounter_name(self) -> str:
         return '' if self.encounter_name is None else self.encounter_name
 
-    def set_encounter_name(self, value):
+    def set_encounter_name(self, value: str):
         self.encounter_name = parse_string_notempty(value, 'Encounter name')
 
-    def get_location(self):
+    def get_location(self) -> str:
         return '' if self.location is None else self.location
 
-    def set_location(self, value):
+    def set_location(self, value: str):
         self.location = parse_string_notempty(value, 'Location')
 
-    def get_project(self):
+    def get_project(self) -> str:
         return '' if self.project is None else self.project
 
-    def set_project(self, value):
+    def set_project(self, value: str):
         self.project = parse_string_notempty(value, 'Project')
 
-    def get_notes(self):
+    def get_notes(self) -> str:
         return '' if self.notes is None else self.notes
 
-    def set_notes(self, value):
+    def set_notes(self, value: str):
         self.notes = value.strip()
 
+    def get_species(self):
+        return self.species
+
     def set_species_id(self, species_id: str):
-        self.species_id = utils.validate_id(species_id)
+        self.species_id = utils.validate_id(species_id, field="Species", allow_empty=False)
     
     def set_data_source_id(self, session, data_source_id):
-        data_source_id = utils.validate_id(data_source_id)
+        data_source_id = utils.validate_id(data_source_id, field="Data Source", allow_empty=True)
         self.data_source_id = data_source_id
 
     def set_recording_platform_id(self, session, recording_platform_id):
-        recording_platform_id = utils.validate_id(recording_platform_id)
+        recording_platform_id = utils.validate_id(recording_platform_id, field="Recording Platform", allow_empty=True)
         self.recording_platform_id = recording_platform_id
 
-    def set_file_timezone(self, value):
+    def set_file_timezone(self, value: int | str):
         self.file_timezone = utils.validate_timezone(value)
     
-    def get_file_timezone(self):
+    def get_file_timezone(self) -> int:
         return self.file_timezone
     
-    def set_local_timezone(self, value):
+    def set_local_timezone(self, value: int | str):
         self.local_timezone = utils.validate_timezone(value)
     
-    def get_local_timezone(self):
+    def get_local_timezone(self) -> int:
         return self.local_timezone
 
 
@@ -570,60 +579,53 @@ class Recording(db.Model):
                 selection.update_call()
             session.commit()
         
-    def load_selection_table_data(self,custom_file=None):
+    
+
+    def load_and_validate_selection_table(self, custom_file:str=None):
+        """
+        Parse a selection table file, automatically creating a Selection object for each row
+        with data from the selection table file. If the Selection object already exists then
+        simply insert the selection table data in the existing datastructure.
+
+        :raises exception_handler.WarningException: if there is a formatting issue with the
+        selection table or it does not exist.
+
+        :param custom_file: the path a seleciton file to be parsed (default is None causing
+        the method to access the path of the object's selection table file)
+        """
+        with database_handler.get_session() as session:
+            try:
+                st_df = pd.DataFrame()
+                if custom_file is not None: st_df = utils.extract_to_dataframe(path=custom_file)
+                else: st_df = utils.extract_to_dataframe(path=self.selection_table_file.get_full_absolute_path())
+                self.unpack_selection_table(session, st_df)
+                
+                session.commit()
+            
+            except ValueError as e:
+                raise exception_handler.WarningException("The given selection table is invalid: " + str(e))
+            except FileNotFoundError as e:
+                raise exception_handler.WarningException("Unable to extract data from selection table due to file system error. Please try again later.")
+
+            
+
+    def unpack_selection_table(self, session, st_df):
+        if st_df.empty: 
+            raise exception_handler.WarningException("The selection table provided is empty")
         
-        if self.selection_table_file is not None or custom_file is not None:
-            if custom_file:
-                file_path=custom_file
-            else:
-                file_path = self.selection_table_file.get_full_absolute_path()
-            if file_path is None or file_path == "":
-                return pd.DataFrame()
-            # Read the file into a pandas DataFrame
-            file_extension = os.path.splitext(file_path)[1].lower()
-            if file_extension == '.csv':
-                # Read the CSV file into a pandas DataFrame
-                df = pd.read_csv(file_path)
-            elif file_extension == '.txt':
-                # Read the text file into a pandas DataFrame
-                df = pd.read_csv(file_path, sep='\t')
-            elif file_extension == '.xlsx' or file_extension == '.xls':
-                # Read the Excel file into a pandas DataFrame
-                df = pd.read_excel(file_path)
-            else:
-                raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file.")
-
-
-            return df
-
-        return pd.DataFrame()
-
-    def validate_selection_table(self, session, custom_file=None):
-        try:
-            st_df = self.load_selection_table_data(custom_file=custom_file)
-            if st_df.empty:
-                raise exception_handler.WarningException("The Selection Table provided is empty")
-            self.upload_selection_table_rows(session, st_df)
-        except Exception as e:
-            raise exception_handler.WarningException("The Selection Table provided is invalid: " + str(e))
-
-    def upload_selection_table_rows(self, session, st_df):
-
         if 'Selection' not in st_df.columns:
-            raise ValueError("The Selection Table must contain a 'Selection' column")
-        if 'Annotation' not in st_df.columns:
-            raise ValueError("The Selection Table must contain an 'Annotation' column")
-        selection_table_selection_numbers = st_df.Selection.to_list()
+            raise exception_handler.WarningException("Missing required column: 'Selection'")
 
+        selection_table_selection_numbers = st_df.Selection.to_list()
+        
         for selection_number in selection_table_selection_numbers:
             selection = session.query(Selection).filter_by(recording_id=self.id, selection_number=selection_number).first()
             if selection is None:
                 new_selection = Selection(recording_id=self.id, selection_number=selection_number)
                 session.add(new_selection)
-                new_selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
+                new_selection.upload_selection_table_data(st_df.loc[st_df['Selection'] == selection_number, :])
             else:
-                selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
-        session.commit()
+                selection.upload_selection_table_data(st_df.loc[st_df['Selection'] == selection_number, :])
     
 
     def find_missing_selections(self, session, st_df):
@@ -688,47 +690,21 @@ class Recording(db.Model):
         return f"Sel-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     def get_start_time(self):
         return self.start_time
-    
-    def get_seconds(self):
-        return self.start_time.second
 
+    def set_start_time(self, datetime_object: datetime | str):
+        self.start_time = utils.validate_datetime(datetime_object)
 
-    def set_start_time(self, datetime_object):
-        try:
-            datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
-        except ValueError:
-            try:
-                datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M')  # Try without milliseconds
-            except ValueError:
-                raise exception_handler.WarningException("Invalid datetime format. Start time must be of the format yyyy-mm-dd dd:mm:ss.")
-
-        self.start_time = datetime_object
-    
     def match_start_time(self, match_datetime):
         return self.start_time == match_datetime
 
-    def get_start_time_string(self):
-        return self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
-
-    def get_start_time(self):
-        return self.start_time
-    
-    def set_encounter_id(self, session, encounter_id):
-        encounter = session.query(Encounter).filter(Encounter.id == encounter_id).first()
-        if encounter:
-            self.encounter = encounter
+    def get_start_time_string(self, long_format=False):
+        if long_format:
+            return self.start_time.strftime('%A, %B %d, %Y at %H:%M:%S')
         else:
-            raise exception_handler.CriticalException('Unable to make link to encounter.')
+            return self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
 
-    def get_duration(self):
-        return self.duration
-
-
-
-    def set_duration(self,value):
-        if value is not None and not isinstance(value, int):
-            raise ValueError("Duration must be an integer")
-        self.duration = value
+    def set_encounter_id(self, session, encounter_id):
+        encounter_id = utils.validate_id(encounter_id, field="Encounter", allow_empty=False)
     
     def update_selection_traced_status(self,session):
         selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
@@ -1120,22 +1096,25 @@ class Selection(db.Model):
         self.inflection_duration = None
         self.step_duration = None
 
-    def upload_selection_table_data(self, session, st_df):
-        try:
-            # Find the index of the 'Selection' column
-            selection_index = st_df.columns.get_loc('Selection')
-        except ValueError:
-            raise ValueError("Missing required column: 'Selection'")
+    def upload_selection_table_data(self, st_df):
         
-        # Find the index of the 'Annotation' column
+        if 'Selection' not in st_df.columns:
+            raise exception_handler.WarningException("Missing required column: 'Selection'")
+        selection_index = st_df.columns.get_loc('Selection')
+        
+        if 'Annotation' not in st_df.columns:
+            raise exception_handler.WarningException("Missing required column: 'Annotation'")
         annotation_index = st_df.columns.get_loc('Annotation')
-        
+
+
         if pd.isna(selection_index) or pd.isna(annotation_index):
-            raise ValueError("Missing required columns: 'Selection' or 'Annotation'")
+            raise exception_handler.WarningException("Missing required columns: 'Selection' or 'Annotation'")
 
         # Get the values for the 'Selection' and 'Annotation' columns
         selection_number = st_df.iloc[0, selection_index]
         annotation = st_df.iloc[0, annotation_index]
+
+
         if isinstance(annotation, str):
             if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
                 self.annotation = annotation.upper()
@@ -1146,11 +1125,11 @@ class Selection(db.Model):
 
         # Check if the selection number matches the expected value
         if selection_number != self.selection_number:
-            raise ValueError("Invalid selection number")
+            raise exception_handler.WarningException("Invalid selection number")
 
         # Set the other fields based on the available columns
         self.view = st_df.iloc[0, st_df.columns.get_loc('View')] if 'View' in st_df.columns else ""
-        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')] if 'Channel' in st_df.columns else ""
+        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')] if 'Channel' in st_df.columns else 0
         self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')] if 'Begin Time (s)' in st_df.columns else 0
         self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')] if 'End Time (s)' in st_df.columns else 0
         self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')] if 'Low Freq (Hz)' in st_df.columns else 0
@@ -1159,8 +1138,6 @@ class Selection(db.Model):
         self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else 0
         self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else 0
 
-            
-        session.commit()
 
     def update_call(self):
         self.move_file()

@@ -81,24 +81,56 @@ def species(app, db_session):
         return species
 
 @pytest.fixture
-def encounters(app, species, db_session):
+def species_object(species):
+    return species[0]
+
+@pytest.fixture
+def species_object1(species):
+    return species[1]
+
+
+@pytest.fixture
+def encounters(app, species_object, db_session):
     with app.app_context():
         encounters = []
         for i in range(10):
-            encounter = models.Encounter()
-            encounter.set_encounter_name('Test Encounter {}'.format(i))
-            encounter.set_location('Test Location {}'.format(i))
-            encounter.set_project('Test Project {}'.format(i))
-            encounter.set_notes('Test Notes {}'.format(i))
-            encounter.set_species_id(species[0].id)
-            encounter.set_latitude('37.7749')
-            encounter.set_longitude('-122.4194')
-            encounter.set_file_timezone('0')
-            encounter.set_local_timezone('0')            # ... set other encounter attributes ...
-            db.session.add(encounter)
+            encounter = models.Encounter(
+                encounter_name='Test Encounter {}'.format(i),
+                location='Test Location {}'.format(i),
+                species_id=species_object.id,
+                project='Test Project {}'.format(i),
+                file_timezone='0',
+                local_timezone='0'
+            )
+            db_session.add(encounter)
             encounters.append(encounter)
-        db.session.commit()
+        db_session.commit()
         return encounters
+
+@pytest.fixture
+def encounter_object(encounters):
+    return encounters[0]
+
+import datetime
+@pytest.fixture
+def recordings(app, encounter_object, db_session):
+    with app.app_context():
+        recordings = []
+        start_time_increment = datetime.datetime.now()
+        for i in range(10):
+            recording = models.Recording(
+                start_time=start_time_increment,
+                encounter_id=encounter_object.id
+            )
+            start_time_increment = start_time_increment + datetime.timedelta(minutes=1)
+            db_session.add(recording)
+            recordings.append(recording)
+        db_session.commit()
+        return recordings
+
+@pytest.fixture
+def recording_object(recordings):
+    return recordings[0]
 
 from unittest.mock import Mock
 
@@ -108,13 +140,7 @@ def mock_request():
     request.form = Mock()
     return request
 
-@pytest.fixture
-def species_object(species):
-    return species[0]
 
-@pytest.fixture
-def encounter_object(encounters):
-    return encounters[0]
 
 
 @pytest.fixture
