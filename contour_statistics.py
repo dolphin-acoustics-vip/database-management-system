@@ -186,8 +186,8 @@ class ContourFile:
 
         i = 0
         while i < num_points:
-            contour = self.contour_rows[i]
             
+            contour = self.contour_rows[i]
             # Calculating the quarter means of the duty cycle. For example, the 
             # quarter1mean is the mean of the first quarter of the duty cycles 
             # in the contour
@@ -216,7 +216,7 @@ class ContourFile:
             # However, two (or more) consecutive increases or decreases are counted as a 
             # single step, rather than two or more separate steps. Step sensitivity is used
             # to scale the difference in peak_frequency needed to count as a step.
-            if i > 1:
+            if i >= 1:
                 prev_contour = self.contour_rows[i-1]
                 if (prev_contour.step == self.Step.FLAT) and (contour.peak_frequency >= prev_contour.peak_frequency*(1+step_sensitivity/100)):
                     contour.step = self.Step.UP
@@ -458,4 +458,4 @@ class ContourFile:
         selection.freq_cofm = freq_cofm / 10000
 
 
-        selection.generate_ctr_file(session, self.contour_rows)
+        return self.contour_rows
