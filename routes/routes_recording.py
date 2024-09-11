@@ -472,8 +472,9 @@ import contour_statistics
 def recalculate_contour_statistics(session, selection):
     selection.reset_contour_stats()
     if selection and selection.contour_file is not None:
-        contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path())
-        contour_file_obj.calculate_statistics(session, selection)
+        contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path(),selection.selection_number)
+        contour_rows = contour_file_obj.calculate_statistics(session, selection)
+        selection.generate_ctr_file(session, contour_rows)
 
 @routes_recording.route('/selection/<selection_id>/recalculate-contour-statistics', methods=['GET'])
 @login_required

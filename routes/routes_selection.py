@@ -100,8 +100,10 @@ def insert_or_update_contour(session: sessionmaker, selection: Selection, contou
     selection.contour_file = new_file
     selection.update_traced_status()
     # Create all contour statistics
-    contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path())
-    contour_file_obj.calculate_statistics(session, selection)
+    contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path(), selection.selection_number)
+    contour_rows = contour_file_obj.calculate_statistics(session, selection)
+    selection.generate_ctr_file(session, contour_rows)
+
     return selection
 
 @routes_selection.route('/process_contour', methods=["GET"])
@@ -497,7 +499,7 @@ def write_contour_stats(selections, filename):
 
     for selection in selections:
         if selection.traced:
-            writer.writerow([selection.recording.encounter.encounter_name, selection.recording.encounter.location, selection.recording.encounter.project, selection.recording.get_start_time_string(), selection.recording.encounter.species.species_name, selection.sampling_rate,  selection.selection_number, selection.freq_max, selection.freq_min, selection.duration, selection.freq_begin, selection.freq_end, selection.freq_range, selection.dc_mean, selection.dc_standarddeviation, selection.freq_mean, selection.freq_standarddeviation, selection.freq_median, selection.freq_center, selection.freq_relbw, selection.freq_maxminratio, selection.freq_begendratio, selection.freq_quarter1, selection.freq_quarter2, selection.freq_quarter3, selection.freq_spread, selection.dc_quarter1mean, selection.dc_quarter2mean, selection.dc_quarter3mean, selection.dc_quarter4mean, selection.freq_cofm, selection.freq_stepup, selection.freq_stepdown, selection.freq_numsteps, selection.freq_slopemean, selection.freq_absslopemean, selection.freq_posslopemean, selection.freq_negslopemean, selection.freq_sloperatio, selection.freq_begsweep, selection.freq_begup, selection.freq_begdown, selection.freq_endsweep, selection.freq_endup, selection.freq_enddown, selection.num_sweepsupdown, selection.num_sweepsdownup, selection.num_sweepsupflat, selection.num_sweepsdownflat, selection.num_sweepsflatup, selection.num_sweepsflatdown, selection.freq_sweepuppercent, selection.freq_sweepdownpercent, selection.freq_sweepflatpercent, selection.num_inflections, selection.inflection_maxdelta, selection.inflection_mindelta, selection.inflection_maxmindelta, selection.inflection_meandelta, selection.inflection_standarddeviationdelta, selection.inflection_mediandelta, selection.inflection_duration, selection.step_duration])
+            writer.writerow(selection.generate_contour_stats_array())
     
     output.seek(0)
     return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})

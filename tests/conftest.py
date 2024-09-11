@@ -132,6 +132,33 @@ def recordings(app, encounter_object, db_session):
 def recording_object(recordings):
     return recordings[0]
 
+
+@pytest.fixture
+def selections(app, recording_object, db_session):
+    with app.app_context():
+        selections = []
+        for i in range(10):
+            selection = models.Selection(
+                selection_number=i+1,
+                recording_id=recording_object.id
+            )
+            db_session.add(selection)
+            selections.append(selection)
+        db_session.commit()
+        return selections
+
+@pytest.fixture
+def selection_object(selections):
+    return selections[0]
+
+@pytest.fixture
+def selection_object1(selections):
+    return selections[1]
+
+@pytest.fixture
+def selection_object2(selections):
+    return selections[2]
+
 from unittest.mock import Mock
 
 @pytest.fixture

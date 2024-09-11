@@ -73,10 +73,10 @@ class ContourFile:
             self.sweep = value
 
 
-    def __init__(self, file_path=None):
-        if file_path: self.insert_from_file(file_path)
+    def __init__(self, file_path, sel_number):
+        if file_path: self.insert_from_file(file_path, sel_number)
 
-    def insert_from_file(self, file_path):   
+    def insert_from_file(self, file_path, sel_number):   
              
         extension = os.path.splitext(file_path)[-1].lower()
         if extension == '.csv':
@@ -102,7 +102,7 @@ class ContourFile:
             if column not in df.columns:
                 raise ValueError(f"Missing column: {column}")
             if df[column].dtype != dtype:
-                raise ValueError(f"Incorrect data type for column '{column}': expected {dtype}, got {df[column].dtype}")
+                raise ValueError(f"Incorrect data type for column '{column}' in the contour file for selection {sel_number}. This column requires {dtype}. This may be due to opening and saving the CSV in a spreadsheeting program.")
         self.contour_rows = []
         for index, row in df.iterrows():
             self.contour_rows.append(self.ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
