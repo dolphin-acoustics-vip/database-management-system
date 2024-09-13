@@ -956,7 +956,7 @@ class Selection(db.Model):
 
         # Plot the contour if it exists
         if self.contour_file_id:
-            contour_file_obj = ContourFile(self.contour_file.get_full_absolute_path())
+            contour_file_obj = ContourFile(self.contour_file.get_full_absolute_path(), self.selection_number)
             contour_rows = contour_file_obj.contour_rows
             min_time_ms = min([unit.time_milliseconds for unit in contour_rows])
             axs[1].plot([unit.time_milliseconds - min_time_ms for unit in contour_rows], [unit.peak_frequency for unit in contour_rows])

@@ -38,11 +38,11 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     if recording_id is not None:
         new_recording = session.query(Recording).filter_by(id=recording_id).first()
     else:
-        new_recording = Recording()
+        new_recording = Recording(encounter_id=encounter_id)
         session.add(new_recording)
 
     new_recording.set_start_time(request.form['time_start'])
-    new_recording.set_encounter_id(session, encounter_id)
+    #new_recording.set_encounter_id(session, encounter_id)
     
     session.flush()
 
@@ -101,6 +101,7 @@ def recording_selection_table_add(encounter_id,recording_id):
                 recording.load_and_validate_selection_table()
                 recording.update_selection_traced_status(session)
                 session.commit()
+                flash("Selection table uploaded successfully", "success")
             else:
                 raise WarningException("The form did not send a selection table file.")
         except (Exception, SQLAlchemyError) as e:

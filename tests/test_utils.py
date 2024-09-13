@@ -173,46 +173,46 @@ import pandas as pd
 empty_file_error_message = "File is empty".lower()
 
 def test_extract_to_dataframe_csv():
-    path = "tests/resources/dataframe-3-rows.csv"
+    path = "tests/resources/utils/dataframe-3-rows.csv"
     df = utils.extract_to_dataframe(path)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 3
 
 def test_extract_to_dataframe_csv_empty():
-    path = "tests/resources/dataframe-empty.csv"
+    path = "tests/resources/utils/dataframe-empty.csv"
     with pytest.raises(ValueError) as e:
         df = utils.extract_to_dataframe(path)
     assert str(e.value).lower() == empty_file_error_message
 
 
 def test_extract_to_dataframe_txt():
-    path = "tests/resources/dataframe-3-rows.txt"
+    path = "tests/resources/utils/dataframe-3-rows.txt"
     df = utils.extract_to_dataframe(path)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 3
 
 def test_extract_to_dataframe_txt_empty():
-    path = "tests/resources/dataframe-empty.txt"
+    path = "tests/resources/utils/dataframe-empty.txt"
     with pytest.raises(ValueError) as e:
         df = utils.extract_to_dataframe(path)
     assert str(e.value).lower() == empty_file_error_message    
 
 def test_extract_to_dataframe_xlsx_empty():
-    path = "tests/resources/dataframe-empty.xlsx"
+    path = "tests/resources/utils/dataframe-empty.xlsx"
     with pytest.raises(ValueError) as e:
         df = utils.extract_to_dataframe(path)
     assert str(e.value).lower() == empty_file_error_message
     
 
 def test_extract_to_dataframe_xlsx():
-    path = "tests/resources/dataframe-3-rows.xlsx"
+    path = "tests/resources/utils/dataframe-3-rows.xlsx"
     df = utils.extract_to_dataframe(path)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 3
 
 
 def test_extract_to_dataframe_nonexistent_file():
-    path = "tests/resources/nonexistent-file.txt"
+    path = "tests/resources/utils/nonexistent-file.txt"
     with pytest.raises(FileNotFoundError) as e:
         df = utils.extract_to_dataframe(path)
 
