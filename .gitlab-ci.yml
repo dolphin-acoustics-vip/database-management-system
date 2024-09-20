@@ -32,3 +32,5 @@ deploy-test:
     - !reference [.ssh_with_passphrase, before_script]
   script:
     - !reference [.deploy, script]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
