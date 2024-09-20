@@ -2,7 +2,11 @@
 /webapp/
 /trash/
 /venv/
+/calculations/rocca/test_data/*
 /filespace/
 /routes/__pycache__/
 __pycache__/
 google_api_key.txt
+database-management-system.code-workspace
+*.log
+file_space_path.txt

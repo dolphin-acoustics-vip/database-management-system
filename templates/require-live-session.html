@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!DOCTYPE html>
+    <html>
+    {% include 'partials/header.html' %}
+    
+    <head>
+        <title>Error 404</title>
+        <link rel="stylesheet" href="../../../static/css/hero-section.css">
+        <link rel="stylesheet" href="../../../static/css/general-style.css">
+    </head>
+<body>
+    <div class="outer-div">
+    <h1>Unable to continue</h1>
+    <p>You are unable to complete this action in archive mode.</p>
+
+    <a href="{{ referrer_url }}" class="back-button">Go back</a>
+    <script>
+        const backButton = document.querySelector('.back-button');
+        backButton.addEventListener('click', function() {
+            const sessionData = {{ session | tojson }};
+            const url = new URL(referrer_url);
+            Object.keys(sessionData).forEach(key => {
+                url.searchParams.append(key, sessionData[key]);
+            });
+            window.location.href = url.toString();
+            return false;
+        });
+    </script>
+
+{% if original_url %}
+    <form action="{{ url_for('general.reset_snapshot_in_session_with_link') }}" method="post" style="padding-top: 10px">
+        <input type="hidden" name="redirect_link" value="{{ original_url }}">
+        <a href="#" onclick="this.closest('form').submit();">Exit archive and continue</a>
+    </form>
+{% endif %}
+
+</div>
+</body>
+</html>

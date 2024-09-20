@@ -1,34 +1,45 @@
-<!-- error.html -->
 <!DOCTYPE html>
 <html lang="en">
+<!DOCTYPE html>
+<html>
 {% include 'partials/header.html' %}
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQL Error</title>
-    <link rel="stylesheet" href="../static/css/hero-section.css">
-    <link rel="stylesheet" href="../static/css/general-style.css">
-    <style>
-        .error-body {
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 50px;
-        }
-        .error-h1 {
-            color: #dc3545;
-        }
-        .error-p {
-            color: #6c757d;
-        }
-    </style>
+    <title>Error 404</title>
+    <link rel="stylesheet" href="../../../static/css/hero-section.css">
+    <link rel="stylesheet" href="../../../static/css/general-style.css">
 </head>
+
 <body>
     <div class="outer-div">
-    <h1 class="error-h1">Error</h1>
-    <p class="error-p">Error code: {{ error_code }}</p>
-    <p class="error-p">Error message: {{ error_message }}</p>
-    <a href='{{ goback_link }}'>{{ goback_message }}</a>
-</div>
+
+        <main>
+            <section>
+                <h2>Oops! A piece of data is missing.</h2>
+                {% if error %}
+                <div class="extra-info">
+                    <p>{{ error }}</p>
+                </div>
+                {% endif %}
+                {% if session['snapshot_date'] %}
+                <div class="extra-info">
+                    <label>This page may not exist in the archival view {{session['snapshot_date']}}</label>
+                    <form action="{{ url_for('reset_snapshot_in_session_with_link') }}" method="post">
+                        <input type="hidden" name="redirect_link" value="{{ goback_link }}">
+                        <button class="gray" type="submit">Exit archival view</button>
+                    </form>
+                </div>
+                {% else %}
+
+
+                <p>{{session['snapshot_date']}}</p>
+                <a href="{{goback_link}}">{{goback_message}}</a>
+                {% endif %}
+
+            </section>
+        </main>
+    </div>
+
 </body>
+
 </html>

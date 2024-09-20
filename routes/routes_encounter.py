@@ -1,32 +1,34 @@
 # Third-party imports
-from flask import Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
+from flask import Blueprint, Response, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
 from sqlalchemy.orm import joinedload,sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
+from flask_login import login_user,login_required, current_user, login_manager
 
 # Local application imports
-from db import FILE_SPACE_PATH, Session, GOOGLE_API_KEY, parse_alchemy_error
+import database_handler
+from database_handler import get_file_space_path, Session, save_snapshot_date_to_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
 from models import *
+import exception_handler
+from logger import logger
 
 routes_encounter = Blueprint('encounter', __name__)
 
-
 @routes_encounter.route('/encounter', methods=['GET'])
+@login_required
 def encounter():
     with Session() as session:
         try:
-            encounter_list = session.query(Encounter).join(Species).all()
-            # If no encounters and no species exist, show an error
-            if len(encounter_list) < 1:
-                species_data = session.query(Species).all()
-                if len(species_data) < 1:
-                    return render_template('error.html', error_code=404, error_message='No encounter data found. You cannot add encounter data until there are species to add the encounter for.', goback_link='/home', goback_message="Home")
+            encounter_list = database_handler.create_system_time_request(session, Encounter, {}, order_by="row_start DESC")
             return render_template('encounter/encounter.html', encounter_list=encounter_list)
         except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
-            return redirect(url_for('home.home'))
+            exception_handler.handle_sqlalchemy_exception(session, e)
+            return redirect(url_for('general.home'))
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
+@login_required
+@exclude_role_3
+@exclude_role_4
+@require_live_session
 def encounter_new():
     """
     Route to show the new encounter page
@@ -38,53 +40,76 @@ def encounter_new():
         return render_template('encounter/encounter-new.html', species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
 @routes_encounter.route('/encounter/insert', methods=['POST'])
+@login_required
+@exclude_role_3
+@exclude_role_4
+@require_live_session
 def encounter_insert():
     """
     Inserts a new encounter into the database based on the provided form data.
     """
-    encounter_name = request.form['encounter_name']
-    location = request.form['location']
-    species_id = request.form['species']
-    latitude = request.form['latitude-start']
-    longitude = request.form['longitude-start']
-    data_source = request.form['data_source']
-    recording_platform = request.form['recording_platform']
-    origin = request.form['origin']
-    notes = request.form['notes']
     with Session() as session:
+        encounter_name = request.form['encounter_name']
+        location = request.form['location']
+        species_id = request.form['species']
+        latitude = request.form['latitude-start']
+        longitude = request.form['longitude-start']
+        data_source_id = request.form['data_source']
+        recording_platform_id = request.form['recording_platform']
+        origin = request.form['project']
+        notes = request.form['notes']
+        file_timezone = request.form['file-timezone']
+        local_timezone = request.form['local-timezone']
         try:
             new_encounter = Encounter()
             new_encounter.set_encounter_name(encounter_name)
             new_encounter.set_location(location)
-            new_encounter.set_origin(origin)
+            new_encounter.set_project(origin)
             new_encounter.set_notes(notes)
-            new_encounter.set_species_id(species_id)
+            new_encounter.set_species_id(session, species_id)
             new_encounter.set_latitude(latitude)
             new_encounter.set_longitude(longitude)
-            new_encounter.set_data_source_id(data_source)
-            new_encounter.set_recording_platform_id(recording_platform)
+            new_encounter.set_data_source_id(session, data_source_id)
+            new_encounter.set_recording_platform_id(session, recording_platform_id)
+            new_encounter.set_file_timezone(file_timezone)
+            new_encounter.set_local_timezone(local_timezone)
             session.add(new_encounter)
             session.commit()
             flash(f'Encounter added: {encounter_name}', 'success')
+            logger.info(f'Encounter added: {new_encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
-        except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
+        except (Exception,SQLAlchemyError) as e:
+            exception_handler.handle_exception(session, e, 'Error inserting encounter')
             return redirect(url_for('encounter.encounter'))
 
 
-@routes_encounter.route('/encounter/<uuid:encounter_id>/view', methods=['GET'])
+@routes_encounter.route('/encounter/<encounter_id>/view', methods=['GET'])
+@login_required
 def encounter_view(encounter_id):
     """
     Route to show the encounter view page.
     """
-    print(encounter_id)
     with Session() as session:
-        encounter = session.query(Encounter).options(joinedload(Encounter.species)).filter_by(id=encounter_id).first()
-        recordings = session.query(Recording).filter(Recording.encounter_id == encounter_id).all()
-        return render_template('encounter/encounter-view.html', encounter=encounter, recordings=recordings, server_side_api_key_variable=GOOGLE_API_KEY)
+        try:
+            encounter = database_handler.create_system_time_request(session, Encounter, {"id":encounter_id}, one_result=True)
+            if encounter is None:
+                raise exception_handler.NotFoundException("Encounter not found", details="This may be due to a local modification of the web page or an unknown error on the backend. Try reloading the page and if the error persists contact an administrator.")
+            species = database_handler.create_system_time_request(session, Species, {"id":encounter.species_id}, one_result=True)
+            encounter.species=species
+            recordings = database_handler.create_system_time_request(session, Recording, {"encounter_id":encounter_id})
+            encounter_history = database_handler.create_all_time_request(session, Encounter, {"id":encounter_id}, "row_start")
+            assignments = database_handler.create_system_time_request(session, Assignment, {"user_id":current_user.id})
+            assignment_recording_ids = [assignment.recording_id for assignment in assignments if assignment.recording_id]
+            assigned_recordings = [recording for recording in recordings if recording.id in assignment_recording_ids]
+            unassigned_recordings = [recording for recording in recordings if recording.id not in assignment_recording_ids]
+            return render_template('encounter/encounter-view.html', encounter=encounter, encounter_history=encounter_history, assignment_recording_ids=assignment_recording_ids,assigned_recordings=assigned_recordings,unassigned_recordings=unassigned_recordings)
+        except (Exception,SQLAlchemyError) as e:
+            exception_handler.handle_sqlalchemy_exception(session, e, 'Error viewing encounter')
+            return redirect(url_for('encounter.encounter'))
 
-@routes_encounter.route('/encounter/<uuid:encounter_id>/edit', methods=['GET'])
+@routes_encounter.route('/encounter/<encounter_id>/edit', methods=['GET'])
+@login_required
+@require_live_session
 def encounter_edit(encounter_id):
     """
     Route to show the encounter edit page.
@@ -96,39 +121,53 @@ def encounter_edit(encounter_id):
         recording_platforms = session.query(RecordingPlatform).all()
         return render_template('encounter/encounter-edit.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
 
-@routes_encounter.route('/encounter/<uuid:encounter_id>/update', methods=['POST'])
+
+@routes_encounter.route('/encounter/<encounter_id>/update', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_update(encounter_id):
     with Session() as session:
         try :
-            session = Session()
-            encounter = session.query(Encounter).join(Species).filter(Encounter.id == encounter_id).first()
+            encounter = session.query(Encounter).with_for_update().join(Species).filter(Encounter.id == encounter_id).first()
             encounter.set_encounter_name(request.form['encounter_name'])
             encounter.set_location(request.form['location'])
-            encounter.set_species_id(request.form['species'])
-            encounter.set_origin(request.form['origin'])
+            encounter.set_species_id(session, request.form['species'])
+            encounter.set_project(request.form['project'])
             encounter.set_latitude(request.form['latitude-start'])
             encounter.set_longitude(request.form['longitude-start'])
-            encounter.set_data_source_id(request.form['data_source'])
-            encounter.set_recording_platform_id(request.form['recording_platform'])
+            encounter.set_data_source_id(session, request.form['data_source'])
+            encounter.set_recording_platform_id(session, request.form['recording_platform'])
             encounter.set_notes(request.form['notes'])
-            encounter.update_call(session)
+            encounter.set_file_timezone(request.form['file-timezone'])
+            encounter.set_local_timezone(request.form['local-timezone'])
             session.commit()
+            encounter.update_call()
             flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
+            logger.info(f'Encounter updated: {encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
-        except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
+        except (SQLAlchemyError,Exception) as e:
+            exception_handler.handle_exception(session, e, prefix="Error updating encounter")
             return redirect(url_for('encounter.encounter'))
+
         
-@routes_encounter.route('/encounter/<uuid:encounter_id>/delete', methods=['POST'])
+
+@routes_encounter.route('/encounter/<encounter_id>/delete', methods=['POST'])
+@login_required
+@require_live_session
 def encounter_delete(encounter_id):
     with Session() as session:
-        encounter = session.query(Encounter).filter_by(id=encounter_id).first()
-        try:
-            encounter.delete(session)
-            session.commit()
-            flash(f'Encounter deleted: {encounter.get_encounter_name()}-{encounter.get_location()}.', 'success')
-        except SQLAlchemyError as e:
-            flash(parse_alchemy_error(e), 'error')
-            session.rollback()
-        return redirect(url_for('encounter.encounter'))
+        encounter = session.query(Encounter).with_for_update().filter_by(id=encounter_id).first()
+        recordings = session.query(Recording).filter_by(encounter_id=encounter_id).all()
+        if len(recordings) > 0:
+            flash('Encounter cannot be deleted. Please delete all recordings first.', 'error')
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+        else:
+            try:
+                encounter.delete_children()
+                session.delete(encounter)
+                session.commit()
+                logger.info(f'Encounter deleted: {encounter.id}')
+                flash(f'Encounter deleted: {encounter.get_unique_name("-")}.', 'success')
+            except (SQLAlchemyError,Exception) as e:
+                exception_handler.handle_exception(session, e, 'Error deleting encounter')
+            return redirect(url_for('encounter.encounter'))

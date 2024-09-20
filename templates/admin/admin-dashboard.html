@@ -3,25 +3,33 @@
 {% include 'partials/header.html' %}
 <head>
     <title>Administration Portal</title>
-    <link rel="stylesheet" href="../../static/css/hero-section.css">
-    <link rel="stylesheet" href="../../static/css/general-style.css">
 </head>
 <body>
     <div class="outer-div">
         <h1>Administration Portal</h1>
-        <a href="#data-sources">Data Sources</a> | <a href="#recording-platforms">Recording Platforms</a> | <a
-            href="#species">Species</a>
+        <h2>Archive Mode</h2>
+        <label>User the selector below to switch to archive mode.</label>
+        <form method="GET" action="{{ url_for('general.enter_snapshot_date_in_session') }}">
+        <input type="datetime-local" class="small" id="archive-mode-date" name="snapshot_date">
+        <input type="hidden" name="redirect_link" value="{{ url_for('admin.admin_dashboard') }}">
+        <button class="blue small" style="margin-top: 0.5rem" onclick="switchToArchiveMode()">Switch</button>
+        </form>
+
+        <h2>User management</h2>
+        <a href="{{ url_for('admin.admin_user') }}"><button class="blue">Users</button></a>
+        
         <section id="data-sources">
             <h2>Data Sources</h2>
             <a href="{{ url_for('admin.admin_data_source_new') }}" class="add-new-button"
-                style="width:300px"><button>Add new data source</button></a><br>
+                style="width:300px"><button class="gray">Add new data source</button></a><br>
             <div style="margin-top: 10px; margin-bottom: 5px;">
                 <label for="sort-select">Filter (any column):</label>
             </div>
             <input style="margin-bottom: 10px; width:195px;" type="text" id="filter-data-source"
                 placeholder="No filter">
             {% if data_source_list %}
-            <table id="data-source-table">
+            <div class="table-responsive">
+            <table class="table-striped" id="data-source-table">
                 <tr>
                     <th>Name</th>
                     <th>Email</th>
@@ -31,14 +39,15 @@
                 <tr>
                     <td>{{ data_source.name }}</td>
                     <td>{{ data_source.email1 }}</td>
-                    <td>
-                        <a href="{{ url_for('admin.admin_data_source_view', data_source_id=data_source.id) }}">View</a>
-                        <a
+                    <td style="display: block;">
+                        <a class="button" href="{{ url_for('admin.admin_data_source_view', data_source_id=data_source.id) }}">View</a><br>
+                        <a class="button"
                             href="{{ url_for('admin.admin_data_source_delete', data_source_id=data_source.id) }}">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}
             </table>
+        </div>
             {% else %}
             <p>No data sources found. Please add new data sources using the button above.</p>
             {% endif %}
@@ -46,14 +55,15 @@
         <section id="recording-platforms">
             <h2>Recording Platforms</h2>
             <a href="{{ url_for('admin.admin_recording_platform_new') }}" class="add-new-button"
-                style="width:300px"><button>Add new recording platform</button></a><br>
+                style="width:300px"><button class="gray">Add new recording platform</button></a><br>
             <div style="margin-top: 10px; margin-bottom: 5px;">
                 <label for="sort-select">Filter (any column):</label>
             </div>
             <input style="margin-bottom: 10px; width:195px;" type="text" id="filter-recording-platform"
                 placeholder="No filter">
             {% if recording_platform_list %}
-            <table id="recording-platform-table">
+            <div class="table-responsive">
+                <table class="table-striped" id="recording-platform-table">
                 <tr>
                     <th>Name</th>
                     <th>Actions</th>
@@ -62,14 +72,15 @@
                 <tr>
                     <td>{{ recording_platform.name }}</td>
                     <td>
-                        <a
+                        <a class="button"
                             href="{{ url_for('admin.admin_recording_platform_view', recording_platform_id=recording_platform.id) }}">View</a>
-                        <a
+                        <br><a class="button"
                             href="{{ url_for('admin.admin_recording_platform_delete', recording_platform_id=recording_platform.id) }}">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}
             </table>
+            </div>
             {% else %}
             <p>No recording platforms found. Please add new recording platforms using the button above.</p>
             {% endif %}
@@ -77,7 +88,7 @@
         <section id="species">
             <h2>Species</h1>
                 <a href="{{ url_for('admin.admin_species_new') }}" class="add-new-button"
-                    style="width:300px"><button>Add New
+                    style="width:300px"><button class="gray">Add New
                         Species</button></a>
                 {% if species_list %}
                 <div style="margin-top: 10px;">
@@ -85,7 +96,8 @@
                 </div>
                 <input style="margin-bottom: 10px; width:195px;" type="text" id="filter-species"
                     placeholder="No filter">
-                <table id="species-table">
+                    <div class="table-responsive">
+                        <table class="table-striped" id="species-table">
                     <thead>
                         <tr>
                             <th>Scientific name</th>
@@ -104,13 +116,13 @@
                                 <form id="editForm" style="margin-bottom:5px;" method="get"
                                     action="{{ url_for('admin.admin_species_view', species_id=species.id) }}">
                                     <input type="hidden" name="_method" value="GET">
-                                    <button type="submit" style="width:100%"
+                                    <button class="link" type="submit" style="width:100%"
                                         data-species-id="{{ species.id }}">Edit</button>
                                 </form>
                                 <form id="deleteForm_{{ species.id }}" method="post"
                                     action="{{ url_for('admin.admin_species_delete', species_id=species.id) }}">
                                     <input type="hidden" name="_method" value="DELETE">
-                                    <button type="submit" style="width:100%" class="delete-link"
+                                    <button class="link" type="submit" style="width:100%" class="delete-link"
                                         data-species-id="{{ species.id }}">Delete</button>
                                 </form>
                             </td>
@@ -118,6 +130,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% else %}
                 <div class="no-species-message" , style="margin-top:15px;">
                     No species found. Please add new species using the button above.
