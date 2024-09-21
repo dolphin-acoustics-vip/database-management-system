@@ -252,6 +252,22 @@ class File(db.Model):
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
+
+    @classmethod
+    def has_record(cls, session, rel_path, deleted, file_path):
+        comparison_path = os.path.relpath(file_path, rel_path)
+        comparison_dir = os.path.dirname(comparison_path)
+        comparison_file = os.path.splitext(os.path.basename(comparison_path))[0]
+        comparison_ext = os.path.splitext(comparison_path)[1].replace('.', '')
+
+        return session.query(cls).filter(
+            cls.deleted == deleted,
+            cls.path == comparison_dir,
+            cls.filename == comparison_file,
+            cls.extension == comparison_ext
+        ).first() is not None
+
+
     def rollback(self, session):
         """
         If the current File object has not been committed to the database yet,
