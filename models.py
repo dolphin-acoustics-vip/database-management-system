@@ -453,7 +453,7 @@ class File(db.Model):
     def delete_file(self, session):
         os.path.remove(self.get_full_absolute_path())
 
-    def move_file(self, new_relative_file_path, move_to_trash=False):
+    def move_file(self, new_relative_file_path, move_to_trash=False, override_extension=None):
         """
         Move a file to a new location with the provided session.
 
@@ -469,7 +469,13 @@ class File(db.Model):
 
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
         current_relative_file_path = os.path.join(database_handler.get_file_space_path(), self.get_full_relative_path())
-        
+
+        if override_extension:
+            self.extension = override_extension
+            new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
+        else:
+            new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
+
         # make the directory of the new_relative_file_path_with_root
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
             os.makedirs(os.path.dirname(new_relative_file_path_with_root))
@@ -479,7 +485,6 @@ class File(db.Model):
         if new_relative_file_path_with_root != current_relative_file_path:
             self.path = os.path.dirname(new_relative_file_path)
             self.filename = os.path.basename(new_relative_file_path).split(".")[0]
-            self.extension = os.path.basename(new_relative_file_path).split(".")[-1]
             self.rename_loose_file(self.path, self.filename, self.extension)
             if os.path.exists(current_relative_file_path):
                 os.rename(current_relative_file_path, new_relative_file_path_with_root)
@@ -588,12 +593,12 @@ class Recording(db.Model):
         if self.recording_file is not None:
             with database_handler.get_session() as session:
                 recording_file = session.query(File).with_for_update().get(self.recording_file_id)
-                recording_file.move_file(self.generate_full_relative_path(extension="." + self.recording_file.extension))
+                recording_file.move_file(self.generate_full_relative_path())
                 session.commit()
         if self.selection_table_file is not None:
             with database_handler.get_session() as session:
                 selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
-                selection_table_file.move_file(self.generate_full_relative_path(extension="." +self.selection_table_file.extension))
+                selection_table_file.move_file(self.generate_full_relative_path())
                 session.commit()
         
         with database_handler.get_session() as session:
@@ -1177,17 +1182,17 @@ class Selection(db.Model):
         if self.selection_file is not None:
             with database_handler.get_session() as session:
                 selection_file = session.query(File).with_for_update().get(self.selection_file_id)
-                selection_file.move_file(os.path.join(self.generate_relative_path(),self.generate_filename())+"." +selection_file.extension)
+                selection_file.move_file(os.path.join(self.generate_relative_path(),self.generate_selection_filename()))
                 session.commit()
         if self.contour_file is not None:
             with database_handler.get_session() as session:
                 contour_file = session.query(File).with_for_update().get(self.contour_file_id)
-                contour_file.move_file(os.path.join(self.generate_relative_path(),self.generate_contour_filename())+"." +contour_file.extension)
+                contour_file.move_file(os.path.join(self.generate_relative_path(),self.generate_contour_filename()))
                 session.commit()
         if self.ctr_file is not None:
             with database_handler.get_session() as session:
                 ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
-                ctr_file.move_file(os.path.join(self.generate_relative_path(),self.generate_ctr_file_name())+"." +ctr_file.extension)
+                ctr_file.move_file(os.path.join(self.generate_relative_path(),self.generate_ctr_file_name()))
                 session.commit()
 
     def delete_children(self,keep_file_reference=True):        

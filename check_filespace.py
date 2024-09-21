@@ -2,26 +2,22 @@ import database_handler
 import models
 import os
 
-def get_orphaned_files(session):
+def get_orphaned_files(session, deleted):
     orphaned_files = []
     
-    # Get the path to the filespace
-    filespace_path = database_handler.get_file_space_path()
+    if deleted:
+        path = database_handler.get_trash_path()
+    else:
+        path = database_handler.get_file_space_path()
+
     
     # In your code
-    for root, dirs, files in os.walk(filespace_path):
+    for root, dirs, files in os.walk(path):
         for file in files:
             file_path = os.path.join(root, file)
-            if not models.File.has_record(session, filespace_path, False, file_path):
+            if not models.File.has_record(session, path, deleted, file_path):
                 orphaned_files.append(file_path)
-    
-    trash_path = database_handler.get_trash_path()
-    for root, dirs, files in os.walk(trash_path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            if not models.File.has_record(session, trash_path, False, file_path):
-                orphaned_files.append(file_path)
-    
+
     return orphaned_files
 
 def get_missing_files(session, deleted):
@@ -41,10 +37,10 @@ def get_missing_files(session, deleted):
 def check_filespace():
     with database_handler.get_session() as session:
         string = ""
-        orphaned_files = get_orphaned_files(session)
-
+        
+        orphaned_files = get_orphaned_files(session, deleted = False)
         if orphaned_files:
-            string += f"<h1>{len(orphaned_files)} File records found without corresponding files in the filespace.</h1>"
+            string += f"<h1>{len(orphaned_files)} Orphaned files (those which do not have representation in the metadata database).</h1>"
 
             string += "<ul>"
             for file in orphaned_files:
@@ -64,6 +60,19 @@ def check_filespace():
         else:
             string += "<h1>No missing files found.</h1>"
         
+
+
+        deleted_orphaned_files = get_orphaned_files(session, deleted = True)
+        if deleted_orphaned_files:
+            string += f"<h1>{len(deleted_orphaned_files)} Orphaned deleted files (those which do not have representation in the metadata database).</h1>"
+
+            string += "<ul>"
+            for file in deleted_orphaned_files:
+                string += f"<li>{file}</li>"
+            string += "</ul>"
+        else:
+            string += "<h1>No orphaned deleted files found.</h1>"
+
         missing_deleted_files = get_missing_files(session, True)
         if missing_deleted_files:
             string += "<h1>Deleted files missing in the filespace.</h1>"

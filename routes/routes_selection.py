@@ -43,7 +43,7 @@ def insert_or_update_selection(session: sessionmaker, selection_number: str, fil
     if selection_obj.selection_file_id is not None:
         raise WarningException(f"Selection file for {selection_obj.get_unique_name()} already exists.")
     selection_file = file
-    selection_filename = selection_obj.generate_filename()
+    selection_filename = selection_obj.generate_selection_filename()
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = File()
     new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename, get_file_space_path())
