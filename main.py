@@ -28,6 +28,7 @@ from routes.routes_recording import routes_recording
 from routes.routes_encounter import routes_encounter
 from routes.routes_datahub import routes_datahub
 from routes.routes_healthcentre import routes_healthcentre
+from routes.routes_filespace import routes_filespace
 
 # Local application imports
 from models import *
@@ -84,6 +85,7 @@ def create_app(config_class=None):
     app.register_blueprint(routes_auth)
     app.register_blueprint(routes_datahub)
     app.register_blueprint(routes_healthcentre)
+    app.register_blueprint(routes_filespace)
 
     try:
         logger.info(check_file_space())
