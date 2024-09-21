@@ -83,7 +83,7 @@
             <hr>
             {% if selection.selection_file %}
             <a class="button small"
-                href="{{url_for('general.download_file', relative_path=selection.selection_file.get_full_relative_path())}}">Download
+                href="{{url_for('selection.download_selection_file', selection_id = selection.id )}}">Download
                 Selection File</a>
             <a class="button small"
                 href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name(' - ') }}&redirect_link={{ request.referrer }}">See
@@ -93,7 +93,7 @@
             {% endif %}
             {% if selection.contour_file %}
             <a class="button small"
-                href="{{url_for('general.download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download
+                href="{{url_for('selection.download_contour_file', selection_id = selection.id )}}">Download
                 Contour File</a>
             <a class="button small"
                 href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See

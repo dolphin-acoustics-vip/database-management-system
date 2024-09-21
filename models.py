@@ -681,7 +681,7 @@ class Recording(db.Model):
         return os.path.join(self.encounter.generate_relative_path(), folder_name)
 
     def generate_recording_filename(self,extension=""):
-        return f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}{extension}"
+        return f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     
     def generate_full_relative_path(self,extension=""):
         return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
@@ -1197,13 +1197,14 @@ class Selection(db.Model):
     def generate_spectogram_filename(self):
         return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_spectrogram"
 
-    def generate_filename(self):
+    def generate_selection_filename(self):
         return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
-    
+
     def generate_contour_filename(self):
         return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
     
     def generate_relative_path(self):
+        
         return os.path.join(self.recording.generate_relative_path_for_selections())
 
     def generate_full_relative_path(self):

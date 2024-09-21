@@ -376,6 +376,24 @@ def selection_insert(recording_id):
             else:
                 return jsonify({'message': '', 'successCounter': counter}), 200
 
+@routes_selection.route('/selection/<selection_id>/download-ctr', methods=['GET'])
+def download_ctr_file(selection_id):
+    with database_handler.get_session() as session:
+        selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id}, one_result=True)
+        return utils.download_file(selection.ctr_file, selection.generate_ctr_filename)
+
+@routes_selection.route('/selection/<selection_id>/download-contour', methods=['GET'])
+def download_contour_file(selection_id):
+    with database_handler.get_session() as session:
+        selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id}, one_result=True)
+        return utils.download_file(selection.contour_file, selection.generate_contour_filename)
+
+@routes_selection.route('/selection/<selection_id>/download-selection', methods=['GET'])
+def download_selection_file(selection_id):
+    with database_handler.get_session() as session:
+        selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id}, one_result=True)
+        return utils.download_file(selection.selection_file, selection.generate_selection_filename)
+
 @routes_selection.route('/selection/<selection_id>/view', methods=['GET'])
 @login_required
 def selection_view(selection_id):

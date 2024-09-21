@@ -269,7 +269,7 @@
                             <td>
                                 {% if selection.selection_file %}
                                 <a class="button" style="float:left;"
-                                    href="{{ url_for('general.download_file', relative_path=selection.selection_file.get_full_relative_path()) }}">Download</a>
+                                    href="{{ url_for('selection.download_selection_file', selection_id = selection.id) }}">Download</a>
                                 {% else %}
                                 <section id="encounter-summary"> No selection file available</section>
                                 {% endif %}
@@ -289,7 +289,7 @@
                             <td>
                                 {% if selection.contour_file %}
                                 <a class="button"
-                                    href="{{ url_for('general.download_file', relative_path=selection.contour_file.get_full_relative_path()) }}">Download</a><br>
+                                    href="{{ url_for('selection.download_contour_file', selection_id = selection.id) }}">Download</a><br>
                                 {% endif %}
                                 {% if not session['snapshot_date'] %}
                                 {% if selection.contour_file %}

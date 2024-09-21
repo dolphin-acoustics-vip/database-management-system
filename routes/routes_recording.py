@@ -536,53 +536,7 @@ import tempfile
 import shutil
 from database_handler import get_tempdir
 
-def zip_and_download_files(file_paths, zip_filename):
-    """
-    Creates a zip file from the given list of file paths and returns
-    the file as a response object.
 
-    :param file_paths: A list of file paths to add to the zip file.
-    :type file_paths: list
-    :param zip_filename: The name of the zip file to create.
-    :type zip_filename: str
-    :return: A response object containing the zip file.
-    :rtype: flask.Response
-    """
-    with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
-        with zipfile.ZipFile(os.path.join(temp_dir, zip_filename), 'w') as zipf:
-            for file_path in file_paths:
-                zipf.write(file_path, os.path.basename(file_path))
-        return send_file(os.path.join(temp_dir, zip_filename), as_attachment=True)
-
-def download_files(file_paths, file_names, zip_filename):
-    """
-    Creates a zip file from the given list of file paths and returns
-    the file as a response object.
-
-    :param file_paths: A list of file paths to add to the zip file.
-    :type file_paths: list
-    :param file_names: A list of names to use for the files in the zip file.
-    :type file_names: list
-    :param zip_filename: The name of the zip file to create.
-    :type zip_filename: str
-    :return: A response object containing the zip file.
-    :rtype: flask.Response
-    """
-    with tempfile.TemporaryDirectory(dir=get_tempdir()) as temp_dir:
-        new_file_paths = []
-        for file_path, file_name in zip(file_paths, file_names):
-            if not file_name.endswith("."):
-                file_extension = os.path.splitext(file_path)[1]
-                new_file_name = f"{file_name}{file_extension}"
-            else:
-                new_file_name = file_name
-            new_file_path = os.path.join(temp_dir, new_file_name)
-            shutil.copy(file_path, new_file_path)
-            new_file_paths.append(new_file_path)
-            
-            
-        return zip_and_download_files(new_file_paths, zip_filename)
-    
 @routes_recording.route('/recording/<recording_id>/download-ctr-files', methods=['GET'])
 @login_required
 def download_ctr_files(recording_id):
@@ -593,7 +547,7 @@ def download_ctr_files(recording_id):
         file_names = [selection.generate_ctr_file_name() for selection in selections if selection.ctr_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_ctr_files.zip"
         file_paths = [ctr_file.get_full_absolute_path() for ctr_file in ctr_files]
-        response = download_files(file_paths, file_names, zip_filename)
+        response = utils.download_files(file_paths, file_names, zip_filename)
         
         return response
     
@@ -615,7 +569,7 @@ def download_selection_files(recording_id):
         file_names = [selection.generate_filename() for selection in selections if selection.selection_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_selection_files.zip"
         file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
-        response = download_files(file_paths, file_names, zip_filename)
+        response = utils.download_files(file_paths, file_names, zip_filename)
         return response
 
 @routes_recording.route('/recording/<recording_id>/download-contour-files', methods=['GET'])
@@ -635,7 +589,7 @@ def download_contour_files(recording_id):
         file_names = [selection.generate_contour_filename() for selection in selections if selection.contour_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_contour_files.zip"
         file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
-        response = download_files(file_paths, file_names, zip_filename)
+        response = utils.download_files(file_paths, file_names, zip_filename)
         return response
     
 @routes_recording.route('/recording/<recording_id>/download-recording-file', methods=['GET'])
@@ -643,10 +597,8 @@ def download_contour_files(recording_id):
 def download_recording_file(recording_id):
     with Session() as session:
         recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
-        file_name = recording.recording_file.get_full_absolute_path()
-        download_file_name = recording.generate_recording_filename()
+        return utils.download_file(recording.recording_file, recording.generate_recording_filename)
 
-        return send_file(file_name, as_attachment=True, download_name=download_file_name)
     
 @routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['GET'])
 @require_live_session

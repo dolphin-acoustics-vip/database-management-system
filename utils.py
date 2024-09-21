@@ -1,6 +1,72 @@
 import uuid
 import exception_handler
 import datetime
+import tempfile
+import shutil
+import zipfile
+from flask import send_file
+import database_handler
+
+
+
+def zip_and_download_files(file_paths, zip_filename):
+    """
+    Creates a zip file from the given list of file paths and returns
+    the file as a response object.
+
+    :param file_paths: A list of file paths to add to the zip file.
+    :type file_paths: list
+    :param zip_filename: The name of the zip file to create.
+    :type zip_filename: str
+    :return: A response object containing the zip file.
+    :rtype: flask.Response
+    """
+    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+        with zipfile.ZipFile(os.path.join(temp_dir, zip_filename), 'w') as zipf:
+            for file_path in file_paths:
+                zipf.write(file_path, os.path.basename(file_path))
+        return send_file(os.path.join(temp_dir, zip_filename), as_attachment=True)
+
+def download_files(file_paths, file_names, zip_filename):
+    """
+    Creates a zip file from the given list of file paths and returns
+    the file as a response object.
+
+    :param file_paths: A list of file paths to add to the zip file.
+    :type file_paths: list
+    :param file_names: A list of names to use for the files in the zip file.
+    :type file_names: list
+    :param zip_filename: The name of the zip file to create.
+    :type zip_filename: str
+    :return: A response object containing the zip file.
+    :rtype: flask.Response
+    """
+    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+        new_file_paths = []
+        for file_path, file_name in zip(file_paths, file_names):
+            if not file_name.endswith("."):
+                file_extension = os.path.splitext(file_path)[1]
+                new_file_name = f"{file_name}{file_extension}"
+            else:
+                new_file_name = file_name
+            new_file_path = os.path.join(temp_dir, new_file_name)
+            shutil.copy(file_path, new_file_path)
+            new_file_paths.append(new_file_path)
+            
+        return zip_and_download_files(new_file_paths, zip_filename)
+    
+def download_file(file_obj, file_name_generator):
+    """
+    Takes a file object and sends the file to the user. Before doing so,
+    uses the file_name_generator() method passed to rename the file during
+    export.
+    """
+    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+        file_path = os.path.join(temp_dir, file_name_generator())
+        if not file_path.endswith(file_obj.extension): file_path = f"{file_path}.{file_obj.extension}"
+        shutil.copy(file_obj.get_full_absolute_path(), file_path)
+        return send_file(file_path, as_attachment=True)
+
 
 def validate_datetime(value: datetime.datetime | str, field=None, allow_empty=False) -> datetime.datetime:
     """
