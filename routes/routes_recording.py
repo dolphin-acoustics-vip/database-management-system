@@ -307,11 +307,8 @@ def recording_update(recording_id):
         try:
             recording = session.query(Recording).with_for_update().filter_by(id=recording_id).first()
             recording_obj = insert_or_update_recording(session, request, recording.encounter_id, recording_id)
-            print("COMMIT", session.dirty)
             session.commit()
-            print("FINISH COMMIT")
             recording_obj.update_call()
-            flash(f'Edited recording: {recording_obj.get_unique_name()}', 'success')                
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(session,e)
@@ -566,7 +563,7 @@ def download_selection_files(recording_id):
         selections = database_handler.create_system_time_request(session, Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
         selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
-        file_names = [selection.generate_filename() for selection in selections if selection.selection_file is not None]
+        file_names = [selection.generate_selection_filename() for selection in selections if selection.selection_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_selection_files.zip"
         file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
         response = utils.download_files(file_paths, file_names, zip_filename)
