@@ -88,15 +88,19 @@ def init_db(app: Flask, run_script: str=None):
 
     global engine
     global session_instance
-    
+
+
     with app.app_context():
         engine = get_engine()
         session_instance = sessionmaker(bind=engine, autoflush=False)
         if run_script:
             with db.engine.connect() as conn:
                 with app.open_resource(run_script, mode='r') as f:
-                    sql_script = f.read()
-                    conn.execute(db.text(sql_script))
+                    try:
+                        sql_script = f.read()
+                        conn.execute(db.text(sql_script))
+                    except Exception as e:
+                        logger.warning("Attempting to run DDL script failed (this could be because the changed defined in the DDL script have already been applied): " + str(e))
 
         def add_user_data(session):
             import models

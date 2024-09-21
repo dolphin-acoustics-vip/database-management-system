@@ -246,6 +246,7 @@ class File(db.Model):
     uploaded_date = db.Column(db.DateTime(timezone=True))
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
+    deleted = db.Column(db.Boolean, default=False)
     original_filename = db.Column(db.String(255))
 
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
@@ -316,7 +317,11 @@ class File(db.Model):
         :return: the full absolute path of the filespace joined with the directory, 
         filename and extension of the file represented by the object
         """
-        return os.path.join(get_file_space_path(), self.get_full_relative_path())
+        if self.deleted:
+            root = database_handler.get_trash_path()
+        else:
+            root = database_handler.get_file_space_path()
+        return os.path.join(root, self.get_full_relative_path())
     
     # def get_absolute_directory(self):
     #     return os.path.join(get_file_space_path(), self.path)
@@ -441,7 +446,9 @@ class File(db.Model):
         - new_relative_file_path: The new relative file path to move the file to
         - return: False if the file already exists at the new location, None otherwise
         """
-        if move_to_trash: root_path = database_handler.get_trash_path()
+        if move_to_trash: 
+            root_path = database_handler.get_trash_path()
+            self.deleted = True
         else: root_path = database_handler.get_file_space_path()
 
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path

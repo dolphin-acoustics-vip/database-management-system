@@ -24,7 +24,7 @@
                 {% if session['snapshot_date'] %}
                 <div class="extra-info">
                     <label>This page may not exist in the archival view {{session['snapshot_date']}}</label>
-                    <form action="{{ url_for('reset_snapshot_in_session_with_link') }}" method="post">
+                    <form action="{{ url_for('general.reset_snapshot_in_session_with_link') }}" method="post">
                         <input type="hidden" name="redirect_link" value="{{ goback_link }}">
                         <button class="gray" type="submit">Exit archival view</button>
                     </form>

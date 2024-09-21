@@ -70,6 +70,8 @@ def create_app(config_class=None):
     create_database_script = ''
     if config_class == 'config.TestingConfig':
         create_database_script = 'create_database.sql'
+    else:
+        create_database_script = 'script_run.sql'
 
     db = init_db(app, run_script=create_database_script)
 
