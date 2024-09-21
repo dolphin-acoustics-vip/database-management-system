@@ -69,6 +69,8 @@ input[type="file"] {
 Classes for all button and anchors
 */
 
+
+
 button {
     cursor: pointer;
     padding: 0.4rem 0.4rem;
@@ -131,3 +133,5 @@ a.button.blue:hover, button.blue:hover {
     background-color: #005a8d;
     color: #fff; 
 }   
+
+

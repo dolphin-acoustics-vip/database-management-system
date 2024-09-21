@@ -88,15 +88,36 @@ def init_db(app: Flask, run_script: str=None):
 
     global engine
     global session_instance
-    
+
+
     with app.app_context():
         engine = get_engine()
         session_instance = sessionmaker(bind=engine, autoflush=False)
         if run_script:
             with db.engine.connect() as conn:
                 with app.open_resource(run_script, mode='r') as f:
-                    sql_script = f.read()
-                    conn.execute(db.text(sql_script))
+                    try:
+                        sql_script = f.read()
+                        conn.execute(db.text(sql_script))
+                    except Exception as e:
+                        logger.warning("Attempting to run DDL script failed (this could be because the changed defined in the DDL script have already been applied): " + str(e))
+
+        def add_user_data(session):
+            import models
+            for obj in session.dirty.union(session.new):
+                if type(obj) != models.File:
+                    if hasattr(obj, 'updated_by_id'):
+                        try:
+                            obj.updated_by_id = current_user.id
+                        except:
+                            pass
+                else:
+                    # only insert user data in new File objects
+                    if obj in session.new:
+                        try:
+                            obj.updated_by_id = current_user.id
+                        except:
+                            pass
 
         @sqlalchemy.event.listens_for(session_instance, 'before_commit')
         def before_commit(session: sessionmaker):
@@ -105,10 +126,11 @@ def init_db(app: Flask, run_script: str=None):
             commit. This impacts all tables being updated or inserted in the database that
             contain an attribute updated_by_id (foreign key reference to the user table).
             """
-            # session.dirty gives all modified (UPDATE) rows and session.new gives all new (INSERT) rows
-            for obj in session.dirty.union(session.new):
-                if hasattr(obj, 'updated_by_id'):
-                    obj.updated_by_id = current_user.id
+            add_user_data(session)
+
+        @sqlalchemy.event.listens_for(session_instance, 'after_flush')
+        def after_flush(session: sessionmaker, flush_context):
+            add_user_data(session)
 
     return db
 
@@ -365,9 +387,9 @@ def parse_value(key, value, prev_value):
             elif value == None and prev_value:
                 return_string = 'DELETE ' + key
             elif value and prev_value:
-                return_string = 'UPDATE ' + key
+                return_string = 'UPDATE ' + key + ' -> ' + str(value)
             else:
-                return_string="TEST"
+                return_string="UNKNOWN"
         except (ValueError,AttributeError):
             return_string = 'UPDATE ' + key + ' -> ' + str(value)
     

@@ -10,6 +10,7 @@ from database_handler import get_file_space_path, Session, save_snapshot_date_to
 from models import *
 import exception_handler
 from logger import logger
+import utils
 
 routes_encounter = Blueprint('encounter', __name__)
 
@@ -49,30 +50,47 @@ def encounter_insert():
     Inserts a new encounter into the database based on the provided form data.
     """
     with Session() as session:
-        encounter_name = request.form['encounter_name']
-        location = request.form['location']
-        species_id = request.form['species']
-        latitude = request.form['latitude-start']
-        longitude = request.form['longitude-start']
-        data_source_id = request.form['data_source']
-        recording_platform_id = request.form['recording_platform']
-        origin = request.form['project']
-        notes = request.form['notes']
-        file_timezone = request.form['file-timezone']
-        local_timezone = request.form['local-timezone']
+        encounter_form_data = utils.get_form_data(request, {
+            'encounter_name': str,
+            'location': str,
+            'species': str,
+            'latitude-start': str,
+            'longitude-start': str,
+            'data_source': str,
+            'recording_platform': str,
+            'project': str,
+            'notes': str,
+            'file-timezone': str,
+            'local-timezone': str
+        })
+
+        encounter_name = encounter_form_data['encounter_name']
+        location = encounter_form_data['location']
+        species_id = encounter_form_data['species']
+        latitude = encounter_form_data['latitude-start']
+        longitude = encounter_form_data['longitude-start']
+        data_source_id = encounter_form_data['data_source']
+        recording_platform_id = encounter_form_data['recording_platform']
+        project = encounter_form_data['project']
+        notes = encounter_form_data['notes']
+        file_timezone = encounter_form_data['file-timezone']
+        local_timezone = encounter_form_data['local-timezone']
+
         try:
             new_encounter = Encounter()
+
             new_encounter.set_encounter_name(encounter_name)
             new_encounter.set_location(location)
-            new_encounter.set_project(origin)
+            new_encounter.set_project(project)
             new_encounter.set_notes(notes)
-            new_encounter.set_species_id(session, species_id)
+            new_encounter.set_species_id(species_id)
             new_encounter.set_latitude(latitude)
             new_encounter.set_longitude(longitude)
             new_encounter.set_data_source_id(session, data_source_id)
             new_encounter.set_recording_platform_id(session, recording_platform_id)
             new_encounter.set_file_timezone(file_timezone)
             new_encounter.set_local_timezone(local_timezone)
+
             session.add(new_encounter)
             session.commit()
             flash(f'Encounter added: {encounter_name}', 'success')
@@ -131,7 +149,7 @@ def encounter_update(encounter_id):
             encounter = session.query(Encounter).with_for_update().join(Species).filter(Encounter.id == encounter_id).first()
             encounter.set_encounter_name(request.form['encounter_name'])
             encounter.set_location(request.form['location'])
-            encounter.set_species_id(session, request.form['species'])
+            encounter.set_species_id(request.form['species'])
             encounter.set_project(request.form['project'])
             encounter.set_latitude(request.form['latitude-start'])
             encounter.set_longitude(request.form['longitude-start'])

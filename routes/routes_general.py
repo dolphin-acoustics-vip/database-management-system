@@ -192,15 +192,6 @@ def serve_style(filename):
     """
     return send_from_directory('static/css', filename)
 
-@routes_general.route('/download-file/<path:relative_path>')
-def download_file(relative_path):
-    """
-    Download a file from the FILE_SPACE_PATH.
-    """
-    if relative_path != "":
-        file_path = os.path.join(get_file_space_path(), relative_path)
-        return send_file(file_path, as_attachment=True)
-
 @routes_general.route('/')
 def index():
     """

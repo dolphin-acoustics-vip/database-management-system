@@ -10,3 +10,4 @@ google_api_key.txt
 database-management-system.code-workspace
 *.log
 file_space_path.txt
+*.coverage

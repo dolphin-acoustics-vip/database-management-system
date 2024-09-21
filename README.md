@@ -235,10 +235,50 @@ The `delete()` method in `Encounter`, `Recording`, and `Selection` are responsib
 > ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
 
 ## Testing
-Testing is found in the [testing](/testing) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework, and can be run using commands such as `pytest testing/test.py`.
+Testing is found in the [tests](/tests) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework. Tests can be run with `python3 -m pytest tests` from the root directory.
 
-The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests. 
+The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests.
 
-Furthermore, the test environment uses a local Maria DB installation to run the program. The following system variables must be set for the testing environment to work as required:
+The following tests are included in the [tests](/tests) folder. Some require files to exist in the [tests/resources](/tests/resources) directory:
 
-The following are system variables that must be set:
+**Test Contour Stats**
+
+[test_contour_stats.py](/tests/test_contour_stats.py) tests the calculation of contour statistics. The running of these tests requires a number of resources to exist in [tests/resources/contour-stats](/tests/resources/contour-stats/):
+* A sub-folder prefixed with `test#` exactly (e.g., test1, test8, test15) should be made for each recording that is to be tested. 
+* In this folder, a file, `RoccaContourStats.xlsx` (exactly) must exist with the expected values of the contour statistics calculations.
+* Any number of CSV contour files must exist, prefixed with `sel_#` exactly (e.g., sel_1, sel_01, sel_10, sel_100). 
+* A column in `RoccaContourStats.xlsx` must be made, `SelectionNumber` with the same integer value that is used in the previous step to name the CSV contour files. The test will fail if there exist CSV files without a respective row in `RoccaContourStats.xslx`
+
+An example of this setup is shown here:
+![alt text](/documentation/readme-resources/contour-stats-test-example.png)
+
+**Test Encounter**
+
+[tests/test_encounter.py](/tests/test_encounter.py) tests the Encounter class in [models.py](/models.py). 
+
+**Test Errors**
+
+[tests/test_errors.py](/tests/test_errors.py) tests methods and classes in [exception_handler.py](/exception_handler.py).
+
+**Test Recording**
+
+[tests/test_recording.py](/tests/test_recording.py) tests the Recording class in [models.py](/models.py).
+
+**Test Restricted Routes**
+
+[tests/test_restricted_routes.py](/tests/test_restricted_routes.py) tests whether access is forbidden to the required routes for users without certain access permissions.
+
+**Test Utils**
+
+[tests/test_utils.py](/tests/test_utils.py) tests a number of general utilities classes stored in [utils.py](/utils.py). 
+
+Certain tests (testing the reading of CSV, TSV and XLSX files into Pandas) require the following files to exist in [tests/resources/utils](/tests/resources/utils/):
+* `dataframe-3-rows.csv` a CSV file with 3 data rows (any number of columns allowed).
+* `dataframe-3-rows.txt` a TSV file with 3 data rows (any number of columns allowed).
+* `dataframe-3-rows.xlsx` an Excel file with 3 data rows (any number of columns allowed).
+* `dataframe-empty.csv` a CSV file with no rows.
+* `dataframe-empty.txt` a TSV file with no rows.
+* `dataframe-empty.xlsx` an Excel file with no rows.
+
+This should look like:
+![alt text](documentation/readme-resources/utils-test-example.png)

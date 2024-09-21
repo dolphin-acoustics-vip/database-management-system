@@ -70,6 +70,8 @@ def create_app(config_class=None):
     create_database_script = ''
     if config_class == 'config.TestingConfig':
         create_database_script = 'create_database.sql'
+    else:
+        create_database_script = 'script_run.sql'
 
     db = init_db(app, run_script=create_database_script)
 
@@ -104,6 +106,60 @@ def create_app(config_class=None):
     def forbidden(e):
         logger.warning('Route forbidden: ' + str(e))
         return render_template('unauthorized.html', user=current_user), 403
+
+
+
+    @app.errorhandler(OperationalError)
+    def handle_operational_error(ex):
+        logger.exception('Operational error')
+        return render_template('operational-error.html')
+
+    @app.errorhandler(Exception)
+    def handle_error(ex):
+        logger.exception('Exception')
+        return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link='/home', goback_message="Home")
+
+    # 404 Error Handler
+    @app.errorhandler(404)
+    def page_not_found(e):
+        logger.warning('Page not found: ' + str(e))
+        return "Page not found. Please check the URL and try again.", 404
+
+    # 405 Error Handler
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        logger.warning('Method not allowed: ' + str(e))
+        return "Method not allowed. Please check the request method and try again.", 405
+
+    # 500 Error Handler
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        logger.critical('Internal server error: ' + str(e))
+        return "Internal server error. Please try again later.", 500
+
+    # 502 Error Handler
+    @app.errorhandler(502)
+    def bad_gateway(e):
+        logger.critical('Bad gateway: ' + str(e))
+        return "Bad gateway. Please try again later.", 502
+
+    # 503 Error Handler
+    @app.errorhandler(503)
+    def service_unavailable(e):
+        logger.critical('Service unavailable: ' + str(e))
+        return "Service unavailable. Please try again later.", 503
+
+    # 504 Error Handler
+    @app.errorhandler(504)
+    def gateway_timeout(e):
+        logger.critical('Gateway timeout: ' + str(e))
+        return "Gateway timeout. Please try again later.", 504
+
+    @app.errorhandler(NotFoundException)
+    def not_found(e):
+        logger.warning('Not found exception: ' + str(e))
+        return render_template('error.html', error_code=404, error=str(e), goback_link='/home', goback_message="Home")
+
 
     # Setup user login
     login_manager = LoginManager()

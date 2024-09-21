@@ -13,8 +13,7 @@ from sqlalchemy.sql import func
 from sqlalchemy import event
 
 # Local application imports
-import database_handler
-import exception_handler
+import database_handler, exception_handler, utils
 from database_handler import db, get_file_space_path, get_trash_path
 from logger import logger
 
@@ -65,6 +64,8 @@ def parse_string_notempty(string:str, field:str) -> str:
 
     :return: the parsed string stripped of its whitespace
     """
+    if type(string) != str:
+        raise exception_handler.WarningException(f'{field} must be a string.')
     if string == None or string.strip() == "":
         raise exception_handler.WarningException(f'{field} cannot be blank.')
     else:
@@ -98,8 +99,8 @@ class Encounter(db.Model):
     location = db.Column(db.String(100), nullable=False)
     species_id = db.Column(db.String(36), db.ForeignKey('species.id'), nullable=False)
     project = db.Column(db.String(100), nullable=False)
-    latitude = db.Column(db.String(20))
-    longitude = db.Column(db.String(20))
+    latitude = db.Column(db.Double)
+    longitude = db.Column(db.Double)
     data_source_id = db.Column(db.String(36), db.ForeignKey('data_source.id'), nullable=False)
     recording_platform_id = db.Column(db.String(36), db.ForeignKey('recording_platform.id'), nullable=False)
     notes = db.Column(db.String(1000))
@@ -116,7 +117,7 @@ class Encounter(db.Model):
         db.UniqueConstraint('encounter_name', 'location', 'project'),
     )
     
-    def get_unique_name(self, deimiter='-'):
+    def get_unique_name(self, delimiter='-'):
         """
         Generate a unique name using encounter_name, location and project which are defined in
         the schema as a unique constraint. The name is of the format:
@@ -126,7 +127,7 @@ class Encounter(db.Model):
         :param delimiter: the delimiter used to separate unique variables
         :type delimiter: str
         """
-        return f"Encounter {self.encounter_name}{deimiter}{self.location}{deimiter}{self.project} "
+        return f"{self.encounter_name}{delimiter}{self.location}{delimiter}{self.project}"
 
     def get_number_of_recordings(self):
         """
@@ -166,83 +167,72 @@ class Encounter(db.Model):
                 recording.delete_children(keep_file_reference=True)
                 session.delete(recording)
 
-    def get_latitude(self):
+    def get_latitude(self) -> float:
+        return self.latitude
+
+    def get_latitude_string(self) -> str:
         return '' if self.latitude is None else self.latitude
 
-    def set_latitude(self, value):
-        self.latitude = None if value.strip() == '' else value.strip()
+    def set_latitude(self, value: float):
+        self.latitude = utils.validate_latitude(value, allow_empty=True)
     
-    def get_longitude(self):
-        return '' if self.longitude is None else self.longitude
+    def set_longitude(self, value: float):
+        self.longitude = utils.validate_longitude(value, allow_empty=True)
 
-    def set_longitude(self, value):
-        self.longitude = None if value.strip() == '' else value.strip()
+    def get_longitude(self) -> float:
+        return self.longitude
     
-    def get_encounter_name(self):
+    def get_longitude_string(self) -> str:
+        return '' if self.longitude is None else str(self.longitude)
+    
+    def get_encounter_name(self) -> str:
         return '' if self.encounter_name is None else self.encounter_name
 
-    def set_encounter_name(self, value):
+    def set_encounter_name(self, value: str):
         self.encounter_name = parse_string_notempty(value, 'Encounter name')
 
-    def get_location(self):
+    def get_location(self) -> str:
         return '' if self.location is None else self.location
 
-    def set_location(self, value):
+    def set_location(self, value: str):
         self.location = parse_string_notempty(value, 'Location')
 
-    def get_project(self):
+    def get_project(self) -> str:
         return '' if self.project is None else self.project
 
-    def set_project(self, value):
+    def set_project(self, value: str):
         self.project = parse_string_notempty(value, 'Project')
 
-    def get_notes(self):
+    def get_notes(self) -> str:
         return '' if self.notes is None else self.notes
 
-    def set_notes(self, value):
+    def set_notes(self, value: str):
         self.notes = value.strip()
 
-    def set_species_id(self, session, species_id):
-        species = session.query(Species).filter(Species.id == species_id).first()
-        if species:
-            self.species = species
-        else:
-            raise exception_handler.WarningException('Invalid species.')
+    def get_species(self):
+        return self.species
+
+    def set_species_id(self, species_id: str):
+        self.species_id = utils.validate_id(species_id, field="Species", allow_empty=False)
     
     def set_data_source_id(self, session, data_source_id):
-        data_source = session.query(DataSource).filter(DataSource.id == data_source_id).first()
-        if data_source:
-            self.data_source = data_source
-        else:
-            self.data_source = None
-    
+        data_source_id = utils.validate_id(data_source_id, field="Data Source", allow_empty=True)
+        self.data_source_id = data_source_id
+
     def set_recording_platform_id(self, session, recording_platform_id):
-        recording_platform = session.query(RecordingPlatform).filter(RecordingPlatform.id == recording_platform_id).first()
-        if recording_platform:
-            self.recording_platform = recording_platform
-        else:
-            self.recording_platform = None
+        recording_platform_id = utils.validate_id(recording_platform_id, field="Recording Platform", allow_empty=True)
+        self.recording_platform_id = recording_platform_id
 
-    def check_valid_timezone(self, value):
-        if value is not None:
-            try:
-                value = int(value)
-            except ValueError:
-                raise exception_handler.WarningException("Timezone must be an integer.")
-        if value is not None and (value < -720 or value > 840):
-            raise exception_handler.WarningException("Timezone must be between GMT-12 and GMT+14 (inclusive).")
-        return value
-
-    def set_file_timezone(self, value):
-        self.file_timezone = self.check_valid_timezone(value)
+    def set_file_timezone(self, value: int | str):
+        self.file_timezone = utils.validate_timezone(value)
     
-    def get_file_timezone(self):
+    def get_file_timezone(self) -> int:
         return self.file_timezone
     
-    def set_local_timezone(self, value):
-        self.local_timezone = self.check_valid_timezone(value)
+    def set_local_timezone(self, value: int | str):
+        self.local_timezone = utils.validate_timezone(value)
     
-    def get_local_timezone(self):
+    def get_local_timezone(self) -> int:
         return self.local_timezone
 
 
@@ -256,6 +246,7 @@ class File(db.Model):
     uploaded_date = db.Column(db.DateTime(timezone=True))
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
+    deleted = db.Column(db.Boolean, default=False)
     original_filename = db.Column(db.String(255))
 
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
@@ -326,7 +317,11 @@ class File(db.Model):
         :return: the full absolute path of the filespace joined with the directory, 
         filename and extension of the file represented by the object
         """
-        return os.path.join(get_file_space_path(), self.get_full_relative_path())
+        if self.deleted:
+            root = database_handler.get_trash_path()
+        else:
+            root = database_handler.get_file_space_path()
+        return os.path.join(root, self.get_full_relative_path())
     
     # def get_absolute_directory(self):
     #     return os.path.join(get_file_space_path(), self.path)
@@ -451,7 +446,9 @@ class File(db.Model):
         - new_relative_file_path: The new relative file path to move the file to
         - return: False if the file already exists at the new location, None otherwise
         """
-        if move_to_trash: root_path = database_handler.get_trash_path()
+        if move_to_trash: 
+            root_path = database_handler.get_trash_path()
+            self.deleted = True
         else: root_path = database_handler.get_file_space_path()
 
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
@@ -515,8 +512,8 @@ class Recording(db.Model):
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
-    def get_unique_name(self, separator):
-        return f"{self.encounter.get_unique_name(separator)}, Recording {self.start_time}"
+    def get_unique_name(self, delimiter="-"):
+        return f"{self.encounter.get_unique_name(delimiter)}: recording {self.start_time}"
 
     def is_complete(self):
         return True if self.status == 'Reviewed' else False
@@ -589,60 +586,53 @@ class Recording(db.Model):
                 selection.update_call()
             session.commit()
         
-    def load_selection_table_data(self,custom_file=None):
+    
+
+    def load_and_validate_selection_table(self, custom_file:str=None):
+        """
+        Parse a selection table file, automatically creating a Selection object for each row
+        with data from the selection table file. If the Selection object already exists then
+        simply insert the selection table data in the existing datastructure.
+
+        :raises exception_handler.WarningException: if there is a formatting issue with the
+        selection table or it does not exist.
+
+        :param custom_file: the path a seleciton file to be parsed (default is None causing
+        the method to access the path of the object's selection table file)
+        """
+        with database_handler.get_session() as session:
+            try:
+                st_df = pd.DataFrame()
+                if custom_file is not None: st_df = utils.extract_to_dataframe(path=custom_file)
+                else: st_df = utils.extract_to_dataframe(path=self.selection_table_file.get_full_absolute_path())
+                self.unpack_selection_table(session, st_df)
+                
+                session.commit()
+            
+            except ValueError as e:
+                raise exception_handler.WarningException("The given selection table is invalid: " + str(e))
+            except FileNotFoundError as e:
+                raise exception_handler.WarningException("Unable to extract data from selection table due to file system error. Please try again later.")
+
+            
+
+    def unpack_selection_table(self, session, st_df):
+        if st_df.empty: 
+            raise exception_handler.WarningException("The selection table provided is empty")
         
-        if self.selection_table_file is not None or custom_file is not None:
-            if custom_file:
-                file_path=custom_file
-            else:
-                file_path = self.selection_table_file.get_full_absolute_path()
-            if file_path is None or file_path == "":
-                return pd.DataFrame()
-            # Read the file into a pandas DataFrame
-            file_extension = os.path.splitext(file_path)[1].lower()
-            if file_extension == '.csv':
-                # Read the CSV file into a pandas DataFrame
-                df = pd.read_csv(file_path)
-            elif file_extension == '.txt':
-                # Read the text file into a pandas DataFrame
-                df = pd.read_csv(file_path, sep='\t')
-            elif file_extension == '.xlsx' or file_extension == '.xls':
-                # Read the Excel file into a pandas DataFrame
-                df = pd.read_excel(file_path)
-            else:
-                raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file.")
-
-
-            return df
-
-        return pd.DataFrame()
-
-    def validate_selection_table(self, session, custom_file=None):
-        try:
-            st_df = self.load_selection_table_data(custom_file=custom_file)
-            if st_df.empty:
-                raise exception_handler.WarningException("The Selection Table provided is empty")
-            self.upload_selection_table_rows(session, st_df)
-        except Exception as e:
-            raise exception_handler.WarningException("The Selection Table provided is invalid: " + str(e))
-
-    def upload_selection_table_rows(self, session, st_df):
-
         if 'Selection' not in st_df.columns:
-            raise ValueError("The Selection Table must contain a 'Selection' column")
-        if 'Annotation' not in st_df.columns:
-            raise ValueError("The Selection Table must contain an 'Annotation' column")
-        selection_table_selection_numbers = st_df.Selection.to_list()
+            raise exception_handler.WarningException("Missing required column: 'Selection'")
 
+        selection_table_selection_numbers = st_df.Selection.to_list()
+        
         for selection_number in selection_table_selection_numbers:
             selection = session.query(Selection).filter_by(recording_id=self.id, selection_number=selection_number).first()
             if selection is None:
                 new_selection = Selection(recording_id=self.id, selection_number=selection_number)
                 session.add(new_selection)
-                new_selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
+                new_selection.upload_selection_table_data(st_df.loc[st_df['Selection'] == selection_number, :])
             else:
-                selection.upload_selection_table_data(session, st_df.loc[st_df['Selection'] == selection_number, :])
-        session.commit()
+                selection.upload_selection_table_data(st_df.loc[st_df['Selection'] == selection_number, :])
     
 
     def find_missing_selections(self, session, st_df):
@@ -698,7 +688,7 @@ class Recording(db.Model):
         return os.path.join(self.encounter.generate_relative_path(), folder_name)
 
     def generate_recording_filename(self,extension=""):
-        return f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}{extension}"
+        return f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     
     def generate_full_relative_path(self,extension=""):
         return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
@@ -707,47 +697,21 @@ class Recording(db.Model):
         return f"Sel-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     def get_start_time(self):
         return self.start_time
-    
-    def get_seconds(self):
-        return self.start_time.second
 
+    def set_start_time(self, datetime_object: datetime | str):
+        self.start_time = utils.validate_datetime(datetime_object)
 
-    def set_start_time(self, datetime_object):
-        try:
-            datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
-        except ValueError:
-            try:
-                datetime_object = datetime.strptime(datetime_object, '%Y-%m-%dT%H:%M')  # Try without milliseconds
-            except ValueError:
-                raise exception_handler.WarningException("Invalid datetime format. Start time must be of the format yyyy-mm-dd dd:mm:ss.")
-
-        self.start_time = datetime_object
-    
     def match_start_time(self, match_datetime):
         return self.start_time == match_datetime
 
-    def get_start_time_string(self):
-        return self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
-
-    def get_start_time(self):
-        return self.start_time
-    
-    def set_encounter_id(self, session, encounter_id):
-        encounter = session.query(Encounter).filter(Encounter.id == encounter_id).first()
-        if encounter:
-            self.encounter = encounter
+    def get_start_time_string(self, long_format=False):
+        if long_format:
+            return self.start_time.strftime('%A, %B %d, %Y at %H:%M:%S')
         else:
-            raise exception_handler.CriticalException('Unable to make link to encounter.')
+            return self.start_time.strftime('%Y-%m-%dT%H:%M:%S')
 
-    def get_duration(self):
-        return self.duration
-
-
-
-    def set_duration(self,value):
-        if value is not None and not isinstance(value, int):
-            raise ValueError("Duration must be an integer")
-        self.duration = value
+    def set_encounter_id(self, session, encounter_id):
+        encounter_id = utils.validate_id(encounter_id, field="Encounter", allow_empty=False)
     
     def update_selection_traced_status(self,session):
         selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
@@ -887,8 +851,8 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
-    def get_unique_name(self, separator):
-        return f"{self.recording.get_unique_name(separator)}, Selection {self.selection_number}"
+    def get_unique_name(self, delimiter="-"):
+        return f"{self.recording.get_unique_name(delimiter)}: selection {self.selection_number}"
 
     def calculate_sampling_rate(self):
         if self.selection_file:
@@ -946,33 +910,33 @@ class Selection(db.Model):
         self.calculate_sampling_rate()
         self.selection_file = selection_file
 
-    def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None):
+    def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None, update_permissions=False):
         import librosa
         import matplotlib.pyplot as plt
         import numpy as np
         import os
         from contour_statistics import ContourFile
         warning = ""
+        
         # Set default FFT and hop sizes if not provided
         if fft_size is None:
             n_fft = self.default_fft_size if self.default_fft_size else 2048
             if not self.default_fft_size:
                 self.default_fft_size = n_fft
-                session.commit()
         else:
             self.default_fft_size = fft_size
-            session.commit()
             n_fft = fft_size
 
         if hop_size is None:
             hop_length = self.default_hop_size if self.default_hop_size else 512
             if not self.default_hop_size:
                 self.default_hop_size = hop_length
-                session.commit()
         else:
             self.default_hop_size = hop_size
-            session.commit()
             hop_length = hop_size
+        
+        if update_permissions:
+            session.commit()
 
         # Load the audio file
         with open(self.selection_file.get_full_absolute_path(), 'rb') as selection_file:
@@ -995,9 +959,11 @@ class Selection(db.Model):
         spectogram_axs.set_ylabel('Frequency (hz)', fontsize=20)
         spectogram_axs.tick_params(axis='both', labelsize=14)
 
+        print("Contour file 2", self.contour_file, self.contour_file_id)
+
         # Plot the contour if it exists
-        if self.contour_file:
-            contour_file_obj = ContourFile(self.contour_file.get_full_absolute_path())
+        if self.contour_file_id:
+            contour_file_obj = ContourFile(self.contour_file.get_full_absolute_path(), self.selection_number)
             contour_rows = contour_file_obj.contour_rows
             min_time_ms = min([unit.time_milliseconds for unit in contour_rows])
             axs[1].plot([unit.time_milliseconds - min_time_ms for unit in contour_rows], [unit.peak_frequency for unit in contour_rows])
@@ -1137,22 +1103,33 @@ class Selection(db.Model):
         self.inflection_duration = None
         self.step_duration = None
 
-    def upload_selection_table_data(self, session, st_df):
-        try:
-            # Find the index of the 'Selection' column
-            selection_index = st_df.columns.get_loc('Selection')
-        except ValueError:
-            raise ValueError("Missing required column: 'Selection'")
+    def generate_contour_stats_array(self):
+        return [self.recording.encounter.encounter_name, self.recording.encounter.location, self.recording.encounter.project, self.recording.get_start_time_string(), self.recording.encounter.species.species_name, self.sampling_rate,  self.selection_number, self.freq_max, self.freq_min, self.duration, self.freq_begin, self.freq_end, self.freq_range, self.dc_mean, self.dc_standarddeviation, self.freq_mean, self.freq_standarddeviation, self.freq_median, self.freq_center, self.freq_relbw, self.freq_maxminratio, self.freq_begendratio, self.freq_quarter1, self.freq_quarter2, self.freq_quarter3, self.freq_spread, self.dc_quarter1mean, self.dc_quarter2mean, self.dc_quarter3mean, self.dc_quarter4mean, self.freq_cofm, self.freq_stepup, self.freq_stepdown, self.freq_numsteps, self.freq_slopemean, self.freq_absslopemean, self.freq_posslopemean, self.freq_negslopemean, self.freq_sloperatio, self.freq_begsweep, self.freq_begup, self.freq_begdown, self.freq_endsweep, self.freq_endup, self.freq_enddown, self.num_sweepsupdown, self.num_sweepsdownup, self.num_sweepsupflat, self.num_sweepsdownflat, self.num_sweepsflatup, self.num_sweepsflatdown, self.freq_sweepuppercent, self.freq_sweepdownpercent, self.freq_sweepflatpercent, self.num_inflections, self.inflection_maxdelta, self.inflection_mindelta, self.inflection_maxmindelta, self.inflection_meandelta, self.inflection_standarddeviationdelta, self.inflection_mediandelta, self.inflection_duration, self.step_duration]
+
+    def generate_contour_stats_dict(self):
+        headers = ['Encounter', 'Location', 'Project', 'Recording', 'Species', 'SamplingRate', 'SELECTIONNUMBER', 'FREQMAX', 'FREQMIN', 'DURATION', 'FREQBEG', 'FREQEND', 'FREQRANGE', 'DCMEAN', 'DCSTDDEV', 'FREQMEAN', 'FREQSTDDEV', 'FREQMEDIAN', 'FREQCENTER', 'FREQRELBW', 'FREQMAXMINRATIO', 'FREQBEGENDRATIO', 'FREQQUARTER1', 'FREQQUARTER2', 'FREQQUARTER3', 'FREQSPREAD', 'DCQUARTER1MEAN', 'DCQUARTER2MEAN', 'DCQUARTER3MEAN', 'DCQUARTER4MEAN', 'FREQCOFM', 'FREQSTEPUP', 'FREQSTEPDOWN', 'FREQNUMSTEPS', 'FREQSLOPEMEAN', 'FREQABSSLOPEMEAN', 'FREQPOSSLOPEMEAN', 'FREQNEGSLOPEMEAN', 'FREQSLOPERATIO', 'FREQBEGSWEEP', 'FREQBEGUP', 'FREQBEGDWN', 'FREQENDSWEEP', 'FREQENDUP', 'FREQENDDWN', 'NUMSWEEPSUPDWN', 'NUMSWEEPSDWNUP', 'NUMSWEEPSUPFLAT', 'NUMSWEEPSDWNFLAT', 'NUMSWEEPSFLATUP', 'NUMSWEEPSFLATDWN', 'FREQSWEEPUPPERCENT', 'FREQSWEEPDWNPERCENT', 'FREQSWEEPFLATPERCENT', 'NUMINFLECTIONS', 'INFLMAXDELTA', 'INFLMINDELTA', 'INFLMAXMINDELTA', 'INFLMEANDELTA', 'INFLSTDDEVDELTA', 'INFLMEDIANDELTA', 'INFLDUR', 'STEPDUR']
+        values = [self.recording.encounter.encounter_name, self.recording.encounter.location, self.recording.encounter.project, self.recording.get_start_time_string(), self.recording.encounter.species.species_name, self.sampling_rate, self.selection_number, self.freq_max, self.freq_min, self.duration, self.freq_begin, self.freq_end, self.freq_range, self.dc_mean, self.dc_standarddeviation, self.freq_mean, self.freq_standarddeviation, self.freq_median, self.freq_center, self.freq_relbw, self.freq_maxminratio, self.freq_begendratio, self.freq_quarter1, self.freq_quarter2, self.freq_quarter3, self.freq_spread, self.dc_quarter1mean, self.dc_quarter2mean, self.dc_quarter3mean, self.dc_quarter4mean, self.freq_cofm, self.freq_stepup, self.freq_stepdown, self.freq_numsteps, self.freq_slopemean, self.freq_absslopemean, self.freq_posslopemean, self.freq_negslopemean, self.freq_sloperatio, self.freq_begsweep, self.freq_begup, self.freq_begdown, self.freq_endsweep, self.freq_endup, self.freq_enddown, self.num_sweepsupdown, self.num_sweepsdownup, self.num_sweepsupflat, self.num_sweepsdownflat, self.num_sweepsflatup, self.num_sweepsflatdown, self.freq_sweepuppercent, self.freq_sweepdownpercent, self.freq_sweepflatpercent, self.num_inflections, self.inflection_maxdelta, self.inflection_mindelta, self.inflection_maxmindelta, self.inflection_meandelta, self.inflection_standarddeviationdelta, self.inflection_mediandelta, self.inflection_duration, self.step_duration]
+        return dict(zip(headers, values))
+
+    def upload_selection_table_data(self, st_df):
         
-        # Find the index of the 'Annotation' column
+        if 'Selection' not in st_df.columns:
+            raise exception_handler.WarningException("Missing required column: 'Selection'")
+        selection_index = st_df.columns.get_loc('Selection')
+        
+        if 'Annotation' not in st_df.columns:
+            raise exception_handler.WarningException("Missing required column: 'Annotation'")
         annotation_index = st_df.columns.get_loc('Annotation')
-        
+
+
         if pd.isna(selection_index) or pd.isna(annotation_index):
-            raise ValueError("Missing required columns: 'Selection' or 'Annotation'")
+            raise exception_handler.WarningException("Missing required columns: 'Selection' or 'Annotation'")
 
         # Get the values for the 'Selection' and 'Annotation' columns
         selection_number = st_df.iloc[0, selection_index]
         annotation = st_df.iloc[0, annotation_index]
+
+
         if isinstance(annotation, str):
             if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
                 self.annotation = annotation.upper()
@@ -1163,11 +1140,11 @@ class Selection(db.Model):
 
         # Check if the selection number matches the expected value
         if selection_number != self.selection_number:
-            raise ValueError("Invalid selection number")
+            raise exception_handler.WarningException("Invalid selection number")
 
         # Set the other fields based on the available columns
         self.view = st_df.iloc[0, st_df.columns.get_loc('View')] if 'View' in st_df.columns else ""
-        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')] if 'Channel' in st_df.columns else ""
+        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')] if 'Channel' in st_df.columns else 0
         self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')] if 'Begin Time (s)' in st_df.columns else 0
         self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')] if 'End Time (s)' in st_df.columns else 0
         self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')] if 'Low Freq (Hz)' in st_df.columns else 0
@@ -1176,8 +1153,6 @@ class Selection(db.Model):
         self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else 0
         self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else 0
 
-            
-        session.commit()
 
     def update_call(self):
         self.move_file()
@@ -1229,13 +1204,14 @@ class Selection(db.Model):
     def generate_spectogram_filename(self):
         return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_spectrogram"
 
-    def generate_filename(self):
+    def generate_selection_filename(self):
         return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
-    
+
     def generate_contour_filename(self):
         return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
     
     def generate_relative_path(self):
+        
         return os.path.join(self.recording.generate_relative_path_for_selections())
 
     def generate_full_relative_path(self):

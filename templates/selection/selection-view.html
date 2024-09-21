@@ -13,153 +13,173 @@
                 display: inline-block;
                 justify-content: center;
             }
-        
+
             .image-container img {
                 max-width: 50%;
                 margin: 0 10px;
                 height: auto;
             }
         </style>
-        
+
 
 
         <h2>Selection Number: {{ selection.selection_number }}</h1>
-        <hr>
-        <a href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording</a>
-        {% if current_user.role_id in [1, 2] %}
-        <hr>
+            <hr>
+            <a
+                href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording</a>
+            {% if current_user.role_id in [1, 2] %}
+            <hr>
 
 
-        <hr>
-        <section>
-            <div class="audit-history">
-                <h3>Audit History</h3>
-                <div class="table-responsive">
-                <table class="table-striped">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Action</th>
-                            <th>User</th>
-                            <th>View Snapshot</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for selection in selection_history %}
-                            <tr>
-                                <td>{{ selection['row_start'] }}</td>
-                                <td>{{ selection['action'] }}</td>
-                                <td>{{ selection['updated_by'].name }}</td>
-                                <td><a href="{{ url_for('selection.selection_view', encounter_id=selection['encounter_id'], selection_id=selection['id'], snapshot_date=selection['row_start']) }}" >HERE</a></td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <hr>
+            <section>
+                <div class="audit-history">
+                    <h3>Audit History</h3>
+                    <div class="table-responsive">
+                        <table class="table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                    <th>User</th>
+                                    <th>View Snapshot</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for selection in selection_history %}
+                                <tr>
+                                    <td>{{ selection['row_start'] }}</td>
+                                    <td>{{ selection['action'] }}</td>
+                                    <td>{{ selection['updated_by'].name }}</td>
+                                    <td><a
+                                            href="{{ url_for('selection.selection_view', encounter_id=selection['encounter_id'], selection_id=selection['id'], snapshot_date=selection['row_start']) }}">HERE</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            </section>
+            <hr>
+            {% endif %}
+            <h3>Spectogram and Contour Plot</h3>
+            <div style="display: flex; margin-top: 20px; margin-bottom: 20px; align-items:center; position: relative;">
+                <img style="width:80%" id="plot-image"
+                    src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot" style="width:100%; display:none;">
+
+
+                <form style="width:15%; margin-left: 20px; align-items:center;" id="plot-form">
+                    <label for="fft-size">FFT Size:</label>
+                    <input type="number" id="fft-size" name="fft-size"
+                        value="{{ selection.default_fft_size if selection.default_fft_size else 2048}}">
+                    <label for="hop-size">Hop Size:</label>
+                    <input type="number" id="hop-size" name="hop-size"
+                        value="{{ selection.default_hop_size if selection.default_hop_size else 512}}">
+                    <button class="gray small" type="submit" style="margin-top: 0.7rem;">Apply</button>
+                </form>
             </div>
-        </section>
-        <hr>
-        {% endif %}
-        <h3>Spectogram and Contour Plot</h3>
-        <div style="display: flex;  margin-top: 20px; margin-bottom: 20px; align-items:center;">
-            <img style="width:80%" id="plot-image" src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot">
 
-            <form style="width:15%; margin-left: 20px; align-items:center;" id="plot-form">
-            <label for="fft-size">FFT Size:</label>
-            <input type="number" id="fft-size" name="fft-size" value="{{ selection.default_fft_size if selection.default_fft_size else 2048}}">
-            <label for="hop-size">Hop Size:</label>
-            <input type="number" id="hop-size" name="hop-size" value="{{ selection.default_hop_size if selection.default_hop_size else 512}}">
-            <button class="gray small" type="submit" style="margin-top: 0.7rem;">Apply</button>
-          </form>
-    </div>
-
-        <hr>
-        {% if selection.selection_file %}
-            <a class="button small" href="{{url_for('general.download_file', relative_path=selection.selection_file.get_full_relative_path())}}">Download Selection File</a>
-            <a class="button small" href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name(' - ') }}&redirect_link={{ request.referrer }}">See Selection File Details</a>
+            <hr>
+            {% if selection.selection_file %}
+            <a class="button small"
+                href="{{url_for('selection.download_selection_file', selection_id = selection.id )}}">Download
+                Selection File</a>
+            <a class="button small"
+                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name(' - ') }}&redirect_link={{ request.referrer }}">See
+                Selection File Details</a>
             {% else %}
             <p style="margin-right:10px;">This selection has no selection file.</p>
-        {% endif %}
-        {% if selection.contour_file %}
-            <a class="button small" href="{{url_for('general.download_file', relative_path=selection.contour_file.get_full_relative_path())}}">Download Contour File</a>
-            <a class="button small" href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See Contour File Details</a>
+            {% endif %}
+            {% if selection.contour_file %}
+            <a class="button small"
+                href="{{url_for('selection.download_contour_file', selection_id = selection.id )}}">Download
+                Contour File</a>
+            <a class="button small"
+                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See
+                Contour File Details</a>
+
+            <a alt="Re-generate CTR file and re-calculate contour statistics" class="button small"
+                href="{{url_for('recording.recalculate_contour_statistics_for_selection', selection_id=selection.id)}}">Recalculate
+                Contour Statistics</a>
 
             {% else %}
-            <p style="margin-right:10px;">This selection has no contour file.</p>	
+            <p style="margin-right:10px;">This selection has no contour file.</p>
             {% endif %}
-        
-        <hr>
-        <h3>Selection Table</h3>
-        {% if selection.recording.selection_table_file %}
-        <p>Selection table excerpt for selection number {{ selection.selection_number }}</p>
-        <table>
 
-            <tr>
-                <th>Attribute</th>
-                <th>Value</th>
-            </tr>
-            <tr>
-                <td>Selection Number</td>
-            <td>{{ selection.selection_number }}</td></tr>
-            <tr>
-                <td>View</td>
-                <td>{{ selection.view }}</td>
-            </tr>
-            <tr>
-                <td>Channel</td>
-                <td>{{ selection.channel }}</td>
-            </tr>
-            <tr>
-                <td>Begin Time</td>
-                <td>{{ selection.begin_time }}</td>
-            </tr>
-            <tr>
-                <td>End Time</td>
-                <td>{{ selection.end_time }}</td>
-            </tr>
-            <tr>
-                <td>Low Frequency</td>
-                <td>{{ selection.low_frequency }}</td>
-            </tr>
-            <tr>
-                <td>High Frequency</td>
-                <td>{{ selection.high_frequency }}</td>
-            </tr>
-            <tr>
-                <td>Delta Time</td>
-                <td>{{ selection.delta_time }}</td>
-            </tr>
-            <tr>
-                <td>Delta Frequency</td>
-                <td>{{ selection.delta_frequency }}</td>
-            </tr>
-            <tr>
-                <td>Average Power</td>
-                <td>{{ selection.average_power }}</td>
-            </tr>
-            <tr>
-                <td>Annotation</td>
-                <td>{{ selection.annotation }}</td>
-            </tr>
-        </table>
-        {% else %}
+            <hr>
+            <h3>Selection Table</h3>
+            {% if selection.recording.selection_table_file %}
+            <p>Selection table excerpt for selection number {{ selection.selection_number }}</p>
+            <table>
+
+                <tr>
+                    <th>Attribute</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Selection Number</td>
+                    <td>{{ selection.selection_number }}</td>
+                </tr>
+                <tr>
+                    <td>View</td>
+                    <td>{{ selection.view }}</td>
+                </tr>
+                <tr>
+                    <td>Channel</td>
+                    <td>{{ selection.channel }}</td>
+                </tr>
+                <tr>
+                    <td>Begin Time</td>
+                    <td>{{ selection.begin_time }}</td>
+                </tr>
+                <tr>
+                    <td>End Time</td>
+                    <td>{{ selection.end_time }}</td>
+                </tr>
+                <tr>
+                    <td>Low Frequency</td>
+                    <td>{{ selection.low_frequency }}</td>
+                </tr>
+                <tr>
+                    <td>High Frequency</td>
+                    <td>{{ selection.high_frequency }}</td>
+                </tr>
+                <tr>
+                    <td>Delta Time</td>
+                    <td>{{ selection.delta_time }}</td>
+                </tr>
+                <tr>
+                    <td>Delta Frequency</td>
+                    <td>{{ selection.delta_frequency }}</td>
+                </tr>
+                <tr>
+                    <td>Average Power</td>
+                    <td>{{ selection.average_power }}</td>
+                </tr>
+                <tr>
+                    <td>Annotation</td>
+                    <td>{{ selection.annotation }}</td>
+                </tr>
+            </table>
+            {% else %}
             <p>This selection has no selection table.</p>
-        {% endif %}
-        <hr>
+            {% endif %}
+            <hr>
 
-        <table>
+            <table>
 
-            <tr>
-                <th>Attribute</th>
-                <th>Value</th>
-            </tr>
-            {% for attr_name, attr_value in selection_dict.items() %}
+                <tr>
+                    <th>Attribute</th>
+                    <th>Value</th>
+                </tr>
+                {% for attr_name, attr_value in selection_dict.items() %}
                 <tr>
                     <td>{{ attr_name }}</td>
                     <td>{{ attr_value }}</td>
                 </tr>
-            {% endfor %}
-        </table>
+                {% endfor %}
+            </table>
 
     </div>
 
@@ -167,15 +187,15 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    document.getElementById("plot-form").addEventListener("submit", function(event) {
+    document.getElementById("plot-form").addEventListener("submit", function (event) {
         document.getElementById("plot-image").style.display = "none";
-      event.preventDefault();
-      var fftSize = document.getElementById("fft-size").value;
-      var hopSize = document.getElementById("hop-size").value;
-      var url = "{{url_for('selection.serve_plot',selection_id=selection.id)}}";
-      url += "?fft_size=" + fftSize + "&hop_size=" + hopSize;
-      document.getElementById("plot-image").src = url;
-      document.getElementById("plot-image").style.display = "block";
+        event.preventDefault();
+        var fftSize = document.getElementById("fft-size").value;
+        var hopSize = document.getElementById("hop-size").value;
+        var url = "{{url_for('selection.serve_plot',selection_id=selection.id)}}";
+        url += "?fft_size=" + fftSize + "&hop_size=" + hopSize;
+        document.getElementById("plot-image").src = url;
+        document.getElementById("plot-image").style.display = "block";
 
     });
-  </script>
+</script>
