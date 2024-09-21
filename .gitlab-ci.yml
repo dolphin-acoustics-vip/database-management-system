@@ -1,0 +1,36 @@
+image: python:bullseye
+
+include:
+  - project: 'ResComp/gitlab-ci-includes'
+    file:
+      - ssh.yml
+
+.deploy:
+  script:
+    - sed "s/YOUR_DB_HOST/$DB_HOST/" .env_template |
+        sed "s/YOUR_DB_USER/$DB_USER/" |
+        sed "s/YOUR_DB_NAME/$DB_NAME/" |
+        sed "s/YOUR_DB_PASS/$DB_PASS/" > .env
+    - scp -o stricthostkeychecking=no -r * .env $SSH_USER@$SSH_SERVER:$DEPLOY_PATH
+
+stages:
+  - deploy-test
+
+deploy-test:
+  stage: deploy-test
+  variables:
+    SSH_USER: $TEST_SSH_USER
+    SSH_SERVER: $TEST_SSH_SERVER
+    SSH_KEY: "$TEST_SSH_KEY"
+    SSH_PASSPHRASE: "$TEST_SSH_PASS"
+    DEPLOY_PATH: $TEST_DEPLOY_PATH
+    DB_HOST: $TEST_DB_HOST
+    DB_USER: $TEST_DB_USER
+    DB_NAME: $TEST_DB_NAME
+    DB_PASS: $TEST_DB_PASS
+  before_script:
+    - !reference [.ssh_with_passphrase, before_script]
+  script:
+    - !reference [.deploy, script]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
