@@ -447,7 +447,7 @@ class File(db.Model):
         """
         unique_name = str(uuid.uuid4())
         file_name = self.filename
-        trash_file_path = os.path.join(self.get_directory(),file_name + '_' +  unique_name + '.' + self.extension)
+        trash_file_path = os.path.join(self.get_directory(),file_name + '_' +  unique_name)
         self.move_file(trash_file_path, move_to_trash=True)
 
     def delete_file(self, session):
