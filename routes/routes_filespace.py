@@ -20,5 +20,4 @@ routes_filespace = Blueprint('filespace', __name__)
 @exclude_role_3
 @exclude_role_4
 def filespace():
-    print("GET FILESPACE")
     return check_filespace.check_filespace()
