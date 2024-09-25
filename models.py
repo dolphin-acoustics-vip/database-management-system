@@ -534,7 +534,8 @@ class Recording(db.Model):
     )
 
     def get_unique_name(self, delimiter="-"):
-        return f"{self.encounter.get_unique_name(delimiter)}: recording {self.start_time}"
+        encounter = database_handler.create_system_time_request(db.session, Encounter, {"id":self.encounter_id},one_result=True)
+        return f"{encounter.get_unique_name(delimiter)}: recording {self.start_time}"
 
     def is_complete(self):
         return True if self.status == 'Reviewed' else False
