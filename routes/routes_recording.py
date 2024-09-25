@@ -326,10 +326,11 @@ def recording_delete(encounter_id,recording_id):
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
-            recording.delete_children(keep_file_reference=True)
-            session.delete(recording)
-            session.commit()
-            flash(f'Deleted recording: {recording.get_unique_name()}', 'success')
+            if recording:
+                recording.delete_children(keep_file_reference=True)
+                session.delete(recording)
+                session.commit()
+                flash(f'Deleted recording: {recording.get_unique_name()}', 'success')
         except (Exception,SQLAlchemyError) as e:
             handle_exception(session, e)
         return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))

@@ -13,12 +13,44 @@ import check_filespace
 
 routes_filespace = Blueprint('filespace', __name__)
 
+@routes_filespace.route('/filespace/download-orphan-file', methods=['GET'])
+def download_orphan_file():
+    file_path = request.args.get('path')
+    with database_handler.get_session() as session:
+        return send_file(file_path, as_attachment=True)
+
+@routes_filespace.route('/filespace/delete-orphan-file', methods=['GET'])
+def delete_orphan_file():
+    file_path = request.args.get('path')
+    deleted = request.args.get('deleted')
+    with database_handler.get_session() as session:
+        check_filespace.delete_orphan_file(file_path,deleted)
+    return redirect(url_for('filespace.filespace_view'))
+
+
+
+@routes_filespace.route('/filespace/delete-file/<string:file_id>', methods=['GET'])
+@login_required
+@exclude_role_2
+@exclude_role_3
+@exclude_role_4
+def filespace_delete_file(file_id):
+    with database_handler.get_session() as session:
+        check_filespace.delete_file_object(file_id)
+    return redirect(url_for('filespace.filespace_view'))
+
 
 @routes_filespace.route('/filespace', methods=['GET'])
 @login_required
 @exclude_role_2
 @exclude_role_3
 @exclude_role_4
-def filespace():
-    print("GET FILESPACE")
-    return check_filespace.check_filespace()
+def filespace_view():
+    with database_handler.get_session() as session:
+        invalid_links = check_filespace.query_file_class(session, False)
+        invalid_deleted_links = check_filespace.query_file_class(session, True)
+
+        orphaned_files = check_filespace.get_orphaned_files(session, False)
+        orphaned_deleted_files = check_filespace.get_orphaned_files(session, True)
+
+    return render_template('filespace/filespace.html', invalid_links=invalid_links, invalid_deleted_links=invalid_deleted_links, orphaned_files=orphaned_files, orphaned_deleted_files=orphaned_deleted_files)
