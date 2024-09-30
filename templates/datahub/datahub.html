@@ -335,7 +335,7 @@
 
         // Get the statistics using AJAX. See Flask app and comments for more details.
         $.ajax({
-            url: '/datahub/get-selection-statistics',
+            url: "{{url_for('datahub.get_selection_statistics')}}",
             type: 'GET',
             data: { start_date_time: StartDateTime, user_id: userFilterId, dayCount: dayCount, species_filter: species_filter },
             success: function (result) {
@@ -357,7 +357,7 @@
         });
 
         $.ajax({
-            url: '/datahub/get-recording-statistics',
+            url: "{{url_for('datahub.get_recording_statistics')}}",
             type: 'GET',
             data: { start_date_time: StartDateTime, assigned_user_id: userFilterId, dayCount: dayCount, species_filter: species_filter },
             success: function (result) {
