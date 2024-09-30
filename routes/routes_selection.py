@@ -480,10 +480,10 @@ def selection_view(selection_id):
         return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict)
 
 
-@routes_selection.route('/selection/<selection_id>/confirm_no_contour_upload', methods=['POST'])
+@routes_selection.route('/selection/confirm_no_contour_upload', methods=['POST'])
 @require_live_session
 @login_required
-def confirm_no_contour_upload(selection_id):
+def confirm_no_contour_upload():
     """
     Set traced to False for a selection. This is done when an annotation is Y or M but no contour file
     has been uploaded (i.e. the user has changed their mind on the annotation, and decided not to upload a contour).
@@ -493,11 +493,14 @@ def confirm_no_contour_upload(selection_id):
     :type selection_id: str
     :return: a JSON response with a success message if the selection is updated successfully
     """
+    selection_id = request.args.get('selection_id')
+    if not selection_id:
+        return jsonify({'success': False}),400
     with Session() as session:
         selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id})[0]
         selection.traced = False
         session.commit()
-        return jsonify({'success': True})
+        return jsonify({'success': True}),200
     
 
 import csv
