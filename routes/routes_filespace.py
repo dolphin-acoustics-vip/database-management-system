@@ -15,6 +15,7 @@ routes_filespace = Blueprint('filespace', __name__)
 
 @routes_filespace.route('/filespace/download-orphan-file', methods=['GET'])
 def download_orphan_file():
+    
     file_path = request.args.get('path')
     with database_handler.get_session() as session:
         return send_file(file_path, as_attachment=True)
