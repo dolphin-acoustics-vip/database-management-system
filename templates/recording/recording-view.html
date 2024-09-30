@@ -147,7 +147,7 @@
 
             {% set identifier_heading = "Selection Number" %}
             {% set unique_id = "selection-number"%}
-            {% set process_route = "process_selection" %}
+            {% set process_route = url_for('selection.process_selection') %}
             {% set insert_route = "selection.selection_insert" %}
 
             <h3>Download Options</h3>
@@ -189,7 +189,7 @@
 
                 {% set identifier_heading = "Contour Number" %}
                 {% set unique_id = "contour-number"%}
-                {% set process_route = "process_contour" %}
+                {% set process_route = url_for('selection.process_contour') %}
                 {% set insert_route = "selection.contour_insert" %}
                 <h3>Add contours</h3>
                 {% include 'recording/multi-file-upload-template.html' %}
@@ -400,7 +400,7 @@
         var xhr = new XMLHttpRequest();
         const recordingId = event.target.closest('.user-row').dataset.recordingId;
         const userId = event.target.closest('.user-row').dataset.userId
-        xhr.open('GET', '/recording/' + recordingId + '/' + userId + '/flag-as-completed', true);
+        xhr.open('GET', "{{ url_for('recording.flag_as_complete_for_user') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = function () {
             window.location.href = window.location.href;
@@ -416,9 +416,9 @@
      */
     flagAssignmentIncomplete = function () {
         var xhr = new XMLHttpRequest();
-        const recordingId = event.target.closest('.user-row').dataset.recordingId;
-        const userId = event.target.closest('.user-row').dataset.userId
-        xhr.open('GET', '/recording/' + recordingId + '/' + userId + '/unflag-as-completed', true);
+        var recordingId = event.target.closest('.user-row').dataset.recordingId;
+        var userId = event.target.closest('.user-row').dataset.userId
+        xhr.open('GET', "{{ url_for('recording.unflag_as_complete_for_user') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = function () {
             window.location.href = window.location.href;
@@ -437,7 +437,7 @@
         var xhr = new XMLHttpRequest();
         const recordingId = event.target.closest('.user-row').dataset.recordingId;
         const userId = event.target.closest('.user-row').dataset.userId
-        xhr.open('GET', '/unassign_recording/' + userId + '/' + recordingId, true);
+        xhr.open('GET', "{{ url_for('recording.unassign_recording', user_id=user.id | urlencode, recording_id=recording.id | urlencode) }}", true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = function () {
             window.location.href = window.location.href;
@@ -452,7 +452,7 @@
      */
     function onUserSelectionDropdownComplete(user_id, user) {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/assign_recording/' + user.id + '/' + '{{recording.id}}', true);
+        xhr.open('GET', "{{ url_for('recording.assign_recording', user_id=user.id | urlencode, recording_id=recording.id | urlencode) }}", true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = function () {
             window.location.href = window.location.href;
@@ -469,7 +469,7 @@
                 event.target.disabled = true
 
                 const selectionId = event.target.closest('.selection-row').dataset.selectionId;
-                fetch(`/selection/${selectionId}/confirm_no_contour_upload`, {
+                fetch("{{ url_for('selection.confirm_no_contour_upload') }}" + "?selection_id=" + selectionId, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -544,7 +544,7 @@
 
         try {
             const response = await $.ajax({
-                url: '/selection/reactivate',
+                url: "{{url_for('selection.reactivate_selections')}}",
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ selection_ids: selectionIds }),
@@ -607,7 +607,7 @@
 
         try {
             const response = await $.ajax({
-                url: '/selection/deactivate',
+                url: "{{url_for('selection.deactivate_selections')}}",
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ selection_ids: selectionIds }),

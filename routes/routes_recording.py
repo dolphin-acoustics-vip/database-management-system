@@ -251,32 +251,42 @@ def flag_user_assignment(session, recording_id, user_id, completed_flag):
         recording.update_status_upon_assignment_flag_change(session)
         session.commit()
 
-@routes_recording.route('/recording/<recording_id>/<user_id>/flag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/flag-as-completed', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
-def flag_as_complete_for_user(recording_id, user_id):
+def flag_as_complete_for_user():
+    recording_id = request.args.get('recording_id')
+    user_id = request.args.get('user_id')
+    if recording_id is None or user_id is None:
+        return jsonify({'message': 'Missing recording_id or user_id'}), 400
     with Session() as session:
         flag_user_assignment(session, recording_id, user_id, True)
-        return jsonify({'message': 'Success'})
+        return jsonify({'message': 'Success'}), 200
 
-@routes_recording.route('/recording/<recording_id>/<user_id>/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/unflag-as-completed', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
-def unflag_as_complete_for_user(recording_id, user_id):
+def unflag_as_complete_for_user():
+    recording_id = request.args.get('recording_id')
+    user_id = request.args.get('user_id')
+    if recording_id is None or user_id is None:
+        return jsonify({'message': 'Missing recording_id or user_id'}), 400
     with Session() as session:
         flag_user_assignment(session, recording_id, user_id, False)
         return jsonify({'message': 'Success'})
 
-@routes_recording.route('/recording/<recording_id>/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/unflag-as-completed', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
-def unflag_as_complete(recording_id):
+def unflag_as_complete():
+    recording_id = request.args.get('recording_id')
+
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         flag_user_assignment(session, recording_id, current_user.id, False)
@@ -483,7 +493,6 @@ def recalculate_contour_statistics_for_selection(selection_id):
     with database_handler.get_session() as session:
         try:
             selection = session.query(Selection).filter_by(id=selection_id).first()
-            print("Changing selection", selection)
             recalculate_contour_statistics(session, selection)
             session.commit()
             flash(f"Refreshed contour statistics for {selection.get_unique_name()}", 'success')
