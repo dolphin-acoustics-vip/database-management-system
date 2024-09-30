@@ -64,6 +64,8 @@ def check_file_space():
 def create_app(config_class=None):
     app = Flask(__name__)
 
+    ROUTE_PREFIX = '/ocean'
+
     if config_class is None:
         config_class = os.getenv('FLASK_CONFIG', 'config.DevelopmentConfig')
     app.config.from_object(config_class)
@@ -77,15 +79,15 @@ def create_app(config_class=None):
     db = init_db(app, run_script=create_database_script)
 
     # Register blueprints and error handlers
-    app.register_blueprint(routes_general)
-    app.register_blueprint(routes_admin)
-    app.register_blueprint(routes_encounter)
-    app.register_blueprint(routes_recording)
-    app.register_blueprint(routes_selection)
-    app.register_blueprint(routes_auth)
-    app.register_blueprint(routes_datahub)
-    app.register_blueprint(routes_healthcentre)
-    app.register_blueprint(routes_filespace)
+    app.register_blueprint(routes_general, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_admin, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_encounter, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_recording, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_selection, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_auth, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_datahub, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_healthcentre, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_filespace, url_prefix=ROUTE_PREFIX)
 
     try:
         logger.info(check_file_space())
