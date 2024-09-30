@@ -119,7 +119,7 @@
         $('#warnings-title-text').text("Loading Warnings...")
         $('#warnings-table').empty();
         $.ajax({
-            url: '/healthcentre/get-data-warnings',
+            url: "{{url_for('healthcentre.get_data_warnings')}}",
             type: 'GET',
             data: { start_date_time: null, user_id: null, assigned_user_filter_id: userFilterId, created_date_filter: startDateTime, day_count: dayCount, species_filter: species_filter },
             success: function (result) {

@@ -48,7 +48,7 @@ to do so will result in critical error.-->
         var httpRoute = $(this).data('http-route');
         if (searchTerm.length > 0) {
           $.ajax({
-            url: '/api/users',
+            url: "{{ url_for('general.search_users') }}",
             method: 'GET',
             data: {
               search: searchTerm
