@@ -52,5 +52,5 @@ def filespace_view():
 
         orphaned_files = check_filespace.get_orphaned_files(session, False)
         orphaned_deleted_files = check_filespace.get_orphaned_files(session, True)
-
-    return render_template('filespace/filespace.html', invalid_links=invalid_links, invalid_deleted_links=invalid_deleted_links, orphaned_files=orphaned_files, orphaned_deleted_files=orphaned_deleted_files)
+    
+    return render_template('filespace/filespace.html', invalid_links=invalid_links, invalid_deleted_links=invalid_deleted_links, orphaned_files=orphaned_files, orphaned_deleted_files=orphaned_deleted_files, total_disk_space=total_disk_space, used_disk_space=used_disk_space, free_disk_space=free_disk_space)

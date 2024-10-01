@@ -30,7 +30,7 @@
 {% else %}
 <input class="file-input small" type="file" id="recording-file-input" name="recording-file-input" onchange="extractDate(this.value);" accept=".wav">
 {% endif %}
-<script src="{{ url_for('static', filename='js/time-management.js') }}"></script>
+<script src="{{ url_for('general.serve_script', filename='time-management.js') }}"></script>
 
 <script>
 

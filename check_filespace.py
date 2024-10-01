@@ -50,7 +50,6 @@ def query_file_class(session, deleted):
     :param deleted: whether to query deleted files
     :return: a dictionary of invalid files where the key is the file ID and the value is the file object
     """
-    print("hey")
     invalid_links = {}
     offset = 0
     while True:
