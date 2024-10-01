@@ -479,6 +479,14 @@ def unassign_recording(user_id, recording_id):
 import contour_statistics
 
 def recalculate_contour_statistics(session, selection):
+    """
+    Recalculate contour statistics for the given selection.
+
+    :param session: The current sqlalchemy session
+    :type session: sqlalchemy.orm.session.Session
+    :param selection: The selection object to recalculate the contour statistics for
+    :type selection: Selection
+    """
     selection.reset_contour_stats()
     if selection and selection.contour_file is not None:
         contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path(),selection.selection_number)
