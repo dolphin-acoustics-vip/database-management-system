@@ -344,9 +344,7 @@ def create_system_time_request(session: sessionmaker, db_object, filters:dict=No
         query_str += " ORDER BY " + order_by
 
     query = db.text(query_str)
-    print(query)
     queried_db_object = session.query(db_object).from_statement(query).all()
-    print(queried_db_object)
     if one_result:
         try:
             queried_db_object = queried_db_object[0]

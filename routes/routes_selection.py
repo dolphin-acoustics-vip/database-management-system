@@ -410,14 +410,7 @@ def selection_view(selection_id):
     with Session() as session:
         selection = database_handler.create_system_time_request(session, Selection, {"id":selection_id})[0]
         
-        print(selection)
-        print(selection.recording_id)
-        print(selection.recording)
-        
         selection_history = database_handler.create_all_time_request(session, Selection, filters={"id":selection_id}, order_by="row_start")
-        # Create a dictionary of all contour stats so they can be easily inserted into a table in the client side
-        print(selection_history)
-
 
         selection_dict = {
             'freq_max': selection.freq_max,
