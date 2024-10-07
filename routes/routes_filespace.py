@@ -53,4 +53,41 @@ def filespace_view():
         orphaned_files = check_filespace.get_orphaned_files(session, False)
         orphaned_deleted_files = check_filespace.get_orphaned_files(session, True)
     
-    return render_template('filespace/filespace.html', invalid_links=invalid_links, invalid_deleted_links=invalid_deleted_links, orphaned_files=orphaned_files, orphaned_deleted_files=orphaned_deleted_files)
+        def get_directory_size(directory):
+            total_size = 0
+            for dirpath, dirnames, filenames in os.walk(directory):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    total_size += os.path.getsize(fp)
+            return total_size
+
+        def format_bytes(value):
+            if value < 1024:
+                return f"{value} bytes"
+            elif value < 1024 ** 2:
+                return f"{value / 1024:.2f} KB"
+            elif value < 1024 ** 3:
+                return f"{value / 1024 ** 2:.2f} MB"
+            elif value < 1024 ** 4:
+                return f"{value / 1024 ** 3:.2f} GB"
+            else:
+                return f"{value / 1024 ** 4:.2f} TB"
+
+
+        import shutil
+        def format_disk_usage(disk_usage):
+            total, used, free = disk_usage
+
+            total_formatted = format_bytes(total)
+            used_formatted = format_bytes(used)
+            free_formatted = format_bytes(free)
+
+            return f"Total: {total_formatted}, Used: {used_formatted}, Free: {free_formatted}"
+
+        storage = format_disk_usage(shutil.disk_usage(database_handler.get_file_space_path()))
+    
+    current_dir = os.getcwd()
+    size = get_directory_size(current_dir)
+    formatted_size = format_bytes(size)
+
+    return render_template('filespace/filespace.html', invalid_links=invalid_links, invalid_deleted_links=invalid_deleted_links, orphaned_files=orphaned_files, orphaned_deleted_files=orphaned_deleted_files, storage=storage, formatted_size=formatted_size)
