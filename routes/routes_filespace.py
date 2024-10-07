@@ -52,7 +52,7 @@ def filespace_view():
 
         orphaned_files = check_filespace.get_orphaned_files(session, False)
         orphaned_deleted_files = check_filespace.get_orphaned_files(session, True)
-    
+        
         def get_directory_size(directory):
             total_size = 0
             for dirpath, dirnames, filenames in os.walk(directory):
