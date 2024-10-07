@@ -453,7 +453,9 @@
      */
     function onUserSelectionDropdownComplete(user_id, user) {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', "{{ url_for('recording.assign_recording', user_id=user.id | urlencode, recording_id=recording.id | urlencode) }}", true);
+
+        xhr.open('GET', "{{ url_for('recording.assign_recording') }}" + "?user_id=" + encodeURIComponent(user_id) + "&recording_id=" + encodeURIComponent("{{recording.id}}"), true);
+
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = function () {
             window.location.href = window.location.href;

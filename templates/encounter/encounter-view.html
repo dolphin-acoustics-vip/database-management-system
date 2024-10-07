@@ -81,17 +81,9 @@ Variables required:
         {% from 'recording/recording-form-template.html' import recording_form %}
         {{ recording_form(editing=False, file_timezone=encounter.file_timezone, local_timezone=encounter.local_timezone,
         recording=None) }}
-
-        <label id="assign-user-id-label" class="bold">Assign to User</label>
-        {% from 'partials/user-search.html' import user_search %}
-        <div id="user-input-dropdown">
-          {{ user_search(show_message=false) }}
-        </div>
-        <button style="display: none;margin-top: 0.6rem; margin-bottom: 0.8rem;" id="remove-user-assignment"
-          class="small" type="button" onclick="removeUserAssignment()">Remove</button>
         <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
         <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
-        <button type="submit" class="blue">Submit</button>
+        <button type="submit" class="blue" style="margin-top: 1rem;">Submit</button>
       </form>
       {% endif %}
     </section>
