@@ -171,7 +171,7 @@ def recording_selection_table_delete(encounter_id, recording_id):
             file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
             recording.reset_selection_table_values(session)
             recording.update_selection_traced_status(session)
-            file.move_to_trash(session)
+            file.move_to_trash()
             recording.selection_table_file = None
             session.commit()
             flash(f'Selection table deleted for {recording.get_unique_name()}', 'success')
@@ -418,12 +418,12 @@ def extract_date():
     date = database_handler.parse_date(filename)
     return jsonify(date=date)
 
-@routes_recording.route('/assign_recording/<user_id>/<recording_id>', methods=['GET'])
+@routes_recording.route('/assign_recording', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
-def assign_recording(user_id, recording_id):
+def assign_recording():
     """
     Assigns a recording to a user.
 
@@ -434,6 +434,8 @@ def assign_recording(user_id, recording_id):
     :return: A JSON object with a single key, 'success', with a value of True if successful, False otherwise.
     :rtype: dict
     """
+    user_id = request.args.get('user_id')
+    recording_id = request.args.get('recording_id')
     with Session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()

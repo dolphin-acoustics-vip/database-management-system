@@ -15,7 +15,7 @@ function calculateTimeOffsets(originalLabelId, gmtLabelId, localLabelId, fileOri
     const gmtOffsetLabel = document.getElementById(gmtLabelId);
     const fileTimeLabel = document.getElementById(fileOriginalLabelId);
     const localOffsetLabel = document.getElementById(localLabelId);
-    console.log('I OGT HERE')
+
     gmtOffsetLabel.style.display = 'none';
     fileTimeLabel.style.display = 'none';
     localOffsetLabel.style.display = 'none';
@@ -43,8 +43,6 @@ function calculateTimeOffsets(originalLabelId, gmtLabelId, localLabelId, fileOri
     gmtOffsetLabel.textContent = `GMT Time (GMT+0): ${gmtTime.toLocaleString('en-GB')}`;
     localOffsetLabel.textContent = `Local Time (` + localGmtOffsetString + `): ${localTime.toLocaleString('en-GB')}`;
     fileTimeLabel.textContent = `File Time (${dateGmtOffsetString}): ${fileTime.toLocaleString('en-GB')}`;
-
-
 
     gmtOffsetLabel.style.display = 'block';
     fileTimeLabel.style.display = 'block';

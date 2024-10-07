@@ -678,7 +678,7 @@ class Recording(db.Model):
         with database_handler.get_session() as session:
             assignments = session.query(Assignment).with_for_update().filter_by(recording_id=self.id).all()
             for assignment in assignments:
-                assignment.delete()
+                assignment.delete(session)
                 session.commit()
         with database_handler.get_session() as session:
             if self.recording_file_id is not None:
