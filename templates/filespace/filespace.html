@@ -3,6 +3,7 @@
 <!DOCTYPE html>
 <html>
 
+
 {% macro orphaned_file_template(orphaned_files) %}
 
 <div class="table-responsive">
@@ -76,7 +77,11 @@
 </head>
 
 <body>
+    
     <div class="outer-div">
+        <p>{{storage}}</p>
+        <p>Usage: {{formatted_size}}</p>
+
         <h1>Filespace</h1>
         <h2>Invalid Links</h2>
         <p>Invalid links from existing file objects. This usually means a file has been wrongly moved or deleted from the filespace without using the software to do so.</p>
