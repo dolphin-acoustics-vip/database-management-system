@@ -4,7 +4,6 @@ import os
 from flask import url_for
 from sqlalchemy.exc import SQLAlchemyError
 
-
 def check_file_orphaned(session, file_path, deleted):
     if deleted:
         rel_path = database_handler.get_trash_path()
@@ -129,57 +128,3 @@ def get_invalid_links(session, deleted):
             if not check_file_exists_in_filespace(file):
                 orphaned_files.append(file)
     return orphaned_files
-
-
-"""
-
-def check_filespace():
-    with database_handler.get_session() as session:
-        string = ""
-        
-        orphaned_files = get_orphaned_files(session, deleted = False)
-        if orphaned_files:
-            string += f"<h1>{len(orphaned_files)} Orphaned files (those which do not have representation in the metadata database).</h1>"
-
-            string += "<ul>"
-            for file in orphaned_files:
-                string += f"<li>{file}</li>"
-            string += "</ul>"
-        else:
-            string += "<h1>No orphaned files found.</h1>"
-
-
-        missing_files = get_missing_files(session, False)
-        if missing_files:
-            string += "<h1>Files missing in the filespace.</h1>"
-            string += "<ul>"
-            for file in missing_files:
-                string += f"<li>{file}</li>"
-            string += "</ul>"
-        else:
-            string += "<h1>No missing files found.</h1>"
-        
-
-
-        deleted_orphaned_files = get_orphaned_files(session, deleted = True)
-        if deleted_orphaned_files:
-            string += f"<h1>{len(deleted_orphaned_files)} Orphaned deleted files (those which do not have representation in the metadata database).</h1>"
-
-            string += "<ul>"
-            for file in deleted_orphaned_files:
-                string += f"<li>{file}</li>"
-            string += "</ul>"
-        else:
-            string += "<h1>No orphaned deleted files found.</h1>"
-
-        missing_deleted_files = get_missing_files(session, True)
-        if missing_deleted_files:
-            string += "<h1>Deleted files missing in the filespace.</h1>"
-            string += "<ul>"
-            for file in missing_deleted_files:
-                string += f"<li>{file}</li>"
-            string += "</ul>"
-        else:
-            string += "<h1>No missing deleted files found.</h1>"
-        return string
-"""

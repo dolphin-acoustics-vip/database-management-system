@@ -681,7 +681,7 @@
      */
 
     var lastChecked;
-    var checkboxes = Array.from(document.querySelectorAll('input[name="selections-checkboxes"]'));
+    var checkboxes = document.querySelectorAll('input[name="selections-checkboxes"]');
 
     // Add a click event listener to each checkbox
     checkboxes.forEach(function (checkbox) {
