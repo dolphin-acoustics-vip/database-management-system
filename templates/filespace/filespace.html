@@ -2,6 +2,7 @@
 <html lang="en">
 
 
+
 {% macro orphaned_file_template(orphaned_files) %}
 
 <div class="table-responsive">
@@ -78,6 +79,7 @@
     
     <div class="outer-div">
         <button><a href="{{ url_for('filespace.trash_view') }}">Clear Trash</a></button>
+
         <p>{{storage}}</p>
         <p>Usage: {{formatted_size}}</p>
 
