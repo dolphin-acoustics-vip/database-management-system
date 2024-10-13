@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'partials/header.html' %}
+
+<head>
+    <title>Filespace</title>
+</head>
+
+    <body>
+        <div class="outer-div">
+            <h1>Trash Files</h1>
+            <p>Used: {{formatted_size}}</p>
+
+            <table>
+                <tr>
+                    <th></th>
+                    <th>File Name</th>
+                    <th>Download</th>
+                    <th>Delete</th>
+                </tr>
+                {% for file in trash_files %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="selections-checkboxes" value="{{ file.id }}">
+                        </td>
+                        <td><label>{{ file.get_filename() }}</label></td>
+                        <td><a href="{{url_for('filespace.trash_send_file', file_id=file.id)}}">Download</a></td>
+                        <td><a href="{{url_for('filespace.trash_delete_file', file_id=file.id)}}">Delete</a></td>
+                    </tr>
+                    {% endfor %}
+            </table>
+
+            <button id="delete-selected-files">Delete Selected Files</button>
+
+            <form id="delete-files-form" method="post" action="{{ url_for('filespace.trash_delete_files') }}">
+                <input type="hidden" id="file-ids" name="file_ids[]">
+            </form>
+    
+            <script>
+                // Get the checkboxes and the delete button
+                var checkboxes = document.querySelectorAll('input[name="selections-checkboxes"]');
+                const deleteButton = document.getElementById('delete-selected-files');
+                const fileIdsInput = document.getElementById('file-ids');
+                const deleteFilesForm = document.getElementById('delete-files-form');
+    
+                // Add event listener to the delete button
+                deleteButton.addEventListener('click', () => {
+                    // Get the checked checkboxes
+                    const checkedCheckboxes = Array.from(checkboxes).filter(checkbox => checkbox.checked);
+                    // Get the file IDs of the checked checkboxes
+                    const fileIds = checkedCheckboxes.map(checkbox => checkbox.value);
+
+                    // Set the file IDs in the hidden input field
+                    fileIdsInput.value = fileIds.join(',');
+                    console.log(fileIdsInput.value);
+    
+                    // Submit the form
+                    deleteFilesForm.submit();
+                });
+    
+                var lastChecked;
+
+    // Add a click event listener to each checkbox
+    checkboxes.forEach(function (checkbox) {
+        checkbox.addEventListener('click', function (event) {
+            // Check if the Shift key is pressed and there is a lastChecked checkbox
+            if (event.shiftKey && lastChecked) {
+                // Calculate the start and end positions of the range of checkboxes to be selected
+                const start = Array.prototype.indexOf.call(checkboxes, lastChecked);
+      const end = Array.prototype.indexOf.call(checkboxes, checkbox);
+      const checkboxesToCheck = Array.prototype.slice.call(checkboxes, Math.min(start, end), Math.max(start, end) + 1);
+
+      checkboxesToCheck.forEach((checkbox) => {
+        checkbox.checked = true;
+      });
+            }
+
+            // Update the lastChecked variable to the currently clicked checkbox
+            lastChecked = event.target;
+        });
+    });
+                
+                
+            </script>
+
+        </div>
+    </body>
+</html>

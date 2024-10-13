@@ -40,6 +40,28 @@ def filespace_delete_file(file_id):
     return redirect(url_for('filespace.filespace_view'))
 
 
+
+def get_directory_size(directory):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += os.path.getsize(fp)
+    return total_size
+
+def format_bytes(value):
+    if value < 1024:
+        return f"{value} bytes"
+    elif value < 1024 ** 2:
+        return f"{value / 1024:.2f} KB"
+    elif value < 1024 ** 3:
+        return f"{value / 1024 ** 2:.2f} MB"
+    elif value < 1024 ** 4:
+        return f"{value / 1024 ** 3:.2f} GB"
+    else:
+        return f"{value / 1024 ** 4:.2f} TB"
+
+
 @routes_filespace.route('/filespace', methods=['GET'])
 @login_required
 @exclude_role_2
@@ -53,26 +75,6 @@ def filespace_view():
         orphaned_files = check_filespace.get_orphaned_files(session, False)
         orphaned_deleted_files = check_filespace.get_orphaned_files(session, True)
     
-        def get_directory_size(directory):
-            total_size = 0
-            for dirpath, dirnames, filenames in os.walk(directory):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    total_size += os.path.getsize(fp)
-            return total_size
-
-        def format_bytes(value):
-            if value < 1024:
-                return f"{value} bytes"
-            elif value < 1024 ** 2:
-                return f"{value / 1024:.2f} KB"
-            elif value < 1024 ** 3:
-                return f"{value / 1024 ** 2:.2f} MB"
-            elif value < 1024 ** 4:
-                return f"{value / 1024 ** 3:.2f} GB"
-            else:
-                return f"{value / 1024 ** 4:.2f} TB"
-
 
         import shutil
         def format_disk_usage(disk_usage):
@@ -86,8 +88,66 @@ def filespace_view():
 
         storage = format_disk_usage(shutil.disk_usage(database_handler.get_file_space_path()))
     
-    current_dir = os.getcwd()
+    current_dir = database_handler.get_file_space()
     size = get_directory_size(current_dir)
     formatted_size = format_bytes(size)
 
     return render_template('filespace/filespace.html', invalid_links=invalid_links, invalid_deleted_links=invalid_deleted_links, orphaned_files=orphaned_files, orphaned_deleted_files=orphaned_deleted_files, storage=storage, formatted_size=formatted_size)
+
+
+@routes_filespace.route('/filespace/trash/delete/files', methods=['POST'])
+@login_required
+@exclude_role_2
+@exclude_role_3
+@exclude_role_4
+def trash_delete_files():
+    import models
+    file_ids=[]
+    file_ids_string = request.form['file_ids[]']
+    if file_ids_string != "":
+        file_ids = file_ids_string.split(",")
+    
+    with database_handler.get_session() as session:
+        for file_id in file_ids:
+            file = session.query(models.File).filter(models.File.id == file_id).first()
+            file.delete_file()
+            session.delete(file)
+            session.commit()
+    return redirect(url_for('filespace.trash_view'))
+
+
+@routes_filespace.route('/filespace/trash/delete/<string:file_id>', methods=['GET'])
+@login_required
+@exclude_role_2
+@exclude_role_3
+@exclude_role_4
+def trash_delete_file(file_id):
+    import models
+    with database_handler.get_session() as session:
+        file = session.query(models.File).filter(models.File.id == file_id).first()
+        file.delete_file()
+        session.delete(file)
+        session.commit()
+    return redirect(url_for('filespace.trash_view'))
+
+@routes_filespace.route('/filespace/trash/send/<string:file_id>', methods=['GET'])
+@login_required
+@exclude_role_2
+@exclude_role_3
+@exclude_role_4
+def trash_send_file(file_id):
+    import models
+    with database_handler.get_session() as session:
+        file = session.query(models.File).filter(models.File.id == file_id).first()
+        return send_file(file.get_full_absolute_path(), as_attachment=True)
+
+@routes_filespace.route('/filespace/trash', methods=['GET'])
+def trash_view():
+    import models
+    with database_handler.get_session() as session:
+        trash_files = session.query(models.File).filter(models.File.deleted == True).all()
+
+    current_dir = database_handler.get_file_space()
+    size = get_directory_size(current_dir)
+    formatted_size = format_bytes(size)
+    return render_template('filespace/trash.html', trash_files=trash_files, formatted_size=formatted_size)

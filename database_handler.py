@@ -57,6 +57,9 @@ def get_trash_path():
         os.makedirs(os.path.join(FILE_SPACE_PATH, TRASH_DIR))
     return os.path.join(FILE_SPACE_PATH, TRASH_DIR)
 
+def get_file_space():
+    return FILE_SPACE_PATH
+
 def get_file_space_path():
     if not os.path.exists(os.path.join(FILE_SPACE_PATH, DATA_DIR)):
         os.makedirs(os.path.join(FILE_SPACE_PATH, DATA_DIR))

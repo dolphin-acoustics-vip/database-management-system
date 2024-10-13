@@ -419,24 +419,6 @@ class File(db.Model):
         file.save(destination_path)
         logger.info(f"Saved file to {destination_path}")
 
-    
-    # def update_path_and_filename(self, new_path, new_filename,root_path):
-
-    #     self.path = new_path
-    #     self.filename = new_filename
-
-    # def get_uploaded_date(self):
-    #     return self.uploaded_date
-
-
-    # def set_uploaded_date(self, value):
-    #     if value is not None and not isinstance(value, datetime):
-    #         raise ValueError("Uploaded date must be a valid datetime")
-    #     self.uploaded_date = value
-    
-    # def set_uploaded_by(self, value):
-    #     self.uploaded_by = value
-
     def move_to_trash(self):
         """
         Moves the file to the trash folder.
@@ -449,8 +431,9 @@ class File(db.Model):
         trash_file_path = os.path.join(self.get_directory(),file_name + '_' +  unique_name)
         self.move_file(trash_file_path, move_to_trash=True)
 
-    def delete_file(self, session):
-        os.path.remove(self.get_full_absolute_path())
+    def delete_file(self):
+        if os.path.exists(self.get_full_absolute_path()):
+            os.remove(self.get_full_absolute_path())
 
     def move_file(self, new_relative_file_path, move_to_trash=False, override_extension=None):
         """
