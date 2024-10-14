@@ -1,13 +1,10 @@
 # Third-party imports
-from flask import app, Blueprint, flash,get_flashed_messages, jsonify, redirect,render_template,request, send_file,session, url_for, send_from_directory
-from sqlalchemy.orm import joinedload,sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
-from flask_login import login_user,login_required, current_user, login_manager, logout_user
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import login_user, logout_user
 from flask import session as client_session
-import uuid
 
 # Local application imports
-from database_handler import Session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+import database_handler
 from models import *
 from exception_handler import *
 from logger import logger
@@ -27,7 +24,7 @@ def login_helper(next_destination: str, is_temporary: bool):
         url_for(next_destination)
     except Exception:
         next_destination = url_for('general.home')
-    with Session() as session:
+    with database_handler.get_session() as session:
         # Retrieve form information
         if is_temporary:
             login_id = request.form['access_code']
