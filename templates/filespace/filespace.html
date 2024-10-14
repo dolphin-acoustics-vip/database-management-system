@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 
-
-
 {% macro orphaned_file_template(orphaned_files) %}
 
 <div class="table-responsive">
@@ -76,14 +74,14 @@
 </head>
 
 <body>
-    
     <div class="outer-div">
-        <button><a href="{{ url_for('filespace.trash_view') }}">Clear Trash</a></button>
-
-        <p>{{storage}}</p>
-        <p>Usage: {{formatted_size}}</p>
-
         <h1>Filespace</h1>
+
+        <h2>Storage</h2>
+        <p>System statistics: {{storage}}</p>
+        <p>Total storage size (both data and trash): {{file_space_size}}</p>
+        <p><a href="{{ url_for('filespace.trash_view') }}">Manage trash ({{trash_dir_size}})</a></p>
+
         <h2>Invalid Links</h2>
         <p>Invalid links from existing file objects. This usually means a file has been wrongly moved or deleted from the filespace without using the software to do so.</p>
         {{ invalid_link_template(invalid_links) }}
