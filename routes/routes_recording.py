@@ -452,12 +452,12 @@ def assign_recording():
         return jsonify(success=True)
             
 
-@routes_recording.route('/unassign_recording/<user_id>/<recording_id>', methods=['GET'])
+@routes_recording.route('/unassign_recording', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
-def unassign_recording(user_id, recording_id):
+def unassign_recording():
     """
     Unassigns a recording from a user.
 
@@ -468,10 +468,13 @@ def unassign_recording(user_id, recording_id):
     :return: A JSON object with a single key, 'success', with a value of True if successful, False otherwise.
     :rtype: dict
     """
-    with Session() as session:
+    user_id = request.args.get('user_id')
+    recording_id = request.args.get('recording_id')
+    with database_handler.get_session() as session:
         try:
             recording = session.query(Recording).filter_by(id=recording_id).first()
-            session.query(Assignment).filter_by(user_id=user_id, recording_id=recording_id).delete()
+            assignment = session.query(Assignment).filter_by(user_id=user_id).filter_by(recording_id=recording_id).first()
+            session.delete(assignment)
             recording.update_status_upon_assignment_add_remove(session)
             session.commit()
         except Exception as e:
