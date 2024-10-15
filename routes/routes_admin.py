@@ -43,7 +43,7 @@ def admin_dashboard():
 def admin_logger():
     import logger
     log_string = logger.get_log(200)
-    log_string_html = log_string.replace('\n', '<br>')
+    log_string_html = log_string.strip().replace('\n', '<br>')
     return render_template('admin/admin-logger.html', log_string=log_string_html)
 
 @routes_admin.route('/admin/logger/download', methods=['GET'])
