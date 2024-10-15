@@ -20,10 +20,6 @@ def login_helper(next_destination: str, is_temporary: bool):
     :param is_temporary: Whether the user is a temporary user
     :return: A redirect to the next destination if the login is successful, or a redirect to the login page if not
     """
-    try:
-        url_for(next_destination)
-    except Exception:
-        next_destination = url_for('general.home')
     with database_handler.get_session() as session:
         # Retrieve form information
         if is_temporary:
@@ -48,7 +44,7 @@ def login_helper(next_destination: str, is_temporary: bool):
             # Login user
             login_user(user, remember=False)
             logger.info(f'{"Temporary " if is_temporary else ""}User {user.id} logged in')
-            return redirect(next_destination)
+            return redirect(url_for('general.home'))
         else:
             flash('Invalid username or password' if not is_temporary else 'Invalid access code or password', 'error')
             return redirect(url_for('auth.login' if not is_temporary else 'auth.access_code_login'))
