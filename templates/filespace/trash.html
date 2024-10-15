@@ -12,7 +12,7 @@
             <h1>Trash Files</h1>
             <p>Size of trash directory: {{trash_dir_size}}</p>
             {% if trash_files %}
-            <button id="delete-selected-files">Delete Selected Files</button>
+            <button class="gray" style="width:50%; margin-top:0.5rem; margin-bottom: 1rem" id="delete-selected-files">Delete Selected Files</button>
 
             <form id="delete-files-form" method="post" action="{{ url_for('filespace.trash_delete_files') }}">
                 <input type="hidden" id="file-ids" name="file_ids[]">
