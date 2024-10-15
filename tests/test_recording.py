@@ -80,6 +80,8 @@ def test_upload_selection_table_annotation_invalid(recording_object, db_session)
         'Annotation': ["Y - with a message", "M - with a message", "N - with a message", "2", "Oddball"]
     })
 
+    expected = ["Y","M","N","M","M"]
+
     # Call the upload_selection_table_rows method
     recording_object.unpack_selection_table(db_session, selection_table_df)
     db_session.flush()
@@ -88,7 +90,7 @@ def test_upload_selection_table_annotation_invalid(recording_object, db_session)
     assert len(selection_table_data) == len(selection_table_df)
     # When annotation is unknown we automtically insert M
     for i, selection in enumerate(selection_table_data):
-        assert selection.annotation == "M"
+        assert selection.annotation == expected[i]
 
 
 

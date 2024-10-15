@@ -70,6 +70,7 @@ def contour_file_delete(selection_id: str):
             selection_obj = session.query(Selection).filter_by(id=selection_id).first()
             if selection_obj:
                 selection_obj.delete_contour_file(False)
+                session.flush()
                 selection_obj.update_traced_status()
                 session.commit()
             else:
@@ -98,6 +99,7 @@ def insert_or_update_contour(session: sessionmaker, selection: Selection, contou
     # Attribute the new contour file to the selection
     # and reset the traced status
     selection.contour_file = new_file
+    session.flush()
     selection.update_traced_status()
     # Create all contour statistics
     contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path(), selection.selection_number)

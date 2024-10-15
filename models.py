@@ -718,10 +718,12 @@ class Recording(db.Model):
     def set_encounter_id(self, session, encounter_id):
         encounter_id = utils.validate_id(encounter_id, field="Encounter", allow_empty=False)
     
-    def update_selection_traced_status(self,session):
-        selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
-        for selection in selections:
-            selection.update_traced_status()
+    def update_selection_traced_status(self):
+        with database_handler.get_session() as session:
+            selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
+            for selection in selections:
+                selection.update_traced_status()
+                session.commit()
     
     def reset_selection_table_values(self,session):
         selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
@@ -886,6 +888,8 @@ class Selection(db.Model):
         self.annotation = None
 
     def update_traced_status(self):
+        print(f"self.contour_file: {self.contour_file}")
+        print(f"self.annotation: {self.annotation}")
         if self.contour_file and (self.annotation == "Y" or self.annotation == "M"):
             self.traced = True
         elif not self.contour_file and (self.annotation == "N"):
@@ -894,6 +898,9 @@ class Selection(db.Model):
             self.traced = True
         else:
             self.traced = None
+        print(f"self.traced: {self.traced}")
+        print()
+
 
     def getWarnings(self):
         warnings = []
