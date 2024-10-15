@@ -417,7 +417,7 @@ class File(db.Model):
         self.rename_loose_file(self.path, self.filename, self.extension)
         os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
         file.save(destination_path)
-        logger.info(f"Saved file to {destination_path}")
+        logger.info(f"Saved file to {destination_path}.")
 
     def move_to_trash(self):
         """
@@ -433,6 +433,7 @@ class File(db.Model):
 
     def delete_file(self):
         if os.path.exists(self.get_full_absolute_path()):
+            logger.info(f"Parmanently deleted file {self.get_full_absolute_path()}.")
             os.remove(self.get_full_absolute_path())
 
     def move_file(self, new_relative_file_path, move_to_trash=False, override_extension=None):
@@ -1135,6 +1136,10 @@ class Selection(db.Model):
         if isinstance(annotation, str):
             if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
                 self.annotation = annotation.upper()
+            elif annotation.upper().startswith("Y"):
+                self.annotation = "Y"
+            elif annotation.upper().startswith("N"):
+                self.annotation = "N"
             else:
                 self.annotation = "M"
         else:
