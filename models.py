@@ -1136,6 +1136,10 @@ class Selection(db.Model):
         if isinstance(annotation, str):
             if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
                 self.annotation = annotation.upper()
+            elif annotation.upper().startswith("Y"):
+                self.annotation = "Y"
+            elif annotation.upper().startswith("N"):
+                self.annotation = "N"
             else:
                 self.annotation = "M"
         else:
