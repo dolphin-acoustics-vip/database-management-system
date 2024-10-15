@@ -213,13 +213,18 @@
                 </div>
                 {% if not session['snapshot_date'] %}
                 {% if current_user.role_id in [1, 2, 3] %}
-
+                
+                <div style="display:flex;" >
                 <form id="delete-selection-table-form" encounter-id="{{recording.encounter_id}}"
                     selection-table-id="{{recording.selection_table_id}}"
                     action="{{ url_for('recording.recording_selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
-                    method="post">
-                    <button class="gray small" style="margin-top: 10px;" type="submit">Delete Selection Table</button>
+                    method="post" style="flex : 1;">
+                    <button class="gray small" style="margin-top:0.5rem; margin-right:0.25rem;"  type="submit">Delete Selection Table</button>
                 </form>
+                <form id="refresh-selection-table-form" action="{{ url_for('recording.refresh_selection_table', recording_id=recording.id)}}" method="post" style="flex : 1;">
+                    <button class="gray small" style="margin-top:0.5rem; margin-left:0.25rem;" type="submit">Refresh Selection Table Values</button>
+                </form>
+                </div>
                 {% endif %}
 
                 {% endif %}
@@ -387,6 +392,12 @@
 
     $("#delete-selection-table-form").submit(function (event) {
         if (!confirm("Are you sure you want to delete the selection table?")) {
+            event.preventDefault();
+        }
+    });
+
+    $("#refresh-selection-table-form").submit(function (event) {
+        if (!confirm("This will reset the traced status of all selections. Are you sure you want to do this?")) {
             event.preventDefault();
         }
     });

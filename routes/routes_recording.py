@@ -69,6 +69,18 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
     return new_recording
 
 
+@routes_recording.route('/recording/<recording_id>/refresh-selection-table', methods=['POST'])
+def refresh_selection_table(recording_id):
+    with database_handler.get_session() as session:
+        try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            recording.load_and_validate_selection_table()
+            session.commit()
+            recording.update_selection_traced_status()
+        except (SQLAlchemyError,Exception) as e:
+            exception_handler.handle_exception(session,e)
+        return redirect(url_for('recording.recording_view', recording_id=recording_id))
+
 @routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/selection-table/add', methods=['POST'])
 @require_live_session
 @exclude_role_4
@@ -99,8 +111,9 @@ def recording_selection_table_add(encounter_id,recording_id):
                 recording.selection_table_file = new_file 
                 # Validate the selection table - if invalid then delete the selection table file
                 recording.load_and_validate_selection_table()
-                recording.update_selection_traced_status(session)
                 session.commit()
+                recording.update_selection_traced_status()
+                
                 flash("Selection table uploaded successfully", "success")
             else:
                 raise WarningException("The form did not send a selection table file.")
@@ -170,10 +183,11 @@ def recording_selection_table_delete(encounter_id, recording_id):
             recording = session.query(Recording).filter_by(id=recording_id).first()
             file = session.query(File).filter_by(id=recording.selection_table_file_id).first()
             recording.reset_selection_table_values(session)
-            recording.update_selection_traced_status(session)
             file.move_to_trash()
             recording.selection_table_file = None
             session.commit()
+            recording.update_selection_traced_status()
+
             flash(f'Selection table deleted for {recording.get_unique_name()}', 'success')
         except (SQLAlchemyError,Exception) as e:
             handle_exception(session, e)
