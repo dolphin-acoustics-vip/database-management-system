@@ -36,6 +36,24 @@ def admin_dashboard():
         species_list = session.query(Species).all()
         return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list, species_list=species_list)
 
+@routes_admin.route('/admin/logger', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+@exclude_role_2
+def admin_logger():
+    import logger
+    log_string = logger.get_log(200)
+    log_string_html = log_string.strip().replace('\n', '<br>')
+    return render_template('admin/admin-logger.html', log_string=log_string_html)
+
+@routes_admin.route('/admin/logger/download', methods=['GET'])
+@exclude_role_4
+@exclude_role_3
+@exclude_role_2
+def admin_logger_download_log():
+    import logger
+    return logger.send_log_file()
+
 @routes_admin.route('/admin/data-source/<data_source_id>/view', methods=['GET'])
 @exclude_role_4
 @exclude_role_3

@@ -101,7 +101,10 @@ def init_db(app: Flask, run_script: str=None):
                 with app.open_resource(run_script, mode='r') as f:
                     try:
                         sql_script = f.read()
-                        conn.execute(db.text(sql_script))
+                        if sql_script.strip() != '':
+                            conn.execute(db.text(sql_script))
+                        else:
+                            logger.info("No database script found. Assuming that no changes are required to the database.")
                     except Exception as e:
                         logger.warning("Attempting to run DDL script failed (this could be because the changed defined in the DDL script have already been applied): " + str(e))
 
@@ -112,7 +115,7 @@ def init_db(app: Flask, run_script: str=None):
                     if hasattr(obj, 'updated_by_id'):
                         try:
                             obj.updated_by_id = current_user.id
-                        except:
+                        except Exception as e:
                             pass
                 else:
                     # only insert user data in new File objects
@@ -129,10 +132,6 @@ def init_db(app: Flask, run_script: str=None):
             commit. This impacts all tables being updated or inserted in the database that
             contain an attribute updated_by_id (foreign key reference to the user table).
             """
-            add_user_data(session)
-
-        @sqlalchemy.event.listens_for(session_instance, 'after_flush')
-        def after_flush(session: sessionmaker, flush_context):
             add_user_data(session)
 
     return db

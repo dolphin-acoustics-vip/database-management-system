@@ -2,13 +2,37 @@ import logging
 from logging.handlers import RotatingFileHandler
 import pytz, os
 from datetime import datetime
+from flask import send_file
 from flask_login import login_user,login_required, current_user, login_manager
+
+log_dir = 'logs'
+
+
+class CustomRotatingFileHandler(RotatingFileHandler):
+
+    def getFiles():
+        return os.listdir(log_dir)
+    
+    def get_log(self, num_lines=None):
+        with open(self.baseFilename, 'r') as f:
+            lines = f.readlines()
+            if num_lines is not None:
+                return ''.join(lines[-num_lines:])
+            else:
+                return ''.join(lines)
+
+    def clear_logs(self):
+        files = self.getFiles()
+        for file in files:
+            os.remove(file)
+
+    
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-log_dir = 'logs'
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
@@ -30,9 +54,20 @@ class TimezoneFormatter(logging.Formatter):
         dt = datetime.fromtimestamp(record.created, tz)
         return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
+
+
 # Create a file handler
-file_handler = RotatingFileHandler(os.path.join(log_dir,'app.log'), maxBytes=1024*1024*100, backupCount=20)
+file_handler = CustomRotatingFileHandler(os.path.join(log_dir,'app.log'), mode='w')
 file_handler.setLevel(logging.DEBUG)
+
+def delete_files():
+    file_handler.delete_files()
+
+def get_log(num_lines=None):
+    return file_handler.get_log(num_lines=num_lines)
+
+def send_log_file():
+    return send_file(file_handler.baseFilename)
 
 # Create a console handler
 console_handler = logging.StreamHandler()

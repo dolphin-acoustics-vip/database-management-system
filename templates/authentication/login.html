@@ -10,7 +10,8 @@
         <h3 class="title">Login</h3>
 
           <form method="POST" action="{{ url_for('auth.login_post') }}">
-              <div class="field">
+            <input type="hidden" name="next_destination" value="{{ next_destination }}">
+            <div class="field">
                   <div class="control">
                       <input class="input is-large" type="email" name="email" placeholder="Your Email" autofocus="">
                   </div>
@@ -28,14 +29,9 @@
             <div style="color: #777;">OR</div>
             <hr style="flex: 1; margin-left: 10px;">
         </div>
-        
-        <button class="button is-block is-primary is-large is-fullwidth small" onclick="loginWithAccessCode()">Login with access code</button>
-        <script>
-            function loginWithAccessCode() {
-                console.log("I GOT HERE");
-                window.location.href = "/access-code-login"; // Replace this with the actual URL
-            }
-        </script>
+        <a class="button blue" href="{{ url_for('auth.access_code_login', next=next_destination) }}">Login With Access Code</a>
+
+
     </div>
   </div>
   {% endblock %}

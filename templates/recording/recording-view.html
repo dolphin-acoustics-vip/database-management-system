@@ -436,9 +436,9 @@
      */
     removeAssignment = function () {
         var xhr = new XMLHttpRequest();
-        const recordingId = event.target.closest('.user-row').dataset.recordingId;
-        const userId = event.target.closest('.user-row').dataset.userId
-        xhr.open('GET', "{{ url_for('recording.unassign_recording', user_id=user.id | urlencode, recording_id=recording.id | urlencode) }}", true);
+        var userId = event.target.closest('.user-row').dataset.userId
+        var recordingId = event.target.closest('.user-row').dataset.recordingId
+        xhr.open('GET', "{{ url_for('recording.unassign_recording') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = function () {
             window.location.href = window.location.href;

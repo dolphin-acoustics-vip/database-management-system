@@ -15,8 +15,14 @@
         <button class="blue small" style="margin-top: 0.5rem" onclick="switchToArchiveMode()">Switch</button>
         </form>
 
+        <h2>Filespace</h2>
+        <a href="{{ url_for('filespace.filespace_view')}}">Access Filespace Diagnostic Tool</a>
+
+        <h2>Logger</h2>
+        <a href="{{ url_for('admin.admin_logger') }}">Access Logging Tool</a>
+
         <h2>User management</h2>
-        <a href="{{ url_for('admin.admin_user') }}"><button class="blue">Users</button></a>
+        <a href="{{ url_for('admin.admin_user') }}">Access User Management Tool</a>
         
         <section id="data-sources">
             <h2>Data Sources</h2>

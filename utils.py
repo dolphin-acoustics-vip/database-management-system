@@ -55,14 +55,14 @@ def download_files(file_paths, file_names, zip_filename):
             
         return zip_and_download_files(new_file_paths, zip_filename)
     
-def download_file(file_obj, file_name_generator):
+def download_file(file_obj, file_name_generator=None):
     """
     Takes a file object and sends the file to the user. Before doing so,
     uses the file_name_generator() method passed to rename the file during
     export.
     """
     with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
-        file_path = os.path.join(temp_dir, file_name_generator())
+        file_path = os.path.join(temp_dir, file_name_generator() if file_name_generator else file_obj.filename)
         if not file_path.endswith(file_obj.extension): file_path = f"{file_path}.{file_obj.extension}"
         shutil.copy(file_obj.get_full_absolute_path(), file_path)
         return send_file(file_path, as_attachment=True)
