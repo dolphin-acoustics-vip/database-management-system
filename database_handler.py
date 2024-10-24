@@ -490,6 +490,7 @@ def parse_date(date_string: str) -> datetime:
     :return: The parsed date
     """
     import re
+    date = None
     match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
     if match:
         year = match.group(1)

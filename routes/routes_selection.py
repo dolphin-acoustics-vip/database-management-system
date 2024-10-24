@@ -134,6 +134,11 @@ def process_contour():
     selection_number = request.args.get('id')
     valid = True
     messages = []
+
+    extension = filename.split('.')[-1]
+    if extension != "csv":
+        messages.append("<span style='color: red;'>Error: must be a CSV file.</span>")
+        valid = False
     with Session() as session:
         # Extract the selection number from the filename using regular expression
         match = re.search(r'sel_(\d+)', filename)
@@ -198,9 +203,14 @@ def process_selection():
     """
     recording_id = request.args.get('recording_id')
     filename = request.args.get('filename')
+    extension = filename.split('.')[-1]
+
     selection_number = request.args.get('id')
     valid = True
     messages=[]
+    if extension != "wav":
+        messages.append("<span style='color: red;'>Error: must be WAV file.</span>")
+        valid = False
     
     # Prevent empty strings from causing issues in the future
     if str(selection_number).strip() == "":
@@ -249,6 +259,7 @@ def process_selection():
         else:
             messages.append("<span style='color: orange;'>Warning: no start time.</span>")
 
+    print(jsonify(id=selection_number,messages=messages,valid=valid))
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
 @routes_selection.route('/serve_plot/<selection_id>')
