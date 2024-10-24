@@ -77,17 +77,29 @@ Variables required:
       {% if not session['snapshot_date'] %}
       <h3>Add Recording</h3>
       <form action="{{ url_for('recording.recording_insert', encounter_id=encounter.id)}}" method="post"
-        enctype="multipart/form-data">
+        enctype="multipart/form-data" id="recording-insert-form">
         {% from 'recording/recording-form-template.html' import recording_form %}
         {{ recording_form(editing=False, file_timezone=encounter.file_timezone, local_timezone=encounter.local_timezone,
         recording=None) }}
         <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
         <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
+        <div style="display: flex;">
+          <span style="display: none; padding-right: 0.5rem;" id="recording-insert-progress-text">0%</span>
+          <progress style="display: none;" id="recording-insert-progress-bar" value="0" max="100"></progress>
+        </div>
         <button type="submit" class="blue" style="margin-top: 1rem;">Submit</button>
       </form>
       {% endif %}
     </section>
     {% endif %}
+
+    <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            uploadFormWithProgress('recording-insert-form', 'recording-insert-progress-bar', 'recording-insert-progress-text');
+        });
+    </script>
 
     <section id="recordings">
       <h2>Recordings</h2>

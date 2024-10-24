@@ -42,7 +42,6 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         session.add(new_recording)
 
     new_recording.set_start_time(request.form['time_start'])
-    #new_recording.set_encounter_id(session, encounter_id)
     
     # If a recording file has been given, add it to the Recording object
     if 'recording-file-input' in request.files and request.files['recording-file-input'].filename != '':
@@ -52,6 +51,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_file = File()
         session.add(new_file)
         new_recording.recording_file = new_file
+
         new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename)
 
     return new_recording

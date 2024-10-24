@@ -58,3 +58,69 @@ function addShiftClickFunctionality(checkboxes) {
         form.submit();
     });
   }
+
+  function uploadFormWithProgress(formId, progressBarId, progressTextId) {
+    const form = document.getElementById(formId);
+    const progressBar = document.getElementById(progressBarId);
+    const progressText = document.getElementById(progressTextId);
+  
+    form.addEventListener('submit', (e) => {
+      progressBar.style="display: block";
+      progressText.style="display: block";
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener('progress', (e) => {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        progressBar.value = percent;
+        progressText.textContent = `${percent}%`;
+      });
+  
+      const formData = new FormData(form);
+      xhr.open(form.method, form.action, true);
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            const redirectUrl = xhr.responseURL;
+            if (redirectUrl) {
+              window.location.href = redirectUrl;
+            }
+          }
+        }
+      };
+      xhr.send(formData);
+    });
+  }
+  
+
+
+
+
+  // function uploadFormWithProgress(formId, progressBarId, progressTextId, url) {
+  //   const form = document.getElementById(formId);
+  //   const progressBar = document.getElementById(progressBarId);
+  //   const progressText = document.getElementById(progressTextId);
+  //   const submitButton = form.querySelector('button[type="submit"]');
+  
+  //   submitButton.addEventListener('click', (e) => {
+  //     e.preventDefault();
+  //     const xhr = new XMLHttpRequest();
+  //     xhr.upload.addEventListener('progress', (e) => {
+  //       const percent = Math.round((e.loaded / e.total) * 100);
+  //       progressBar.value = percent;
+  //       progressText.textContent = `${percent}%`;
+  //     });
+  
+  //     const formData = new FormData(form);
+  //     xhr.open('POST', url, true);
+  //     xhr.onreadystatechange = () => {
+  //       if (xhr.readyState === XMLHttpRequest.DONE) {
+  //         if (xhr.status === 200) {
+  //           const redirectUrl = xhr.responseURL;
+  //           if (redirectUrl) {
+  //             window.location.href = redirectUrl;
+  //           }
+  //         }
+  //       }
+  //     };
+  //     xhr.send(formData);
+  //   });
+  // }
