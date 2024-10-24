@@ -170,11 +170,11 @@ def export_selection_table(recording_id, export_format):
         return response
 
 
-@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/selection-table/delete', methods=['POST'])
+@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
 @require_live_session
 @exclude_role_4
 @login_required
-def recording_selection_table_delete(encounter_id, recording_id):
+def recording_selection_table_delete(recording_id):
     """
     Delete the selection table file associated with the recording
     """
@@ -187,20 +187,22 @@ def recording_selection_table_delete(encounter_id, recording_id):
             recording.selection_table_file = None
             session.commit()
             recording.update_selection_traced_status()
-
             flash(f'Selection table deleted for {recording.get_unique_name()}', 'success')
         except (SQLAlchemyError,Exception) as e:
             handle_exception(session, e)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
+        finally:
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
-def recording_insert(encounter_id):
+def recording_insert(encounter_id: str) -> Response:
     """
     Inserts a new recording into the database for a given encounter ID.
+
+    :param str encounter_id: The ID of the encounter to insert the recording into.
     """
     with Session() as session:
         try:
@@ -208,9 +210,9 @@ def recording_insert(encounter_id):
             session.add(recording_obj)
             session.commit()
             flash(f'Recording inserted for {recording_obj.get_unique_name()}', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except (SQLAlchemyError,Exception) as e:
             handle_exception(session, e, 'Error inserting recording')
+        finally:
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
     
@@ -265,7 +267,7 @@ def flag_user_assignment(session, recording_id, user_id, completed_flag):
         recording.update_status_upon_assignment_flag_change(session)
         session.commit()
 
-@routes_recording.route('/recording/flag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/flag-as-completed-for-user', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
@@ -279,44 +281,47 @@ def flag_as_complete_for_user():
         flag_user_assignment(session, recording_id, user_id, True)
         return jsonify({'message': 'Success'}), 200
 
-@routes_recording.route('/recording/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/unflag-as-completed-for-user', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
 def unflag_as_complete_for_user():
-    recording_id = request.args.get('recording_id')
-    user_id = request.args.get('user_id')
+    recording_id = utils.extract_args('recording_id')
+    user_id = utils.extract_args('user_id')
     if recording_id is None or user_id is None:
         return jsonify({'message': 'Missing recording_id or user_id'}), 400
     with Session() as session:
         flag_user_assignment(session, recording_id, user_id, False)
         return jsonify({'message': 'Success'})
 
-@routes_recording.route('/recording/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/unflag-as-completed', methods=['POST'])
 @require_live_session
-@exclude_role_3
 @exclude_role_4
 @login_required
 def unflag_as_complete():
-    recording_id = request.args.get('recording_id')
-
+    recording_id = utils.extract_args('recording_id')
     with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
         flag_user_assignment(session, recording_id, current_user.id, False)
+        return redirect(request.referrer)
 
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
-
-@routes_recording.route('/recording/<recording_id>/flag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/flag-as-completed', methods=['POST'])
 @require_live_session
-@exclude_role_3
 @exclude_role_4
 @login_required
-def flag_as_complete(recording_id):
+def flag_as_complete():
+    """
+    Flags a recording as complete for the current user.
+
+    :param recording_id: the id of the recording
+    :type recording_id: str
+    :return: a redirect to the recording view
+    :rtype: flask.Response
+    """
+    recording_id = utils.extract_args('recording_id')
     with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
         flag_user_assignment(session, recording_id, current_user.id, True)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
+        return redirect(request.referrer)
 
 @routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
 @require_live_session
