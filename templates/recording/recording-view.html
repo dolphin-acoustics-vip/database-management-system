@@ -111,17 +111,14 @@
             {% if logged_in_user_assigned.completed_flag == True %}
 
             <label>Assignment Status: COMPLETE (Awaiting Review)</label>
-            <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="get">
+            <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="post">
                 <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
             </form>
             {% else %}
             <label>Assignment Status: IN PROGRESS </label>
 
-            <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="get">
-
-                <button type="submit" id="flag-as-complete-button"
-                    onclick="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}">Flag as
-                    Complete</button>
+            <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="post">
+                <button type="submit" id="flag-as-complete-button">Flag as Complete</button>
             </form>
             {% endif %}
             {% else %}

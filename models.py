@@ -1,6 +1,9 @@
 # Standard library imports
+import csv
+from io import StringIO
 import os, uuid
 from datetime import datetime, timedelta
+from flask import Response
 import scipy.io
 import numpy as np
 import pandas as pd
@@ -510,66 +513,98 @@ class Recording(db.Model):
     status_change_datetime = db.Column(db.DateTime(timezone=True))
     notes = db.Column(db.Text)
     row_start = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp())
-    #row_end = db.Column(db.DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp())
-    #valid_to = Column(DateTime, server_default=func.inf())
+    
     __table_args__ = (
         db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
-    def get_unique_name(self, delimiter="-"):
-        encounter = database_handler.create_system_time_request(db.session, Encounter, {"id":self.encounter_id},one_result=True)
-        return f"{encounter.get_unique_name(delimiter)}: recording {self.start_time}"
+    def get_unique_name(self, delimiter="-") -> str:
+        """Get a unique name for the recording based on the encounter and start time.
 
-    def is_complete(self):
+        Args:
+            delimiter (str, optional): The string to use to separate the variables in the unique name. Defaults to "-".
+
+        Returns:
+            str: The unique name for the recording based on the encounter and start time.
+        """
+        with database_handler.get_session() as session:
+            encounter = database_handler.create_system_time_request(db.session, Encounter, {"id":self.encounter_id},one_result=True)
+            return f"{encounter.get_unique_name(delimiter)}: recording {self.start_time}"
+
+    def is_complete(self) -> bool:
+        """Check if the recording has been reviewed or not.
+
+        Returns:
+            bool: True if the recording has been 'Reviewed' and False if not.
+        """
         return True if self.status == 'Reviewed' else False
 
     def is_on_hold(self):
+        """Check if the recording has been rejected (placed on hold) or not.
+
+        Returns:
+            bool: True if the recording is 'On Hold' and False if not.
+        """
         return True if self.status == 'On Hold' else False
 
-    def set_user_id(self, user_id):
+    def set_updated_by_id(self, user_id: str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
         self.updated_by_id = user_id
 
-    def update_status_change_datetime(self):
-        self.status_change_datetime = datetime.now()
+    def __set_status(self, status: str):
+        """Set the status of the recording. The status must be one of
+        'Unassigned', 'In Progress', 'Awaiting Review', 'Reviewed', 'On Hold'.
+        This method will automatically update a timestamp of when the status changed.
 
-    def set_status(self, status):
+        Args:
+            status (str): The new status of the recording.
+        """
         if self.status != status:
-            self.update_status_change_datetime()
+            self.status_change_datetime = datetime.now()
         self.status = status
 
+    def update_status(self):
+        """Update the status of the recording based on the assignment flags. 
+        If the recording is not 'On Hold' or 'Reviewed', it will be set to 'Awaiting Review'. 
+        If any individual user assignment is not completed, the status will be set to 'In Progress' (overrides previous requirement).
+        If the status has changed, the status_change_datetime will be set to the current datetime.
 
-    def update_status_upon_assignment_flag_change(self, session):
-        assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
-        old_status = self.status
-        if self.status != 'On Hold' and self.status != 'Reviewed':
-
-            # this will be run when a user selects complete
-            self.status = 'Awaiting Review'
-            for assignment in assignments:
-                if assignment.completed_flag is False:
-                    self.status = 'In Progress'
-        
-        if old_status != self.status:
-            self.update_status_change_datetime()
-    def update_status_upon_assignment_add_remove(self, session):
-
-        assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
-        old_status = self.status
-        if self.status != 'On Hold' and self.status != 'Reviewed' and self.status != 'Awaiting Review':
-            if len(assignments) == 0:
-                self.status = 'Unassigned'
+        This method will not work as expected if assignments have newly been created or deleted and not had these changes committed to the session.
+        """
+        with database_handler.get_session() as session:
+            assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
+            new_status = ""
+            if self.status != 'On Hold' and self.status != 'Reviewed':
+                if len(assignments) == 0:
+                    new_status = 'Unassigned'
+                else:
+                    new_status = 'Awaiting Review'
+                    for assignment in assignments:
+                        if assignment.completed_flag is False:
+                            new_status = 'In Progress'
             else:
-                self.status = 'In Progress'
-        if old_status != self.status:
-            self.update_status_change_datetime()
+                new_status = self.status
+
+            self.__set_status(new_status)
+
+    def set_status_on_hold(self):
+        """Set the status of the recording to 'On Hold'."""
+        self.__set_status('On Hold')
+    
+    def set_status_reviewed(self):
+        """Set the status of the recording to 'Reviewed'."""
+        self.__set_status('Reviewed')
+
         
     def get_number_of_selections(self):
         selections = database_handler.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         return len(selections)
 
     def get_number_of_contours(self):
-        #selections = database_handler.create_system_time_request(db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
-
         contours = db.session.query(Selection).filter_by(recording_id=self.id).filter(Selection.contour_file != None).all()
         return len(contours)
 
@@ -690,10 +725,14 @@ class Recording(db.Model):
 
     def generate_relative_path(self):
         folder_name = self.start_time.strftime("Recording-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
-        return os.path.join(self.encounter.generate_relative_path(), folder_name)
+        with database_handler.get_session() as session:
+            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
+            return os.path.join(encounter.generate_relative_path(), folder_name)
 
     def generate_recording_filename(self,extension=""):
-        return f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
+        with database_handler.get_session() as session:
+            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
+            return f"Rec-{encounter.species.species_name}-{encounter.location}-{encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     
     def generate_full_relative_path(self,extension=""):
         return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
@@ -730,6 +769,46 @@ class Recording(db.Model):
         for selection in selections:
             selection.reset_selection_table_values(session)
 
+    def export_selection_table(self, session, export_format):
+        headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
+
+        selections = database_handler.create_system_time_request(session, Selection, {"recording_id": self.id}, order_by="selection_number", one_result=False)
+        encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
+        
+        csv_data = StringIO()
+        if export_format == 'csv':
+            writer = csv.writer(csv_data, delimiter=',')
+        else:
+            writer = csv.writer(csv_data, delimiter='\t')
+        
+        writer.writerow(headers)
+        for selection in selections:
+            writer.writerow([
+                selection.selection_number,
+                selection.view,
+                selection.channel,
+                selection.begin_time,
+                selection.end_time,
+                selection.low_frequency,
+                selection.high_frequency,
+                selection.delta_time,
+                selection.delta_frequency,
+                selection.average_power,
+                selection.annotation
+            ])
+
+        csv_data.seek(0)
+
+        if export_format == 'csv':
+            mimetype = 'text/csv'
+            file_name = f'selection-table-{encounter.encounter_name}-rec-{self.get_start_time_string()}.csv'
+        else:
+            mimetype = 'text/plain'
+            file_name = f'selection-table-{encounter.encounter_name}-rec-{self.get_start_time_string()}.txt'
+
+        response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
+        
+        return response
 
 
 class RecordingPlatform(db.Model):
@@ -859,7 +938,9 @@ class Selection(db.Model):
     )
 
     def get_unique_name(self, delimiter="-"):
-        return f"{self.recording.get_unique_name(delimiter)}: selection {self.selection_number}"
+        with database_handler.get_session() as session:
+            recording = database_handler.create_system_time_request(session, Recording, {"id":self.recording_id},one_result=True)
+            return f"{recording.get_unique_name(delimiter)}: selection {self.selection_number}"
 
     def calculate_sampling_rate(self):
         if self.selection_file:
@@ -1122,15 +1203,17 @@ class Selection(db.Model):
         return dict(zip(headers, values))
 
     def upload_selection_table_data(self, st_df):
-        
-        if 'Selection' not in st_df.columns:
-            raise exception_handler.WarningException("Missing required column: 'Selection'")
-        selection_index = st_df.columns.get_loc('Selection')
-        
-        if 'Annotation' not in st_df.columns:
-            raise exception_handler.WarningException("Missing required column: 'Annotation'")
-        annotation_index = st_df.columns.get_loc('Annotation')
+        missing_columns = []
 
+        for required_column in ('Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation'):
+            if required_column not in st_df.columns:
+                missing_columns.append(required_column)
+        
+        if len(missing_columns) > 0:
+            raise exception_handler.WarningException(f"Missing required columns: {', '.join(missing_columns)}")
+
+        selection_index = st_df.columns.get_loc('Selection')
+        annotation_index = st_df.columns.get_loc('Annotation')
 
         if pd.isna(selection_index) or pd.isna(annotation_index):
             raise exception_handler.WarningException("Missing required columns: 'Selection' or 'Annotation'")
@@ -1157,16 +1240,18 @@ class Selection(db.Model):
             raise exception_handler.WarningException("Invalid selection number")
 
         # Set the other fields based on the available columns
-        self.view = st_df.iloc[0, st_df.columns.get_loc('View')] if 'View' in st_df.columns else ""
-        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')] if 'Channel' in st_df.columns else 0
-        self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')] if 'Begin Time (s)' in st_df.columns else 0
-        self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')] if 'End Time (s)' in st_df.columns else 0
-        self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')] if 'Low Freq (Hz)' in st_df.columns else 0
-        self.high_frequency = st_df.iloc[0, st_df.columns.get_loc('High Freq (Hz)')] if 'High Freq (Hz)' in st_df.columns else 0
-        self.delta_time = st_df.iloc[0, st_df.columns.get_loc('Delta Time (s)')] if 'Delta Time (s)' in st_df.columns else 0
-        self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else 0
-        self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else 0
+        self.view = st_df.iloc[0, st_df.columns.get_loc('View')]
+        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')]
+        self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')]
+        self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')]
+        self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')]
+        self.high_frequency = st_df.iloc[0, st_df.columns.get_loc('High Freq (Hz)')]
+        self.delta_time = st_df.iloc[0, st_df.columns.get_loc('Delta Time (s)')] if 'Delta Time (s)' in st_df.columns else None
+        self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else None
+        self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else None
 
+        if not self.delta_time: self.delta_time = self.end_time - self.begin_time
+        if not self.delta_frequency: self.delta_frequency = self.high_frequency - self.low_frequency
 
     def update_call(self):
         self.move_file()
@@ -1336,9 +1421,13 @@ class Assignment(db.Model):
     created_datetime = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
     completed_flag = db.Column(db.Boolean, default=False)
 
+    def set_user_id(self, user_id: str):
+        self.user_id = user_id
+    
+    def set_recording_id(self, recording_id: str):
+        self.recording_id = recording_id
 
     def is_complete(self):
-    
         return "Yes" if self.completed_flag else "No"
     
 
