@@ -497,20 +497,6 @@ def unassign_recording():
 
 import contour_statistics
 
-def recalculate_contour_statistics(session, selection):
-    """
-    Recalculate contour statistics for the given selection.
-
-    :param session: The current sqlalchemy session
-    :type session: sqlalchemy.orm.session.Session
-    :param selection: The selection object to recalculate the contour statistics for
-    :type selection: Selection
-    """
-    selection.reset_contour_stats()
-    if selection and selection.contour_file is not None:
-        contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path(),selection.selection_number)
-        contour_rows = contour_file_obj.calculate_statistics(session, selection)
-        selection.generate_ctr_file(session, contour_rows)
 
 @routes_recording.route('/selection/<selection_id>/recalculate-contour-statistics', methods=['GET'])
 @login_required
@@ -520,7 +506,7 @@ def recalculate_contour_statistics_for_selection(selection_id):
     with database_handler.get_session() as session:
         try:
             selection = session.query(Selection).filter_by(id=selection_id).first()
-            recalculate_contour_statistics(session, selection)
+            selection.recalculate_contour_statistics(session)
             session.commit()
             flash(f"Refreshed contour statistics for {selection.get_unique_name()}", 'success')
         except (Exception, SQLAlchemyError) as e:
@@ -553,7 +539,7 @@ def recalculate_contour_statistics_for_recording(recording_id):
             # need to query selection in new session to atomise transaction
             with database_handler.get_session() as selection_session:
                 selection = selection_session.query(Selection).with_for_update().filter_by(id=selection_id).first()
-                recalculate_contour_statistics(selection_session, selection)
+                selection.recalculate_contour_statistics(selection_session)
                 selection_session.commit()
                 counter += 1
                 selection_session.close()

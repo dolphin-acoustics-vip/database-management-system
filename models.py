@@ -16,6 +16,7 @@ from sqlalchemy.sql import func
 from sqlalchemy import event
 
 # Local application imports
+import contour_statistics
 import database_handler, exception_handler, utils
 from database_handler import db, get_file_space_path, get_trash_path
 from logger import logger
@@ -678,7 +679,7 @@ class Recording(db.Model):
             raise exception_handler.WarningException("The selection table provided is empty")
         
         if 'Selection' not in st_df.columns:
-            raise exception_handler.WarningException("Missing required column: 'Selection'")
+            raise exception_handler.WarningException("Missing required columns: Selection")
 
         selection_table_selection_numbers = st_df.Selection.to_list()
         
@@ -954,6 +955,25 @@ class Selection(db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+    def recalculate_contour_statistics(self, session):
+        """
+        Recalculate contour statistics for the given selection.
+
+        :param session: The current sqlalchemy session
+        :type session: sqlalchemy.orm.session.Session
+        :param selection: The selection object to recalculate the contour statistics for
+        :type selection: Selection
+        """
+        self.reset_contour_stats()
+        if self.contour_file is not None:
+            try:
+                contour_file_obj = contour_statistics.ContourFile(self.contour_file.get_full_absolute_path(),self.selection_number)
+                contour_rows = contour_file_obj.calculate_statistics(session, self)
+                self.generate_ctr_file(session, contour_rows)
+            except ValueError as e:
+                raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
+
+
     def get_unique_name(self, delimiter="-"):
         with database_handler.get_session() as session:
             recording = database_handler.create_system_time_request(session, Recording, {"id":self.recording_id},one_result=True)
@@ -986,8 +1006,6 @@ class Selection(db.Model):
         self.annotation = None
 
     def update_traced_status(self):
-        print(f"self.contour_file: {self.contour_file}")
-        print(f"self.annotation: {self.annotation}")
         if self.contour_file and (self.annotation == "Y" or self.annotation == "M"):
             self.traced = True
         elif not self.contour_file and (self.annotation == "N"):
@@ -996,8 +1014,6 @@ class Selection(db.Model):
             self.traced = True
         else:
             self.traced = None
-        print(f"self.traced: {self.traced}")
-        print()
 
 
     def getWarnings(self):
@@ -1231,9 +1247,6 @@ class Selection(db.Model):
 
         selection_index = st_df.columns.get_loc('Selection')
         annotation_index = st_df.columns.get_loc('Annotation')
-
-        if pd.isna(selection_index) or pd.isna(annotation_index):
-            raise exception_handler.WarningException("Missing required columns: 'Selection' or 'Annotation'")
 
         # Get the values for the 'Selection' and 'Annotation' columns
         selection_number = st_df.iloc[0, selection_index]

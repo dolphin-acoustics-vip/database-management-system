@@ -39,6 +39,12 @@ def test_upload_selection_table_rows(recording_object, db_session):
     # Create a selection table DataFrame
     selection_table_df = pd.DataFrame({
         'Selection': ['1','2','3'],
+        'View': ['Test View 1', 'Test View 2', 'Test View 3'],
+        'Channel': [1,2,3],
+        'Begin Time (s)': [0.1, 0.2, 0.3],
+        'End Time (s)': [0.2, 0.3, 0.4],
+        'Low Freq (Hz)': [0.1, 0.2, 0.3],
+        'High Freq (Hz)': [0.2, 0.3, 0.4],
         'Annotation': ['Y', 'M', 'N']
     })
 
@@ -53,12 +59,18 @@ def test_upload_selection_table_rows(recording_object, db_session):
         assert selection.selection_number == int(selection_table_df.iloc[i]['Selection'])
         assert selection.annotation == selection_table_df.iloc[i]['Annotation']
 
-missing_annotation_warning = "Missing required column: 'Annotation'".lower()
-missing_selection_warning = "Missing required column: 'Selection'".lower()
+missing_annotation_warning = "Missing required columns: Annotation".lower()
+missing_selection_warning = "Missing required columns: Selection".lower()
 
 def test_upload_selection_table_no_selection(recording_object, db_session):
     selection_table_df = pd.DataFrame({
-        'Annotation': ['Y', 'M', 'N']
+        'Annotation': ['Y', 'M', 'N'],
+        'View': ['Test View 1', 'Test View 2', 'Test View 3'],
+        'Channel': [1,2,3],
+        'Begin Time (s)': [0.1, 0.2, 0.3],
+        'End Time (s)': [0.2, 0.3, 0.4],
+        'Low Freq (Hz)': [0.1, 0.2, 0.3],
+        'High Freq (Hz)': [0.2, 0.3, 0.4]
     })
 
     with pytest.raises(exception_handler.WarningException) as exc:
@@ -67,7 +79,13 @@ def test_upload_selection_table_no_selection(recording_object, db_session):
 
 def test_upload_selection_table_no_annotation(recording_object, db_session):
     selection_table_df = pd.DataFrame({
-        'Selection': ['1', '2', '3']
+        'Selection': ['1', '2', '3'],
+        'View': ['Test View 1', 'Test View 2', 'Test View 3'],
+        'Channel': [1,2,3],
+        'Begin Time (s)': [0.1, 0.2, 0.3],
+        'End Time (s)': [0.2, 0.3, 0.4],
+        'Low Freq (Hz)': [0.1, 0.2, 0.3],
+        'High Freq (Hz)': [0.2, 0.3, 0.4]
     })
 
     with pytest.raises(exception_handler.WarningException) as exc:
@@ -77,6 +95,12 @@ def test_upload_selection_table_no_annotation(recording_object, db_session):
 def test_upload_selection_table_annotation_invalid(recording_object, db_session):
     selection_table_df = pd.DataFrame({
         'Selection': ['1', '2', '3', '4', '5'],
+        'View': ['Test View 1', 'Test View 2', 'Test View 3', 'Test View 4', 'Test View 5'],
+        'Channel': [1,2,3,4,5],
+        'Begin Time (s)': [0.1, 0.2, 0.3, 0.4, 0.5],
+        'End Time (s)': [0.2, 0.3, 0.4, 0.5, 0.6],
+        'Low Freq (Hz)': [0.1, 0.2, 0.3, 0.4, 0.5],
+        'High Freq (Hz)': [0.2, 0.3, 0.4, 0.5, 0.6],
         'Annotation': ["Y - with a message", "M - with a message", "N - with a message", "2", "Oddball"]
     })
 

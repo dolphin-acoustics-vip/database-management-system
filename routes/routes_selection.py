@@ -96,15 +96,21 @@ def insert_or_update_contour(session: sessionmaker, selection: Selection, contou
     new_file = File()
     new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_filename(), get_file_space_path())
     session.add(new_file)
+    session.commit()
+    print("new file: " + new_file.id)
+
     # Attribute the new contour file to the selection
     # and reset the traced status
     selection.contour_file = new_file
-    session.flush()
     selection.update_traced_status()
+    print("new file: " + new_file.id)
+
+    selection.recalculate_contour_statistics(session)
+
     # Create all contour statistics
-    contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path(), selection.selection_number)
-    contour_rows = contour_file_obj.calculate_statistics(session, selection)
-    selection.generate_ctr_file(session, contour_rows)
+    #contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path(), selection.selection_number)
+    #contour_rows = contour_file_obj.calculate_statistics(session, selection)
+
 
     return selection
 
