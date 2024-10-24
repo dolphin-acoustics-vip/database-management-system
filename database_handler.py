@@ -114,7 +114,8 @@ def init_db(app: Flask, run_script: str=None):
                 if type(obj) != models.File:
                     if hasattr(obj, 'updated_by_id'):
                         try:
-                            obj.updated_by_id = current_user.id
+                            if hasattr(obj, 'set_user_id'):
+                                obj.set_updated_by_id(current_user.id)
                         except Exception as e:
                             pass
                 else:
@@ -489,6 +490,7 @@ def parse_date(date_string: str) -> datetime:
     :return: The parsed date
     """
     import re
+    date = None
     match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
     if match:
         year = match.group(1)

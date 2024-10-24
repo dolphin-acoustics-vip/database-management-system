@@ -42,10 +42,7 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         session.add(new_recording)
 
     new_recording.set_start_time(request.form['time_start'])
-    #new_recording.set_encounter_id(session, encounter_id)
     
-    session.flush()
-
     # If a recording file has been given, add it to the Recording object
     if 'recording-file-input' in request.files and request.files['recording-file-input'].filename != '':
         recording_file = request.files['recording-file-input']
@@ -54,18 +51,9 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
         new_file = File()
         session.add(new_file)
         new_recording.recording_file = new_file
+
         new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename)
-        
-    # If a user assignment is to be made for the recording
-    if 'assign_user_id' in request.form:
-        assign_user_id = request.form['assign_user_id'] 
-        user_obj = session.query(User).filter_by(id=assign_user_id).first()
-        if user_obj is not None:
-            assignment = Assignment()
-            assignment.recording_id = new_recording.id
-            assignment.user_id = user_obj.id
-            session.add(assignment)
-            new_recording.update_status_upon_assignment_add_remove(session)
+
     return new_recording
 
 
@@ -130,53 +118,27 @@ def export_selection_table(recording_id, export_format):
     """
     Export the selection table of a recording to a CSV or TSV file.
     """
-    headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
+    with database_handler.get_session() as session:
+        try:
+            recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+            return recording.export_selection_table(session, export_format)
+        except (Exception, SQLAlchemyError) as e:
+            handle_exception(session, e, prefix="Error exporting selection table")
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-    with Session() as session:
-        selections = session.query(Selection).filter_by(recording_id=recording_id).all()
-        recording = session.query(Recording).filter_by(id=recording_id).first()
-        encounter = session.query(Encounter).filter_by(id=recording.encounter_id).first()
-        csv_data = StringIO()
-        if export_format == 'csv':
-            writer = csv.writer(csv_data, delimiter=',')
-        else:
-            writer = csv.writer(csv_data, delimiter='\t')
-        writer.writerow(headers)
-        for selection in selections:
-            writer.writerow([
-                selection.id,
-                selection.view,
-                selection.channel,
-                selection.begin_time,
-                selection.end_time,
-                selection.low_frequency,
-                selection.high_frequency,
-                selection.delta_time,
-                selection.delta_frequency,
-                selection.average_power,
-                selection.annotation
-            ])
-
-        csv_data.seek(0)
-
-        if export_format == 'csv':
-            mimetype = 'text/csv'
-            file_name = f'selection-table-{encounter.encounter_name}-rec-{recording.get_start_time_string()}.csv'
-        else:
-            mimetype = 'text/plain'
-            file_name = f'selection-table-{encounter.encounter_name}-rec-{recording.get_start_time_string()}.txt'
-
-        response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
-        return response
-
-
-@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/selection-table/delete', methods=['POST'])
+@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
 @require_live_session
 @exclude_role_4
 @login_required
-def recording_selection_table_delete(encounter_id, recording_id):
+def recording_selection_table_delete(recording_id: str) -> Response:
     """
-    Delete the selection table file associated with the recording
+    Delete the selection table file associated with the recording.
+
+    Args:
+        recording_id (str): The ID of the recording to delete the selection table file for.
+
+    Returns:
+        Response: A redirect to the recording view page.
     """
     with Session() as session:
         try:
@@ -187,60 +149,57 @@ def recording_selection_table_delete(encounter_id, recording_id):
             recording.selection_table_file = None
             session.commit()
             recording.update_selection_traced_status()
-
             flash(f'Selection table deleted for {recording.get_unique_name()}', 'success')
         except (SQLAlchemyError,Exception) as e:
             handle_exception(session, e)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
+        finally:
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
-def recording_insert(encounter_id):
+def recording_insert(encounter_id: str) -> Response:
     """
     Inserts a new recording into the database for a given encounter ID.
+
+    Args:
+        encounter_id (str): The ID of the encounter to insert the recording into.
+    
+    Returns:
+        flask.Response: The rendered template for the encounter view page.
     """
-    with Session() as session:
+    with database_handler.get_session() as session:
         try:
             recording_obj = insert_or_update_recording(session, request, encounter_id)
             session.add(recording_obj)
             session.commit()
             flash(f'Recording inserted for {recording_obj.get_unique_name()}', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except (SQLAlchemyError,Exception) as e:
             handle_exception(session, e, 'Error inserting recording')
+        finally:
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
-
-    
 
 @routes_recording.route('/recording/<recording_id>/view', methods=['GET'])
 @login_required
-def recording_view(recording_id):
+def recording_view(recording_id: str) -> Response:
     """
     Renders the recording view page for a specific encounter and recording.
+
+    Args:
+        recording_id (str): The ID of the recording to view.
+    
+    Returns:
+        flask.Response: The rendered template for the recording view page.
     """
     with Session() as session:
-        
         recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
-        
-
-        #recording = query.filter_by(id=recording_id).first()
         selections = database_handler.create_system_time_request(session, Selection, {"recording_id":recording_id}, order_by="selection_number")
-
         assigned_users = database_handler.create_system_time_request(session, Assignment, {"recording_id":recording_id})
-        
         logged_in_user_assigned = database_handler.create_system_time_request(session, Assignment, {"user_id":current_user.id,"recording_id":recording_id})
         logged_in_user_assigned = logged_in_user_assigned[0] if len(logged_in_user_assigned) > 0 else None
-        #recording_audit = session.query(RecordingAudit).filter_by(record_id=recording.id).all()
-        from sqlalchemy.sql import select
-        # Retrieve the historical records of a row
-        
-        #sql_query = session.query(Recording).filter_by(id=recording_id).all()
-
         recording_history = database_handler.create_all_time_request(session, Recording, filters={"id":recording_id}, order_by="row_start")
-        
         return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned)
 
 @routes_recording.route('/recording/<recording_id>/update_notes', methods=['POST'])
@@ -248,75 +207,119 @@ def recording_view(recording_id):
 @exclude_role_4
 @login_required
 def update_notes(recording_id):
-    with Session() as session:
+    with database_handler.get_session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         notes = request.form.get('notes')
-        
-        recording.notes = notes
+        recording.notes = notes.strip()
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))  # Redirect to the recording view page
 
 
 def flag_user_assignment(session, recording_id, user_id, completed_flag):
+    """
+    Update the completion status of a user's assignment for a recording.
+
+    This function sets the `completed_flag` for a specified user's assignment
+    associated with a given recording. It also updates the recording's status 
+    based on the current assignment flags.
+
+    Args:
+        session (Session): The database session to use for the query.
+        recording_id (str): The ID of the recording whose assignment is to be updated.
+        user_id (str): The ID of the user whose assignment is to be updated.
+        completed_flag (bool): The flag indicating whether the assignment is completed.
+    """
     recording = session.query(Recording).filter_by(id=recording_id).first()
     assignment = session.query(Assignment).filter_by(recording_id=recording_id).filter_by(user_id=user_id).first()
     if assignment is not None:
         assignment.completed_flag = completed_flag
-        recording.update_status_upon_assignment_flag_change(session)
+        session.commit()
+        recording.update_status()
         session.commit()
 
-@routes_recording.route('/recording/flag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/flag-as-completed-for-user', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
 def flag_as_complete_for_user():
-    recording_id = request.args.get('recording_id')
-    user_id = request.args.get('user_id')
-    if recording_id is None or user_id is None:
-        return jsonify({'message': 'Missing recording_id or user_id'}), 400
-    with Session() as session:
+    """
+    Given a user_id and recording_id, if an assignment exists for the user and recording,
+    flag the assignment as complete. This route will also update the provided recording
+    status - see Recording.status_update()
+
+    Args:
+        recording_id (_type_): The ID of the recording of the assignment.
+        user_id (_type_): The ID of the user of the assignment
+    """
+    recording_id = utils.extract_args('recording_id')
+    user_id = utils.extract_args('user_id')
+    with database_handler.get_session() as session:
         flag_user_assignment(session, recording_id, user_id, True)
         return jsonify({'message': 'Success'}), 200
 
-@routes_recording.route('/recording/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/unflag-as-completed-for-user', methods=['GET'])
 @require_live_session
 @exclude_role_3
 @exclude_role_4
 @login_required
 def unflag_as_complete_for_user():
-    recording_id = request.args.get('recording_id')
-    user_id = request.args.get('user_id')
-    if recording_id is None or user_id is None:
-        return jsonify({'message': 'Missing recording_id or user_id'}), 400
-    with Session() as session:
+    """
+    Given a user_id and recording_id, if an assignment exists for the user and recording,
+    flag the assignment as incomplete. This route will also update the provided recording
+    status - see Recording.status_update()
+
+    Args:
+        recording_id (_type_): The ID of the recording of the assignment.
+        user_id (_type_): The ID of the user of the assignment
+    """
+    recording_id = utils.extract_args('recording_id')
+    user_id = utils.extract_args('user_id')
+    with database_handler.get_session() as session:
         flag_user_assignment(session, recording_id, user_id, False)
         return jsonify({'message': 'Success'})
 
-@routes_recording.route('/recording/unflag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/unflag-as-completed', methods=['POST'])
 @require_live_session
-@exclude_role_3
 @exclude_role_4
 @login_required
 def unflag_as_complete():
-    recording_id = request.args.get('recording_id')
+    """
+    If a user assignment exists for the current logged in user and the recording passed
+    as an argument, flag it as incomplete. This route will also update the provided
+    recording status - see Recording.status_update()
 
-    with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
+    Args:
+        recording_id (str): The ID of the recording to flag.
+
+    Returns:
+        : redirect to the referring page.
+    """
+    recording_id = utils.extract_args('recording_id')
+    with database_handler.get_session() as session:
         flag_user_assignment(session, recording_id, current_user.id, False)
+        return redirect(request.referrer)
 
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
-
-@routes_recording.route('/recording/<recording_id>/flag-as-completed', methods=['GET'])
+@routes_recording.route('/recording/flag-as-completed', methods=['POST'])
 @require_live_session
-@exclude_role_3
 @exclude_role_4
 @login_required
-def flag_as_complete(recording_id):
-    with Session() as session:
-        recording = session.query(Recording).filter_by(id=recording_id).first()
+def flag_as_complete():
+    """
+    If a user assignment exists for the current logged in user and the recording passed
+    as an argument, flag it as complete. This route will also update the provided
+    recording status - see Recording.status_update()
+
+    Args:
+        recording_id (str): The ID of the recording to flag.
+
+    Returns:
+        : redirect to the referring page.
+    """
+    recording_id = utils.extract_args('recording_id')
+    with database_handler.get_session() as session:
         flag_user_assignment(session, recording_id, current_user.id, True)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
+        return redirect(request.referrer)
 
 @routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
 @require_live_session
@@ -332,6 +335,7 @@ def recording_update(recording_id):
             recording = session.query(Recording).with_for_update().filter_by(id=recording_id).first()
             recording_obj = insert_or_update_recording(session, request, recording.encounter_id, recording_id)
             session.commit()
+            flash(f'Recording updated for {recording_obj.get_unique_name()}', 'success')
             recording_obj.update_call()
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (SQLAlchemyError,Exception) as e:
@@ -438,33 +442,28 @@ def extract_date():
 @exclude_role_4
 @login_required
 def assign_recording():
-    """
-    Assigns a recording to a user.
+    """Create an assignment between a user and a recording.
 
-    :param user_id: The ID of the user to assign the recording to.
-    :type user_id: str
-    :param recording_id: The ID of the recording to assign.
-    :type recording_id: str
-    :return: A JSON object with a single key, 'success', with a value of True if successful, False otherwise.
-    :rtype: dict
+    Args:
+        user_id (str): The ID of the user to assign the recording to.
+        recording_id (str): The ID of the recording to assign.
+
+    Returns:
+        _type_: _description_
     """
-    user_id = request.args.get('user_id')
-    recording_id = request.args.get('recording_id')
-    with Session() as session:
+    user_id = utils.extract_args('user_id')
+    recording_id = utils.extract_args('recording_id')
+    with database_handler.get_session() as session:
         try:
-            recording = session.query(Recording).filter_by(id=recording_id).first()
-            new_assignment = Assignment()
-            new_assignment.user_id = user_id
-            new_assignment.recording_id = recording_id
-            session.add(new_assignment)
-            session.flush()
-            recording.update_status_upon_assignment_add_remove(session)
+            assignment = Assignment(recording_id=recording_id, user_id=user_id)
+            session.add(assignment)
             session.commit()
-            
-        except Exception as e:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            recording.update_status()
+            session.commit()      
+        except (SQLAlchemyError,Exception) as e:
             handle_sqlalchemy_exception(session, e)
-        return jsonify(success=True)
-            
+
 
 @routes_recording.route('/unassign_recording', methods=['GET'])
 @require_live_session
@@ -486,31 +485,18 @@ def unassign_recording():
     recording_id = request.args.get('recording_id')
     with database_handler.get_session() as session:
         try:
-            recording = session.query(Recording).filter_by(id=recording_id).first()
             assignment = session.query(Assignment).filter_by(user_id=user_id).filter_by(recording_id=recording_id).first()
             session.delete(assignment)
-            recording.update_status_upon_assignment_add_remove(session)
             session.commit()
-        except Exception as e:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
+            recording.update_status()
+            session.commit()
+        except (SQLAlchemyError,Exception) as e:
             handle_sqlalchemy_exception(session, e)
-        return jsonify(success=True)
+
 
 import contour_statistics
 
-def recalculate_contour_statistics(session, selection):
-    """
-    Recalculate contour statistics for the given selection.
-
-    :param session: The current sqlalchemy session
-    :type session: sqlalchemy.orm.session.Session
-    :param selection: The selection object to recalculate the contour statistics for
-    :type selection: Selection
-    """
-    selection.reset_contour_stats()
-    if selection and selection.contour_file is not None:
-        contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path(),selection.selection_number)
-        contour_rows = contour_file_obj.calculate_statistics(session, selection)
-        selection.generate_ctr_file(session, contour_rows)
 
 @routes_recording.route('/selection/<selection_id>/recalculate-contour-statistics', methods=['GET'])
 @login_required
@@ -520,7 +506,7 @@ def recalculate_contour_statistics_for_selection(selection_id):
     with database_handler.get_session() as session:
         try:
             selection = session.query(Selection).filter_by(id=selection_id).first()
-            recalculate_contour_statistics(session, selection)
+            selection.recalculate_contour_statistics(session)
             session.commit()
             flash(f"Refreshed contour statistics for {selection.get_unique_name()}", 'success')
         except (Exception, SQLAlchemyError) as e:
@@ -553,7 +539,7 @@ def recalculate_contour_statistics_for_recording(recording_id):
             # need to query selection in new session to atomise transaction
             with database_handler.get_session() as selection_session:
                 selection = selection_session.query(Selection).with_for_update().filter_by(id=selection_id).first()
-                recalculate_contour_statistics(selection_session, selection)
+                selection.recalculate_contour_statistics(selection_session)
                 selection_session.commit()
                 counter += 1
                 selection_session.close()
@@ -652,7 +638,7 @@ def mark_as_complete(recording_id):
     """
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
-        recording.set_status("Reviewed")
+        recording.set_status_reviewed()
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
@@ -674,6 +660,6 @@ def mark_as_on_hold(recording_id):
     """
     with Session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
-        recording.set_status("On Hold")
+        recording.set_status_on_hold()
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))

@@ -96,15 +96,21 @@ def insert_or_update_contour(session: sessionmaker, selection: Selection, contou
     new_file = File()
     new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_filename(), get_file_space_path())
     session.add(new_file)
+    session.commit()
+    print("new file: " + new_file.id)
+
     # Attribute the new contour file to the selection
     # and reset the traced status
     selection.contour_file = new_file
-    session.flush()
     selection.update_traced_status()
+    print("new file: " + new_file.id)
+
+    selection.recalculate_contour_statistics(session)
+
     # Create all contour statistics
-    contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path(), selection.selection_number)
-    contour_rows = contour_file_obj.calculate_statistics(session, selection)
-    selection.generate_ctr_file(session, contour_rows)
+    #contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path(), selection.selection_number)
+    #contour_rows = contour_file_obj.calculate_statistics(session, selection)
+
 
     return selection
 
@@ -134,6 +140,11 @@ def process_contour():
     selection_number = request.args.get('id')
     valid = True
     messages = []
+
+    extension = filename.split('.')[-1]
+    if extension != "csv":
+        messages.append("<span style='color: red;'>Error: must be a CSV file.</span>")
+        valid = False
     with Session() as session:
         # Extract the selection number from the filename using regular expression
         match = re.search(r'sel_(\d+)', filename)
@@ -198,9 +209,14 @@ def process_selection():
     """
     recording_id = request.args.get('recording_id')
     filename = request.args.get('filename')
+    extension = filename.split('.')[-1]
+
     selection_number = request.args.get('id')
     valid = True
     messages=[]
+    if extension != "wav":
+        messages.append("<span style='color: red;'>Error: must be WAV file.</span>")
+        valid = False
     
     # Prevent empty strings from causing issues in the future
     if str(selection_number).strip() == "":
@@ -249,6 +265,7 @@ def process_selection():
         else:
             messages.append("<span style='color: orange;'>Warning: no start time.</span>")
 
+    print(jsonify(id=selection_number,messages=messages,valid=valid))
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
 @routes_selection.route('/serve_plot/<selection_id>')

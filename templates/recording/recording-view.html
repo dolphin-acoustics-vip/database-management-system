@@ -17,13 +17,25 @@
         <h2>Administration Actions</h3>
             {% if not session['snapshot_date'] %}
             <h3>Edit Recording Metadata</h3>
-            <form action="{{ url_for('recording.recording_update', recording_id=recording.id)}}" method="post"
-                enctype="multipart/form-data">
+            <form id="recording-form" action="{{ url_for('recording.recording_update', recording_id=recording.id)}}" method="post"
+                    enctype="multipart/form-data">
                 {% from 'recording/recording-form-template.html' import recording_form %}
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
-                local_timezone=recording.encounter.local_timezone, recording=recording) }}
-                <button class="blue" type="submit" style="margin-top: 0.7rem;">Update</button><br>
+                                    local_timezone=recording.encounter.local_timezone, recording=recording) }}
+                <div style="display: flex;">
+                    <span style="display: none; padding-right: 0.5rem;" id="progress-text">0%</span>
+                    <progress style="display: none;" id="progress-bar" value="0" max="100"></progress>
+                </div>
+                <button class="blue" type="submit" id="submit-button" style="margin-top: 0.7rem;">Update</button><br>
             </form>
+
+            <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    uploadFormWithProgress('recording-form', 'progress-bar', 'progress-text');
+                });
+            </script>
 
             <h3>Review</h3>
             <label>Status: {{recording.status}} {% if recording.status_change_datetime %}
@@ -111,17 +123,14 @@
             {% if logged_in_user_assigned.completed_flag == True %}
 
             <label>Assignment Status: COMPLETE (Awaiting Review)</label>
-            <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="get">
+            <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="post">
                 <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
             </form>
             {% else %}
             <label>Assignment Status: IN PROGRESS </label>
 
-            <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="get">
-
-                <button type="submit" id="flag-as-complete-button"
-                    onclick="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}">Flag as
-                    Complete</button>
+            <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="post">
+                <button type="submit" id="flag-as-complete-button">Flag as Complete</button>
             </form>
             {% endif %}
             {% else %}
@@ -145,10 +154,7 @@
                 {% endif %}
             </form><br>
 
-            {% set identifier_heading = "Selection Number" %}
-            {% set unique_id = "selection-number"%}
-            {% set process_route = url_for('selection.process_selection') %}
-            {% set insert_route = "selection.selection_insert" %}
+
 
             <h3>Download Options</h3>
 
@@ -181,22 +187,50 @@
 
 
 
-
+                
                 {% if not session['snapshot_date'] %}
-                {% if current_user.role_id in [1, 2, 3] %}
-
-                <h3>Add selections</h3>
-                {% include 'recording/multi-file-upload-template.html' %}
-
-                {% set identifier_heading = "Contour Number" %}
-                {% set unique_id = "contour-number"%}
-                {% set process_route = url_for('selection.process_contour') %}
-                {% set insert_route = "selection.contour_insert" %}
-                <h3>Add contours</h3>
-                {% include 'recording/multi-file-upload-template.html' %}
-
+                    {% if current_user.role_id in [1, 2, 3] %}
+                    <div style="padding-top:1.5rem">
+                        <button id="add-selections-button" style="margin-bottom:0.5rem;" class="gray" onclick="addSelectionsButtonClock()">Add Selections</button>
+                        <div id="add-selections-container" style="display:none;">
+                            <h3>Add selections</h3>
+                                {% set identifier_heading = "Selection Number" %}
+                                {% set unique_id = "selection-number"%}
+                                {% set process_route = url_for('selection.process_selection') %}
+                                {% set insert_route = "selection.selection_insert" %}
+                                {% set accepted_extensions = ".wav" %}
+                                {% include 'recording/multi-file-upload-template.html' %}
+                        </div>
+                        <button id="add-contours-button" style="margin-top:0.5rem;" class="gray" onclick="addContoursButtonClick()">Add Contours</button>
+                        <div id="add-contours-container" style="display:none;">
+                            <h3>Add contours</h3>
+                                {% set identifier_heading = "Contour Number" %}
+                                {% set unique_id = "contour-number"%}
+                                {% set process_route = url_for('selection.process_contour') %}
+                                {% set insert_route = "selection.contour_insert" %}
+                                {% set accepted_extensions = ".csv" %}
+                                {% include 'recording/multi-file-upload-template.html' %}
+                        </div>
+                    </div>
+                    {% endif %}
                 {% endif %}
-                {% endif %}
+
+                <script>
+                    function addSelectionsButtonClock() {
+                        document.getElementById('add-contours-container').style.display = 'none';
+                        document.getElementById('add-selections-container').style.display = 'block';
+                        document.getElementById('add-selections-button').style.display = 'none';
+                        document.getElementById('add-contours-button').style.display = 'block';
+                    }
+
+
+                    function addContoursButtonClick() {
+                        document.getElementById('add-contours-container').style.display = 'block';
+                        document.getElementById('add-selections-container').style.display = 'none';
+                        document.getElementById('add-selections-button').style.display = 'block';
+                        document.getElementById('add-contours-button').style.display = 'none';
+                    }
+                </script>
 
                 <h3>Selection table</h3>
                 {% if recording.selection_table_file %}
@@ -236,7 +270,7 @@
                     action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
                     method="post" enctype="multipart/form-data">
                     <div style="display:flex;">
-                        <input class="small" type="file" name="selection-table-file" id="selection-table-file">
+                        <input class="small" type="file" name="selection-table-file" id="selection-table-file" accept=".xlsx, .csv, .txt">
                         <button class="gray small" type="submit">Upload</button>
                     </div>
                 </form>

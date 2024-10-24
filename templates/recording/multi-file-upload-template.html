@@ -1,5 +1,5 @@
 <form id="{{unique_id}}-upload-form" onsubmit="return false;" enctype="multipart/form-data">
-    <input class="small" type="file" name="{{unique_id}}-files" id="{{unique_id}}-files" multiple>
+    <input class="small" type="file" name="{{unique_id}}-files" id="{{unique_id}}-files" accept="{{accepted_extensions}}" multiple>
     <label id="{{unique_id}}-bulk-upload-status-message" hidden="true">Status message</label>
     <button class="gray small" id="{{unique_id}}-bulk-upload-validate" style="margin-bottom: 5px;"
         hidden="true">Validate</button>

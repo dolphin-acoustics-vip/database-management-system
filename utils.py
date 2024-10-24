@@ -4,6 +4,7 @@ import datetime
 import tempfile
 import shutil
 import zipfile
+import flask
 from flask import send_file
 import database_handler
 
@@ -279,3 +280,13 @@ def extract_to_dataframe(path:str) -> pd.DataFrame:
         raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file")
 
     return df
+
+def extract_args(arg, datatype=str, allow_empty=False):
+    value = flask.request.args.get(arg)
+    if value is None and not allow_empty:
+        raise ValueError(f"Missing argument: {arg}")
+    else:
+        try:
+            return datatype(value)
+        except ValueError:
+            raise ValueError(f"Invalid value for argument: {arg}")
