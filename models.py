@@ -396,13 +396,6 @@ class File(db.Model):
             os.rename(loose_file_path, new_path)
             logger.error(f"Attempting to save file in the following path, but a file already exists: {loose_file_path}. Renamed existing file to {new_path}")
 
-    def generate_file_chunks():
-        chunk_size = 1024 * 1024  # 1MB chunks
-        while True:
-            chunk = recording_file.stream.read(chunk_size)
-            if not chunk:
-                break
-            yield chunk
 
     # TODO: find the datatype of file
     # TODO: remove root_path requirement as it is automatically generated in the method
@@ -418,6 +411,7 @@ class File(db.Model):
         :param new_filename: the full filename (including extension) to rename the file to
         """
 
+
         root_path = get_file_space_path()
         
         self.path = new_directory
@@ -429,7 +423,7 @@ class File(db.Model):
         self.rename_loose_file(self.path, self.filename, self.extension)
         os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
         # file.save(destination_path)
-
+        print("SAVE FILE")
         chunk_size = 1024 * 1024  # 1MB chunks
         with open(destination_path, 'wb') as f:
             while True:
@@ -438,6 +432,7 @@ class File(db.Model):
                     break
                 f.write(chunk)
 
+        print("FINISH SAVING FILE")
         logger.info(f"Saved file to {destination_path}.")
 
     def move_to_trash(self):
