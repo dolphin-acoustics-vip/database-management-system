@@ -60,11 +60,17 @@ function addShiftClickFunctionality(checkboxes) {
   }
 
   function uploadFormWithProgress(formId, progressBarId, progressTextId) {
+
     const form = document.getElementById(formId);
     const progressBar = document.getElementById(progressBarId);
     const progressText = document.getElementById(progressTextId);
-  
+    
+
+
     form.addEventListener('submit', (e) => {
+        // document.getElementById('status').innerText = data.message;
+    
+      e.preventDefault();
       progressBar.style="display: block";
       progressText.style="display: block";
       const xhr = new XMLHttpRequest();
@@ -74,11 +80,20 @@ function addShiftClickFunctionality(checkboxes) {
         progressText.textContent = `${percent}%`;
       });
   
+      // Start periodic pings to keep the connection alive
+      var pingInterval = setInterval(function() {
+        var pingXhr = new XMLHttpRequest();
+        pingXhr.open('GET', '/ocean/ping', true);
+        pingXhr.send();
+    }, 2000); // Send a ping every 2 seconds
+
+
       const formData = new FormData(form);
       xhr.open(form.method, form.action, true);
       xhr.onreadystatechange = () => {
         if (xhr.readyState === XMLHttpRequest.DONE) {
           if (xhr.status === 200) {
+            
             const redirectUrl = xhr.responseURL;
             if (redirectUrl) {
               window.location.href = redirectUrl;
@@ -86,6 +101,10 @@ function addShiftClickFunctionality(checkboxes) {
           }
         }
       };
+      // Clear the ping interval when the upload is done
+      xhr.onloadend = function() {
+        clearInterval(pingInterval);
+    };
       xhr.send(formData);
     });
   }

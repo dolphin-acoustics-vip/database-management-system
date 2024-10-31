@@ -10,6 +10,7 @@ from flask_login import login_user,login_required, current_user, login_manager
 import csv
 from flask import Response
 from io import StringIO
+from flask_socketio import emit, SocketIO
 
 # Local application imports
 import database_handler
@@ -21,7 +22,28 @@ from exception_handler import *
 routes_recording = Blueprint('recording', __name__)
 
 
-def insert_or_update_recording(session, request, encounter_id, recording_id=None):
+# @routes_recording.route('/upload', methods=['POST'])
+# def upload_file():
+#     file = request.files['recording-file-input']
+#     encounter_id = request.form['encounter_id']  # Process form data here as needed
+
+#     # Stream the file in chunks
+#     destination_path = os.path.join(get_file_space_path(), new_directory, new_filename)
+#     chunk_size = 1024 * 1024  # 1MB chunks
+    
+#     with open(destination_path, 'wb') as f:
+#         while True:
+#             chunk = file.stream.read(chunk_size)
+#             if not chunk:
+#                 break
+#             f.write(chunk)
+#             emit('ping', {'message': 'Upload in progress...'}, to=request.sid)
+    
+#     # Optionally save other form data if needed here
+
+#     return jsonify({'message': 'File uploaded successfully'})
+
+def insert_or_update_recording(session, request, recording):
     """
     Insert or update a recording in the database. This function should be called
     by routes either inserting (new) Recording objects or updating (existing) 
@@ -34,27 +56,18 @@ def insert_or_update_recording(session, request, encounter_id, recording_id=None
 
     :return: The Recording object that was inserted or updated
     """
-
-    if recording_id is not None:
-        new_recording = session.query(Recording).filter_by(id=recording_id).first()
-    else:
-        new_recording = Recording(encounter_id=encounter_id)
-        session.add(new_recording)
-
-    new_recording.set_start_time(request.form['time_start'])
-    
+    recording.set_start_time(request.form['time_start'])
     # If a recording file has been given, add it to the Recording object
     if 'recording-file-input' in request.files and request.files['recording-file-input'].filename != '':
         recording_file = request.files['recording-file-input']
-        new_recording_filename = new_recording.generate_recording_filename()
-        new_relative_path = new_recording.generate_relative_path()
+        new_recording_filename = recording.generate_recording_filename()
+        new_relative_path = recording.generate_relative_path()
         new_file = File()
         session.add(new_file)
-        new_recording.recording_file = new_file
-
+        recording.recording_file = new_file
         new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename)
 
-    return new_recording
+    return recording
 
 
 @routes_recording.route('/recording/<recording_id>/refresh-selection-table', methods=['POST'])
@@ -170,9 +183,13 @@ def recording_insert(encounter_id: str) -> Response:
     Returns:
         flask.Response: The rendered template for the encounter view page.
     """
+    
+
     with database_handler.get_session() as session:
         try:
-            recording_obj = insert_or_update_recording(session, request, encounter_id)
+            recording_obj = Recording(encounter_id=encounter_id)
+
+            insert_or_update_recording(session, request, recording_obj)
             session.add(recording_obj)
             session.commit()
             flash(f'Recording inserted for {recording_obj.get_unique_name()}', 'success')
@@ -332,8 +349,8 @@ def recording_update(recording_id):
     """
     with database_handler.get_session() as session:
         try:
-            recording = session.query(Recording).with_for_update().filter_by(id=recording_id).first()
-            recording_obj = insert_or_update_recording(session, request, recording.encounter_id, recording_id)
+            recording_obj = session.query(Recording).with_for_update().filter_by(id=recording_id).first()
+            insert_or_update_recording(session, request, recording_obj)
             session.commit()
             flash(f'Recording updated for {recording_obj.get_unique_name()}', 'success')
             recording_obj.update_call()

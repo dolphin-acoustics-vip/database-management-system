@@ -232,3 +232,9 @@ def home():
             all()
         recordings = [{'recording': recording, 'assignment': assignment} for recording, assignment in result]
         return render_template('home.html', user=current_user, recordings=recordings)
+
+
+@routes_general.route('/ping', methods=['GET'])
+def ping():
+    # This endpoint could be enhanced to log pings or check connection status
+    return jsonify(status='alive')
