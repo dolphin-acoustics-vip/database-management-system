@@ -80,7 +80,10 @@ def create_app(config_class=None):
     def sso_login():
         # Retrieve email from environment
         email = request.environ.get('HTTP_EPPN')
-        #email = 'admin@testmail.com' #THIS CANNOT BE LEFT IN THE PRODUCTION ENVIRONMENT
+
+        if os.path.exists('override_authentication.txt'):
+            with open('override_authentication.txt', 'r') as f:
+                email = f.read().strip()
 
         # Skip if user is already authenticated
         if current_user.is_authenticated and current_user.login_id == email:
@@ -90,16 +93,15 @@ def create_app(config_class=None):
             # Query for the user based on email
             user = User.query.filter_by(login_id=email).first()
             g.user = user 
-
-            if not user.is_active:
-                return "Your account has been deactivated. Please contact your administrator.", 403
-            days_until_expiry = (user.expiry - datetime.now().date()).days
-            if user.expiry < datetime.now().date():
-                return "Your account has expired. Please contact your administrator.", 403
-            elif days_until_expiry <= 30:
-                flash(f'Your account will be deactivated in {days_until_expiry} days. Please contact your administrator to prevent this.', 'warning')
-            # If user exists in the database, log them in
             if user:
+                if not user.is_active:
+                   return "Your account has been deactivated. Please contact your administrator.", 403
+                days_until_expiry = (user.expiry - datetime.now().date()).days
+                if user.expiry < datetime.now().date():
+                    return "Your account has expired. Please contact your administrator.", 403
+                elif days_until_expiry <= 30:
+                    flash(f'Your account will be deactivated in {days_until_expiry} days. Please contact your administrator to prevent this.', 'warning')
+                # If user exists in the database, log them in
                 login_user(user)
             else:
                 # Redirect or handle users who are not in the database

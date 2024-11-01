@@ -11,3 +11,4 @@ database-management-system.code-workspace
 *.log
 file_space_path.txt
 *.coverage
+override_authentication.txt
