@@ -80,7 +80,7 @@ def create_app(config_class=None):
     def sso_login():
         # Retrieve email from environment
         email = request.environ.get('HTTP_EPPN')
-        email = 'admin@testmail.com' #THIS CANNOT BE LEFT IN THE PRODUCTION ENVIRONMENT
+        #email = 'admin@testmail.com' #THIS CANNOT BE LEFT IN THE PRODUCTION ENVIRONMENT
 
         # Skip if user is already authenticated
         if current_user.is_authenticated and current_user.login_id == email:
