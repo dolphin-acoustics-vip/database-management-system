@@ -59,18 +59,27 @@ function addShiftClickFunctionality(checkboxes) {
     });
   }
 
+/**
+ * Handles form submission with a progress bar and periodic server pings.
+ * 
+ * @param {string} formId - The ID of the form element to be submitted.
+ * @param {string} progressBarId - The ID of the progress bar element to display upload progress.
+ * @param {string} progressTextId - The ID of the text element to display upload percentage.
+ * 
+ * This function adds an event listener to the specified form, preventing its default submission behavior.
+ * It displays the progress bar and text during the file upload, updating them with the current upload percentage.
+ * Periodic pings are sent to the server every 2 seconds to keep the connection alive. Once the upload is complete,
+ * the ping interval is cleared. If the server responds with a redirect URL upon successful upload, the page is redirected.
+ */
   function uploadFormWithProgress(formId, progressBarId, progressTextId) {
 
     const form = document.getElementById(formId);
     const progressBar = document.getElementById(progressBarId);
     const progressText = document.getElementById(progressTextId);
-    
-
-
-    form.addEventListener('submit', (e) => {
-        // document.getElementById('status').innerText = data.message;
-    
+  
+    form.addEventListener('submit', (e) => {  
       e.preventDefault();
+
       progressBar.style="display: block";
       progressText.style="display: block";
       const xhr = new XMLHttpRequest();
@@ -79,13 +88,14 @@ function addShiftClickFunctionality(checkboxes) {
         progressBar.value = percent;
         progressText.textContent = `${percent}%`;
       });
-  
+      
       // Start periodic pings to keep the connection alive
       var pingInterval = setInterval(function() {
         var pingXhr = new XMLHttpRequest();
         pingXhr.open('GET', '/ocean/ping', true);
+        console.log("PING")
         pingXhr.send();
-    }, 2000); // Send a ping every 2 seconds
+      }, 2000); // Send a ping every 2 seconds
 
 
       const formData = new FormData(form);

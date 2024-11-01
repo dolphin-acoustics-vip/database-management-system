@@ -20,6 +20,77 @@ Variables required:
     <h1>Encounter: {{ encounter.get_unique_name(' - ') }}</h1>
     <hr>
 
+    <h1>File Upload</h1>
+    <form id="file-upload-form" action="/ocean/upload" method="post" enctype="multipart/form-data">
+        <input type="file" id="file-input" name="file">
+        <div id="progress-bar">
+            <div id="progress-bar-inner"></div>
+        </div>
+        <button type="submit">Upload File</button>
+    </form>
+    <script>
+      const fileInput = document.getElementById('file-input');
+      const progressBar = document.getElementById('progress-bar-inner');
+      const form = document.getElementById('file-upload-form');
+
+      fileInput.addEventListener('change', async () => {
+          const file = fileInput.files[0];
+          const fileSize = file.size;
+          const chunkSize = 1024 * 1024; // 1MB chunks
+          const numChunks = Math.ceil(fileSize / chunkSize);
+
+          let chunkIndex = 0;
+
+
+          const uploadFile = (overrideFileId = null) => {
+              const chunk = file.slice(chunkIndex * chunkSize, (chunkIndex + 1) * chunkSize);
+              const formData = new FormData();
+              formData.append('filename', file.name);
+              formData.append('chunk', chunk);
+              formData.append('chunk_index', chunkIndex);
+              formData.append('num_chunks', numChunks);
+              if (overrideFileId) {
+                  formData.append('file_id', overrideFileId);
+              }
+
+              fetch('/ocean/upload_chunk', {
+                  method: 'POST',
+                  body: formData,
+              })
+              .then((response) => response.json())
+              .then((data) => {
+                console.log(data)
+                // formData.append('file_id', data.file_id);
+
+                  const progress = (chunkIndex + 1) / numChunks * 100;
+                  progressBar.style.width = `${progress}%`;
+                  chunkIndex++;
+
+                  if (chunkIndex < numChunks) {
+                      uploadFile(data.file_id);
+                  } else {
+                    const filenameInput = document.createElement('input');
+                    filenameInput.type = 'hidden';
+                    filenameInput.name = 'filename';
+                    filenameInput.value = file.name;
+                    const file_id = document.createElement('input');
+                    file_id.type = 'hidden';
+                    file_id.name = 'file_id';
+                    console.log("SET FILE ID", data.file_id)
+                    file_id.value = data.file_id;
+                    form.appendChild(filenameInput);
+                    form.appendChild(file_id);
+                    form.submit();
+                  }
+              })
+              .catch((error) => console.error(error));
+          };
+
+          uploadFile();
+      });
+  </script>
+
+
     <!-- Encounter Summary -->
     <section id="encounter-summary">
       <div id="summary">

@@ -216,6 +216,8 @@ def create_app(config_class=None):
 
     return app
 
+
+
 def get_snapshot_date_from_session():
     """
     Gets the snapshot date from the session.
@@ -250,3 +252,4 @@ if __name__ == '__main__':
         exit(1)
     logger.info('Starting application')
     app.run()
+

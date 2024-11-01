@@ -1,4 +1,5 @@
 # Standard library imports
+import hashlib
 import os
 import zipfile
 import traceback
@@ -238,3 +239,53 @@ def home():
 def ping():
     # This endpoint could be enhanced to log pings or check connection status
     return jsonify(status='alive')
+
+
+@routes_general.route('/upload_chunk', methods=['POST'])
+def upload_chunk():
+    filename = request.form['filename']
+    chunk = request.files['chunk']
+    chunk_index = int(request.form['chunk_index'])
+    num_chunks = int(request.form['num_chunks'])
+    if 'file_id' not in request.form:
+        file_id = str(uuid.uuid4())
+    else:
+        file_id = request.form['file_id']  # Get the file ID from the request
+
+    # Create a user-specific directory for temporary files
+    temp_dir = os.path.join(database_handler.get_tempdir(), current_user.id, file_id)
+
+    # Create the directory if it doesn't exist
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+
+    # Save the chunk to a temporary file
+    chunk_filename = f"{filename}"
+    chunk_path = os.path.join(temp_dir, chunk_filename)
+    # If the chunk file already exists, append the new chunk to it
+    if os.path.exists(chunk_path):
+        with open(chunk_path, 'ab') as f:
+            f.write(chunk.read())
+    else:
+        # If the chunk file doesn't exist, create it and write the new chunk to it
+        with open(chunk_path, 'wb') as f:
+            f.write(chunk.read())
+            
+    # Return a JSON response with the progress
+    progress = (chunk_index + 1) / num_chunks * 100
+    return jsonify({'progress': progress, 'file_id': file_id})
+
+
+@routes_general.route('/upload', methods=['POST'])
+def upload():
+    # Get the uploaded file from the temporary directory
+    filename = request.form['filename']
+    file_path = os.path.join(database_handler.get_tempdir(), current_user.id, file_id, filename)
+
+
+
+    # Save the file to a permanent location
+    permanent_file_path = os.path.join('permanent_uploads', filename)
+    os.rename(file_path, permanent_file_path)
+
+    return 'File uploaded successfully!'
