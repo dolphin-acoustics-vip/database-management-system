@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
 from sqlalchemy.orm import joinedload, sessionmaker
 from flask_login import LoginManager
-from flask_login import login_user,login_required, current_user, login_manager
+from flask_login import login_user,login_required, current_user, login_manager, logout_user
 from flask import g
 import sqlalchemy
 
@@ -23,7 +23,6 @@ from routes.routes_general import routes_general
 from routes.routes_admin import routes_admin
 from routes.routes_selection import routes_selection
 from routes.routes_encounter import routes_encounter
-from routes.routes_auth import routes_auth
 from routes.routes_recording import routes_recording
 from routes.routes_encounter import routes_encounter
 from routes.routes_datahub import routes_datahub
@@ -34,8 +33,6 @@ from routes.routes_filespace import routes_filespace
 from models import *
 from exception_handler import NotFoundException, CriticalException
 from logger import logger
-
-# main_app.py (your main file)
 
 from flask import Flask
 from database_handler import init_db, get_session
@@ -70,6 +67,52 @@ def create_app(config_class=None):
         config_class = os.getenv('FLASK_CONFIG', 'config.DevelopmentConfig')
     app.config.from_object(config_class)
 
+    # Set up a custom login manager for the web app
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+
+    # Set up user loader for the login manager
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(user_id) 
+
+    @app.before_request
+    def sso_login():
+        # Retrieve email from environment
+        email = request.environ.get('HTTP_EPPN')
+        email = 'admin@testmail.com' #THIS CANNOT BE LEFT IN THE PRODUCTION ENVIRONMENT
+
+        # Skip if user is already authenticated
+        if current_user.is_authenticated and current_user.login_id == email:
+            return
+            
+        if email:
+            # Query for the user based on email
+            user = User.query.filter_by(login_id=email).first()
+            g.user = user 
+
+            if not user.is_active:
+                return "Your account has been deactivated. Please contact your administrator.", 403
+            days_until_expiry = (user.expiry - datetime.now().date()).days
+            if user.expiry < datetime.now().date():
+                return "Your account has expired. Please contact your administrator.", 403
+            elif days_until_expiry <= 30:
+                flash(f'Your account will be deactivated in {days_until_expiry} days. Please contact your administrator to prevent this.', 'warning')
+            # If user exists in the database, log them in
+            if user:
+                login_user(user)
+            else:
+                # Redirect or handle users who are not in the database
+                return f"User '{email}' not given access permissions. Please contact your administrator.", 403
+        else:
+            return "Unable to access single-sign-on service", 403 # Redirect if no SSO email is found
+        
+    @app.route('/logout')
+    def logout():
+        logout_user()
+        client_session.clear()
+        return redirect(url_for('general.home'))
+
     create_database_script = ''
     if config_class == 'config.TestingConfig':
         create_database_script = 'create_database.sql'
@@ -84,7 +127,6 @@ def create_app(config_class=None):
     app.register_blueprint(routes_encounter, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_recording, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_selection, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_auth, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_datahub, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_healthcentre, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_filespace, url_prefix=ROUTE_PREFIX)
@@ -106,6 +148,7 @@ def create_app(config_class=None):
         """
         g.user = current_user 
 
+    
     @app.errorhandler(403)
     def forbidden(e):
         logger.warning('Route forbidden: ' + str(e))
@@ -165,24 +208,8 @@ def create_app(config_class=None):
         return render_template('error.html', error_code=404, error=str(e), goback_link='/home', goback_message="Home")
 
 
-    # Setup user login
-    login_manager = LoginManager()
-    login_manager.login_view = 'auth.login'
-    login_manager.init_app(app)
-    @login_manager.user_loader
-    def load_user(user_id: str):
-        """
-        User loader function for Flask-Login extension. This function is used to find a
-        user by their id. The function takes a user_id as an argument and returns the user
-        object if found, otherwise None.
-        """
-        from sqlalchemy.exc import OperationalError
-        try:
-            from models import User
-            # Since the user_id is just the primary key of the user table, use it in the query for the user
-            return User.query.get(user_id)
-        except OperationalError:
-            return None
+    
+
 
 
     return app

@@ -24,7 +24,7 @@
           <label class="app-brand-title font-scale-1">OCEAN</label>
         </div>
         <div class="user-message">
-          <label>{% if g.user.is_authenticated %}You are signed in as {{ g.user.name }} ({{g.user.role.name}}){% else %}You are not signed in{% endif %}</label>
+          <label>{% if current_user.is_authenticated %}You are signed in as {{ current_user.name }} ({{current_user.role.name}}){% else %}You are not signed in{% endif %}</label>
         </div>
         <button onclick="toggleMenu()" class="hamburger">&#9776;</button>
 
@@ -37,19 +37,19 @@
       {% endif %}
       <div class="blue-bar">
         <div class="user-message">
-            {% if g.user.is_authenticated %}You are signed in as {{ g.user.name }} ({{g.user.role.name}}){% else %}You are not signed in{% endif %}
+            {% if current_user.is_authenticated %}You are signed in as {{ current_user.name }} ({{current_user.role.name}}){% else %}You are not signed in{% endif %}
         </div>
       </div>
       <nav class="menu">
         <a href="{{url_for('general.home')}}" title="Go to home page" class="menu-item dynamic">Home</a>
-        {% if g.user.is_authenticated %}
+        {% if current_user.is_authenticated %}
         <a href="{{url_for('encounter.encounter')}}" title="Go to encounters page" class="menu-item dynamic">Encounters</a>
-        {% if g.user.role_id in [1,2] %}
+        {% if current_user.role_id in [1,2] %}
         <a href="{{url_for('datahub.datahub_view')}}" title="Go to data hub page" class="menu-item dynamic">Data Hub</a>
         <a href="{{ url_for('healthcentre.healthcentre_view') }}" title="Go to health centre page" class="menu-item dynamic">Health Centre</a>
         <a href="{{ url_for('admin.admin_dashboard') }}" title="Go to admin page" class="menu-item dynamic">Admin</a>
         {% endif %}
-        <a href="{{ url_for('auth.logout') }}" title="Logout user" class="menu-item dynamic">Logout ({{ g.user.name }})</a>
+        <a href="{{ url_for('logout') }}" title="Logout user" class="menu-item dynamic">Refresh SSO ({{ current_user.name }})</a>
         {% else %}
         <a href="/login" class="menu-item dynamic">Login</a>
         {% endif %}
