@@ -19,7 +19,6 @@
 import pandas as pd
 import os
 from enum import Enum
-import exception_handler
 
 def round_to_nearest_whole(num):
     """

@@ -248,6 +248,8 @@ class File(db.Model):
     path = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     uploaded_date = db.Column(db.DateTime(timezone=True))
+    upload_datetime = db.Column(db.DateTime(timezone=True))
+
     extension = db.Column(db.String(10), nullable=False)
     duration = db.Column(db.Integer)
     deleted = db.Column(db.Boolean, default=False)
@@ -259,8 +261,9 @@ class File(db.Model):
 
 
     @classmethod
-    def has_record(cls, session, rel_path, file_path):
-        comparison_path = os.path.relpath(file_path, rel_path)
+    def has_record(cls, session, file_path, deleted = False, temp = False):
+        root_path = database_handler.get_root_directory(deleted, temp) 
+        comparison_path = os.path.relpath(file_path, root_path)
         comparison_dir = os.path.dirname(comparison_path)
         comparison_file = os.path.splitext(os.path.basename(comparison_path))[0]
         comparison_ext = os.path.splitext(comparison_path)[1].replace('.', '')
@@ -268,7 +271,9 @@ class File(db.Model):
         return session.query(cls).filter(
             cls.path == comparison_dir,
             cls.filename == comparison_file,
-            cls.extension == comparison_ext
+            cls.extension == comparison_ext,
+            cls.deleted == deleted,
+            cls.temp == temp
         ).first() is not None
 
 
@@ -400,7 +405,6 @@ class File(db.Model):
             logger.error(f"Attempting to save file in the following path, but a file already exists: {loose_file_path}. Renamed existing file to {new_path}")
 
     def append_chunk(self, chunk):
-        print("APPEND CHUNK")
         # Save the chunk to a temporary file
         chunk_path = self.get_full_absolute_path()
         print(chunk_path, os.path.exists(chunk_path))
@@ -433,11 +437,10 @@ class File(db.Model):
         self.extension = file.filename.split('.')[-1] if override_extension is None else override_extension
         
         destination_path = os.path.join(root_path, self.get_full_relative_path())
-        print("DESTINATION", destination_path)
         self.rename_loose_file(self.path, self.filename, self.extension)
         os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
         # file.save(destination_path)
-        print("SAVE FILE")
+
         chunk_size = 1024 * 1024  # 1MB chunks
         with open(destination_path, 'wb') as f:
             while True:
@@ -446,7 +449,6 @@ class File(db.Model):
                     break
                 f.write(chunk)
 
-        print("FINISH SAVING FILE")
         logger.info(f"Saved file to {destination_path}.")
 
     def move_to_trash(self):
@@ -466,7 +468,12 @@ class File(db.Model):
             logger.info(f"Parmanently deleted file {self.get_full_absolute_path()}.")
             os.remove(self.get_full_absolute_path())
 
-        
+    def save_permanently(self, new_relative_file_path):
+        if (self.temp == True and os.path.exists(self.get_full_absolute_path())):
+            self.move_file(new_relative_file_path)
+            self.temp = False
+        else:
+            raise exception_handler.WarningException(f"An unexpected error ocurred while trying to save the file.")
 
     def move_file(self, new_relative_file_path, move_to_trash=False, override_extension=None):
         """
@@ -517,14 +524,12 @@ class File(db.Model):
                     os.rmdir(parent_dir)
                     parent_dir = os.path.dirname(parent_dir)
         
-            
- 
+            import check_filespace
+            check_filespace.cleanup_temp_filespace()
+        
         else:
             pass
             return False
-
-
-
 
 class Recording(db.Model):
     __tablename__ = 'recording'

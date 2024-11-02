@@ -270,7 +270,7 @@ def upload_chunk():
         
         # Return a JSON response with the progress
         progress = (chunk_index + 1) / num_chunks * 100
-        return jsonify({'progress': progress, 'file_id': file_id})
+        return jsonify({'progress': progress, 'message':f"Uploaded chunk {chunk_index+1} out of {num_chunks}.", 'file_id': file_id})
 
 
 @routes_general.route('/upload', methods=['POST'])

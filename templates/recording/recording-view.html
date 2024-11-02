@@ -22,20 +22,20 @@
                 {% from 'recording/recording-form-template.html' import recording_form %}
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
                                     local_timezone=recording.encounter.local_timezone, recording=recording) }}
-                <div style="display: flex;">
+                <!-- <div style="display: flex;">
                     <span style="display: none; padding-right: 0.5rem;" id="progress-text">0%</span>
                     <progress style="display: none;" id="progress-bar" value="0" max="100"></progress>
-                </div>
-                <button class="blue" type="submit" id="submit-button" style="margin-top: 0.7rem;">Update</button><br>
+                </div> -->
+                <button class="blue" type="submit" id="recording-update-form-submit" style="margin-top: 0.7rem;">Update</button><br>
             </form>
 
-            <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
 
-            <script>
+
+            <!-- <script>
                 document.addEventListener('DOMContentLoaded', function() {
                     uploadFormWithProgress('recording-form', 'progress-bar', 'progress-text');
                 });
-            </script>
+            </script> -->
 
             <h3>Review</h3>
             <label>Status: {{recording.status}} {% if recording.status_change_datetime %}

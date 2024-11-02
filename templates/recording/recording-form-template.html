@@ -33,6 +33,13 @@
     <span style="display: none; padding-right: 0.5rem;" id="recording-insert-progress-text">0%</span>
     <progress style="display: none;" id="recording-insert-progress-bar" value="0" max="100"></progress>
 </div>
+<input type="hidden" id="recording-file-id-store" name="recording_file_id" value="">
+<script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+      fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-update-form-submit'));
+    });
+</script>
 {% endif %}
 <script src="{{ url_for('general.serve_script', filename='time-management.js') }}"></script>
 
