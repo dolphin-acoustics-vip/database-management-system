@@ -29,6 +29,10 @@
 </div>
 {% else %}
 <input class="file-input small" type="file" id="recording-file-input" name="recording-file-input" onchange="extractDate(this.value);" accept=".wav">
+<div >
+    <span style="display: none; padding-right: 0.5rem;" id="recording-insert-progress-text">0%</span>
+    <progress style="display: none;" id="recording-insert-progress-bar" value="0" max="100"></progress>
+</div>
 {% endif %}
 <script src="{{ url_for('general.serve_script', filename='time-management.js') }}"></script>
 

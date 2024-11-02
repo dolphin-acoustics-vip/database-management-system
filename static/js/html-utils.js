@@ -60,6 +60,102 @@ function addShiftClickFunctionality(checkboxes) {
   }
 
 /**
+ * Handles file upload by dividing the file into 20MB chunks and uploading each chunk sequentially.
+ * 
+ * @param {HTMLInputElement} fileInput - The file input element used for selecting the file to upload.
+ * @param {HTMLElement} progressBar - The progress bar element to display upload progress.
+ * @param {HTMLInputElement} fileIdStore - An input element to store the file ID received from the server.
+ * @param {HTMLButtonElement} submissionButton - The button element that triggers form submission, which gets disabled during upload.
+ * 
+ * The function listens for changes on the file input and, upon file selection, it disables the submission button 
+ * and uploads the file in chunks. It updates the progress bar as each chunk is uploaded. Once the upload is complete,
+ * it displays the uploaded filename and provides a reset button to clear the upload state, re-enabling the file input 
+ * and submission button.
+ * 
+ * 
+ */
+function fileUploadHandler(fileInput, progressBar, fileIdStore, submissionButton) {
+  // const fileInput = document.getElementById('file-input');
+  // const progressBar = document.getElementById('progress-bar-inner');
+  // const form = document.getElementById('file-upload-form');
+
+  fileInput.addEventListener('change', async () => {
+    submissionButton.disabled = true;
+      const file = fileInput.files[0];
+      const fileSize = file.size;
+      const chunkSize = 1024 * 1024 * 20; // 20MB chunks
+      const numChunks = Math.ceil(fileSize / chunkSize);
+
+      progressBar.style="display: block";
+    
+
+      let chunkIndex = 0;
+
+      const uploadFile = (overrideFileId = null) => {
+          const chunk = file.slice(chunkIndex * chunkSize, (chunkIndex + 1) * chunkSize);
+          const formData = new FormData();
+          formData.append('filename', file.name);
+          formData.append('chunk', chunk);
+          formData.append('chunk_index', chunkIndex);
+          formData.append('num_chunks', numChunks);
+          if (overrideFileId) {
+              formData.append('file_id', overrideFileId);
+          }
+
+          fetch('/ocean/upload_chunk', {
+              method: 'POST',
+              body: formData,
+          })
+          .then((response) => response.json())
+          .then((data) => {
+              const progress = (chunkIndex + 1) / numChunks * 100;
+              // progressBar.style.width = `${progress}%`;
+              progressBar.value = progress;
+              chunkIndex++;
+
+              if (chunkIndex < numChunks) {
+                  uploadFile(data.file_id);
+              } else {
+                // Update the input field to show the filename and store file_id
+                const textField = document.createElement('input');
+                textField.type = 'text';
+                textField.value = `Uploaded: ${file.name}`;
+                textField.readOnly = true;
+                
+                fileIdStore.value = data.file_id;
+                fileInput.value = '';
+                // Create a reset button
+                const resetButton = document.createElement('button');
+                resetButton.type = 'button';
+                resetButton.textContent = 'Clear Upload';
+                resetButton.addEventListener('click', () => {
+                    // Reset the file input
+                    
+                    textField.remove();
+                    resetButton.remove();
+                    fileIdStore.value = '';
+                    fileInput.style.display = 'block';
+                });
+
+                // Hide the original file input and show the text field and reset button
+                fileInput.style.display = 'none';
+                fileInput.parentNode.insertBefore(textField, fileInput);
+                fileInput.parentNode.insertBefore(resetButton, fileInput.nextSibling);
+                submissionButton.disabled = false;
+                progressBar.style="display: none";
+
+              }
+          })
+          .catch((error) => console.error(error));
+      };
+
+      uploadFile();
+  });
+
+}
+
+
+/**
  * Handles form submission with a progress bar and periodic server pings.
  * 
  * @param {string} formId - The ID of the form element to be submitted.

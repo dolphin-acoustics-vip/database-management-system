@@ -252,6 +252,7 @@ class File(db.Model):
     duration = db.Column(db.Integer)
     deleted = db.Column(db.Boolean, default=False)
     original_filename = db.Column(db.String(255))
+    temp = db.Column(db.Boolean, default=False)
 
     updated_by_id = db.Column(db.String(36), db.ForeignKey('user.id'))
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
@@ -338,6 +339,8 @@ class File(db.Model):
         """
         if self.deleted:
             root = database_handler.get_trash_path()
+        elif self.temp:
+            root = database_handler.get_tempdir()
         else:
             root = database_handler.get_file_space_path()
         return os.path.join(root, self.get_full_relative_path())
@@ -396,10 +399,20 @@ class File(db.Model):
             os.rename(loose_file_path, new_path)
             logger.error(f"Attempting to save file in the following path, but a file already exists: {loose_file_path}. Renamed existing file to {new_path}")
 
+    def append_chunk(self, chunk):
+        print("APPEND CHUNK")
+        # Save the chunk to a temporary file
+        chunk_path = self.get_full_absolute_path()
+        print(chunk_path, os.path.exists(chunk_path))
+
+        if os.path.exists(chunk_path):
+            with open(chunk_path, 'ab') as f:
+                f.write(chunk.read())
+
 
     # TODO: find the datatype of file
     # TODO: remove root_path requirement as it is automatically generated in the method
-    def insert_path_and_filename(self, session, file, new_directory:str, new_filename:str, root_path=None):
+    def insert_path_and_filename(self, session, file, new_directory:str, new_filename:str, override_extension:str=None, root_path=None):
         """
         Insert a file into the filespace. Automatically save the file on the server and
         store (and commit) its directory, filename and extension in the database. If 
@@ -412,14 +425,15 @@ class File(db.Model):
         """
 
 
-        root_path = get_file_space_path()
+        root_path = get_file_space_path() if root_path is None else root_path
         
         self.path = new_directory
         self.filename = new_filename  # filename without extension
         self.original_filename = file.filename
-        self.extension = file.filename.split('.')[-1]
+        self.extension = file.filename.split('.')[-1] if override_extension is None else override_extension
         
         destination_path = os.path.join(root_path, self.get_full_relative_path())
+        print("DESTINATION", destination_path)
         self.rename_loose_file(self.path, self.filename, self.extension)
         os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
         # file.save(destination_path)
@@ -452,6 +466,8 @@ class File(db.Model):
             logger.info(f"Parmanently deleted file {self.get_full_absolute_path()}.")
             os.remove(self.get_full_absolute_path())
 
+        
+
     def move_file(self, new_relative_file_path, move_to_trash=False, override_extension=None):
         """
         Move a file to a new location with the provided session.
@@ -467,7 +483,8 @@ class File(db.Model):
         else: root_path = database_handler.get_file_space_path()
 
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
-        current_relative_file_path = os.path.join(database_handler.get_file_space_path(), self.get_full_relative_path())
+        current_relative_file_path = self.get_full_absolute_path()
+
 
         if override_extension:
             self.extension = override_extension
@@ -488,6 +505,7 @@ class File(db.Model):
             if os.path.exists(current_relative_file_path):
                 os.rename(current_relative_file_path, new_relative_file_path_with_root)
                 logger.info(f"Moved file from {current_relative_file_path} to {new_relative_file_path_with_root}")
+                self.temp = False
             else:
                 logger.warning(f"Attempted to move file from {current_relative_file_path} to {new_relative_file_path_with_root} but file does not exist")
  
@@ -498,7 +516,9 @@ class File(db.Model):
                 while parent_dir != root_path and not os.listdir(parent_dir):
                     os.rmdir(parent_dir)
                     parent_dir = os.path.dirname(parent_dir)
+        
             
+ 
         else:
             pass
             return False

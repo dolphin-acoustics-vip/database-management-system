@@ -58,14 +58,15 @@ def insert_or_update_recording(session, request, recording):
     """
     recording.set_start_time(request.form['time_start'])
     # If a recording file has been given, add it to the Recording object
-    if 'recording-file-input' in request.files and request.files['recording-file-input'].filename != '':
-        recording_file = request.files['recording-file-input']
-        new_recording_filename = recording.generate_recording_filename()
-        new_relative_path = recording.generate_relative_path()
-        new_file = File()
-        session.add(new_file)
-        recording.recording_file = new_file
-        new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename)
+    print("RECORDING FILE ID", request.form['recording_file_id'])
+    if 'recording_file_id' in request.form:
+        recording_file_id = request.form['recording_file_id']
+        recording_file = session.query(File).filter_by(id=recording_file_id).first()
+        print(recording_file)
+        if recording_file:
+            recording_file.move_file(recording.generate_full_relative_path())
+            recording.recording_file = recording_file
+            # new_file.insert_path_and_filename(session, recording_file, new_relative_path, new_recording_filename)
 
     return recording
 

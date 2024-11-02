@@ -109,6 +109,7 @@ def init_db(app: Flask, run_script: str=None):
                         logger.warning("Attempting to run DDL script failed (this could be because the changed defined in the DDL script have already been applied): " + str(e))
 
         def add_user_data(session):
+
             import models
             for obj in session.dirty.union(session.new):
                 if type(obj) != models.File:
