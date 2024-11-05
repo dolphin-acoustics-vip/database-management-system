@@ -8,6 +8,8 @@ from database_handler import Session, require_live_session,exclude_role_1,exclud
 from models import *
 from exception_handler import *
 
+from flask_login import current_user
+
 routes_admin = Blueprint('admin', __name__)
 
 @routes_admin.route('/admin', methods=['GET'])
@@ -432,13 +434,13 @@ def admin_user_view(user_id):
         return render_template('admin/admin-user-view.html', user=user, roles=roles,datetime=datetime)
     
 @require_live_session
-def update_or_insert_user(session, user, request, login_id=None, is_temporary=False, role_id=None):
+def update_or_insert_user(session, user, request, login_id=None, is_temporary=False, role_id=None, editing=False):
     """
     Method to edit (UPDATE) or create (INSERT) a user into the User ORM class. 
     PARAMETERS:
     - session: the current session object.
     - user: the user object (if INSERT the user object must already be made, but can be empty)
-    - request: the HTTP request with form data for the user, containing name, password, role, expiry, login_id, is_active
+    - request: the HTTP request with form data for the user, containing name, role, expiry, login_id, is_active
     (see method for more details)
     - login_id (default None): override the login_id of the INSERT or UPDATE operation.
     - is_temporary (default False): to be set to True if it is a temporary user.
@@ -449,23 +451,38 @@ def update_or_insert_user(session, user, request, login_id=None, is_temporary=Fa
     if user:
         # Insert new data
         user.set_name(request.form['name'])
-        user.set_password(request.form['password'])
         # Override the User object's role if passed as a parameter
         if role_id:
             user.set_role_id(role_id)
         else:
+            if current_user == user and current_user.role_id == 1:
+                if request.form['role'] != '1':
+                    flash('Role cannot be changed for the current logged in user.', 'error')
+                    return redirect(url_for('admin.admin_user'))
             user.set_role_id(request.form['role'])
-        user.set_expiry(request.form['expiry'])
-        user.is_temporary = is_temporary
-        if login_id is not None:
-            user.set_login_id(login_id)
-        else:
+
+        if 'expiry' in request.form:
+            if user == current_user and datetime.strptime(request.form['expiry'], '%Y-%m-%d') < datetime.now():
+                flash('Expiry date cannot be in the past for the current logged in user.', 'error')
+                return redirect(url_for('admin.admin_user'))
+            else:
+                user.set_expiry(request.form['expiry'])
+
+        if 'login_id' in request.form and editing:
+            flash('Login ID cannot be edited.', 'error')
+            return redirect(url_for('admin.admin_user'))
+        elif 'login_id' in request.form:
             user.set_login_id(request.form['login_id'])
+
         is_active = False
         # This logic is required because is_active is a checkbox
         # so if it is not checked it will not appear in the HTTP request.
         if 'is_active' in request.form:
             is_active = True
+        if 'is_active' not in request.form and user == current_user:
+            is_active = True
+            flash('User cannot be deactivated for the current logged in user.', 'error')
+        
         user.activate() if is_active else user.deactivate()
         session.commit()
         flash('User updated: {}'.format(user.get_login_id()), 'success')

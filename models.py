@@ -1411,10 +1411,8 @@ class User(db.Model, UserMixin):
     def set_expiry(self, value):
         self.expiry = value
     
-    def set_password(self, value):
-        self.password = value
-    
     def set_name(self, value):
+        
         self.name = value
     
     def get_login_id(self):
