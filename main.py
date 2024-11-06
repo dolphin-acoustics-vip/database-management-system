@@ -40,6 +40,7 @@ from sqlalchemy import event
 from flask_login import current_user
 
 
+
 def check_file_space():
     # Define the file space folder and get the Google API key from a file
     FILE_SPACE_FILENAME = 'file_space_path.txt'
@@ -216,6 +217,8 @@ def create_app(config_class=None):
 
     return app
 
+
+
 def get_snapshot_date_from_session():
     """
     Gets the snapshot date from the session.
@@ -228,21 +231,6 @@ def save_snapshot_date_to_session(snapshot_date):
     """
     client_session['snapshot_date'] = snapshot_date
 
-def clean_directory(root_directory):
-    """
-    Walk through a given directory and remove any empty directories.
-
-    :param root_directory: The root directory to start cleaning
-    :type root_directory: str
-    """
-    # Get the root directory of the project
-    for root, dirs, files in os.walk(root_directory, topdown=False):
-        for dir in dirs:
-            dir_path = os.path.join(root, dir)
-            # If there exist no sub directories, remove it
-            if not os.listdir(dir_path):
-                os.rmdir(dir_path)
-
 if __name__ == '__main__':
     app = create_app('config.DevelopmentConfig')
     if app is None:
@@ -250,3 +238,4 @@ if __name__ == '__main__':
         exit(1)
     logger.info('Starting application')
     app.run()
+

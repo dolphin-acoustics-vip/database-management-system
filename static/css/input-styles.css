@@ -134,4 +134,10 @@ a.button.blue:hover, button.blue:hover {
     color: #fff; 
 }   
 
-
+button:disabled {
+    background-color: #d3d3d3; /* Light gray */
+    color: #6c757d;           /* Darker gray for text */
+    cursor: not-allowed;      /* Shows a 'not-allowed' cursor */
+    opacity: 0.6;             /* Slightly transparent */
+    border: 1px solid #c0c0c0; /* Light gray border */
+}

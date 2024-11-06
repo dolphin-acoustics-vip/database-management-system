@@ -134,6 +134,7 @@ CREATE TABLE `file` (
   `duration` int(11) DEFAULT NULL,
   `upload_datetime` timestamp NOT NULL DEFAULT current_timestamp(),
   `original_filename` varchar(255) DEFAULT NULL,
+  `temp` tinyint(1) NOT NULL DEFAULT 0,
   `deleted` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_updated_by_id_file` (`updated_by_id`),

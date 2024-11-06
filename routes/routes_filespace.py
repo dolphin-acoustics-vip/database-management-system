@@ -6,10 +6,11 @@ from flask_login import login_required
 
 # Local application imports
 from database_handler import get_session, exclude_role_1, exclude_role_2, exclude_role_3, exclude_role_4, get_file_space, get_file_space_path, get_trash_path
+import exception_handler
 import models
 import os
 from exception_handler import *
-import check_filespace
+import filespace_handler
 import shutil
 
 routes_filespace = Blueprint('filespace', __name__)
@@ -25,7 +26,7 @@ def delete_orphan_file():
     file_path = request.args.get('path')
     deleted = request.args.get('deleted')
     with get_session() as session:
-        check_filespace.delete_orphan_file(file_path,deleted)
+        filespace_handler.delete_orphan_file(file_path,deleted,False)
     return redirect(url_for('filespace.filespace_view'))
 
 
@@ -37,10 +38,16 @@ def delete_orphan_file():
 @exclude_role_4
 def filespace_delete_file(file_id):
     with get_session() as session:
-        check_filespace.delete_file_object(file_id)
+        try:
+            file = session.query(models.File).filter(models.File.id == file_id).first()
+            if filespace_handler.check_file_exists_in_filespace(file):
+                raise exception_handler.WarningException("Cannot delete file record as this would orphan its file in the filespace.")
+            else:
+                session.delete(file)
+                session.commit()
+        except (Exception, SQLAlchemyError) as e:
+            exception_handler.handle_exception(session, e)
     return redirect(url_for('filespace.filespace_view'))
-
-
 
 def get_directory_size(directory):
     total_size = 0
@@ -70,11 +77,12 @@ def format_bytes(value):
 @exclude_role_4
 def filespace_view():
     with get_session() as session:
-        invalid_links = check_filespace.query_file_class(session, False)
-        invalid_deleted_links = check_filespace.query_file_class(session, True)
+        filespace_handler.cleanup_temp_filespace()
+        invalid_links = filespace_handler.query_file_class(session, False)
+        invalid_deleted_links = filespace_handler.query_file_class(session, True)
 
-        orphaned_files = check_filespace.get_orphaned_files(session, False)
-        orphaned_deleted_files = check_filespace.get_orphaned_files(session, True)
+        orphaned_files = filespace_handler.get_orphaned_files(session, False, False)
+        orphaned_deleted_files = filespace_handler.get_orphaned_files(session, True, False)
     
 
         def format_disk_usage(disk_usage):

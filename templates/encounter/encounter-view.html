@@ -18,7 +18,6 @@ Variables required:
 <body>
   <div class="outer-div">
     <h1>Encounter: {{ encounter.get_unique_name(' - ') }}</h1>
-    <hr>
 
     <!-- Encounter Summary -->
     <section id="encounter-summary">
@@ -81,25 +80,27 @@ Variables required:
         {% from 'recording/recording-form-template.html' import recording_form %}
         {{ recording_form(editing=False, file_timezone=encounter.file_timezone, local_timezone=encounter.local_timezone,
         recording=None) }}
+        <input type="hidden" id="recording-file-id-store" name="recording_file_id" value="">
         <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
         <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
-        <div style="display: flex;">
-          <span style="display: none; padding-right: 0.5rem;" id="recording-insert-progress-text">0%</span>
-          <progress style="display: none;" id="recording-insert-progress-bar" value="0" max="100"></progress>
-        </div>
-        <button type="submit" class="blue" style="margin-top: 1rem;">Submit</button>
+
+        <button type="submit" class="blue" style="margin-top: 1rem;" id="recording-insert-form-submit">Submit</button>
       </form>
       {% endif %}
     </section>
     {% endif %}
 
     <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
-
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-insert-form-submit'));
+    });
+    </script>
+    <!-- <script>
         document.addEventListener('DOMContentLoaded', function() {
             uploadFormWithProgress('recording-insert-form', 'recording-insert-progress-bar', 'recording-insert-progress-text');
         });
-    </script>
+    </script> -->
 
     <section id="recordings">
       <h2>Recordings</h2>

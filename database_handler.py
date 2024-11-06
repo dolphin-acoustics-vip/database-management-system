@@ -1,24 +1,42 @@
-# db_handler.py
+# Copyright (c) 2024
+#
+# This file is part of OCEAN.
+#
+# OCEAN is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# OCEAN is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
+
+# Third party libraries
 from datetime import datetime
 from functools import wraps
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from flask_sqlalchemy import SQLAlchemy
 import sqlalchemy
 from flask_login import LoginManager, current_user
 from flask import Flask, abort, g, render_template, request, session as client_session
+
+# Local application imports
 import os
 import exception_handler
 from logger import logger
 
+###################
+# Filespace setup #
+###################
 
-###
-# INITIALISING FILE SPACE
-###
-
-DATA_DIR = 'data'
-TEMP_DIR = 'tempdir'
-TRASH_DIR = 'trash'
+# Variables used to define sub-directories in the file space
+DATA_DIR = 'data_space'
+TEMP_DIR = 'temp_space'
+TRASH_DIR = 'deleted_space'
 
 # Define the file space folder and get the Google API key from a file
 FILE_SPACE_FILENAME = 'file_space_path.txt'
@@ -38,44 +56,101 @@ else:
     logger.critical(f"File space path configuration file not found in '{FILE_SPACE_FILENAME}'")
     startup_error_flag = True
 
+def get_file_space() -> str:
+    """The file space is the location in which ALL files are stored.
+    Within the file space are three sub-directories, each of which
+    hold an important function within the program.
+    - Data: all files that are uploaded by the user
+    - Trash: all files that have been deleted by the user (soft delete)
+    - Temp: a temporary space that is regularly cleaned (used for sending files to the user, or uploading files in a staging area)
+
+    :return: The path to the file space
+    """
+    return FILE_SPACE_PATH
+
+def get_deleted_space():
+    """The deleted space is the location in which all files are moved to when deleted by the user.
+    The deleted space is a subdirectory of the file space. This function returns the file space
+    path joined with the deleted space path to create the path to the deleted space.
+    
+    :return: The path to the deleted space
+    """
+
+    if not os.path.exists(os.path.join(get_file_space(), TRASH_DIR)):
+        os.makedirs(os.path.join(get_file_space(), TRASH_DIR))
+    return os.path.join(get_file_space(), TRASH_DIR)
+
+get_trash_path = get_deleted_space # LEGACY TODO: REMOVE
+
+def get_data_space() -> str:
+    """The data space is the location in which all files are stored.
+    The data space is a subdirectory of the file space. This function returns the file space
+    path joined with the data space path to create the path to the data space.
+
+    :return: The path to the data space
+    """
+
+    if not os.path.exists(os.path.join(get_file_space(), DATA_DIR)):
+        os.makedirs(os.path.join(get_file_space(), DATA_DIR))
+    return os.path.join(get_file_space(), DATA_DIR)
+
+get_file_space_path = get_data_space # LEGACY TODO: REMOVE
+
+def get_temp_space() -> str:
+    """The temp space is the location in which all temporary files are stored.
+    The temp space is a subdirectory of the file space. This function returns the file space
+    path joined with the temp space path to create the path to the temp space.
+
+    :return: The path to the temp space
+    """
+
+    if not os.path.exists(os.path.join(get_file_space(), TEMP_DIR)):
+        os.makedirs(os.path.join(get_file_space(), TEMP_DIR))
+    return os.path.join(get_file_space(), TEMP_DIR)
+
+get_tempdir = get_temp_space # LEGACY TODO: REMOVE
+
+def get_root_directory(deleted: bool, temp: bool) -> str:
+    """
+    Returns the root directory path based on the status of the file. A file is stored in either
+    the trash, temp, or data file space:
+    - Data: all files that are uploaded by the user (deleted and temp are False)
+    - Trash: all files that have been deleted by the user (soft delete) (deleted is True and temp is Flase)
+    - Temp: a temporary space that is regularly cleaned (used for sending files to the user, or uploading files in a staging area) (temp is True)
+
+    Returns:
+    - str: The path to the appropriate directory (temporary, trash, or file space).
+    """
+    return get_tempdir() if temp else (get_trash_path() if deleted else get_file_space_path()) 
+
+
+#################################
+# INITIALISE DATABASE ORM MODEL #
+#################################
+
+db = SQLAlchemy()
+
 def get_engine():
     return db.engine
 
 session_instance = None
 engine = None
 
+# some parts of the program still call the old variable Session()
+
 def get_session():
+    """
+    A function that returns an instance of the SQLAlchemy session
+    that is bound to the engine. This is a global function that
+    is used to get the session instance across the program.
+
+    :return: The session instance
+    """
     global session_instance
     return session_instance()
 
-# some parts of the program still call the old variable Session()
 Session = get_session
 
-
-def get_trash_path():
-    if not os.path.exists(os.path.join(FILE_SPACE_PATH, TRASH_DIR)):
-        os.makedirs(os.path.join(FILE_SPACE_PATH, TRASH_DIR))
-    return os.path.join(FILE_SPACE_PATH, TRASH_DIR)
-
-def get_file_space():
-    return FILE_SPACE_PATH
-
-def get_file_space_path():
-    if not os.path.exists(os.path.join(FILE_SPACE_PATH, DATA_DIR)):
-        os.makedirs(os.path.join(FILE_SPACE_PATH, DATA_DIR))
-    return os.path.join(FILE_SPACE_PATH, DATA_DIR)
-
-def get_tempdir():
-    if not os.path.exists(os.path.join(FILE_SPACE_PATH, TEMP_DIR)):
-        os.makedirs(os.path.join(FILE_SPACE_PATH, TEMP_DIR))
-    return os.path.join(FILE_SPACE_PATH, TEMP_DIR)
-
-
-###
-# INITIALISE DATABASE
-###
-
-db = SQLAlchemy()
 
 def init_db(app: Flask, run_script: str=None):
     """
@@ -91,7 +166,6 @@ def init_db(app: Flask, run_script: str=None):
 
     global engine
     global session_instance
-
 
     with app.app_context():
         engine = get_engine()
@@ -109,17 +183,21 @@ def init_db(app: Flask, run_script: str=None):
                         logger.warning("Attempting to run DDL script failed (this could be because the changed defined in the DDL script have already been applied): " + str(e))
 
         def add_user_data(session):
+            """
+            A function that adds user information to tables in the database before each commit.
+            This impacts all tables being updated or inserted in the database that contain an
+            attribute updated_by_id (foreign key reference to the user table).
+            """
             import models
             for obj in session.dirty.union(session.new):
                 if type(obj) != models.File:
                     if hasattr(obj, 'updated_by_id'):
                         try:
-                            if hasattr(obj, 'set_user_id'):
+                            if hasattr(obj, 'set_updated_by_id'):
                                 obj.set_updated_by_id(current_user.id)
                         except Exception as e:
                             pass
                 else:
-                    # only insert user data in new File objects
                     if obj in session.new:
                         try:
                             obj.updated_by_id = current_user.id
@@ -128,49 +206,33 @@ def init_db(app: Flask, run_script: str=None):
 
         @sqlalchemy.event.listens_for(session_instance, 'before_commit')
         def before_commit(session: sessionmaker):
-            """
-            A database hook that adds user information to tables in the database before each
-            commit. This impacts all tables being updated or inserted in the database that
-            contain an attribute updated_by_id (foreign key reference to the user table).
-            """
             add_user_data(session)
 
     return db
 
-
-
 def get_snapshot_date_from_session():
     """
-    Gets the snapshot date from the session.
+    Gets the snapshot date from the session. This is used for the program's archive mode.
     """
     return client_session.get('snapshot_date')
 
 def save_snapshot_date_to_session(snapshot_date):
     """
-    Saves the snapshot date to the session.
+    Saves the snapshot date to the session. This is used for the program's archive mode.
     """
     client_session['snapshot_date'] = snapshot_date
-
-def clean_directory(root_directory):
-    """
-    Walk through a given directory and remove any empty directories.
-
-    :param root_directory: The root directory to start cleaning
-    :type root_directory: str
-    """
-    # Get the root directory of the project
-    for root, dirs, files in os.walk(root_directory, topdown=False):
-        for dir in dirs:
-            dir_path = os.path.join(root, dir)
-            # If there exist no sub directories, remove it
-            if not os.listdir(dir_path):
-                os.rmdir(dir_path)
-
 
 # A number of annotations that can be applied to flask route methods to restrict access to certain
 # user access level permissions.
 
 def exclude_role_1(func):
+    """
+    Decorator to restrict access to a function for users with role ID 1.
+
+    This decorator checks if the current user is authenticated and their role ID
+    is not 1. If the condition is met, the decorated function is executed.
+    Otherwise, it aborts the request with a 403 Forbidden status.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         if current_user.is_authenticated and current_user.role_id != 1:
@@ -180,6 +242,13 @@ def exclude_role_1(func):
     return wrapper
                    
 def exclude_role_2(func):
+    """
+    Decorator to restrict access to a function for users with role ID 2.
+
+    This decorator checks if the current user is authenticated and their role ID
+    is not 2. If the condition is met, the decorated function is executed.
+    Otherwise, it aborts the request with a 403 Forbidden status.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         if current_user.is_authenticated and current_user.role_id != 2:
@@ -189,6 +258,13 @@ def exclude_role_2(func):
     return wrapper
 
 def exclude_role_3(func):
+    """
+    Decorator to restrict access to a function for users with role ID 3.
+
+    This decorator checks if the current user is authenticated and their role ID
+    is not 3. If the condition is met, the decorated function is executed.
+    Otherwise, it aborts the request with a 403 Forbidden status.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         if current_user.is_authenticated and current_user.role_id != 3:
@@ -198,6 +274,13 @@ def exclude_role_3(func):
     return wrapper
 
 def exclude_role_4(func):
+    """
+    Decorator to restrict access to a function for users with role ID 4.
+
+    This decorator checks if the current user is authenticated and their role ID
+    is not 4. If the condition is met, the decorated function is executed.
+    Otherwise, it aborts the request with a 403 Forbidden status.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         if current_user.is_authenticated and current_user.role_id != 4:
@@ -223,8 +306,6 @@ def require_live_session(func):
             referrer_url = request.headers.get('Referer')
             return render_template("require-live-session.html", user=current_user, original_url=request.url, referrer_url=referrer_url)
     return wrapper
-
-
 
 def get_system_time_request_recording(session:sessionmaker, user_id:str=None, assigned_user_id:str=None, created_date_filter:str=None, species_filter_str:str=None, override_snapshot_date:str=None):
     """

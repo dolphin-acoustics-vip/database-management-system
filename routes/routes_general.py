@@ -1,4 +1,5 @@
 # Standard library imports
+import hashlib
 import os
 import zipfile
 import traceback
@@ -238,3 +239,61 @@ def home():
 def ping():
     # This endpoint could be enhanced to log pings or check connection status
     return jsonify(status='alive')
+
+
+import filespace_handler
+
+@routes_general.route('/upload_chunk', methods=['POST'])
+def upload_chunk():
+    filename = request.form['filename']
+    file_chunk = request.files['chunk']
+
+    if str(filename).endswith('.blob'):
+        filename = filename[:-5]
+    
+    extension = filename.split('.')[-1]
+    # filename_no_extension = filename[:-len(extension)-1]
+    
+    chunk_index = int(request.form['chunk_index'])
+    num_chunks = int(request.form['num_chunks'])
+    
+    # Generate a unique file_id if the chunk_index is 0 (i.e. the first chunk).
+    # Otherwise expect a file_id to be provided in the request form - and if not raise an error.
+    if 'file_id' not in request.form and chunk_index != 0:
+        raise ValueError('A chunk upload with chunk_index != 0 requires a file_id.')
+    file_id = request.form['file_id'] if chunk_index != 0 else str(uuid.uuid4().hex)
+    path = filespace_handler.get_path_to_temporary_file(file_id, filename)
+    
+    chunk_size = 1024 * 1024  # 1MB chunks
+    with open(path, 'wb' if chunk_index == 0 else 'ab') as f:
+        while True:
+            chunk = file_chunk.stream.read(chunk_size)
+            if chunk: f.write(chunk)
+            else: break
+
+    progress = (chunk_index + 1) / num_chunks * 100
+
+    return jsonify({'progress': progress, 'message':f"Uploaded chunk {chunk_index+1} out of {num_chunks}.", 'file_id': file_id, 'filename': filename})
+
+
+    #     file_id = file.id
+    # else:
+    #     file_id = request.form['file_id']  # Get the file ID from the request
+    #     file = session.query(File).filter_by(id=file_id).first()
+    #     file.append_chunk(chunk)
+    
+    # # Return a JSON response with the progress
+
+@routes_general.route('/upload', methods=['POST'])
+def upload():
+    # Get the uploaded file from the temporary directory
+    file_id = request.form['file_id']
+    with database_handler.get_session() as session:
+        file = session.query(File).filter_by(id=file_id).first()
+        file_path = file.get_full_absolute_path()
+
+        # Save the file to a permanent location
+        #permanent_file_path = os.path.join('permanent_uploads', filename)
+        #os.rename(file_path, permanent_file_path)
+
+        return 'File uploaded successfully! Found ' + str(file_path) + ": " + str(os.path.exists(file_path))
