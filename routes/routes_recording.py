@@ -10,8 +10,6 @@ from flask_login import login_user,login_required, current_user, login_manager
 import csv
 from flask import Response
 from io import StringIO
-from flask_socketio import emit, SocketIO
-from flask_socketio import emit, SocketIO
 
 # Local application imports
 import database_handler
