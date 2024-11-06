@@ -241,37 +241,48 @@ def ping():
     return jsonify(status='alive')
 
 
+import filespace_handler
+
 @routes_general.route('/upload_chunk', methods=['POST'])
 def upload_chunk():
     filename = request.form['filename']
-    chunk = request.files['chunk']
+    file_chunk = request.files['chunk']
 
     if str(filename).endswith('.blob'):
         filename = filename[:-5]
     
     extension = filename.split('.')[-1]
-    filename_no_extension = filename[:-len(extension)-1]
+    # filename_no_extension = filename[:-len(extension)-1]
     
     chunk_index = int(request.form['chunk_index'])
     num_chunks = int(request.form['num_chunks'])
     
-    with database_handler.get_session() as session:
-        if 'file_id' not in request.form:
-            file = File()
-            file.temp = True
-            session.add(file)
-            file.insert_path_and_filename(session, chunk, os.path.join(str(current_user.id), str(uuid.uuid4().hex)), filename_no_extension, override_extension=extension, root_path=database_handler.get_tempdir())
-            session.commit()
-            file_id = file.id
-        else:
-            file_id = request.form['file_id']  # Get the file ID from the request
-            file = session.query(File).filter_by(id=file_id).first()
-            file.append_chunk(chunk)
-        
-        # Return a JSON response with the progress
-        progress = (chunk_index + 1) / num_chunks * 100
-        return jsonify({'progress': progress, 'message':f"Uploaded chunk {chunk_index+1} out of {num_chunks}.", 'file_id': file_id})
+    # Generate a unique file_id if the chunk_index is 0 (i.e. the first chunk).
+    # Otherwise expect a file_id to be provided in the request form - and if not raise an error.
+    if 'file_id' not in request.form and chunk_index != 0:
+        raise ValueError('A chunk upload with chunk_index != 0 requires a file_id.')
+    file_id = request.form['file_id'] if chunk_index != 0 else str(uuid.uuid4().hex)
+    path = filespace_handler.get_path_to_temporary_file(file_id, filename)
+    
+    chunk_size = 1024 * 1024  # 1MB chunks
+    with open(path, 'wb' if chunk_index == 0 else 'ab') as f:
+        while True:
+            chunk = file_chunk.stream.read(chunk_size)
+            if chunk: f.write(chunk)
+            else: break
 
+    progress = (chunk_index + 1) / num_chunks * 100
+
+    return jsonify({'progress': progress, 'message':f"Uploaded chunk {chunk_index+1} out of {num_chunks}.", 'file_id': file_id, 'filename': filename})
+
+
+    #     file_id = file.id
+    # else:
+    #     file_id = request.form['file_id']  # Get the file ID from the request
+    #     file = session.query(File).filter_by(id=file_id).first()
+    #     file.append_chunk(chunk)
+    
+    # # Return a JSON response with the progress
 
 @routes_general.route('/upload', methods=['POST'])
 def upload():

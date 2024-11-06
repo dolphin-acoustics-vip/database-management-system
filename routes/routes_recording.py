@@ -11,10 +11,12 @@ import csv
 from flask import Response
 from io import StringIO
 from flask_socketio import emit, SocketIO
+from flask_socketio import emit, SocketIO
 
 # Local application imports
 import database_handler
 from database_handler import get_file_space_path, Session, save_snapshot_date_to_session, get_snapshot_date_from_session,require_live_session,exclude_role_1,exclude_role_2,exclude_role_3,exclude_role_4
+import filespace_handler
 
 from models import *
 from exception_handler import *
@@ -43,7 +45,7 @@ routes_recording = Blueprint('recording', __name__)
 
 #     return jsonify({'message': 'File uploaded successfully'})
 
-def insert_or_update_recording(session, request, recording):
+def insert_or_update_recording(session, request, recording: Recording):
     """
     Insert or update a recording in the database. This function should be called
     by routes either inserting (new) Recording objects or updating (existing) 
@@ -56,14 +58,18 @@ def insert_or_update_recording(session, request, recording):
 
     :return: The Recording object that was inserted or updated
     """
+    
     recording.set_start_time(request.form['time_start'])
     # If a recording file has been given, add it to the Recording object
     if 'recording_file_id' in request.form:
         recording_file_id = request.form['recording_file_id']
-        recording_file = session.query(File).filter_by(id=recording_file_id).first()
-        if recording_file:
-            recording_file.save_permanently(recording.generate_full_relative_path())
-            recording.recording_file = recording_file
+        recording_filename = request.form['recording_filename']
+        recording_file = File()
+        recording_file.insert_path_and_filename(session, filespace_handler.get_path_to_temporary_file(recording_file_id, recording_filename), recording.generate_relative_path(), recording.generate_recording_filename())
+        filespace_handler.remove_temporary_file(recording_file_id, recording_filename)
+        session.add(recording_file)
+        recording.recording_file = recording_file
+    filespace_handler.clean_filespace_temp()
     return recording
 
 
@@ -135,7 +141,15 @@ def export_selection_table(recording_id, export_format):
         except (Exception, SQLAlchemyError) as e:
             handle_exception(session, e, prefix="Error exporting selection table")
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
+    with database_handler.get_session() as session:
+        try:
+            recording = database_handler.create_system_time_request(session, Recording, {"id":recording_id}, one_result=True)
+            return recording.export_selection_table(session, export_format)
+        except (Exception, SQLAlchemyError) as e:
+            handle_exception(session, e, prefix="Error exporting selection table")
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
+@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
 @routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
 @require_live_session
 @exclude_role_4
@@ -181,11 +195,9 @@ def recording_insert(encounter_id: str) -> Response:
         flask.Response: The rendered template for the encounter view page.
     """
     
-
     with database_handler.get_session() as session:
         try:
             recording_obj = Recording(encounter_id=encounter_id)
-
             insert_or_update_recording(session, request, recording_obj)
             session.add(recording_obj)
             session.commit()
@@ -224,6 +236,7 @@ def update_notes(recording_id):
     with database_handler.get_session() as session:
         recording = session.query(Recording).filter_by(id=recording_id).first()
         notes = request.form.get('notes')
+        recording.notes = notes.strip()
         recording.notes = notes.strip()
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))  # Redirect to the recording view page
@@ -472,6 +485,9 @@ def assign_recording():
             assignment = Assignment(recording_id=recording_id, user_id=user_id)
             session.add(assignment)
             session.commit()
+            assignment = Assignment(recording_id=recording_id, user_id=user_id)
+            session.add(assignment)
+            session.commit()
             recording = session.query(Recording).filter_by(id=recording_id).first()
             recording.update_status()
             session.commit()      
@@ -499,6 +515,7 @@ def unassign_recording():
     recording_id = request.args.get('recording_id')
     with database_handler.get_session() as session:
         try:
+            recording = session.query(Recording).filter_by(id=recording_id).first()
             assignment = session.query(Assignment).filter_by(user_id=user_id).filter_by(recording_id=recording_id).first()
             session.delete(assignment)
             session.commit()
@@ -509,8 +526,23 @@ def unassign_recording():
             handle_sqlalchemy_exception(session, e)
 
 
+
 import contour_statistics
 
+def recalculate_contour_statistics(session, selection):
+    """
+    Recalculate contour statistics for the given selection.
+
+    :param session: The current sqlalchemy session
+    :type session: sqlalchemy.orm.session.Session
+    :param selection: The selection object to recalculate the contour statistics for
+    :type selection: Selection
+    """
+    selection.reset_contour_stats()
+    if selection and selection.contour_file is not None:
+        contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path(),selection.selection_number)
+        contour_rows = contour_file_obj.calculate_statistics(session, selection)
+        selection.generate_ctr_file(session, contour_rows)
 
 @routes_recording.route('/selection/<selection_id>/recalculate-contour-statistics', methods=['GET'])
 @login_required

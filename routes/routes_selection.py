@@ -46,7 +46,7 @@ def insert_or_update_selection(session: sessionmaker, selection_number: str, fil
     selection_filename = selection_obj.generate_selection_filename()
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = File()
-    new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename, get_file_space_path())
+    new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename)
     selection_obj.set_selection_file(new_file)
     session.add(new_file)
     session.commit()
@@ -94,7 +94,7 @@ def insert_or_update_contour(session: sessionmaker, selection: Selection, contou
     if selection.contour_file is not None:
         raise WarningException(f"Contour file for selection {selection.selection_number} already exists.")
     new_file = File()
-    new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_filename(), get_file_space_path())
+    new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_filename())
     session.add(new_file)
     session.commit()
     print("new file: " + new_file.id)

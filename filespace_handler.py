@@ -17,13 +17,54 @@
 
 # third party libraries
 from flask import url_for
+from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
-import os, datetime
+import os, datetime, uuid
 
 # Local application imports
 import database_handler
-import models
 import exception_handler
+import models
+
+def get_path_to_temporary_file(file_id: str, filename: str):
+    """Get the path to a file in the temporary directory based on the file_id and filename.
+    This is used to store temporary files during the upload process. The file_id and filename
+    are identifiers for the file and remain constant for all chunks being uploaded to the 
+    filespace.
+
+    The path is made of <current_user.id/file_id/filename>. The current user is automatically
+    provided by flask_login.
+
+    :param file_id: The id of the file
+    :param filename: The name of the file
+    :return: The path to the file
+    """
+    if not file_id: raise ValueError('file_id cannot be None')
+    if not filename: raise ValueError('filename cannot be None')
+    
+    directory = os.path.join(database_handler.get_temp_space(), str(current_user.id), file_id)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    path = os.path.join(directory, filename)
+    return path
+
+def remove_temporary_file(file_id: str, filename: str):
+    """Remove a file in the temporary directory based on the file_id and filename.
+    This is used to remove temporary files during the upload process. The file_id and filename
+    are identifiers for the file and remain constant for all chunks being uploaded to the 
+    filespace.
+
+    The path is made of <current_user.id/file_id/filename>. The current user is automatically
+    provided by flask_login.
+
+    :param file_id: The id of the file
+    :param filename: The name of the file
+    """
+    if not file_id: raise ValueError('file_id cannot be None')
+    if not filename: raise ValueError('filename cannot be None')
+
+    path = get_path_to_temporary_file(file_id, filename)
+    os.remove(path)
 
 def clean_directory(directory: str) -> None:
     """Walk through all folders in a directory and remove any which are empty.
@@ -50,29 +91,30 @@ def clean_filespace_temp() -> None:
     2. Remove any orphaned files in the temporary filespace
     3. Remove any empty directories in the temporary filespace
     """
+    directory = database_handler.get_temp_space()
+    # Define the time threshold (5 hours ago)
+    cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=5)
 
-    with database_handler.get_session() as session:
-        # Retrieve all temporary files and check that they are less than a day old
-        # If they are, delete them
-        temp_files = session.query(models.File).filter(models.File.temp == True).all()
-        for temp_file in temp_files:
-            if temp_file.upload_datetime < (datetime.datetime.now() - datetime.timedelta(days=1)):
-                temp_file.delete_file()
-                session.delete(temp_file)
-                try:
-                    session.commit()
-                except SQLAlchemyError:
-                    session.rollback()
-        
-        # Walk through the temporary filespace and remove any orphaned files
-        for root, dirs, files in os.walk(database_handler.get_tempdir(), topdown=False):
-            for file in files:
-                file_path = os.path.join(root, file)
-                if check_file_orphaned(session, file_path, False, True):
-                    delete_orphan_file(file_path, False, True)
-        
-        # Remove any empty directories
-        clean_directory(database_handler.get_tempdir())
+    # Walk through the directory in reverse order (to process files before directories)
+    for root, dirs, files in os.walk(directory, topdown=False):
+        # Process files in the current directory
+        for file in files:
+            file_path = os.path.join(root, file)
+
+            # Get the creation time of the file
+            try:
+                file_creation_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
+                print(file_creation_time)
+
+                # Check if the file is older than 5 hours
+                if file_creation_time < cutoff_time:
+                    print(f"Deleting file: {file_path} (created at {file_creation_time})")
+                    os.remove(file_path)
+
+            except Exception as e:
+                print(f"Error checking or deleting file: {file_path}, error: {e}")
+    # Remove any empty directories
+    clean_directory(database_handler.get_temp_space())
 
 # Legacy
 cleanup_temp_filespace = clean_filespace_temp

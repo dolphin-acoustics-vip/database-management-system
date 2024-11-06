@@ -74,7 +74,7 @@ function addShiftClickFunctionality(checkboxes) {
  * 
  * 
  */
-function fileUploadHandler(fileInput, progressBar, fileIdStore, submissionButton) {
+function fileUploadHandler(fileInput, progressBar, fileIdStore, fileNameStore, submissionButton) {
   // const fileInput = document.getElementById('file-input');
   // const progressBar = document.getElementById('progress-bar-inner');
   // const form = document.getElementById('file-upload-form');
@@ -123,6 +123,7 @@ function fileUploadHandler(fileInput, progressBar, fileIdStore, submissionButton
                 textField.readOnly = true;
                 
                 fileIdStore.value = data.file_id;
+                fileNameStore.value = data.filename;
                 fileInput.value = '';
                 // Create a reset button
                 const resetButton = document.createElement('button');
@@ -134,6 +135,7 @@ function fileUploadHandler(fileInput, progressBar, fileIdStore, submissionButton
                     textField.remove();
                     resetButton.remove();
                     fileIdStore.value = '';
+                    fileNameStore.value = '';
                     fileInput.style.display = 'block';
                 });
 
@@ -154,6 +156,101 @@ function fileUploadHandler(fileInput, progressBar, fileIdStore, submissionButton
 
 }
 
+
+/**
+ * Handles form submission with a progress bar and periodic server pings.
+ * 
+ * @param {string} formId - The ID of the form element to be submitted.
+ * @param {string} progressBarId - The ID of the progress bar element to display upload progress.
+ * @param {string} progressTextId - The ID of the text element to display upload percentage.
+ * 
+ * This function adds an event listener to the specified form, preventing its default submission behavior.
+ * It displays the progress bar and text during the file upload, updating them with the current upload percentage.
+ * Periodic pings are sent to the server every 2 seconds to keep the connection alive. Once the upload is complete,
+ * the ping interval is cleared. If the server responds with a redirect URL upon successful upload, the page is redirected.
+ */
+  function uploadFormWithProgress(formId, progressBarId, progressTextId) {
+
+    const form = document.getElementById(formId);
+    const progressBar = document.getElementById(progressBarId);
+    const progressText = document.getElementById(progressTextId);
+  
+    form.addEventListener('submit', (e) => {  
+      e.preventDefault();
+
+      progressBar.style="display: block";
+      progressText.style="display: block";
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener('progress', (e) => {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        progressBar.value = percent;
+        progressText.textContent = `${percent}%`;
+      });
+      
+      // Start periodic pings to keep the connection alive
+      var pingInterval = setInterval(function() {
+        var pingXhr = new XMLHttpRequest();
+        pingXhr.open('GET', '/ocean/ping', true);
+        console.log("PING")
+        pingXhr.send();
+      }, 2000); // Send a ping every 2 seconds
+
+
+      const formData = new FormData(form);
+      xhr.open(form.method, form.action, true);
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            
+            const redirectUrl = xhr.responseURL;
+            if (redirectUrl) {
+              window.location.href = redirectUrl;
+            }
+          }
+        }
+      };
+      // Clear the ping interval when the upload is done
+      xhr.onloadend = function() {
+        clearInterval(pingInterval);
+    };
+      xhr.send(formData);
+    });
+  }
+  
+
+
+
+
+  // function uploadFormWithProgress(formId, progressBarId, progressTextId, url) {
+  //   const form = document.getElementById(formId);
+  //   const progressBar = document.getElementById(progressBarId);
+  //   const progressText = document.getElementById(progressTextId);
+  //   const submitButton = form.querySelector('button[type="submit"]');
+  
+  //   submitButton.addEventListener('click', (e) => {
+  //     e.preventDefault();
+  //     const xhr = new XMLHttpRequest();
+  //     xhr.upload.addEventListener('progress', (e) => {
+  //       const percent = Math.round((e.loaded / e.total) * 100);
+  //       progressBar.value = percent;
+  //       progressText.textContent = `${percent}%`;
+  //     });
+  
+  //     const formData = new FormData(form);
+  //     xhr.open('POST', url, true);
+  //     xhr.onreadystatechange = () => {
+  //       if (xhr.readyState === XMLHttpRequest.DONE) {
+  //         if (xhr.status === 200) {
+  //           const redirectUrl = xhr.responseURL;
+  //           if (redirectUrl) {
+  //             window.location.href = redirectUrl;
+  //           }
+  //         }
+  //       }
+  //     };
+  //     xhr.send(formData);
+  //   });
+  // }
 
 /**
  * Handles form submission with a progress bar and periodic server pings.
