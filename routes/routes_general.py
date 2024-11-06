@@ -1,8 +1,5 @@
 # Standard library imports
-import hashlib
 import os
-import zipfile
-import traceback
 from jinja2 import Environment
 
 
