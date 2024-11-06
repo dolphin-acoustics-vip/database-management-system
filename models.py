@@ -125,6 +125,15 @@ class Encounter(db.Model):
         db.UniqueConstraint('encounter_name', 'location', 'project'),
     )
     
+    def set_updated_by_id(self, user_id: str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = user_id
+
+
     def get_unique_name(self, delimiter='-'):
         """
         Generate a unique name using encounter_name, location and project which are defined in
@@ -341,6 +350,16 @@ class File(db.Model):
         """
         return os.path.join(self.path, f"{self.filename}.{self.extension}")
     
+    
+    def set_updated_by_id(self, user_id: str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = user_id
+
+
     def get_full_absolute_path(self):
         """
         :return: the full absolute path of the filespace joined with the directory, 
@@ -434,7 +453,6 @@ class File(db.Model):
 
 
         root_path = get_file_space_path() if root_path is None else root_path
-        print("FILE", file, hasattr(file, 'stream'))
         # Extract filename and stream depending on whether `file` is a path or a file-like object
         if isinstance(file, str):  # If `file` is a file path string
             file_path = file
@@ -442,7 +460,6 @@ class File(db.Model):
             file_extension = file_basename.split('.')[-1]
             file_stream = open(file_path, 'rb')  # Open the file stream
         elif hasattr(file, 'stream'):  # If `file` is a file-like object with `.stream` (Flask file)
-            print("I GOT HERE", file.filename)
             file_stream = file.stream
             file_basename = file.filename
             file_extension = file.filename.split('.')[-1]
@@ -629,12 +646,6 @@ class Recording(db.Model):
         """
         return True if self.status == 'On Hold' else False
 
-    def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
     def set_updated_by_id(self, user_id: str):
         """Set the user ID of the user who is updating the recording.
 
@@ -987,6 +998,15 @@ class RecordingPlatform(db.Model):
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name
     
+    def set_updated_by_id(self, user_id: str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = user_id
+
+
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
@@ -1541,6 +1561,14 @@ class Selection(db.Model):
         if value is not None and not (isinstance(value, int) or str(value).isdigit()):
             raise ValueError("Selection must be an integer or a string that can be converted to an integer")
         self.selection_number = value
+    
+    def set_updated_by_id(self, user_id: str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = user_id
 
 
 
@@ -1565,6 +1593,15 @@ class Species(db.Model):
             encounters = session.query(Encounter).with_for_update().filter_by(species_id=self.id).all()
             for encounter in encounters:
                 encounter.update_call()
+    
+    def set_updated_by_id(self, user_id: str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = user_id
+
 
     def get_species_name(self):
         return '' if self.species_name is None else self.species_name

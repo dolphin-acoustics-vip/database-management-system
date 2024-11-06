@@ -193,7 +193,7 @@ def init_db(app: Flask, run_script: str=None):
                 if type(obj) != models.File:
                     if hasattr(obj, 'updated_by_id'):
                         try:
-                            if hasattr(obj, 'set_user_id'):
+                            if hasattr(obj, 'set_updated_by_id'):
                                 obj.set_updated_by_id(current_user.id)
                         except Exception as e:
                             pass

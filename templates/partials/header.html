@@ -50,7 +50,6 @@
         <a href="{{ url_for('healthcentre.healthcentre_view') }}" title="Go to health centre page" class="menu-item dynamic">Health Centre</a>
         <a href="{{ url_for('admin.admin_dashboard') }}" title="Go to admin page" class="menu-item dynamic">Admin</a>
         {% endif %}
-        <a href="{{ url_for('logout') }}" title="Logout user" class="menu-item dynamic">Refresh SSO ({{ current_user.name }})</a>
         {% else %}
         <a href="/login" class="menu-item dynamic">Login</a>
         {% endif %}

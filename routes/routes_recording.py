@@ -110,7 +110,7 @@ def recording_selection_table_add(encounter_id,recording_id):
                 new_selection_table_filename = recording.generate_selection_table_filename()
                 new_relative_path = recording.generate_relative_path()
                 new_file = File()
-                new_file.insert_path_and_filename(session, selection_table_file, new_relative_path, new_selection_table_filename, get_file_space_path())
+                new_file.insert_path_and_filename(session, selection_table_file, new_relative_path, new_selection_table_filename)
                 session.add(new_file)
                 recording.selection_table_file = new_file 
                 # Validate the selection table - if invalid then delete the selection table file

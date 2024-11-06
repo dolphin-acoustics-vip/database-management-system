@@ -93,7 +93,7 @@ def clean_filespace_temp() -> None:
     """
     directory = database_handler.get_temp_space()
     # Define the time threshold (5 hours ago)
-    cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=5)
+    cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=1)
 
     # Walk through the directory in reverse order (to process files before directories)
     for root, dirs, files in os.walk(directory, topdown=False):
@@ -104,15 +104,13 @@ def clean_filespace_temp() -> None:
             # Get the creation time of the file
             try:
                 file_creation_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
-                print(file_creation_time)
 
                 # Check if the file is older than 5 hours
                 if file_creation_time < cutoff_time:
-                    print(f"Deleting file: {file_path} (created at {file_creation_time})")
                     os.remove(file_path)
 
             except Exception as e:
-                print(f"Error checking or deleting file: {file_path}, error: {e}")
+                pass
     # Remove any empty directories
     clean_directory(database_handler.get_temp_space())
 
