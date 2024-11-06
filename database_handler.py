@@ -34,9 +34,10 @@ from logger import logger
 ###################
 
 # Variables used to define sub-directories in the file space
-DATA_DIR = 'data_space'
+DATA_DIR = 'data'
 TEMP_DIR = 'temp_space'
-TRASH_DIR = 'deleted_space'
+TRASH_DIR = 'trash'
+
 
 # Define the file space folder and get the Google API key from a file
 FILE_SPACE_FILENAME = 'file_space_path.txt'
