@@ -521,13 +521,16 @@ class File(db.Model):
         - new_relative_file_path: The new relative file path to move the file to
         - return: False if the file already exists at the new location, None otherwise
         """
+        
+        current_relative_file_path = self.get_full_absolute_path()
+        
         if move_to_trash: 
             root_path = database_handler.get_trash_path()
             self.deleted = True
         else: root_path = database_handler.get_file_space_path()
 
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
-        current_relative_file_path = self.get_full_absolute_path()
+        
 
 
         if override_extension:
