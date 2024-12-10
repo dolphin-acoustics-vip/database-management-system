@@ -73,10 +73,12 @@ def create_app(config_class=None):
     def sso_login():
         # Retrieve email from environment
         email = request.environ.get('HTTP_EPPN')
+        
 
-        if os.path.exists('override_authentication.txt'):
-            with open('override_authentication.txt', 'r') as f:
-                email = f.read().strip()
+        override = os.environ.get('OCEAN_SSO_OVERRIDE', '').lower()
+        if override != None and override != '':
+            email = override
+
 
         # Skip if user is already authenticated
         if current_user.is_authenticated and current_user.login_id == email:
@@ -84,7 +86,7 @@ def create_app(config_class=None):
             
         if email:
             # Query for the user based on email
-            user = models.User.query.filter_by(login_id=email).first()
+            user = models.User.query.filter_by(login_id=email.lower()).first()
             g.user = user 
             if user:
                 if not user.is_active:

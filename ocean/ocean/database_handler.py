@@ -42,21 +42,11 @@ TRASH_DIR = 'trash'
 
 
 # Define the file space folder and get the Google API key from a file
-FILE_SPACE_FILENAME = 'file_space_path.txt'
-FILE_SPACE_PATH = ''
-if os.path.exists(FILE_SPACE_FILENAME):
-    with open(FILE_SPACE_FILENAME, 'r') as f:
-        FILE_SPACE_PATH = f.read()
-        if FILE_SPACE_PATH == None or FILE_SPACE_PATH.strip() == '':
-            logger.critical(f"File space path found in '{FILE_SPACE_FILENAME}' however the file is empty. Cannot proceed.")
-            startup_error_flag = True
-        elif not os.path.exists(FILE_SPACE_PATH):
-            logger.critical(f"File space path found in '{FILE_SPACE_FILENAME}' however the path '{FILE_SPACE_PATH}' does not exist. Cannot proceed.")
-            startup_error_flag = True
-        else:
-            logger.info(f"Assigned file space '{FILE_SPACE_PATH}'")
-else:
-    logger.critical(f"File space path configuration file not found in '{FILE_SPACE_FILENAME}'")
+FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
+if FILE_SPACE_PATH == None or FILE_SPACE_PATH == "":
+    logger.critical("The system variable 'OCEAN_FILESPACE_PATH' not found.")
+if not os.path.exists(FILE_SPACE_PATH):
+    logger.critical(f"The system variable 'OCEAN_FILESPACE_PATH' found but the path '{FILE_SPACE_PATH}' does not exist.")
     startup_error_flag = True
 
 def get_file_space() -> str:
