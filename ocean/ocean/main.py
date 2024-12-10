@@ -41,21 +41,14 @@ from ocean.routes.routes_healthcentre import routes_healthcentre
 from ocean.routes.routes_filespace import routes_filespace
 
 def check_file_space():
-    # Define the file space folder and get the Google API key from a file
-    FILE_SPACE_FILENAME = 'file_space_path.txt'
-    FILE_SPACE_PATH = ''
-    if os.path.exists(FILE_SPACE_FILENAME):
-        with open(FILE_SPACE_FILENAME, 'r') as f:
-            FILE_SPACE_PATH = f.read()
-            if FILE_SPACE_PATH == None or FILE_SPACE_PATH.strip() == '':
-                raise(exception_handler.CriticalException(f"File space path found in '{FILE_SPACE_FILENAME}' however the file is empty. Cannot proceed."))
-            elif not os.path.exists(FILE_SPACE_PATH):
-                raise(exception_handler.CriticalException(f"File space path found in '{FILE_SPACE_FILENAME}' however the path '{FILE_SPACE_PATH}' does not exist. Cannot proceed."))
-            else:
-                return f"Assigned file space '{FILE_SPACE_PATH}'"
-    else:
-        raise(exception_handler.CriticalException(f"File space path configuration file not found in '{FILE_SPACE_FILENAME}'"))
+    FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
 
+    if FILE_SPACE_PATH == None or FILE_SPACE_PATH.strip() == '':
+        raise(exception_handler.CriticalException(f"File space path not found in environment variable 'OCEAN_FILESPACE_PATH'. Cannot proceed."))
+    elif not os.path.exists(FILE_SPACE_PATH):
+        raise(exception_handler.CriticalException(f"File space path '{FILE_SPACE_PATH}' does not exist. Cannot proceed."))
+    else:
+        return f"Assigned file space '{FILE_SPACE_PATH}'"
 
 
 def create_app(config_class=None):

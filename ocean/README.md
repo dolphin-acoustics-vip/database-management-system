@@ -3,11 +3,11 @@
 
 # Odontocete Call Environment and Archival Network
 
-The Odontocete Call Environment and Archival Network (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
+The Odontocete Call Environment and Archival Network (OCEAN) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
 
 The ensuing documentation details the [installation](#installation) and [operation](#maintaining-and-operating-the-web-app) of the code.
 
-Familiarity with the data pipeline and implementation strategy found in the Project's GitHub Wiki are required. General computer science competency, as well as more specific familiarity with the [requirements](#requirements) are also prerequesite.
+Familiarity with the data pipeline and implementation strategy found in the Project's Wiki are essential. General computer science competency, as well as more specific familiarity with the [requirements](#requirements) are also prerequesite.
 
 <a name="requirements"></a>
 <a name="dependencies" depracated></a>
@@ -70,11 +70,11 @@ pip3 install -r requirements.txt
 
 To create the database, open a MariaDB shell and run the DDL script [create_database.sql](create_database.sql). This will create all empty tables apart from a single administrator user which can be used to log into the Web App initially.
 
-The database connection is made in [database_handler.py](database_handler.py), however configuration for the database is made in [config.py](config.py). Here exist three different profiles. In [main.py](main.py), the profile can be changed by changing the argument passed in the mainline:
+The database connection is made in [database_handler.py](ocean/ocean/database_handler.py), however configuration for the database is made in [config.py](ocean/config.py). Here exist three different profiles. In [main.py](main.py), the profile can be changed by changing the argument passed in the mainline:
 
 ```
 if __name__ == '__main__':
-    # For development configuration
+    # For development configuration (DEFAULT)
     app = create_app('config.DevelopmentConfig')
     # For testing configuration
     app = create_app('config.TestingConfig')
