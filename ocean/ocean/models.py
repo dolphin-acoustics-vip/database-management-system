@@ -281,6 +281,7 @@ class File(database_handler.db.Model):
     deleted = database_handler.db.Column(database_handler.db.Boolean, default=False)
     original_filename = database_handler.db.Column(database_handler.db.String(255))
     temp = database_handler.db.Column(database_handler.db.Boolean, default=False)
+    hash = database_handler.db.Column(database_handler.db.LargeBinary)
 
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
@@ -301,6 +302,33 @@ class File(database_handler.db.Model):
             cls.deleted == deleted,
             cls.temp == temp
         ).first() is not None
+
+    def calculate_hash(self):
+        import hashlib
+        with open(self.get_full_absolute_path(), 'rb') as file:
+            hash_value = hashlib.sha256(file.read()).digest()
+        return hash_value
+    
+    def verify_hash(self, fix:bool=True):
+        """
+        Compare the stored has value of the file in the database to the re-calculated hash value of the file
+        on the server. If they match return True, if not then False. If there is no stored hash value in the
+        database then calculate one, store it, and return None (so that next time the function is called an
+        accurate comparison can be made). Note that the parameter fix (default True) can be set to False if
+        a None hash value should not be populated.
+        """
+        if self.hash != None:
+            return self.hash == self.calculate_hash()
+        if fix == True: 
+            # Need to create a new session to separate the hashing context from that which called the method
+            with database_handler.get_session() as session:
+                file_obj = session.query(File).filter(File.id == self.id).first()
+                if file_obj != None:
+                    file_obj.hash = self.calculate_hash()
+                session.commit()
+            
+        return None
+    
 
 
     def rollback(self, session):
@@ -403,6 +431,7 @@ class File(database_handler.db.Model):
         self.path=new_directory
         self.filename=new_filename
         self.extension=new_extension
+        self.verify_hash()
     
 
     def rename_loose_file(self,loose_file_directory:str, loose_file_name:str, loose_file_extension:str) -> None:
@@ -499,8 +528,9 @@ class File(database_handler.db.Model):
                     break
 
         logger.info(f"Saved file to {destination_path}.")
-
+        self.verify_hash()
         from ocean.filespace_handler import clean_filespace_temp
+        clean_filespace_temp()
 
     def move_to_trash(self):
         """

@@ -12,6 +12,7 @@
 
 <label for="recording-file-input" class="bold">Recording File</label>
 {% if editing and recording.recording_file %}
+<p>Hash match: {{recording.recording_file.verify_hash()}}</p>
 <div style="display: flex;">
     <a style="margin-right: 0.25rem" class="button small"
         href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a>
