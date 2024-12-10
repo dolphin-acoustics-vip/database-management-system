@@ -66,7 +66,10 @@ Variables required:
                 form.querySelector('input[name="_method"]').value = "DELETE";
                 form.submit();
             }
-            $('#filter-input').on('input', function() {
+            
+        });
+        $('#filter-input').on('input', function() {
+                console.log("I got here")
                 var filterValue = $(this).val().toLowerCase();
                 $('#encounter-table tbody tr').each(function() {
                     var name = $(this).find('td:nth-child(1)').text().toLowerCase();
@@ -80,7 +83,6 @@ Variables required:
                     }
                 });
             });
-        });
     });
 </script>
 </html>
