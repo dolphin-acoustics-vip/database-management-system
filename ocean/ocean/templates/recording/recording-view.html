@@ -165,11 +165,11 @@
             <h3>Download Options</h3>
 
             <form
-                action="{{url_for('selection.extract_selection_stats_for_encounter', encounter_id=recording.encounter.id)}}"
+                action="{{url_for('selection.extract_contour_stats_for_encounter', encounter_id=recording.encounter.id)}}"
                 method="get">
             
                 <button class="link small" type="submit">Download Contour Stats For Encounter</button></form>
-                <form action="{{url_for('selection.extract_selection_stats', recording_id=recording.id)}}" method="get">
+                <form action="{{url_for('selection.extract_contour_stats', recording_id=recording.id)}}" method="get">
                     <button class="link small" type="submit">Download Contour Stats</button>
                 </form>
                 <form action="{{url_for('recording.recalculate_contour_statistics_for_recording', recording_id=recording.id)}}">
