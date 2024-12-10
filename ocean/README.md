@@ -1,9 +1,9 @@
 > ⚠️ **Warning:** this project is still in a developmental stage. Some sections of the code and documentation may be incomplete.
 
 
-# Dolphin Acoustics VIP Database Management System
+# Odontocete Call Environment and Archival Network
 
-The Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
+The Odontocete Call Environment and Archival Network (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
 
 The ensuing documentation details the [installation](#installation) and [operation](#maintaining-and-operating-the-web-app) of the code.
 

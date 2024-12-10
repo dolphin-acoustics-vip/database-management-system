@@ -16,6 +16,7 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 #  Standard library imports
+from io import StringIO
 import os
 import uuid
 from datetime import datetime, timedelta
@@ -29,6 +30,8 @@ import csv
 import scipy.io
 import numpy as np
 import pandas as pd
+import librosa
+import matplotlib.pyplot as plt
 
 # Local application imports
 import ocean.contour_statistics as contour_statistics
@@ -380,7 +383,7 @@ class File(database_handler.db.Model):
         elif self.temp:
             root = database_handler.get_tempdir()
         else:
-            root = database_handler.database_handler.get_file_space_path()
+            root = database_handler.get_file_space_path()
         return os.path.join(root, self.get_full_relative_path())
     
     # def get_absolute_directory(self):
@@ -1134,6 +1137,13 @@ class Selection(database_handler.db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+    def get_rounded_value(self, value:int|float, decimal_places:int=3) -> int|float:
+        """
+        Round a number value to a number of decimal_places. If value is an integer the integer
+        is simply returned with no rounding.
+        """
+        return round(value, decimal_places) if value is not None and type(value) is float else value
+
     def recalculate_contour_statistics(self, session):
         """
         Recalculate contour statistics for the given selection.
@@ -1238,11 +1248,7 @@ class Selection(database_handler.db.Model):
         self.selection_file = selection_file
 
     def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None, update_permissions=False):
-        import librosa
-        import matplotlib.pyplot as plt
-        import numpy as np
-        import os
-        from contour_statistics import ContourFile
+        from ocean.contour_statistics import ContourFile
         warning = ""
         
         # Set default FFT and hop sizes if not provided

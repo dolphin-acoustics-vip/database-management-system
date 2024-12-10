@@ -176,7 +176,7 @@
                 {% for attr_name, attr_value in selection_dict.items() %}
                 <tr>
                     <td>{{ attr_name }}</td>
-                    <td>{{ attr_value }}</td>
+                    <td>{{ selection.get_rounded_value(attr_value) }}</td>
                 </tr>
                 {% endfor %}
             </table>

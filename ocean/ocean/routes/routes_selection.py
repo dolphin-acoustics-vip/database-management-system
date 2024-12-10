@@ -49,7 +49,7 @@ def insert_or_update_selection(session, selection_number: str, file, recording_i
     if selection_id is not None:
         selection_obj = session.query(models.Selection).filter_by(id=selection_id).first()
     else:
-        selection_obj = Selection()
+        selection_obj = models.Selection()
         selection_obj.recording_id = recording_id
         session.add(selection_obj)
         selection_obj.set_selection_number(selection_number)
@@ -546,7 +546,7 @@ def write_contour_stats(selections, filename):
 
     for selection in selections:
         if selection.traced:
-            writer.writerow(selection.generate_contour_stats_array())
+            writer.writerow(list(selection.get_rounded_value(x) for x in selection.generate_contour_stats_array()))
     
     output.seek(0)
     return Response(output, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
@@ -554,7 +554,7 @@ def write_contour_stats(selections, filename):
 @routes_selection.route('/recording/<recording_id>/extract_selection_stats', methods=['GET'])
 @database_handler.require_live_session
 @login_required
-def extract_selection_stats(recording_id):
+def extract_contour_stats(recording_id):
     """
     Write contour stats for a list of selections to a CSV file.
 
@@ -569,9 +569,10 @@ def extract_selection_stats(recording_id):
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         return write_contour_stats(selections, filename=f"ContourStats-{recording.get_start_time_string()}.csv")
 
+extract_selection_stats = extract_contour_stats
 
 @routes_selection.route('/encounter/<encounter_id>/extract_selection_stats', methods=['GET'])
-def extract_selection_stats_for_encounter(encounter_id):
+def extract_contour_stats_for_encounter(encounter_id):
     """
     Write contour stats for all selections in an encounter to a CSV file.
 
@@ -586,6 +587,8 @@ def extract_selection_stats_for_encounter(encounter_id):
         for recording in recordings:
             selections += database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording.id})
         return write_contour_stats(selections, filename=f"ContourStats-{encounter.encounter_name}.csv")
+
+extract_selection_stats_for_encounter = extract_contour_stats_for_encounter
 
 @routes_selection.route('/selection/deactivate', methods=['POST'])
 @database_handler.require_live_session

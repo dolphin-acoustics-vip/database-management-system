@@ -175,10 +175,11 @@ def init_db(app: Flask, run_script: str=None):
         session_instance = sessionmaker(bind=engine, autoflush=False)
         if run_script:
             with db.engine.connect() as conn:
+                print(run_script)
                 if not os.path.exists(run_script):
                     logger.info("No database script found. Assuming that no changes are required to the database.")
                 else:
-                    with app.open_resource(run_script, mode='r') as f:
+                    with open(run_script, mode='r') as f:
                         try:
                             sql_script = f.read()
                             if sql_script.strip() != '':
