@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Edit Data Source</title>
+</head>
+<body>
+    <div class="outer-div">
+        <h1>Edit Data Source</h1>
+        <form action="{{ url_for('admin.admin_data_source_edit', data_source_id=data_source.id) }}" method="post">
+            {% set editing = True %}
+            {% include 'admin/admin-data-source-template.html' %}
+        </form>
+    </div>
+</body>
+
+</html>

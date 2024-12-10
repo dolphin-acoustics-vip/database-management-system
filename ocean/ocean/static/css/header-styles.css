@@ -1,0 +1,151 @@
+
+@media only screen and (max-width: 980px) {
+    .menu-item.dynamic {
+        font-size: 0.9rem;
+    }
+}
+
+/* Mobile-specific styles for the menu */
+@media only screen and (max-width: 768px) {
+    .header {
+        align-items: center;
+    }
+
+    .blue-bar {
+        display: block;
+    }
+
+
+    .brand-logo {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+
+    .user-message, .brand-title {
+        display: none;
+    }
+
+    .user-message {
+        margin-left: 0;
+        margin-right: 0;
+        text-align: center;
+    }
+
+    .menu {
+        flex-direction: column;
+        align-items: center;
+        display: none;
+        /* Hide the menu by default */
+    }
+
+    .menu-item {
+        margin: 0;
+        padding: 0;
+        color: black;
+        background-color: #0071B3;
+        font-size: 0.8rem;
+        padding: 5px 15px;
+    }
+
+    .hamburger {
+        display: flex;
+        color: black;
+        /* Show the hamburger button */
+        position: absolute;
+        top: 25px;
+        right: 10px;
+        font-size: 24px;
+        text-align: right;
+        cursor: pointer;
+        float: right;
+        background-color: transparent;
+        border-width: 0;
+    }
+    .show {
+        display: flex;
+    }
+
+    
+.blue-bar .user-message {
+    display: block;
+    color: white;
+    font-size: 0.6rem;
+    height: auto;
+}
+}
+
+
+@media only screen and (min-width: 769px) {
+    .blue-bar {
+        display: none;
+    }
+    .show {
+        display: flex;
+    }
+    .menu {
+        gap: 0;
+        display: flex;
+        /* Adjust the gap as needed */
+    }
+    .hamburger {
+        display: none;
+        /* Hide the hamburger button by default */
+    }
+    .menu-item {
+        font-size: 1.1rem;
+        padding: 10px 15px;
+    }
+    .blue-bar .user-message {
+        display: none;
+        color: white;
+    
+    }
+}
+
+.brand-title {
+    float: left;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.menu-item {
+    flex: 1;
+    width: 100%;
+    color: white;
+    background-color: #0071B3;
+    border: none;
+    outline: inherit;
+    align-items: center;
+    display: flex;
+    
+    /* Adjust the height as needed */
+}
+
+
+
+.menu-item:hover {
+    background-color: #005599;
+    color: white;
+}
+
+
+
+.blue-bar {
+    background-color: #0071B3;
+    color: #fff;
+    padding: 0;
+    text-align: center;
+}
+
+.blue-bar .hamburger {
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.menu.show {
+    display: block;
+}

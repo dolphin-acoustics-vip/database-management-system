@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Edit Species</title>
+</head>
+<body>
+    <div class="outer-div">
+
+        <h1>Users</h1>
+        <a href="{{ url_for('admin.admin_user_new') }}" class="add-new-button"><button class="gray">Add new user</button></a>
+
+        <div class="table-responsive" style="margin-top: 10px">
+            <table class="table-striped"  id="data-source-table">
+            <tr>
+                <th>Email</th>
+                <th>Status</th> 
+                <th>Name</th>
+                <th>Expiry</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+            {% for user in users %}
+            <tr {% if not user.is_active %}style="background-color: red;"{% endif %}>
+                <td>{{ user.login_id }}</td>
+                <td>{% if user.is_active %}Active{% else %}Inactive{% endif %}</td>
+                <td>{{ user.name }}</td>
+                <td>{{user.expiry}}</td>
+                <td>{{user.role.name}}</td>
+                <td>
+                    <a class="button" href="{{ url_for('admin.admin_user_view', user_id=user.id) }}">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+<!-- 
+        <h1>Temporary</h1>
+        <p1>All temporary users have view-only access permissions.</p1><br>
+        <a href="{{ url_for('admin.admin_temporary_user_new') }}" class="add-new-button"><button style="margin-bottom:10px;margin-top:15px;" class="gray">Add new temporary user</button></a>
+
+        <div class="table-responsive">
+            <table class="table-striped"  id="data-source-table">
+            <tr>
+                <th>Access Code</th>
+                <th>Status</th>
+                <th>Name</th>
+                <th>Expiry</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+            {% for user in temporary_users %}
+            <tr {% if not user.is_active %}style="background-color: red;"{% endif %}>
+                <td>{{ user.login_id }}</td>
+                <td>{% if user.is_active %}Active{% else %}Inactive{% endif %}</td>
+                <td>{{ user.name }}</td>
+                <td>{{user.expiry}}</td>
+                <td>{{user.role.name}}</td>
+                <td>
+                    <a href="{{ url_for('admin.admin_temporary_user_view', user_id=user.id) }}"><button class="link" style="width:100%; margin-bottom:5px;">View</button></a><br>
+                    <button style="width:100%" onClick="copyToClipboard('Login details for OCEAN (University of St Andrews)\nAccess code: {{user.login_id}}\nPassword: {{user.password}}')" class="link">Copy details</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+ -->
+
+
+    </div>
+
+    <script>
+        function copyToClipboard(link) {
+            navigator.clipboard.writeText(link)
+        }
+    </script>
+    
+</body>

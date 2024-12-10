@@ -1,0 +1,184 @@
+
+.outer-div {
+    padding: 10px 20px;
+}
+
+.header-top {
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+}
+
+.header-bottom {
+    background-color: #0071B3;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: top;
+}
+
+.logo {
+    width: 120px;
+}
+
+
+
+section {
+    display: block;
+}
+
+img {
+    vertical-align: middle;
+    border: 0;
+    height: auto;
+    max-width: 100%;
+}
+
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+img {
+    overflow-clip-margin: content-box;
+    overflow: clip;
+}
+
+div {
+    display: block;
+}
+
+.hero-section .hero-section__heading {
+    background: #00539b;
+    color: white;
+    font-size: 1.8rem;
+    margin: 0 -15px;
+    padding: 10px 15px;
+}
+
+
+
+
+
+
+
+hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 20px 0;
+    background-image: linear-gradient(to right, #f7f7f7, #f7f7f7);
+    background-position: 0% 100%;
+    background-size: 100% 1px;
+    background-repeat: no-repeat;
+  }
+
+
+
+
+
+
+
+
+
+
+  .app-brand-title {
+      display: block;
+      margin-left: 7px;
+      border-left: 1px solid #202024;
+      padding-left: 10px;
+      line-height: 1.2;
+      font-weight: normal;
+  }
+
+  
+
+
+  .brand-logo {
+      display: flex;
+      align-items: center;
+      margin-left: 10px;
+      margin-top: 10px;
+      margin-bottom: 10px;
+  }
+
+  .brand-logo img {
+      height: auto;
+      width: 100%;
+      max-width: 150px;
+      margin-right: 10px; /* Adjust the margin as needed */
+  }
+
+  .brand-title {
+      margin-left: 0; /* Align the brand title to the left */
+      margin-top:10px;
+      margin-bottom: 10px;
+  }
+  .user-message {
+      margin-left: auto; /* Align the user message to the right */
+      margin-right:10px;
+  }
+
+  .flash-container {
+      position: relative;
+      width: 100%;
+      color: #000;
+      margin-bottom: 0px;
+  }
+
+  .success-message {
+      color: #155724;
+      border-color: #155724;
+      border-width: 3px;
+      background-color: #d4edda;
+      /* Background color for success messages */
+  }
+
+  .error-message {
+      color: #721c24;
+      background-color: #f8d7da;
+      /* Background color for error messages */
+  }
+
+
+  
+  .success-progress {
+      background-color: #155724;
+  }
+
+  .error-progress {
+      background-color: #721c24;
+  }
+
+  .close {
+      position: relative;
+      float: right;
+      font-size: 1.3rem;
+      font-weight: 500;
+      line-height: 1;
+      text-shadow: 0 1px 0 #fff;
+      opacity: 0.5;
+      background-color: transparent;
+      border: 0;
+      cursor: pointer;
+  }
+
+  .progress-bar-container {
+      width: 100%;
+      height: 3px;
+      border-radius: 0px;
+      margin-top: 0.3rem;
+      margin-bottom: 0.3rem;
+      overflow: hidden;
+  }
+
+  .progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 0;
+      background-color: #0071B3;
+  }
+
+  .progress {
+      margin-top: 10px;
+  }

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>New Recording Platform</title>
+</head>
+<body>
+    <div class="outer-div">
+        <h1>New Recording Platform</h1>
+        <form action="{{ url_for('admin.admin_recording_platform_insert') }}" method="post">
+            {% set editing = False %}
+            {% include 'admin/admin-recording-platform-template.html' %}
+        </form>
+    </div>
+</body>
+</html>

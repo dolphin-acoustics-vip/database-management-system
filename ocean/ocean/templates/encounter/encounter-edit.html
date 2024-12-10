@@ -1,0 +1,25 @@
+<!-- 
+This page allows the user to edit an encounter 
+Required variables:
+- encounter: the Encounter object being edited
+- g.user: the current logged in User object
+-->
+
+
+
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Edit Encounter</title>
+</head>
+<body>
+    <div class="outer-div">
+        <h2>Edit Encounter</h2>
+        {% set editing = True %}
+        <form method="post" action="{{ url_for('encounter.encounter_update', encounter_id=encounter.id) }}">
+            {% include 'encounter/encounter-form-template.html' %}
+        </form>
+    </div>
+</body>
+</html>

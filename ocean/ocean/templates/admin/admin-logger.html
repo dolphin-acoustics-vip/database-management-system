@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Logger</title>
+    <style>
+        .console-output {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .console-output code {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="outer-div">
+        <h1>Logger</h1>
+        <a href="{{ url_for('admin.admin_logger_download_log') }}">Download</a>
+        <div class="console-output">
+            <code>{{ log_string | safe }}</code>
+        </div>
+    </div>
+
+
+</body>
