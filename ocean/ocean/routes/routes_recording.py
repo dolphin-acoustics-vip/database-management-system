@@ -47,7 +47,7 @@ def insert_or_update_recording(session, request, recording: models.Recording):
     
     recording.set_start_time(request.form['time_start'])
     # If a recording file has been given, add it to the Recording object
-    if 'recording_file_id' in request.form:
+    if 'recording_file_id' in request.form and request.form['recording_file_id'] != "":
         recording_file_id = request.form['recording_file_id']
         recording_filename = request.form['recording_filename']
         recording_file = models.File()

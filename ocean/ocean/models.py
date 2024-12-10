@@ -541,7 +541,7 @@ class File(database_handler.db.Model):
         if move_to_trash: 
             root_path = database_handler.get_trash_path()
             self.deleted = True
-        else: root_path = database_handler.database_handler.get_file_space_path()
+        else: root_path = database_handler.get_file_space_path()
 
         new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
         
