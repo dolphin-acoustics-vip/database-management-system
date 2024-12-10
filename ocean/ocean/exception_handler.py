@@ -111,16 +111,11 @@ def handle_exception(session, exception, prefix="") -> str:
     return handle_sqlalchemy_exception(session, exception, prefix=prefix)
 
 def handle_sqlalchemy_exception(session, sqlAlchemy_exception, prefix="") -> None:
-    from models import File
+    from ocean.models import File
     from sqlalchemy.exc import IntegrityError
 
     # Access the newly added File objects
     new_file_objects = [obj for obj in session.new if isinstance(obj, File)]
-    
-    # Access the modified File objects
-    dirty_file_objects = [obj for obj in session.dirty if isinstance(obj, File)]
-
-    #new_file_objects.extend(dirty_file_objects)
 
     for file_object in new_file_objects:
         file_object.rollback(session)

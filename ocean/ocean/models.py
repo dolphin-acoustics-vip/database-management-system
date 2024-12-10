@@ -497,9 +497,7 @@ class File(database_handler.db.Model):
 
         logger.info(f"Saved file to {destination_path}.")
 
-        import filespace_handler
-
-        filespace_handler.clean_filespace_temp()
+        from ocean.filespace_handler import clean_filespace_temp
 
     def move_to_trash(self):
         """

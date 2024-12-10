@@ -194,7 +194,7 @@ def init_db(app: Flask, run_script: str=None):
             This impacts all tables being updated or inserted in the database that contain an
             attribute updated_by_id (foreign key reference to the user table).
             """
-            import models
+            import ocean.models as models
             for obj in session.dirty.union(session.new):
                 if type(obj) != models.File:
                     if hasattr(obj, 'updated_by_id'):
@@ -330,7 +330,8 @@ def get_system_time_request_recording(session:sessionmaker, user_id:str=None, as
     :return: a list of dictionaries with column names as keys
     :rtype: list
     """
-    from models import Recording
+    from ocean.models import Recording
+
     snapshot_date=client_session.get('snapshot_date') if override_snapshot_date is None else override_snapshot_date
 
     columns = "rec.id, rec.created_datetime, rec.start_time, rec.status, enc.id enc_id, enc.encounter_name enc_encounter_name, enc.location enc_location, sp.id sp_id, sp.species_name sp_species_name, assignment.created_datetime assignment_created_datetime, assignment.completed_flag assignment_completed_flag, COUNT(CASE WHEN sel.traced = 1 AND sel.deactivated = 0 THEN sel.id END) traced_count, COUNT(CASE WHEN sel.deactivated = 1 THEN sel.id END) deactivated_count, COUNT(CASE WHEN sel.traced IS NULL AND sel.deactivated = 0 THEN sel.id END) untraced_count, assignment_user.id assignment_user_id, assignment_user.name assignment_user_name, assignment_user.login_id assignment_user_login_id"
@@ -497,7 +498,7 @@ def create_all_time_request(session: sessionmaker, db_class, filters=None, order
 
     :return: A list of dictionaries representing the query results, with each dictionary containing the column names as keys.
     """
-    from models import User
+    from ocean.models import User
 
     query_str="SELECT *,row_start FROM {} FOR SYSTEM_TIME ALL".format(db_class.__tablename__)
     

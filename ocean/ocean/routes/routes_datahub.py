@@ -36,7 +36,7 @@ routes_datahub = Blueprint('datahub', __name__)
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 def datahub_view():
-    with database_handler.get_session()() as session:
+    with database_handler.get_session() as session:
         species_list = session.query(models.Species).all()
         return render_template('datahub/datahub.html', species_list=species_list)
 
@@ -111,7 +111,7 @@ def get_selection_statistics():
         start_date_time = snapshot_date_datetime - timedelta(days=int(dayCount)-1)
     end_date_time = snapshot_date_datetime
 
-    with database_handler.get_session()() as session:
+    with database_handler.get_session() as session:
         records = database_handler.get_system_time_request_selection(session, user_id=user_id, species_filter_str=species_filter_str, override_snapshot_date=snapshot_date)
         
         # Grab user filter information which is returned in the statistics (for informational purposes)
@@ -301,7 +301,7 @@ def get_recording_statistics():
     if dayCount is not None and dayCount.isdigit():
         start_date_time = snapshot_date_datetime - timedelta(days=int(dayCount)-1)
 
-    with database_handler.get_session()() as session:
+    with database_handler.get_session() as session:
         records = database_handler.get_system_time_request_recording(session, species_filter_str=species_filter_str, assigned_user_id=assigned_user_id, created_date_filter=start_date_time, override_snapshot_date=snapshot_date)
         all_species = database_handler.create_system_time_request(session, Species)
 

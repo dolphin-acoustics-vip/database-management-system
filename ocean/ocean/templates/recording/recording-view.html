@@ -47,12 +47,12 @@
             <div stype="display: flex;">
                 {% if recording.is_complete() == False %}
                 <form action="{{url_for('recording.mark_as_complete', recording_id=recording.id)}}" method="get">
-                    <button class="gray small" type="submit" id="mark-as-complete-button">Mark as Complete</button>
+                    <button style="margin-bottom:0.5rem;" class="gray" type="submit" id="mark-as-complete-button">Mark as Complete</button>
                 </form>
                 {% endif %}
                 {% if recording.is_on_hold() == False %}
                 <form action="{{url_for('recording.mark_as_on_hold', recording_id=recording.id)}}" method="get">
-                    <button class="gray small" type="submit" id="mark-as-on-hold-button">Reject</button>
+                    <button class="gray" type="submit" id="mark-as-on-hold-button">Reject</button>
                 </form>
                 {% endif %}
             </div>
@@ -129,15 +129,13 @@
             <label>Assignment Status: COMPLETE (Awaiting Review)</label>
             <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="post">
             <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="post">
-                <button type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
+                <button class="gray" type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
             </form>
             {% else %}
             <label>Assignment Status: IN PROGRESS </label>
 
             <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="post">
-                <button type="submit" id="flag-as-complete-button">Flag as Complete</button>
-            <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="post">
-                <button type="submit" id="flag-as-complete-button">Flag as Complete</button>
+                <button class="gray" type="submit" id="flag-as-complete-button">Flag as Complete</button>
             </form>
             {% endif %}
             {% else %}
