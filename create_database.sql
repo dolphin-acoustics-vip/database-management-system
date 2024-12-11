@@ -136,6 +136,7 @@ CREATE TABLE `file` (
   `original_filename` varchar(255) DEFAULT NULL,
   `temp` tinyint(1) NOT NULL DEFAULT 0,
   `deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `hash` binary(32) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_updated_by_id_file` (`updated_by_id`),
   CONSTRAINT `fk_updated_by_id_file` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)

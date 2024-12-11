@@ -1,0 +1,88 @@
+<!--
+This page allows the user to see all encounters.
+Variables required:
+- g.user: current logged in User object
+- encounters: array of Encounter objects
+-->
+
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Encounters</title>
+</head>
+<body>
+    <div class="outer-div">
+        <h1>Encounters</h2>
+        {% if current_user.role_id in [1, 2] %}
+        {% if not session['snapshot_date'] %}
+        <a href="{{ url_for('encounter.encounter_new') }}" class="button" style=" margin-bottom: 10px" title="Add new encounter">Add New Encounter</a><br>
+        {% endif %}
+        {% endif %}
+        {% if encounter_list %}
+        <div style="margin-top: 10px; margin-bottom: 5px;">
+            <label for="sort-select">Filter (any column):</label>
+        </div>
+        <input style="margin-bottom: 10px;" type="text" class="text-input small" id="filter-input" placeholder="No filter">
+        <table style="margin-top: 10px" id="encounter-table">
+            <thead>
+                <tr>
+                    <th>Encounter</th>
+                    <th>Location</th>
+                    <th>Project</th>
+                    <th>Species</th>
+
+                </tr>
+            </thead>
+            <tbody>
+                {% for encounter in encounter_list %}
+                    <tr>
+                        <td><a style="width:100%" data-encounter-id="{{ encounter.id }}" href="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">{{ encounter.get_encounter_name() }}</a></td>
+                        <td>{{ encounter.get_location() }}</td>
+                        <td>{{ encounter.get_project() }}</td>
+                        <td>{{ encounter.species.get_species_name() }}</td>
+
+
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div class="no-species-message" style="margin-top:15px;">
+                No encounters found. Please add new encounters using the button above.
+            </div>
+        {% endif %}
+    </div>
+</body>
+<script>
+    $(document).ready(function() {
+        $('.delete-link').on('click', function(e) {
+            e.preventDefault();
+            var encounterId = $(this).data('encounter-id');
+            var confirmed = confirm("Are you sure you want to delete this encounter?");
+            if (confirmed) {
+                var formId = 'deleteForm_' + encounterId;
+                var form = document.getElementById(formId);
+                form.querySelector('input[name="_method"]').value = "DELETE";
+                form.submit();
+            }
+            
+        });
+        $('#filter-input').on('input', function() {
+                console.log("I got here")
+                var filterValue = $(this).val().toLowerCase();
+                $('#encounter-table tbody tr').each(function() {
+                    var name = $(this).find('td:nth-child(1)').text().toLowerCase();
+                    var location = $(this).find('td:nth-child(2)').text().toLowerCase();
+                    var species = $(this).find('td:nth-child(3)').text().toLowerCase();
+                    var project = $(this).find('td:nth-child(4)').text().toLowerCase();
+                    if (!(name.includes(filterValue) || location.includes(filterValue) || species.includes(filterValue) || project.includes(filterValue))) {
+                    $(this).hide();
+                    } else {
+                    $(this).show();
+                    }
+                });
+            });
+    });
+</script>
+</html>
