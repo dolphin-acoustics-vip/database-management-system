@@ -367,7 +367,7 @@ def get_system_time_request_selection(session, user_id:str=None, assigned_user_i
 
     :return: A list of dictionaries representing the query results, with each dictionary containing the column names as keys.
     """
-    from models import Selection
+    from ocean.models import Selection
     
     snapshot_date=client_session.get('snapshot_date') if override_snapshot_date is None else override_snapshot_date
 

@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
+# Standard library imports
+import uuid
+
 # Third-party imports
 from flask import Blueprint, render_template, request, session as client_session, url_for
 from flask_login import login_required
@@ -38,7 +41,6 @@ def healthcentre_view():
 @routes_healthcentre.route('/healthcentre/get-data-warnings', methods=['GET'])
 def get_data_warnings():
     statistics_dict = {}
-    from models import Selection
     snapshot_date=client_session.get('snapshot_date')
 
     snapshot_date_datetime = database_handler.parse_snapshot_date(snapshot_date) if snapshot_date else None

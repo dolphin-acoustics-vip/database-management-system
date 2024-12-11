@@ -303,7 +303,7 @@ def get_recording_statistics():
 
     with database_handler.get_session() as session:
         records = database_handler.get_system_time_request_recording(session, species_filter_str=species_filter_str, assigned_user_id=assigned_user_id, created_date_filter=start_date_time, override_snapshot_date=snapshot_date)
-        all_species = database_handler.create_system_time_request(session, Species)
+        all_species = database_handler.create_system_time_request(session, models.Species)
 
         # Dictionary to store recording statistics for each species
         species_specific_data = {str(species.id): {'speciesName': species.species_name, 'recordings': 0, 'assignedRecordings': 0, 'unassignedRecordings': 0, 'completedAssignments': 0, 'inprogressAssignments': 0, 'tracedCount': 0, 'recordingsReviewedCount': 0, 'recordingsOnHoldCount': 0, 'recordingsAwaitingReviewCount': 0, 'recordingsUnassignedCount': 0, 'recordingsInProgressCount': 0} for species in all_species}
