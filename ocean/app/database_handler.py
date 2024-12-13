@@ -185,7 +185,7 @@ def init_db(app: Flask, run_script: str=None):
             This impacts all tables being updated or inserted in the database that contain an
             attribute updated_by_id (foreign key reference to the user table).
             """
-            import ocean.models as models
+            from . import models
             for obj in session.dirty.union(session.new):
                 if type(obj) != models.File:
                     if hasattr(obj, 'updated_by_id'):
