@@ -1,5 +1,5 @@
-from ocean import main
-from ocean.logger import logger
+from app import main
+from app.logger import logger
 
 if __name__ == '__main__':
     app = main.create_app('config.DevelopmentConfig')
