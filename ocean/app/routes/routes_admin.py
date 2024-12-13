@@ -28,6 +28,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .. import database_handler
 from .. import models
 from .. import exception_handler
+from .. import logger
 
 routes_admin = Blueprint('admin', __name__)
 
@@ -62,7 +63,6 @@ def admin_dashboard():
 @database_handler.exclude_role_3
 @database_handler.exclude_role_2
 def admin_logger():
-    import logger
     log_string = logger.get_log(200)
     log_string_html = log_string.strip().replace('\n', '<br>')
     return render_template('admin/admin-logger.html', log_string=log_string_html)
@@ -72,7 +72,6 @@ def admin_logger():
 @database_handler.exclude_role_3
 @database_handler.exclude_role_2
 def admin_logger_download_log():
-    import logger
     return logger.send_log_file()
 
 @routes_admin.route('/admin/data-source/<data_source_id>/view', methods=['GET'])
