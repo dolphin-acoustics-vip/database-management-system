@@ -431,7 +431,7 @@ def create_system_time_request(session: sessionmaker, db_object, filters:dict=No
         try:
             queried_db_object = queried_db_object[0]
         except Exception as e:
-            raise exception_handler.NotFoundException(f"{db_object.__tablename__} not found")
+            raise exception_handler.CriticalException(f"{db_object.__tablename__} not found")
 
     return queried_db_object
 

@@ -47,17 +47,6 @@ class WarningException(Exception):
         """
         super().__init__(message)
 
-class NotFoundException(Exception):
-    def __init__(self, message, details=""):
-        super().__init__(message)
-        self.details=details
-        snapshot_date=client_session.get('snapshot_date')
-    
-    def get_details(self):
-        return self.details
-
-
-
 def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError | sqlalchemy.exc.OperationalError | sqlalchemy.exc.ProgrammingError) -> str:
     """
     Extract important information from an sqlalchemy error. Currently the method
