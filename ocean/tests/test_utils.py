@@ -1,12 +1,11 @@
 import pytest
-from ocean.ocean.main import create_app
-from ocean.ocean.database_handler import db, get_session
-from ocean.ocean.models import User
-import ocean.ocean.utils as utils
+from ocean.app.main import create_app
+from ocean.app.database_handler import db, get_session
+from ocean.app.models import User
+from ocean.app import utils
 from unittest.mock import Mock
 from flask import *
 
-import pytest
 from datetime import datetime
 from uuid import UUID, uuid4
 

@@ -1,17 +1,16 @@
 # conftest.py
 
 import pytest
-from ocean.ocean.run_test import create_app
-from ocean.ocean.database_handler import db, get_session
-from ocean.ocean.models import User
-import ocean.ocean.models as models
+from ocean.app import main
+from ocean.app import database_handler
+from ocean.app import models
 
 @pytest.fixture
 def app():
-    app = create_app('config.TestingConfig')
+    app = main.create_app('config.TestingConfig')
     with app.app_context():
         yield app
-        db.drop_all()  # Clean up database after tests
+        database_handler.db.drop_all()  # Clean up database after tests
 
 @pytest.fixture
 def client(app):
@@ -23,7 +22,7 @@ def runner(app):
 
 @pytest.fixture
 def db_session(app):
-    session = get_session()
+    session = database_handler.get_session()()
     yield session
     session.rollback()
     session.close()
@@ -32,9 +31,9 @@ def db_session(app):
 def logged_in_client(app, client, db_session):
     # Create a user in the test database
     with app.app_context():
-        user = db_session.query(User).filter_by(login_id='test@testmail.com').first()
+        user = db_session.query(models.User).filter_by(login_id='test@testmail.com').first()
         if not user:
-            user = User(login_id='test_system_administrator@testmail.com', password='password', name='System Administrator', role_id=1, is_active=1)
+            user = models.User(login_id='test_system_administrator@testmail.com', password='password', name='System Administrator', role_id=1, is_active=1)
             db_session.add(user)
         db_session.commit()
 
@@ -49,9 +48,9 @@ def logged_in_client(app, client, db_session):
 def logged_in_general_client(app, client, db_session):
     # Create a user in the test database
     with app.app_context():
-        user = db_session.query(User).filter_by(login_id='test@testmail.com').first()
+        user = db_session.query(models.User).filter_by(login_id='test@testmail.com').first()
         if not user:
-            user = User(login_id='test_general_user@testmail.com', password='password', name='General User', role_id=2, is_active=1)
+            user = models.User(login_id='test_general_user@testmail.com', password='password', name='General models.User', role_id=2, is_active=1)
             db_session.add(user)
         user.role_id = 3
         db_session.commit()

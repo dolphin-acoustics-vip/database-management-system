@@ -1,6 +1,6 @@
-import ocean.ocean.contour_statistics as contour_statistics
-import ocean.ocean.models as models
-import ocean.ocean.utils as utils
+import ocean.app.contour_statistics as contour_statistics
+import ocean.app.models as models
+import ocean.app.utils as utils
 import os, re
 
 def test_contour_stats(db_session, selection_object: models.Selection):
