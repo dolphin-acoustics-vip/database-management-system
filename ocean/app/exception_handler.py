@@ -17,8 +17,8 @@
 
 # Third-party imports
 from flask import flash, session as client_session
-import sqlalchemy
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import exc
+from sqlalchemy import orm
 
 # Local application imports
 from .logger import logger
@@ -42,93 +42,110 @@ class WarningException(Exception):
         For example an incorrect data entry that is caught
         before a database query.
 
-        This exception is handled in handle_exception() by
-        flashing the message on the screen.
+        Wherever it is possible for this exception to be raised,
+        it should be caught by exception_handler.handle_exception().
         """
         super().__init__(message)
 
-def parse_alchemy_error(error: sqlalchemy.exc.IntegrityError | sqlalchemy.exc.OperationalError | sqlalchemy.exc.ProgrammingError) -> str:
-    """
-    Extract important information from an sqlalchemy error. Currently the method
-    supports the following error types:
-    - IntegrityError (constraints ignored)
-    - OperationalError (database disconnection)
-    - ProgrammingError (misformed query)
+def parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
+    """This method converts an SQLAlchemy Exception (base class sqlalchemy.exc.SQLAlchemyError)
+    into a human-readable error message. SQLAlchemy errors all inherit from this base class.
+    Currently this method is supported for the following error types. Any errors that are not
+    these types are still converted to a string but not specially formatted:
+    - `sqlalchemy.exc.IntegrityError` (constraints ignored)
+    - `sqlalchemy.exc.OperationalError` (database disconnection)
+    - `sqlalchemy.exc.ProgrammingError` (misformed query)
+    
+    Read more on SQLAlchemy exceptions here: `https://docs.sqlalchemy.org/en/20/core/exceptions.html#sqlalchemy.exc.SQLAlchemyError`
 
-    :param error: the SQLAlchemy error to be parsed
-    :type error: sqlalchemy.exc.DBAPIError
-    :return: a string with the parsed error message
+    Args:
+        exception (sqlalchemy.exc.SQLAlchemyError): the exception to be parsed
+
+    Returns:
+        str: the parsed string
     """
 
-    if isinstance(error, sqlalchemy.exc.IntegrityError):
-        error_message = str(error)
-        if "cannot be null" in error_message:
-            column_name = error_message.split("Column '")[1].split("' cannot be null")[0]
-            return "Error: {} cannot be null. Please provide a valid value for {}.".format(column_name, column_name)
-        elif error.orig.args[0] == 1062 and "Duplicate entry" in error_message:
-            duplicate_value = error_message.split("Duplicate entry ")[1].split(" for key")[0]
-            duplicate_attribute = error_message.split("for key '")[1].split("'")[0]
-            return "Duplicate entry: {} for {}.".format(duplicate_value, duplicate_attribute)
+    exc_msg = "" # Exception message (initially empty)
+    if isinstance(exception, exc.IntegrityError):
+        if "cannot be null" in exc_msg:
+            column_name = exc_msg.split("Column '")[1].split("' cannot be null")[0]
+            exc_msg += "Error: {} cannot be null. Please provide a valid value for {}.".format(column_name, column_name)
+        elif exception.orig.args[0] == 1062:
+            duplicate_value = exception.orig.args[1].split("Duplicate entry ")[1].split(" for key ")[0]
+            exc_msg += f"Unable to add record as it already exists ({duplicate_value})."
         else:
-            foreign_key_constraint = error_message.split('`')[3]
-            return "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)
-    elif isinstance(error, sqlalchemy.exc.OperationalError):
-        return "Operational error occurred: {}.".format(error.args[0])
-    elif isinstance(error, sqlalchemy.exc.ProgrammingError):
-        return "Programming error occurred: {}.".format(error.args[0])
+            foreign_key_constraint = exc_msg.split('`')[3]
+            exc_msg += "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)
+    elif isinstance(exception, exc.OperationalError):
+        exc_msg += "Operational exception occurred: {}.".format(exception.args[0])
+    elif isinstance(exception, exc.ProgrammingError):
+        exc_msg += "Programming exception occurred: {}.".format(exception.args[0])
+    elif isinstance(exception, exc.InvalidRequestError):
+        raise CriticalException(str(exception))
     else:
-        return "An error occurred: {}.".format(str(error))    
+        raise CriticalException(str(exception))
+    return exc_msg
 
+def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix="", session:orm.Session=None) -> str:
+    """Parse an exception and rollback a SQLAlchemy session. The way in which an exception is parsed
+    is dependent on the type of exception. There are three categories:
 
+    - `sqlalchemy.exc.SQLAlchemyError`: The session is rolled back and the SQLAlcemy exception is parsed and then passed to flask.flash().
+    - `exception_handler.WarningException`: The session is rolled back and the exception message is passed straight to flask.flash()
+    - `exception_handler.CriticalException` and `Exception`: The session is rolled back and the exception is raised again (to be caught at some higher level). Information is also sent to the logger.
+    
+    Note: `SQLAlchemyError` is the superclass of all SQLAlchemy exceptions. `WarningException` and `CriticalException` are both subclasses of `Exception`.
+    
+    The logic behind these three exceptions is as follows. Database exceptions (`SQLAlchemyError`) are handled by the session rollback (so the only requirement is to parse
+    and notify the user). Warning exceptions (`WarningException`) are raised only when non-critical issues occur (such as incorrect input from the user). Critical
+    exceptions (`CriticalException` and `Exception`) are raised when something unexpected or unfixable occurs and information needs to be logged.
+    
+    A `prefix` can be provided which is then added before the parsed error message. If no `session` is provided then no session will be rolled back.
 
+    Args:
+        exception (sqlalchemy.exc.SQLAlchemyError | Exception): The exception to be handled
+        prefix (str, optional): A prefix to be added before the error message. Defaults to "".
+        session (_type_, optional): A session to be rolled back. Defaults to None.
 
-def handle_exception(session, exception, prefix="") -> str:
+    Raises:
+        CriticalException: When `exception` is `CriticalException`
+        Exception: When `exception` is `Exception`
+
+    Returns:
+        str: The parsed error message (note that when `CriticalException` or `Exception` are re-raised nothing will be returned)
     """
-    Handle exception and rollback the session. Where possible the
-    exception is dissected and a human-readable message is passed
-    to the Flask flash() method. For an unknown or severe error,
-    a new Exception is raised to then be caught by app.py.
 
-    :param session: SQLAlchemy session
-    :param exception: Exception or SQLAlchemy DBAPIError to be processed
-    :type exception: sqlalchemy.exc.DBAPIError | Exception
-    :param prefix: Prefix to be added before the error message (default empty)
-    :type prefix: str
-
-    :return: error_string: Parsed error message
-    """
-    return handle_sqlalchemy_exception(session, exception, prefix=prefix)
-
-def handle_sqlalchemy_exception(session, sqlAlchemy_exception, prefix="") -> None:
-    from .models import File
-    from sqlalchemy.exc import IntegrityError
-
-    # Access the newly added File objects
-    new_file_objects = [obj for obj in session.new if isinstance(obj, File)]
-
-    for file_object in new_file_objects:
-        file_object.rollback(session)
-
-    session.rollback()
+    if session:
+        # Rollback any newly created File objects
+        from .models import File
+        for file_object in [obj for obj in session.new if isinstance(obj, File)]:
+            if hasattr(file_object, 'rollback'): file_object.rollback(session)
+        # Rollback the ORM session
+        session.rollback()
 
     error_string = prefix + ". " if prefix else ""
     
-    if isinstance(sqlAlchemy_exception, IntegrityError):
-        error_string += parse_alchemy_error(sqlAlchemy_exception)
+    if isinstance(exception, exc.SQLAlchemyError):
+        error_string += parse_sqlalchemy_exc(exception)
         flash(error_string, category='error')
-    elif isinstance(sqlAlchemy_exception, WarningException):
-        error_string += str(sqlAlchemy_exception)
+    elif isinstance(exception, WarningException):
+        error_string += str(exception)
         flash(error_string, category='error')
-    elif isinstance(sqlAlchemy_exception, CriticalException):
-        error_string += str(sqlAlchemy_exception)
+    elif isinstance(exception, CriticalException):
+        error_string += str(exception)
+        logger.exception(error_string)
         raise CriticalException(error_string)
-    elif isinstance(sqlAlchemy_exception, Exception):
-        error_string += str(sqlAlchemy_exception)
+    elif isinstance(exception, Exception):
+        error_string += str(exception)
         logger.exception(error_string)
-        raise sqlAlchemy_exception
+        raise Exception(error_string)
     else:
-        error_string += str(sqlAlchemy_exception)
-        flash(error_string, category='error')
+        # This is theoretically never reached as Exception is a 
+        # superclass of all possible exception types. However
+        # if a non-exception type is passed to this function for
+        # some reason this code will be reached.
+        error_string += str(exception)
         logger.exception(error_string)
+        raise Exception(str(exception))
 
     return error_string

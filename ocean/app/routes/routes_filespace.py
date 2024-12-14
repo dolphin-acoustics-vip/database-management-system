@@ -63,7 +63,7 @@ def filespace_delete_file(file_id):
                 session.delete(file)
                 session.commit()
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
     return redirect(url_for('filespace.filespace_view'))
 
 def get_directory_size(directory):
@@ -139,7 +139,7 @@ def trash_delete_file_helper(file_id):
                 session.delete(file)
             session.commit()
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
 
 @routes_filespace.route('/filespace/trash/delete/files', methods=['POST'])
 @login_required

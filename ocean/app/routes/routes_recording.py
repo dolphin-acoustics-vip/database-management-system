@@ -68,7 +68,7 @@ def refresh_selection_table(recording_id):
             session.commit()
             recording.update_selection_traced_status()
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session,e)
+            exception_handler.handle_exception(exception=e, session=session)
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/selection-table/add', methods=['POST'])
@@ -108,7 +108,7 @@ def recording_selection_table_add(encounter_id,recording_id):
             else:
                 raise exception_handler.WarningException("The form did not send a selection table file.")
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e, prefix="Error adding selection table")
+            exception_handler.handle_exception(exception=e, prefix="Error adding selection table", session=session)
         
     return redirect(url_for('recording.recording_view', recording_id=recording_id))
  
@@ -125,14 +125,14 @@ def export_selection_table(recording_id, export_format):
             recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
             return recording.export_selection_table(session, export_format)
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e, prefix="Error exporting selection table")
+            exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
     with database_handler.get_session() as session:
         try:
             recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
             return recording.export_selection_table(session, export_format)
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e, prefix="Error exporting selection table")
+            exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
@@ -161,7 +161,7 @@ def recording_selection_table_delete(recording_id: str) -> Response:
             recording.update_selection_traced_status()
             flash(f'Selection table deleted for {recording.get_unique_name()}', 'success')
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
@@ -189,7 +189,7 @@ def recording_insert(encounter_id: str) -> Response:
             session.commit()
             flash(f'Recording inserted for {recording_obj.get_unique_name()}', 'success')
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e, 'Error inserting recording')
+            exception_handler.handle_exception(exception=e, prefix="Error inserting recording", session=session)
         finally:
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
@@ -352,7 +352,7 @@ def recording_update(recording_id):
             recording_obj.update_call()
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session,e)
+            exception_handler.handle_exception(exception=e, session=session)
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['GET'])
@@ -373,7 +373,7 @@ def recording_delete(encounter_id,recording_id):
                 session.commit()
                 flash(f'Deleted recording: {recording.get_unique_name()}', 'success')
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
 
 @routes_recording.route('/encounter/recording/<recording_id>/recording-file/<file_id>/delete',methods=['GET'])
@@ -396,7 +396,7 @@ def recording_file_delete(recording_id,file_id):
             session.commit()
             flash(f'Deleted recording file for {recording.get_unique_name()}', 'success')
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/recording/recording_delete_selections', methods=['DELETE'])
@@ -416,7 +416,7 @@ def recording_delete_selections():
 
     selection_ids = data.get('selectionIds', [])
     if selection_ids == None or len(selection_ids) == 0:
-        exception_handler.handle_exception(session, exception_handler.WarningException('No selections selected for deletion.'))
+        exception_handler.handle_exception(exception=exception_handler.WarningException('No selections selected for deletion.'), session=session)
     
     with database_handler.get_session() as session:
         counter=0
@@ -429,7 +429,7 @@ def recording_delete_selections():
                 session.commit()
                 counter += 1
             except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(session,e,prefix="Error deleting selection")
+                exception_handler.handle_exception(exception=e,prefix="Error deleting selection", session=session)
         flash(f'Deleted {counter} selections', 'success')
         return jsonify({'message': 'Bulk delete completed'}), 200
 
@@ -478,7 +478,7 @@ def assign_recording():
             recording.update_status()
             session.commit()      
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
 
 
 @routes_recording.route('/unassign_recording', methods=['GET'])
@@ -509,7 +509,7 @@ def unassign_recording():
             recording.update_status()
             session.commit()
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
 
 def recalculate_contour_statistics(session, selection):
     """
@@ -538,7 +538,7 @@ def recalculate_contour_statistics_for_selection(selection_id):
             session.commit()
             flash(f"Refreshed contour statistics for {selection.get_unique_name()}", 'success')
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e, prefix="Error refreshing contour statistics")
+            exception_handler.handle_exception(exception=e, prefix="Error refreshing contour statistics", session=session)
     return redirect(request.referrer)
 
 @routes_recording.route('/recording/<recording_id>/recalculate-contour-statistics', methods=['GET'])
@@ -573,7 +573,7 @@ def recalculate_contour_statistics_for_recording(recording_id):
                 selection_session.close()
             selection_session = None
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(selection_session, e)
+            exception_handler.handle_exception(exception=e, session=selection_session)
     flash(f'Recalculated {counter} contour statistics.', 'success')
     return redirect(url_for('recording.recording_view', recording_id=recording_id))
     

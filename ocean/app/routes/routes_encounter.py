@@ -37,7 +37,7 @@ def encounter():
             encounter_list = database_handler.create_system_time_request(session, models.Encounter, {}, order_by="row_start DESC")
             return render_template('encounter/encounter.html', encounter_list=encounter_list)
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
             return redirect(url_for('general.home'))
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
@@ -112,7 +112,7 @@ def encounter_insert():
             logger.info(f'Encounter added: {new_encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e, 'Error inserting encounter')
+            exception_handler.handle_exception(exception=ee, prefix='Error inserting encounter', session=session)
             return redirect(url_for('encounter.encounter'))
 
 
@@ -137,7 +137,7 @@ def encounter_view(encounter_id):
             unassigned_recordings = [recording for recording in recordings if recording.id not in assignment_recording_ids]
             return render_template('encounter/encounter-view.html', encounter=encounter, encounter_history=encounter_history, assignment_recording_ids=assignment_recording_ids,assigned_recordings=assigned_recordings,unassigned_recordings=unassigned_recordings)
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_sqlalchemy_exception(session, e, 'Error viewing encounter')
+            exception_handler.handle_exception(exception=e, prefix="Error viewing encounter", session=session)
             return redirect(url_for('encounter.encounter'))
 
 @routes_encounter.route('/encounter/<encounter_id>/edit', methods=['GET'])
@@ -179,7 +179,7 @@ def encounter_update(encounter_id):
             logger.info(f'Encounter updated: {encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e, prefix="Error updating encounter")
+            exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session)
             return redirect(url_for('encounter.encounter'))
 
         
@@ -202,5 +202,5 @@ def encounter_delete(encounter_id):
                 logger.info(f'Encounter deleted: {encounter.id}')
                 flash(f'Encounter deleted: {encounter.get_unique_name("-")}.', 'success')
             except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(session, e, 'Error deleting encounter')
+                exception_handler.handle_exception(exception=e, prefix='Error deleting encounter', session=session)
             return redirect(url_for('encounter.encounter'))

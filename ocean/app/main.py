@@ -199,12 +199,6 @@ def create_app(config_class=None):
         logger.critical('Gateway timeout: ' + str(e))
         return "Gateway timeout. Please try again later.", 504
 
-    @app.errorhandler(exception_handler.NotFoundException)
-    def not_found(e):
-        logger.warning('Not found exception: ' + str(e))
-        return render_template('error.html', error_code=404, error=str(e), goback_link='/home', goback_message="Home")
-
-
     
 
 

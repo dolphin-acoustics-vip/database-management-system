@@ -90,7 +90,7 @@ def contour_file_delete(selection_id: str):
             else:
                 raise exception_handler.WarningException(f"Unable to delete contour file due to internal error.")
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e, "Error deleting contour file")
+            exception_handler.handle_exception(exception=e, prefix="Error deleting contour file", session=session)
         return redirect(request.referrer)
 
 def insert_or_update_contour(session, selection: models.Selection, contour_file):
@@ -345,7 +345,7 @@ def contour_insert(recording_id):
             else:
                 raise exception_handler.WarningException("Bad file in request")
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session,e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             if last == True:
                 if counter > 0:
@@ -396,7 +396,7 @@ def selection_insert(recording_id):
                 raise exception_handler.WarningException("Bad file in request")
         except (Exception,SQLAlchemyError) as e:
             success = False
-            exception_handler.handle_exception(session,e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             if last == True:
                 if counter > 0:
