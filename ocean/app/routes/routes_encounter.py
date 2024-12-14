@@ -112,7 +112,7 @@ def encounter_insert():
             logger.info(f'Encounter added: {new_encounter.id}')
             return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=ee, prefix='Error inserting encounter', session=session)
+            exception_handler.handle_exception(exception=e, prefix='Error inserting encounter', session=session)
             return redirect(url_for('encounter.encounter'))
 
 
@@ -125,8 +125,8 @@ def encounter_view(encounter_id):
     with database_handler.get_session() as session:
         try:
             encounter = database_handler.create_system_time_request(session, models.Encounter, {"id":encounter_id}, one_result=True)
-            if encounter is None:
-                raise exception_handler.NotFoundException("Encounter not found", details="This may be due to a local modification of the web page or an unknown error on the backend. Try reloading the page and if the error persists contact an administrator.")
+            if not encounter:
+                raise exception_handler.CriticalException(f"Encounter not found.")
             species = database_handler.create_system_time_request(session, models.Species, {"id":encounter.species_id}, one_result=True)
             encounter.species=species
             recordings = database_handler.create_system_time_request(session, models.Recording, {"encounter_id":encounter_id})

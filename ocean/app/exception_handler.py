@@ -47,26 +47,40 @@ class WarningException(Exception):
         """
         super().__init__(message)
 
-def parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
-    """This method converts an SQLAlchemy Exception (base class sqlalchemy.exc.SQLAlchemyError)
-    into a human-readable error message. SQLAlchemy errors all inherit from this base class.
-    Currently this method is supported for the following error types. Any errors that are not
-    these types are still converted to a string but not specially formatted:
-    - `sqlalchemy.exc.IntegrityError` (constraints ignored)
-    - `sqlalchemy.exc.OperationalError` (database disconnection)
-    - `sqlalchemy.exc.ProgrammingError` (misformed query)
-    
-    Read more on SQLAlchemy exceptions here: `https://docs.sqlalchemy.org/en/20/core/exceptions.html#sqlalchemy.exc.SQLAlchemyError`
+
+def _parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
+    """Process an SQLAlchemy exception (a subclass of `sqlalchemy.exc.SQLAlchemyError`).
+    In most cases SQLAlchemy exceptions are thrown because of unexpected issues with the
+    structure of the database or connection issues.
 
     Args:
-        exception (sqlalchemy.exc.SQLAlchemyError): the exception to be parsed
+        exception (exc.SQLAlchemyError): the subclass of SQLAlchemyError to be parsed.
+
+    Raises:
+        CriticalException: if the SQLAlchemy error is one that indicates a problem with the 
+        schema/connection/code (which needs to be fixed).
 
     Returns:
-        str: the parsed string
+        str: a human-readable error message (if the CriticalException is not raised). This indicates that 
+        the exception can be handled by a session rollback and the string should be shown to the user to
+        inform them what happened.
     """
-
     exc_msg = "" # Exception message (initially empty)
+    if isinstance(exception, exc.NotSupportedError):
+        # Wraps a DB-API NotSupportedError.
+        logger.exception(exception)
+        raise CriticalException(str("Database operation is not supported. This error has been logged."))
+    if isinstance(exception, exc.ProgrammingError):
+        # Wraps a DB-API ProgrammingError.
+        logger.exception(exception)
+        raise CriticalException(str("Database operation is malformed. This error has been logged."))
+    if isinstance(exception, exc.InternalError):
+        # Wraps a DB-API InternalError.
+        logger.exception(exception)
+        raise CriticalException(str("Internal database error ocurred. This error has been logged."))
     if isinstance(exception, exc.IntegrityError):
+        # Wraps a DB-API IntegrityError.
+        # IntegrityError is the most common type of error and refers to some operation that violates contraints
         if "cannot be null" in exc_msg:
             column_name = exc_msg.split("Column '")[1].split("' cannot be null")[0]
             exc_msg += "Error: {} cannot be null. Please provide a valid value for {}.".format(column_name, column_name)
@@ -77,16 +91,108 @@ def parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
             foreign_key_constraint = exc_msg.split('`')[3]
             exc_msg += "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)
     elif isinstance(exception, exc.OperationalError):
-        exc_msg += "Operational exception occurred: {}.".format(exception.args[0])
-    elif isinstance(exception, exc.ProgrammingError):
-        exc_msg += "Programming exception occurred: {}.".format(exception.args[0])
+        # Wraps a DB-API OperationalError.
+        logger.exception(exception)
+        raise CriticalException("Database is not operational. This error has been logged.")
+    elif isinstance(exception, exc.DataError):
+        # Wraps a DB-API DataError.
+        logger.exception(exception)
+        raise CriticalException("Database data error. This error has been logged.")
+    elif isinstance(exception, exc.DatabaseError):
+        # Wraps a DB-API DatabaseError.
+        logger.exception(exception)
+        raise CriticalException("Database error. This error has been logged.")
+    elif isinstance(exception, exc.InterfaceError):
+        logger.exception(exception)
+        raise CriticalException("Database connector error. This error has been logged.")
+    elif isinstance(exception, exc.UnboundExecutionError):
+        # SQL was attempted without a database connection to execute it on.
+        logger.exception(exception)
+        raise CriticalException("Database operation attempted without a database connection. This error has been logged.")
+    elif isinstance(exception, exc.NoReferenceError):
+        # Raised by ``ForeignKey`` to indicate a reference cannot be resolved.
+        # Has two subclasses: 
+        # - NoReferencedTableError: Raised by ``ForeignKey`` when the referred ``Table`` cannot be located.
+        # - NoReferencedColumnError: Raised by ``ForeignKey`` when the referred ``Column`` cannot be located.
+        logger.exception(exception)
+        raise CriticalException("Database reference cannot be resolved. This error has been logged.")
+    elif isinstance(exception, exc.MultipleResultsFound):
+        # A single database result was required but more than one were found.
+        return "A single database result was required but more than one were found."
+    elif isinstance(exception, exc.NoResultFound):
+        # A database result was required but none was found.
+        return "A database result was required but none were found."
+    elif isinstance(exception, exc.ResourceClosedError):
+        # An operation was requested from a connection, cursor, or other object that's in a closed state.
+        logger.exception(exception)
+        raise CriticalException("Database resource is closed. This error has been logged.")
+    elif isinstance(exception, exc.PendingRollbackError):
+        # A transaction has failed and needs to be rolled back before continuing.
+        logger.exception(exception)
+        raise CriticalException("Database rollback is pending. This error has been logged.")
     elif isinstance(exception, exc.InvalidRequestError):
-        raise CriticalException(str(exception))
+        # SQLAlchemy was asked to do something it can't do.
+        logger.exception(exception)
+        raise CriticalException("Database request is invalid. This error has been logged.")
+    elif isinstance(exception, exc.DBAPIError):
+        # Raised when the execution of a database operation fails.
+        # Note that the exception may be wrapped by a more specific exception.
+        # These exceptions are already managed above.
+        logger.exception(exception)
+        raise CriticalException("Database API error. This error has been logged.")
+    elif isinstance(exception, exc.TimeoutError):
+        # Raised when a connection pool times out on getting a connection.
+        logger.exception(exception)
+        raise CriticalException("Database operation timed out. This error has been logged.")
+    elif isinstance(exception, exc.DisconnectionError):
+        # A disconnect is detected on a raw DB-API connection.
+        logger.exception(exception)
+        raise CriticalException("Database disconnection error. This error has been logged.")
     else:
-        raise CriticalException(str(exception))
+        # All other subclasses of SQLAlchemyException not handled above
+        logger.exception(exception)
+        raise CriticalException("An unknown error ocurred with the database. Changes have been rolled back. This error has been logged.")
+    
     return exc_msg
 
-def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix="", session:orm.Session=None) -> str:
+def _parse_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None) -> str:
+    """Given an exception this method parses it into a human-readable string. If the exception
+    if of unknown type `Exception` or type `CriticalException` or an un-fixable type of 
+    `sqlalchemy.exc.SQLAlchemyError` then the exception is raised and logged. If not then
+    the exception is parsed and returned as a string.
+
+    Args:
+        exception (exc.SQLAlchemyError | Exception): the exception to be parsed.
+        prefix (str): an optional prefix to be added to the parsed exception. Defaults to `None`. Do not provide punctuation at the end of the prefix as it is automatically added.
+
+    Raises:
+        CriticalException: if `exception` is `CriticalException`
+        Exception: if `exception` is `sqlalchemy.exc.SQLAlchemyError` but cannot be addressed with a session rollback
+        Exception: if `exception` is `Exception` but not `WarningException`
+
+    Returns:
+        str: _description_
+    """
+    return_string = (prefix + ": ") if prefix else ""
+    if isinstance(exception, exc.SQLAlchemyError):
+        return return_string + _parse_sqlalchemy_exc(exception)
+    elif isinstance(exception, WarningException):
+        return return_string + str(exception)
+    elif isinstance(exception, CriticalException):
+        logger.exception(str(exception))
+        raise CriticalException(str(exception))
+    elif isinstance(exception, Exception):
+        logger.exception(str(exception))
+        raise Exception(str(exception))
+    else:
+        # This is theoretically never reached as Exception is a 
+        # superclass of all possible exception types. However
+        # if a non-exception type is passed to this function for
+        # some reason this code will be reached.
+        logger.exception(str(exception))
+        raise Exception(str(exception))    
+
+def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None, session:orm.Session=None) -> str:
     """Parse an exception and rollback a SQLAlchemy session. The way in which an exception is parsed
     is dependent on the type of exception. There are three categories:
 
@@ -123,29 +229,6 @@ def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix="", sess
         # Rollback the ORM session
         session.rollback()
 
-    error_string = prefix + ". " if prefix else ""
-    
-    if isinstance(exception, exc.SQLAlchemyError):
-        error_string += parse_sqlalchemy_exc(exception)
-        flash(error_string, category='error')
-    elif isinstance(exception, WarningException):
-        error_string += str(exception)
-        flash(error_string, category='error')
-    elif isinstance(exception, CriticalException):
-        error_string += str(exception)
-        logger.exception(error_string)
-        raise CriticalException(error_string)
-    elif isinstance(exception, Exception):
-        error_string += str(exception)
-        logger.exception(error_string)
-        raise Exception(error_string)
-    else:
-        # This is theoretically never reached as Exception is a 
-        # superclass of all possible exception types. However
-        # if a non-exception type is passed to this function for
-        # some reason this code will be reached.
-        error_string += str(exception)
-        logger.exception(error_string)
-        raise Exception(str(exception))
-
+    error_string = _parse_exception(exception=exception, prefix = prefix)
+    flash(error_string, category='error')
     return error_string

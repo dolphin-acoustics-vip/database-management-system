@@ -23,7 +23,6 @@ from datetime import datetime
 from jinja2 import Environment
 from flask import Flask, flash, redirect, render_template, request, url_for, session as client_session, g
 from flask_login import LoginManager, login_user,login_required, current_user, login_manager, logout_user
-from sqlalchemy.exc import OperationalError
 
 # Local application imports
 from . import models
@@ -151,16 +150,18 @@ def create_app(config_class=None):
         logger.warning('Route forbidden: ' + str(e))
         return render_template('unauthorized.html', user=current_user), 403
 
-
-
-    @app.errorhandler(OperationalError)
-    def handle_operational_error(ex):
-        logger.exception('Operational error')
-        return render_template('operational-error.html')
+    import MySQLdb
+    @app.errorhandler(MySQLdb.OperationalError)
+    def handle_mysql_error(ex):
+        return "Database not functional."
+    
+    @app.errorhandler(exception_handler.CriticalException)
+    def handle_critical_error(ex):
+        return str(ex)
 
     @app.errorhandler(Exception)
     def handle_error(ex):
-        logger.exception('Exception')
+        exception_handler.handle_exception(exception=ex)
         return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link='/home', goback_message="Home")
 
     # 404 Error Handler

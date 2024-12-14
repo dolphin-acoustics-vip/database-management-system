@@ -4,7 +4,7 @@ import ocean.app.utils as utils
 import os, re
 
 def test_contour_stats(db_session, selection_object: models.Selection):
-    root_path = "tests/resources/contour-stats"
+    root_path = "ocean/tests/resources/contour-stats"
 
     for folder in os.listdir(root_path):
         if "test" in folder:
