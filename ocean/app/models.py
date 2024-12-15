@@ -71,27 +71,98 @@ def convert_from_gmt(gmt_time: datetime) -> datetime:
     system_time = gmt_time - gmt_offset
     return system_time
 
-def parse_string_notempty(string:str, field:str) -> str:
-    """
-    Remove whitespace from a string, or raise exception_handler.WarningException()
-    if the string is none or blank (stripped). This method should only be used on
-    data fields which are mandatory, and thus must not be left blank.
 
-    :param string: the string being parsed
-    :type string: str
 
-    :param field: the name of the field of the string being parsed (is used in the
-    event of a raised exception)
-    :type field: str
+class Species(database_handler.db.Model):
+    __tablename__ = 'species'
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
+    # TODO rename to scientific_name (refactor with actual database)
+    species_name = database_handler.db.Column(database_handler.db.String(100), nullable=False, unique=True)
+    genus_name = database_handler.db.Column(database_handler.db.String(100))
+    common_name = database_handler.db.Column(database_handler.db.String(100))
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
-    :return: the parsed string stripped of its whitespace
-    """
-    if type(string) != str:
-        raise exception_handler.WarningException(f'{field} must be a string.')
-    if string == None or string.strip() == "":
-        raise exception_handler.WarningException(f'{field} cannot be blank.')
-    else:
-        return string.strip()
+    def update_call(self):
+        """
+        Call update_call() in all Encounter objects linked to the Species object.
+        This method should be called when a metadata change occurs in the Species
+        object that requires files (in Recording and Selection) be given a new
+        path based on that metadata.
+        """
+        with database_handler.get_session() as session:
+            encounters = session.query(Encounter).with_for_update().filter_by(species_id=self.id).all()
+            for encounter in encounters:
+                encounter.update_call()
+    
+    def set_updated_by_id(self, user_id: str):
+        """Set the `updated_by_id` attribute of the Species object. This attribute is used to record
+        the user who is making any changes. There should be a method in `database_handler.py` which
+        calls this method automatically when changes are flushed or committed to the ORM model.
+
+        Args:
+            user_id (str): The `id` of the `User` object who is making the changes
+        """
+        self.updated_by_id = user_id
+
+    def get_species_name(self) -> str:
+        """Get the `species_name` of a particular species. If the `species_name` is None, return an empty string.
+
+        Returns:
+            str: the species' name
+        """
+        return '' if self.species_name is None else self.species_name
+
+    def set_species_name(self, value: str) -> None:
+        """Set the `species_name` of a particular species. The given value is converted to a string and stripped
+        of whitespace at the start and end. This value cannot be empty or None. This method does not commit or 
+        flush the changes in any ORM context.
+
+        Args:
+            value (str): the name of the species
+
+        Raises:
+            ValueError: if `value` is None or empty
+        """
+        if value is None or value.strip() == '': raise ValueError("Species name cannot be empty")
+        self.species_name = str(value).strip()
+    
+    def get_genus_name(self) -> str:
+        """Get the `genus_name` of a particular species. If the `genus_name` is None, return an empty string.
+
+        Returns:
+            str: the species' genus name
+        """
+        return '' if self.genus_name is None else self.genus_name
+    
+    def set_genus_name(self, value: str | None) -> None:
+        """Set the `genus_name` of a particular species. The given value is converted to a string and
+        stripped of whitespace at the start and end. This method does not commit or flush the changes
+        in any ORM context. If None or an empty string is passed, the `genus_name` is set to None.
+
+        Args:
+            value (str): the genus name
+        """
+        self.genus_name = None if not value or str(value).strip() == "" else str(value).strip()
+
+    def get_common_name(self) -> str:
+        """Get the `common_name` of a particular species. If the `common_name` is None, return an empty string.
+
+        Returns:
+            str: the species' common name
+        """
+        return '' if self.common_name is None else self.common_name
+    
+    def set_common_name(self, value: str | None) -> None:
+        """Set the `common_name` of a particular species. The given value is converted to a string and
+        stripped of whitespace at the start and end. This method does not commit or flush the changes 
+        in any ORM context. If None or an empty string is passed, the `genus_name` is set to None.
+
+        Args:
+            value (str): the common name
+        """
+        self.common_name = None if not value or str(value).strip() == "" else str(value).strip()
+
 
 
 class DataSource(database_handler.db.Model):
@@ -146,7 +217,6 @@ class Encounter(database_handler.db.Model):
             user_id (str): The user ID who is updating the recording.
         """
         self.updated_by_id = user_id
-
 
     def get_unique_name(self, delimiter='-'):
         """
@@ -220,19 +290,25 @@ class Encounter(database_handler.db.Model):
         return '' if self.encounter_name is None else self.encounter_name
 
     def set_encounter_name(self, value: str):
-        self.encounter_name = parse_string_notempty(value, 'Encounter name')
+        """Set the encounter name of the recording. If the value is empty, raise an error.
+
+        Args:
+            value (str): _description_
+        """
+        if value is None or value.strip() == '': raise ValueError("Encounter name cannot be empty")
+        self.encounter_name = utils.parse_string_notempty(value, 'Encounter name')
 
     def get_location(self) -> str:
         return '' if self.location is None else self.location
 
     def set_location(self, value: str):
-        self.location = parse_string_notempty(value, 'Location')
+        self.location = utils.parse_string_notempty(value, 'Location')
 
     def get_project(self) -> str:
         return '' if self.project is None else self.project
 
     def set_project(self, value: str):
-        self.project = parse_string_notempty(value, 'Project')
+        self.project = utils.parse_string_notempty(value, 'Project')
 
     def get_notes(self) -> str:
         return '' if self.notes is None else self.notes
@@ -242,6 +318,19 @@ class Encounter(database_handler.db.Model):
 
     def get_species(self):
         return self.species
+
+    def set_species(self, value: Species):
+        """Set the species of the recording.
+
+        Args:
+            value (Species): The species to set.
+
+        Raises:
+            ValueError: If the value is not of type Species
+        """
+        if type(value) != Species:
+            raise ValueError("Value must be of type Species")
+        self.species = value
 
     def set_species_id(self, species_id: str):
         self.species_id = utils.validate_id(species_id, field="Species", allow_empty=False)
@@ -1618,56 +1707,6 @@ class Selection(database_handler.db.Model):
         """
         self.updated_by_id = user_id
 
-
-
-class Species(database_handler.db.Model):
-    __tablename__ = 'species'
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
-    # TODO rename to scientific_name (refactor with actual database)
-    species_name = database_handler.db.Column(database_handler.db.String(100), nullable=False, unique=True)
-    genus_name = database_handler.db.Column(database_handler.db.String(100))
-    common_name = database_handler.db.Column(database_handler.db.String(100))
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-
-    def update_call(self):
-        """
-        Call update_call() in all Encounter objects linked to the Species object.
-        This method should be called when a metadata change occurs in the Species
-        object that requires files (in Recording and Selection) be given a new
-        path based on that metadata.
-        """
-        with database_handler.get_session() as session:
-            encounters = session.query(Encounter).with_for_update().filter_by(species_id=self.id).all()
-            for encounter in encounters:
-                encounter.update_call()
-    
-    def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
-        self.updated_by_id = user_id
-
-
-    def get_species_name(self):
-        return '' if self.species_name is None else self.species_name
-
-    def set_species_name(self, value):
-        self.species_name = None if value.strip() == '' else value.strip()
-    
-    def get_genus_name(self):
-        return '' if self.genus_name is None else self.genus_name
-    
-    def set_genus_name(self, value):
-        self.genus_name = None if value.strip() == '' else value.strip()
-
-    def get_common_name(self):
-        return '' if self.common_name is None else self.common_name
-    
-    def set_common_name(self, value):
-        self.common_name = None if value.strip() == '' else value.strip()
 
 
 

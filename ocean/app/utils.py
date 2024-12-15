@@ -305,3 +305,28 @@ def extract_args(arg, datatype=str, allow_empty=False):
             return datatype(value)
         except ValueError:
             raise ValueError(f"Invalid value for argument: {arg}")
+        
+        
+def parse_string_notempty(value:str, field:str) -> str:
+    """Parse a value and validate that it is neither None nor
+    an empty string. Empty strings include all "" and those which
+    have whitespace such as " " or "\t" or "\n". If the value is
+    valid then it is converted to a string and stripped of whitespace.
+
+    Args:
+        value (str): the value to be parsed
+        field (str): the name of the field being parsed
+
+    Raises:
+        ValueError: value is None
+        ValueError: value is an empty string
+
+    Returns:
+        str: the value as a string with no whitespace
+    """
+    if value is None:
+        raise ValueError(f'{field} cannot be null.')
+    if str(value).strip() == "":
+        raise ValueError(f'{field} cannot be empty.')
+    else:
+        return str(value).strip()
