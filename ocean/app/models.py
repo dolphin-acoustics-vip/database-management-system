@@ -165,6 +165,25 @@ class Species(database_handler.db.Model):
 
 
 
+class RecordingPlatform(database_handler.db.Model):
+    __tablename__ = 'recording_platform'
+
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
+    name = database_handler.db.Column(database_handler.db.String(100), unique=True, nullable=False)
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+    def __repr__(self):
+        return '<RecordingPlatform %r>' % self.name
+    
+    def set_updated_by_id(self, user_id: str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = user_id
+
+
 class DataSource(database_handler.db.Model):
     __tablename__ = 'data_source'
 
@@ -199,11 +218,9 @@ class Encounter(database_handler.db.Model):
     notes = database_handler.db.Column(database_handler.db.String(1000))
     file_timezone = database_handler.db.Column(database_handler.db.Integer)
     local_timezone = database_handler.db.Column(database_handler.db.Integer)
-    
     species = database_handler.db.relationship("Species")
     data_source = database_handler.db.relationship("DataSource")
     recording_platform = database_handler.db.relationship("RecordingPlatform")
-
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
     __table_args__ = (
@@ -269,23 +286,23 @@ class Encounter(database_handler.db.Model):
                 session.delete(recording)
 
     def get_latitude(self) -> float:
-        return self.latitude
-
-    def get_latitude_string(self) -> str:
-        return '' if self.latitude is None else self.latitude
-
+        try:
+            return float(self.latitude)
+        except (TypeError,ValueError):
+            return None
+    
     def set_latitude(self, value: float):
-        self.latitude = utils.validate_latitude(value, allow_empty=True)
+        self.latitude = utils.validate_latitude(value, field="latitude", allow_none=True)
     
     def set_longitude(self, value: float):
-        self.longitude = utils.validate_longitude(value, allow_empty=True)
+        self.longitude = utils.validate_longitude(value, field="longitude", allow_none=True)
 
     def get_longitude(self) -> float:
-        return self.longitude
-    
-    def get_longitude_string(self) -> str:
-        return '' if self.longitude is None else str(self.longitude)
-    
+        try:
+            return float(self.longitude)
+        except (TypeError,ValueError):
+            return None
+        
     def get_encounter_name(self) -> str:
         return '' if self.encounter_name is None else self.encounter_name
 
@@ -295,7 +312,7 @@ class Encounter(database_handler.db.Model):
         Args:
             value (str): _description_
         """
-        if value is None or value.strip() == '': raise ValueError("Encounter name cannot be empty")
+        if value is None or value.strip() == '': raise exception_handler.WarningException("Encounter name cannot be empty")
         self.encounter_name = utils.parse_string_notempty(value, 'Encounter name')
 
     def get_location(self) -> str:
@@ -313,8 +330,16 @@ class Encounter(database_handler.db.Model):
     def get_notes(self) -> str:
         return '' if self.notes is None else self.notes
 
-    def set_notes(self, value: str):
-        self.notes = value.strip()
+    def set_notes(self, value: str) -> None:
+        """ Set the notes of the recording. If `value` is empty or `None`, set it to `None`.
+        If a non-string `value` is passed, convert it to a string.
+
+        Args:
+            value (str): the new value of notes
+        """
+        if value is not None and str(value).strip() == '': self.notes = None
+        elif value is None: self.notes = None
+        else: self.notes = str(value).strip()
 
     def get_species(self):
         return self.species
@@ -328,32 +353,127 @@ class Encounter(database_handler.db.Model):
         Raises:
             ValueError: If the value is not of type Species
         """
-        if type(value) != Species:
-            raise ValueError("Value must be of type Species")
-        self.species = value
+        self.species = utils.validate_type(value, Species, "species")
+
 
     def set_species_id(self, species_id: str):
-        self.species_id = utils.validate_id(species_id, field="Species", allow_empty=False)
+        self.species_id = utils.validate_id(species_id, field="species")
     
-    def set_data_source_id(self, session, data_source_id):
-        data_source_id = utils.validate_id(data_source_id, field="Data Source", allow_empty=True)
-        self.data_source_id = data_source_id
+    def set_data_source_id(self, value):
+        self.data_source_id = utils.validate_id(value, field="data_source", allow_none=True)
 
-    def set_recording_platform_id(self, session, recording_platform_id):
-        recording_platform_id = utils.validate_id(recording_platform_id, field="Recording Platform", allow_empty=True)
-        self.recording_platform_id = recording_platform_id
+    def set_data_source(self, value: DataSource):
+        """Set the data source of the recording.
+
+        Args:
+            value (DataSource): the new data source
+            
+        Raises:
+            ValueError: the the new value is None or not of the correct type
+        """
+        self.data_source = utils.validate_type(value, DataSource, "data_source", allow_none=True)
+
+    def set_recording_platform_id(self, recording_platform_id: str | uuid.UUID):
+        """Set the recording platform ID of the recording
+
+        Args:
+            recording_platform_id (str | uuid.UUID): the new recording platform ID (if given as a string it must be a valid UUID)
+        
+        Raises:
+            ValueError: the new value is None or not of uuid.UUID or convertable str type
+        """
+        self.recording_platform_id = utils.validate_id(recording_platform_id, field="Recording Platform", allow_none=True)
+
+    def set_recording_platform(self, value: RecordingPlatform):
+        """Set the recording platform of the recording
+
+        Args:
+            value (RecordingPlatform): the new recording platform
+            
+        Raises:
+            ValueError: the new value is None or not the correct type
+        """
+        self.recording_platform = utils.validate_type(value, RecordingPlatform, "recording_platform", allow_none=True)
 
     def set_file_timezone(self, value: int | str):
-        self.file_timezone = utils.validate_timezone(value)
+        """Set the timezone of the file
+
+        Args:
+            value (int | str): The new timezone. If given as a string, it must be a valid timezone string.
+        
+        Raises:
+            ValueError: the new value is None or not of int or valid timezone string type
+        """
+        self.file_timezone = utils.validate_timezone(value, field="file_timezone", allow_none=True)
     
     def get_file_timezone(self) -> int:
-        return self.file_timezone
+        try:
+            return int(self.file_timezone)
+        except Exception:
+            return None
     
     def set_local_timezone(self, value: int | str):
-        self.local_timezone = utils.validate_timezone(value)
+        self.local_timezone = utils.validate_timezone(value, field="local_timezone", allow_none=True)
     
     def get_local_timezone(self) -> int:
-        return self.local_timezone
+        try:
+            return int(self.local_timezone)
+        except Exception:
+            return None
+
+    def get_species_id(self) -> uuid.UUID:
+        """ Get the species ID of the recording. Note that if
+        the species ID is not a valid UUID or is`None`, then `None`
+        is returned.
+
+        Returns:
+            uuid.UUID: the species ID
+        
+        Raises:
+            ValueError: when the Species ID is not Null and not in UUID format
+        """
+        try:
+            if type(self.species_id) == uuid.UUID: return self.species_id
+            if self.species_id == None: return None
+            return uuid.UUID(str(self.species_id))
+        except Exception as e:
+            raise exception_handler.WarningException(f"Invalid species ID: {e}")
+        
+    def get_data_source_id(self) -> uuid.UUID:
+        """ Get the species ID of the recording. Note that if
+        the species ID is not a valid UUID or is`None`, then `None`
+        is returned.
+
+        Returns:
+            uuid.UUID: the species ID
+        
+        Raises:
+            ValueError: when the Species ID is not Null and not in UUID format
+        """
+        try:
+            if type(self.data_source_id) == uuid.UUID: return self.data_source_id
+            if self.data_source_id == None: return None
+            return uuid.UUID(str(self.data_source_id))
+        except Exception as e:
+            raise exception_handler.WarningException(f"Invalid data source ID: {e}")
+
+    def get_recording_platform_id(self) -> uuid.UUID:
+        """ Get the species ID of the recording. Note that if
+        the species ID is not a valid UUID or is`None`, then `None`
+        is returned.
+
+        Returns:
+            uuid.UUID: the species ID
+        
+        Raises:
+            ValueError: when the Species ID is not Null and not in UUID format
+        """
+        try:
+            if type(self.recording_platform_id) == uuid.UUID: return self.recording_platform_id
+            if self.recording_platform_id == None: return None
+            return uuid.UUID(str(self.recording_platform_id))
+        except Exception as e:
+            raise exception_handler.WarningException(f"Invalid recording platform ID: {e}")
 
 
 
@@ -1120,25 +1240,6 @@ class Recording(database_handler.db.Model):
         response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
         
         return response
-
-
-class RecordingPlatform(database_handler.db.Model):
-    __tablename__ = 'recording_platform'
-
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    name = database_handler.db.Column(database_handler.db.String(100), unique=True, nullable=False)
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-    def __repr__(self):
-        return '<RecordingPlatform %r>' % self.name
-    
-    def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
-        self.updated_by_id = user_id
 
 
 class Role(database_handler.db.Model):
