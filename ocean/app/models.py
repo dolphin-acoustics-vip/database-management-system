@@ -831,7 +831,7 @@ class Recording(database_handler.db.Model):
     )
 
     def get_unique_name(self, delimiter="-") -> str:
-        """Generate a unique name for the recording based on its encoutner and the start time.
+        """Generate a unique name for the recording based on its encounter and the start time.
         The format of the unique name is `<ENCOUNTER>:<D>Recording<D>'%Y-%m-%dT%H:%M'`
         See `encounter.get_unique_name()` for for more information on `<ENCOUNTER>`. The
         delimiter (optional parameter) populates all `<D>`.
@@ -840,7 +840,7 @@ class Recording(database_handler.db.Model):
             delimiter (str, optional): the delimiter splits values. Defaults to "-".
 
         Raises:
-            ValueError: if there is no encoutner associated with this recording
+            ValueError: if there is no encounter associated with this recording
 
         Returns:
             str: the unique name (see above for formatting)
@@ -1334,6 +1334,8 @@ class Selection(database_handler.db.Model):
     row_start = database_handler.db.Column(database_handler.db.DateTime(timezone=True), server_default=func.current_timestamp())
     default_fft_size = database_handler.db.Column(database_handler.db.Integer)
     default_hop_size = database_handler.db.Column(database_handler.db.Integer)
+    created_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
+
 
     ### Selection Table data ###
     view = database_handler.db.Column(database_handler.db.Text)
@@ -1421,6 +1423,305 @@ class Selection(database_handler.db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+
+    def get_row_start(self) -> datetime.datetime:
+        if type(self.row_start) != datetime.datetime:
+            raise ValueError(f"Recording.row_start is of type {type(self.row_start)}, not datetime.datetime.")
+        return self.row_start
+    
+    def get_row_start_pretty(self):
+        utils.pretty_date(self.get_row_start())
+    
+    def get_created_datetime(self) -> datetime.datetime:
+        if type(self.created_datetime) != datetime.datetime:
+            raise ValueError(f"Recording.created_datetime is of type {type(self.created_datetime)}, not datetime.datetime.")
+        return self.created_datetime
+    
+    def get_created_datetime_pretty(self):
+        return utils.pretty_date(self.get_created_datetime())
+    
+
+    def get_freq_max(self) -> float:
+        return utils.validate_float(self.freq_max, field="freq_max", allow_none = True)
+    def set_freq_max(self, value: float):
+        self.freq_max = utils.validate_float(value, field="freq_max", allow_none = False)
+
+    def get_freq_min(self) -> float:
+        return utils.validate_float(self.freq_min, field="freq_min", allow_none = True)
+    def set_freq_min(self, value: float):
+        self.freq_min = utils.validate_float(value, field="freq_min", allow_none = False)
+
+    def get_duration(self) -> float:
+        return utils.validate_float(self.duration, field="duration", allow_none = True)
+    def set_duration(self, value: float):
+        self.duration = utils.validate_float(value, field="duration", allow_none = False)
+
+    def get_freq_begin(self) -> float:
+        return utils.validate_float(self.freq_begin, field="freq_begin", allow_none = True)
+    def set_freq_begin(self, value: float):
+        self.freq_begin = utils.validate_float(value, field="freq_begin", allow_none = False)
+
+    def get_freq_end(self) -> float:
+        return utils.validate_float(self.freq_end, field="freq_end", allow_none = True)
+    def set_freq_end(self, value: float):
+        self.freq_end = utils.validate_float(value, field="freq_end", allow_none = False)
+
+    def get_freq_range(self) -> float:
+        return utils.validate_float(self.freq_range, field="freq_range", allow_none = True)
+    def set_freq_range(self, value: float):
+        self.freq_range = utils.validate_float(value, field="freq_range", allow_none = False)
+
+    def get_dc_mean(self) -> float:
+        return utils.validate_float(self.dc_mean, field="dc_mean", allow_none = True)
+    def set_dc_mean(self, value: float):
+        self.dc_mean = utils.validate_float(value, field="dc_mean", allow_none = False)
+
+    def get_dc_standarddeviation(self) -> float:
+        return utils.validate_float(self.dc_standarddeviation, field="dc_standarddeviation", allow_none = True)
+    def set_dc_standarddeviation(self, value: float):
+        self.dc_standarddeviation = utils.validate_float(value, field="dc_standarddeviation", allow_none = False)
+
+    def get_freq_mean(self) -> float:
+        return utils.validate_float(self.freq_mean, field="freq_mean", allow_none = True)
+    def set_freq_mean(self, value: float):
+        self.freq_mean = utils.validate_float(value, field="freq_mean", allow_none = False)
+
+    def get_freq_standarddeviation(self) -> float:
+        return utils.validate_float(self.freq_standarddeviation, field="freq_standarddeviation", allow_none = True)
+    def set_freq_standarddeviation(self, value: float):
+        self.freq_standarddeviation = utils.validate_float(value, field="freq_standarddeviation", allow_none = False)
+
+    def get_freq_median(self) -> float:
+        return utils.validate_float(self.freq_median, field="freq_median", allow_none = True)
+    def set_freq_median(self, value: float):
+        self.freq_median = utils.validate_float(value, field="freq_median", allow_none = False)
+
+    def get_freq_center(self) -> float:
+        return utils.validate_float(self.freq_center, field="freq_center", allow_none = True)
+    def set_freq_center(self, value: float):
+        self.freq_center = utils.validate_float(value, field="freq_center", allow_none = False)
+
+    def get_freq_relbw(self) -> float:
+        return utils.validate_float(self.freq_relbw, field="freq_relbw", allow_none = True)
+    def set_freq_relbw(self, value: float):
+        self.freq_relbw = utils.validate_float(value, field="freq_relbw", allow_none = False)
+
+    def get_freq_maxminratio(self) -> float:
+        return utils.validate_float(self.freq_maxminratio, field="freq_maxminratio", allow_none = True)
+    def set_freq_maxminratio(self, value: float):
+        self.freq_maxminratio = utils.validate_float(value, field="freq_maxminratio", allow_none = False)
+
+    def get_freq_begendratio(self) -> float:
+        return utils.validate_float(self.freq_begendratio, field="freq_begendratio", allow_none = True)
+    def set_freq_begendratio(self, value: float):
+        self.freq_begendratio = utils.validate_float(value, field="freq_begendratio", allow_none = False)
+
+    def get_freq_quarter1(self) -> float:
+        return utils.validate_float(self.freq_quarter1, field="freq_quarter1", allow_none = True)
+    def set_freq_quarter1(self, value: float):
+        self.freq_quarter1 = utils.validate_float(value, field="freq_quarter1", allow_none = False)
+
+    def get_freq_quarter2(self) -> float:
+        return utils.validate_float(self.freq_quarter2, field="freq_quarter2", allow_none = True)
+    def set_freq_quarter2(self, value: float):
+        self.freq_quarter2 = utils.validate_float(value, field="freq_quarter2", allow_none = False)
+
+    def get_freq_quarter3(self) -> float:
+        return utils.validate_float(self.freq_quarter3, field="freq_quarter3", allow_none = True)
+    def set_freq_quarter3(self, value: float):
+        self.freq_quarter3 = utils.validate_float(value, field="freq_quarter3", allow_none = False)
+
+    def get_freq_spread(self) -> float:
+        return utils.validate_float(self.freq_spread, field="freq_spread", allow_none = True)
+    def set_freq_spread(self, value: float):
+        self.freq_spread = utils.validate_float(value, field="freq_spread", allow_none = False)
+
+    def get_dc_quarter1mean(self) -> float:
+        return utils.validate_float(self.dc_quarter1mean, field="dc_quarter1mean", allow_none = True)
+    def set_dc_quarter1mean(self, value: float):
+        self.dc_quarter1mean = utils.validate_float(value, field="dc_quarter1mean", allow_none = False)
+
+    def get_dc_quarter2mean(self) -> float:
+        return utils.validate_float(self.dc_quarter2mean, field="dc_quarter2mean", allow_none = True)
+    def set_dc_quarter2mean(self, value: float):
+        self.dc_quarter2mean = utils.validate_float(value, field="dc_quarter2mean", allow_none = False)
+
+    def get_dc_quarter3mean(self) -> float:
+        return utils.validate_float(self.dc_quarter3mean, field="dc_quarter3mean", allow_none = True)
+    def set_dc_quarter3mean(self, value: float):
+        self.dc_quarter3mean = utils.validate_float(value, field="dc_quarter3mean", allow_none = False)
+
+    def get_dc_quarter4mean(self) -> float:
+        return utils.validate_float(self.dc_quarter4mean, field="dc_quarter4mean", allow_none = True)
+    def set_dc_quarter4mean(self, value: float):
+        self.dc_quarter4mean = utils.validate_float(value, field="dc_quarter4mean", allow_none = False)
+
+    def get_freq_cofm(self) -> float:
+        return utils.validate_float(self.freq_cofm, field="freq_cofm", allow_none = True)
+    def set_freq_cofm(self, value: float):
+        self.freq_cofm = utils.validate_float(value, field="freq_cofm", allow_none = False)
+
+    def get_freq_slopemean(self) -> float:
+        return utils.validate_float(self.freq_slopemean, field="freq_slopemean", allow_none = True)
+    def set_freq_slopemean(self, value: float):
+        self.freq_slopemean = utils.validate_float(value, field="freq_slopemean", allow_none = False)
+
+    def get_freq_absslopemean(self) -> float:
+        return utils.validate_float(self.freq_absslopemean, field="freq_absslopemean", allow_none = True)
+    def set_freq_absslopemean(self, value: float):
+        self.freq_absslopemean = utils.validate_float(value, field="freq_absslopemean", allow_none = False)
+
+    def get_freq_posslopemean(self) -> float:
+        return utils.validate_float(self.freq_posslopemean, field="freq_posslopemean", allow_none = True)
+    def set_freq_posslopemean(self, value: float):
+        self.freq_posslopemean = utils.validate_float(value, field="freq_posslopemean", allow_none = False)
+
+    def get_freq_negslopemean(self) -> float:
+        return utils.validate_float(self.freq_negslopemean, field="freq_negslopemean", allow_none = True)
+    def set_freq_negslopemean(self, value: float):
+        self.freq_negslopemean = utils.validate_float(value, field="freq_negslopemean", allow_none = False)
+
+    def get_freq_sloperatio(self) -> float:
+        return utils.validate_float(self.freq_sloperatio, field="freq_sloperatio", allow_none = True)
+    def set_freq_sloperatio(self, value: float):
+        self.freq_sloperatio = utils.validate_float(value, field="freq_sloperatio", allow_none = False)
+
+    def get_freq_sweepuppercent(self) -> float:
+        return utils.validate_float(self.freq_sweepuppercent, field="freq_sweepuppercent", allow_none = True)
+    def set_freq_sweepuppercent(self, value: float):
+        self.freq_sweepuppercent = utils.validate_float(value, field="freq_sweepuppercent", allow_none = False)
+
+    def get_freq_sweepdownpercent(self) -> float:
+        return utils.validate_float(self.freq_sweepdownpercent, field="freq_sweepdownpercent", allow_none = True)
+    def set_freq_sweepdownpercent(self, value: float):
+        self.freq_sweepdownpercent = utils.validate_float(value, field="freq_sweepdownpercent", allow_none = False)
+
+    def get_freq_sweepflatpercent(self) -> float:
+        return utils.validate_float(self.freq_sweepflatpercent, field="freq_sweepflatpercent", allow_none = True)
+    def set_freq_sweepflatpercent(self, value: float):
+        self.freq_sweepflatpercent = utils.validate_float(value, field="freq_sweepflatpercent", allow_none = False)
+
+    def get_inflection_maxdelta(self) -> float:
+        return utils.validate_float(self.inflection_maxdelta, field="inflection_maxdelta", allow_none = True)
+    def set_inflection_maxdelta(self, value: float):
+        self.inflection_maxdelta = utils.validate_float(value, field="inflection_maxdelta", allow_none = False)
+
+    def get_inflection_mindelta(self) -> float:
+        return utils.validate_float(self.inflection_mindelta, field="inflection_mindelta", allow_none = True)
+    def set_inflection_mindelta(self, value: float):
+        self.inflection_mindelta = utils.validate_float(value, field="inflection_mindelta", allow_none = False)
+
+    def get_inflection_maxmindelta(self) -> float:
+        return utils.validate_float(self.inflection_maxmindelta, field="inflection_maxmindelta", allow_none = True)
+    def set_inflection_maxmindelta(self, value: float):
+        self.inflection_maxmindelta = utils.validate_float(value, field="inflection_maxmindelta", allow_none = False)
+
+    def get_inflection_mediandelta(self) -> float:
+        return utils.validate_float(self.inflection_mediandelta, field="inflection_mediandelta", allow_none = True)
+    def set_inflection_mediandelta(self, value: float):
+        self.inflection_mediandelta = utils.validate_float(value, field="inflection_mediandelta", allow_none = False)
+
+    def get_inflection_meandelta(self) -> float:
+        return utils.validate_float(self.inflection_meandelta, field="inflection_meandelta", allow_none = True)
+    def set_inflection_meandelta(self, value: float):
+        self.inflection_meandelta = utils.validate_float(value, field="inflection_meandelta", allow_none = False)
+
+    def get_inflection_standarddeviationdelta(self) -> float:
+        return utils.validate_float(self.inflection_standarddeviationdelta, field="inflection_standarddeviationdelta", allow_none = True)
+    def set_inflection_standarddeviationdelta(self, value: float):
+        self.inflection_standarddeviationdelta = utils.validate_float(value, field="inflection_standarddeviationdelta", allow_none = False)
+
+    def get_inflection_duration(self) -> float:
+        return utils.validate_float(self.inflection_duration, field="inflection_duration", allow_none = True)
+    def set_inflection_duration(self, value: float):
+        self.inflection_duration = utils.validate_float(value, field="inflection_duration", allow_none = False)
+
+    def get_step_duration(self) -> float:
+        return utils.validate_float(self.step_duration, field="step_duration", allow_none = True)
+    def set_step_duration(self, value: float):
+        self.step_duration = utils.validate_float(value, field="step_duration", allow_none = False)
+
+    def get_freq_stepup(self) -> int:
+        return utils.validate_int(self.freq_stepup, field="freq_stepup", allow_none = True)
+    def set_freq_stepup(self, value: int):
+        self.freq_stepup = utils.validate_int(value, field="freq_stepup", allow_none = False)
+
+    def get_freq_stepdown(self) -> int:
+        return utils.validate_int(self.freq_stepdown, field="freq_stepdown", allow_none = True)
+    def set_freq_stepdown(self, value: int):
+        self.freq_stepdown = utils.validate_int(value, field="freq_stepdown", allow_none = False)
+
+    def get_freq_numsteps(self) -> int:
+        return utils.validate_int(self.freq_numsteps, field="freq_numsteps", allow_none = True)
+    def set_freq_numsteps(self, value: int):
+        self.freq_numsteps = utils.validate_int(value, field="freq_numsteps", allow_none = False)
+
+    def get_freq_begsweep(self) -> int:
+        return utils.validate_int(self.freq_begsweep, field="freq_begsweep", allow_none = True)
+    def set_freq_begsweep(self, value: int):
+        self.freq_begsweep = utils.validate_int(value, field="freq_begsweep", allow_none = False)
+
+    def get_freq_begup(self) -> int:
+        return utils.validate_int(self.freq_begup, field="freq_begup", allow_none = True)
+    def set_freq_begup(self, value: int):
+        self.freq_begup = utils.validate_int(value, field="freq_begup", allow_none = False)
+
+    def get_freq_begdown(self) -> int:
+        return utils.validate_int(self.freq_begdown, field="freq_begdown", allow_none = True)
+    def set_freq_begdown(self, value: int):
+        self.freq_begdown = utils.validate_int(value, field="freq_begdown", allow_none = False)
+
+    def get_freq_endsweep(self) -> int:
+        return utils.validate_int(self.freq_endsweep, field="freq_endsweep", allow_none = True)
+    def set_freq_endsweep(self, value: int):
+        self.freq_endsweep = utils.validate_int(value, field="freq_endsweep", allow_none = False)
+
+    def get_freq_endup(self) -> int:
+        return utils.validate_int(self.freq_endup, field="freq_endup", allow_none = True)
+    def set_freq_endup(self, value: int):
+        self.freq_endup = utils.validate_int(value, field="freq_endup", allow_none = False)
+
+    def get_freq_enddown(self) -> int:
+        return utils.validate_int(self.freq_enddown, field="freq_enddown", allow_none = True)
+    def set_freq_enddown(self, value: int):
+        self.freq_enddown = utils.validate_int(value, field="freq_enddown", allow_none = False)
+
+    def get_num_sweepsupdown(self) -> int:
+        return utils.validate_int(self.num_sweepsupdown, field="num_sweepsupdown", allow_none = True)
+    def set_num_sweepsupdown(self, value: int):
+        self.num_sweepsupdown = utils.validate_int(value, field="num_sweepsupdown", allow_none = False)
+
+    def get_num_sweepsdownup(self) -> int:
+        return utils.validate_int(self.num_sweepsdownup, field="num_sweepsdownup", allow_none = True)
+    def set_num_sweepsdownup(self, value: int):
+        self.num_sweepsdownup = utils.validate_int(value, field="num_sweepsdownup", allow_none = False)
+
+    def get_num_sweepsupflat(self) -> int:
+        return utils.validate_int(self.num_sweepsupflat, field="num_sweepsupflat", allow_none = True)
+    def set_num_sweepsupflat(self, value: int):
+        self.num_sweepsupflat = utils.validate_int(value, field="num_sweepsupflat", allow_none = False)
+
+    def get_num_sweepsdownflat(self) -> int:
+        return utils.validate_int(self.num_sweepsdownflat, field="num_sweepsdownflat", allow_none = True)
+    def set_num_sweepsdownflat(self, value: int):
+        self.num_sweepsdownflat = utils.validate_int(value, field="num_sweepsdownflat", allow_none = False)
+
+    def get_num_sweepsflatup(self) -> int:
+        return utils.validate_int(self.num_sweepsflatup, field="num_sweepsflatup", allow_none = True)
+    def set_num_sweepsflatup(self, value: int):
+        self.num_sweepsflatup = utils.validate_int(value, field="test_get_num_sweepsflatup", allow_none = False)
+
+    def get_num_sweepsflatdown(self) -> int:
+        return utils.validate_int(self.num_sweepsflatdown, field="num_sweepsflatdown", allow_none = True)
+    def set_num_sweepsflatdown(self, value: int):
+        self.num_sweepsflatdown = utils.validate_int(value, field="num_sweepsflatdown", allow_none = False)
+
+    def get_num_inflections(self) -> int:
+        return utils.validate_int(self.num_inflections, field="num_inflections", allow_none = True)
+    def set_num_inflections(self, value: int):
+        self.num_inflections = utils.validate_int(value, field="num_inflections", allow_none = False)
+
+
     def get_rounded_value(self, value:int|float, decimal_places:int=3) -> int|float:
         """
         Round a number value to a number of decimal_places. If value is an integer the integer
@@ -1446,33 +1747,24 @@ class Selection(database_handler.db.Model):
             except ValueError as e:
                 raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
 
+    def get_unique_name(self, delimiter: str = "-"):
+        """Generate a unique name for the encounter based on its recording and the selection number.
+        The format of the unique name is `<RECORDING>: Selection <SELECTION_NUMBER>`
+        See `recording.get_unique_name()` for for more information on `<RECORDING>`.
 
-    def recalculate_contour_statistics(self, session):
+        Args:
+            delimiter (str, optional): the delimiter splits values. Defaults to "-".
+
+        Raises:
+            ValueError: if there is no recording associated with this recording
+
+        Returns:
+            str: the unique name (see above for formatting)
         """
-        Recalculate contour statistics for the given selection.
-
-        :param session: The current sqlalchemy session
-        :type session: sqlalchemy.orm.session.Session
-        :param selection: The selection object to recalculate the contour statistics for
-        :type selection: Selection
-        """
-        self.reset_contour_stats()
-        if self.contour_file is not None:
-            try:
-                contour_file_obj = contour_statistics.ContourFile(self.contour_file.get_full_absolute_path(),self.selection_number)
-                contour_rows = contour_file_obj.calculate_statistics(session, self)
-                self.generate_ctr_file(session, contour_rows)
-            except ValueError as e:
-                raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
+        if self.recording == None: raise ValueError("Unable to generate unique name as the encounter does not have a recording.")
+        return f"{self.recording.get_unique_name(delimiter)}: Selection {self.selection_number}"
 
 
-    def get_unique_name(self, delimiter="-"):
-        with database_handler.get_session() as session:
-            recording = database_handler.create_system_time_request(session, Recording, {"id":self.recording_id},one_result=True)
-            return f"{recording.get_unique_name(delimiter)}: selection {self.selection_number}"
-        with database_handler.get_session() as session:
-            recording = database_handler.create_system_time_request(session, Recording, {"id":self.recording_id},one_result=True)
-            return f"{recording.get_unique_name(delimiter)}: selection {self.selection_number}"
 
     def calculate_sampling_rate(self):
         if self.selection_file:
@@ -1485,10 +1777,10 @@ class Selection(database_handler.db.Model):
         self.deactivated = True
 
     def reactivate(self):
-        self.traced = self.update_traced_status()
+        self.traced = None
         self.deactivated = False
 
-    def reset_selection_table_values(self, session):
+    def reset_selection_table_values(self):
         self.view = None
         self.channel = None
         self.begin_time = None
@@ -1505,26 +1797,9 @@ class Selection(database_handler.db.Model):
             self.traced = True
         elif not self.contour_file and (self.annotation == "N"):
             self.traced = False
-        elif self.contour_file:
-            self.traced = True
         else:
             self.traced = None
-
-
-    def getWarnings(self):
-        warnings = []
-        if self.contour_file and self.annotation=="N":
-            warnings.append("Contour file exists but annotated 'N'.")
-        elif not self.contour_file and self.annotation=="Y" or self.annotation=="M":
-            warnings.append(f"Selection annotated '{self.annotation}' but no contour file.")
-        if not self.recording.selection_table_file:
-            warnings.append("No Selection Table file.")
-        ## ADD CHECK THAT SELECTION TABLE HAS BEEN UPLOADED
-        return warnings
-
-    def generate_ctr_file_name(self):
-        return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
-
+            
     def set_selection_file(self, selection_file: File):
         if selection_file.extension != 'wav':
             raise exception_handler.WarningException(f"Selection {self.selection_number} needs to be of type 'wav' but is '{selection_file.extension}'")
@@ -1620,7 +1895,7 @@ class Selection(database_handler.db.Model):
         fig.tight_layout()
 
         # Save the plot as a PNG
-        plot_path = os.path.join(temp_dir, self.generate_plot_filename() + ".png")
+        plot_path = os.path.join(temp_dir, self.generate_plot_file_name() + ".png")
         plt.savefig(plot_path, bbox_inches='tight')
 
         plt.close('all')
@@ -1802,12 +2077,12 @@ class Selection(database_handler.db.Model):
         if self.selection_file is not None:
             with database_handler.get_session() as session:
                 selection_file = session.query(File).with_for_update().get(self.selection_file_id)
-                selection_file.move_file(self.generate_relative_path(),self.generate_selection_filename())
+                selection_file.move_file(self.generate_relative_path(),self.generate_selection_file_name())
                 session.commit()
         if self.contour_file is not None:
             with database_handler.get_session() as session:
                 contour_file = session.query(File).with_for_update().get(self.contour_file_id)
-                contour_file.move_file(self.generate_relative_path(),self.generate_contour_filename())
+                contour_file.move_file(self.generate_relative_path(),self.generate_contour_file_name())
                 session.commit()
         if self.ctr_file is not None:
             with database_handler.get_session() as session:
@@ -1837,19 +2112,26 @@ class Selection(database_handler.db.Model):
                 ctr_file.delete()
                 if not keep_file_reference: self.ctr_file = None
                 session.commit()
+    
+    def generate_plot_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"Plot-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
 
-            
-    def generate_plot_filename(self):
-        return f"Selectionplot-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_plot"
+    def generate_selection_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"Selection-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
 
-    def generate_spectogram_filename(self):
-        return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_spectrogram"
-
-    def generate_selection_filename(self):
-        return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
-
-    def generate_contour_filename(self):
-        return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
+    def generate_contour_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"Contour-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
+    
+    def generate_ctr_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"CTR-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
     
     def generate_relative_path(self):
         return os.path.join(self.recording.generate_relative_path_for_selections())

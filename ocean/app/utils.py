@@ -192,6 +192,16 @@ def validate_float(value: float | str, field=None, allow_none=False) -> float:
         raise exception_handler.WarningException(f"Field '{field}' must be of type float.")
     return float(value)
 
+def validate_int(value: int | str, field=None, allow_none=False) -> int:
+    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    elif type(allow_none) == int and allow_none == 0: return 0
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
+    try:
+        value = int(float(value))
+    except ValueError:
+        raise exception_handler.WarningException(f"Field '{field}' must be of type int.")
+    return int(float(value))
+
 def validate_id(value: str | uuid.UUID, field: str, allow_none: bool=False) -> str:
     """Validate a value is a valid UUID
 
