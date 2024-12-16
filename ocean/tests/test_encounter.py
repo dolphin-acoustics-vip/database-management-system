@@ -1,5 +1,6 @@
 # Standard library imports
 import uuid
+import os
 
 # Third-party libraries
 import pytest
@@ -7,6 +8,7 @@ import pytest
 # Local application imports
 from . import factories
 from . import common
+from ..app import models
 from ..app import exception_handler
 
 EMPTY_CHARACTERS = common.EMPTY_CHARACTERS
@@ -488,6 +490,19 @@ def test_get_recording_platform_id(encounter):
     with pytest.raises(exception_handler.WarningException):
         encounter.get_recording_platform_id()
 
+
+def test_generate_relative_directory(encounter: models.Encounter):
+    encounter.species.species_name = "TestSpecies"
+    encounter.encounter_name = "TestEncounter"
+    encounter.location = "TestLocation"
+    assert encounter.generate_relative_directory() == os.path.join("Species-TestSpecies", "Location-TestLocation", "Encounter-TestEncounter")
+
+def test_generate_relative_directory_invalid_characters(encounter: models.Encounter):
+    for c in ["/","\\","*","?","\"","<",">","|"," "]:
+        encounter.species.species_name = f"Test{c}Species"
+        encounter.encounter_name = f"Test{c}Encounter"
+        encounter.location = f"Test{c}Location"
+        assert encounter.generate_relative_directory() == os.path.join(f"Species-Test_Species", f"Location-Test_Location", f"Encounter-Test_Encounter")
 
 
 # def test_set_species(encounter, session):

@@ -44,14 +44,14 @@ def insert_or_update_recording(session, request, recording: models.Recording):
 
     :return: The Recording object that was inserted or updated
     """
-    
     recording.set_start_time(request.form['time_start'])
+    session.commit()
     # If a recording file has been given, add it to the Recording object
     if 'recording_file_id' in request.form and request.form['recording_file_id'] != "":
         recording_file_id = request.form['recording_file_id']
         recording_filename = request.form['recording_filename']
         recording_file = models.File()
-        recording_file.insert_path_and_filename(session, filespace_handler.get_path_to_temporary_file(recording_file_id, recording_filename), recording.generate_relative_path(), recording.generate_recording_filename())
+        recording_file.insert_path_and_filename(session, filespace_handler.get_path_to_temporary_file(recording_file_id, recording_filename), recording.generate_relative_directory(), recording.generate_recording_file_name())
         filespace_handler.remove_temporary_file(recording_file_id, recording_filename)
         session.add(recording_file)
         recording.recording_file = recording_file
@@ -93,8 +93,8 @@ def recording_selection_table_add(encounter_id,recording_id):
             if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
                 selection_table_file = request.files['selection-table-file'] # required in the POST request
                 # Generate the destination filename and filepath for the selection table
-                new_selection_table_filename = recording.generate_selection_table_filename()
-                new_relative_path = recording.generate_relative_path()
+                new_selection_table_filename = recording.generate_selection_table_file_name()
+                new_relative_path = recording.generate_relative_directory()
                 new_file = models.File()
                 new_file.insert_path_and_filename(session, selection_table_file, new_relative_path, new_selection_table_filename)
                 session.add(new_file)
@@ -180,12 +180,13 @@ def recording_insert(encounter_id: str) -> Response:
     Returns:
         flask.Response: The rendered template for the encounter view page.
     """
-    
+    print("I GOT HERE")
     with database_handler.get_session() as session:
         try:
             recording_obj = models.Recording(encounter_id=encounter_id)
-            insert_or_update_recording(session, request, recording_obj)
+            print("I GOT HERE 2")
             session.add(recording_obj)
+            insert_or_update_recording(session, request, recording_obj)
             session.commit()
             flash(f'Recording inserted for {recording_obj.get_unique_name()}', 'success')
         except (SQLAlchemyError,Exception) as e:
@@ -368,10 +369,11 @@ def recording_delete(encounter_id,recording_id):
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             if recording:
+                unique_name = recording.get_unique_name()
                 recording.delete_children(keep_file_reference=True)
                 session.delete(recording)
                 session.commit()
-                flash(f'Deleted recording: {recording.get_unique_name()}', 'success')
+                flash(f'Deleted recording: {unique_name}', 'success')
         except (Exception,SQLAlchemyError) as e:
             exception_handler.handle_exception(exception=e, session=session)
         return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
@@ -638,7 +640,7 @@ def download_contour_files(recording_id):
 def download_recording_file(recording_id):
     with database_handler.get_session() as session:
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-        return utils.download_file(recording.recording_file, recording.generate_recording_filename)
+        return utils.download_file(recording.recording_file, recording.generate_recording_file_name)
 
     
 @routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['GET'])

@@ -28,6 +28,16 @@ from . import models
 from . import exception_handler
 
 
+# Characters which need to be replaced by an underscore in paths
+INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," "]
+
+def validate(s: str) -> str:
+    from .logger import logger
+    for c in INVALID_CHARACTERS:
+        s = s.replace(c,"_")
+        
+    return s
+
 def format_date_for_filespace(d: datetime.datetime) -> str:
     if not d or type(d) != datetime.datetime: raise exception_handler.ValueError("Date is in the incorrect format.")
     return d.strftime('%Y%m%dT%H%M%S')

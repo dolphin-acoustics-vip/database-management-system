@@ -256,14 +256,10 @@ class Encounter(database_handler.db.Model):
         num_recordings = database_handler.db.session.query(Recording).filter_by(encounter_id=self.id).count()
         return num_recordings
 
-    def generate_relative_path(self):
-        """
-        Generate a relative path for files stored in the file space based on the species, location, and encounter name.
-        This relative path can be used by Recording and Selection to generate their own sub-directories within this path.
-        """
-        species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
-        return os.path.join(f"Species-{species_name.replace(' ', '_')}",f"Location-{self.location.replace(' ', '_')}",f"Encounter-{self.encounter_name.replace(' ', '_')}")
-    
+    def generate_relative_directory(self):
+        from . import filespace_handler
+        return os.path.join(f"Species-{filespace_handler.validate(self.species.species_name)}",f"Location-{filespace_handler.validate(self.location)}",f"Encounter-{filespace_handler.validate(self.encounter_name)}")
+
     def update_call(self):
         """
         Call update_call() in all Recording objects linked to the Encounter object.
@@ -737,22 +733,21 @@ class File(database_handler.db.Model):
         """
         unique_name = str(uuid.uuid4())
         file_name = self.filename
-        trash_file_path = os.path.join(self.get_directory(),file_name + '_' +  unique_name)
-        self.move_file(trash_file_path, move_to_trash=True)
+        self.move_file(self.get_directory(), file_name + '_' +  unique_name, move_to_trash=True)
 
     def delete_file(self):
         if os.path.exists(self.get_full_absolute_path()):
             logger.info(f"Parmanently deleted file {self.get_full_absolute_path()}.")
             os.remove(self.get_full_absolute_path())
 
-    def save_permanently(self, new_relative_file_path):
+    def save_permanently(self, new_directory, new_filename):
         if (self.temp == True and os.path.exists(self.get_full_absolute_path())):
-            self.move_file(new_relative_file_path)
+            self.move_file(new_directory, new_filename)
             self.temp = False
         else:
             raise exception_handler.WarningException(f"An unexpected error ocurred while trying to save the file.")
 
-    def move_file(self, new_relative_file_path, move_to_trash=False, override_extension=None):
+    def move_file(self, new_directory, new_filename, move_to_trash=False, override_extension=None):
         """
         Move a file to a new location with the provided session.
 
@@ -760,8 +755,11 @@ class File(database_handler.db.Model):
         - session: The session object to use for the database transaction
         - new_relative_file_path: The new relative file path to move the file to
         - return: False if the file already exists at the new location, None otherwise
+        
         """
         
+        new_relative_file_path = os.path.join(new_directory, new_filename)
+            
         current_relative_file_path = self.get_full_absolute_path()
         
         if move_to_trash: 
@@ -975,12 +973,12 @@ class Recording(database_handler.db.Model):
         if self.recording_file is not None:
             with database_handler.get_session() as session:
                 recording_file = session.query(File).with_for_update().get(self.recording_file_id)
-                recording_file.move_file(self.generate_full_relative_path())
+                recording_file.move_file(self.generate_relative_directory(), self.generate_recording_file_name())
                 session.commit()
         if self.selection_table_file is not None:
             with database_handler.get_session() as session:
                 selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
-                selection_table_file.move_file(self.generate_full_relative_path())
+                selection_table_file.move_file(self.generate_relative_directory(), self.generate_selection_table_file_name())
                 session.commit()
         
         with database_handler.get_session() as session:
@@ -1083,42 +1081,57 @@ class Recording(database_handler.db.Model):
         and selection table files) will be stored in this directory.
 
         Raises:
-            ValueError: if the recording is missing crucial data (this usually means the database schema is corrupt)
+            ValueError: corrupt database schema (cannot access the metadata required)
 
         Returns:
-            str: the directory (created using os.path.join)
+            str: the directory for the recording (relative, not including the directory of the filespace itself)
         """
         from .filespace_handler import format_date_for_filespace
         if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate relative directory")
-        return os.path.join(self.encounter.generate_relative_path(), f"Recording-{format_date_for_filespace(self.get_start_time())}")
+        return os.path.join(self.encounter.generate_relative_directory(), f"Recording-{format_date_for_filespace(self.get_start_time())}")
 
     def generate_selection_table_file_name(self) -> str:
-        from .filespace_handler import format_date_for_filespace
-        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate recording file name.")
-        return f"SelTable-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{format_date_for_filespace(self.start_time)}"
+        """Generate the file name allocated to the selection table file for this
+        recording in the file space. It is unique based on the metadata of this
+        recording object and the encounter it is a part of.
+        
+        The format of the selection table file name is given below where {} signifies a variable:
+        
+        `SelTable-{species.species_name}-{encounter.location}-{encounter.encounter_name}-{recording.start_time}`
 
+        Raises:
+            ValueError: corrupt database schema (cannot access the metadata required)
+
+        Returns:
+            str: the selection table file name (no extension)
+        """
+        from . import filespace_handler
+        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate recording file name.")
+        return filespace_handler.validate(f"SelTable-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(self.start_time)}")
 
     def generate_recording_file_name(self) -> str:
-        from .filespace_handler import format_date_for_filespace
+        """Generate the file name allocated to the recording file for this
+        recording in the file space. It is unique based on the metadata of this
+        recording object and the encounter it is a part of.
+        
+        The format of the recording file name is given below where {} signifies a variable:
+
+        `Rec-{species.species_name}-{encounter.location}-{encounter.encounter_name}-{recording.start_time}`
+
+        Raises:
+            ValueError: corrupt database schema (cannot access the metadata required)
+
+        Returns:
+            str: the recording file name (no extension)
+        """
+        from . import filespace_handler
         if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate recording file name.")
-        return f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{format_date_for_filespace(self.start_time)}"
+        return filespace_handler.validate(f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(self.start_time)}")
 
     def generate_relative_path_for_selections(self):
         folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
         return os.path.join(self.generate_relative_path(), folder_name)
 
-    def generate_relative_path(self):
-        return self.generate_relative_directory()
-    def generate_recording_filename(self,extension=""):
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"Rec-{encounter.species.species_name}-{encounter.location}-{encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
-
-    def generate_full_relative_path(self,extension=""):
-        return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
-
-    def generate_selection_table_filename(self):
-        return f"Sel-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     def get_start_time(self):
         return self.start_time
 
@@ -1789,17 +1802,17 @@ class Selection(database_handler.db.Model):
         if self.selection_file is not None:
             with database_handler.get_session() as session:
                 selection_file = session.query(File).with_for_update().get(self.selection_file_id)
-                selection_file.move_file(os.path.join(self.generate_relative_path(),self.generate_selection_filename()))
+                selection_file.move_file(self.generate_relative_path(),self.generate_selection_filename())
                 session.commit()
         if self.contour_file is not None:
             with database_handler.get_session() as session:
                 contour_file = session.query(File).with_for_update().get(self.contour_file_id)
-                contour_file.move_file(os.path.join(self.generate_relative_path(),self.generate_contour_filename()))
+                contour_file.move_file(self.generate_relative_path(),self.generate_contour_filename())
                 session.commit()
         if self.ctr_file is not None:
             with database_handler.get_session() as session:
                 ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
-                ctr_file.move_file(os.path.join(self.generate_relative_path(),self.generate_ctr_file_name()))
+                ctr_file.move_file(self.generate_relative_path(),self.generate_ctr_file_name())
                 session.commit()
 
     def delete_children(self,keep_file_reference=True):        
@@ -1839,7 +1852,6 @@ class Selection(database_handler.db.Model):
         return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
     
     def generate_relative_path(self):
-        
         return os.path.join(self.recording.generate_relative_path_for_selections())
 
     def generate_full_relative_path(self):

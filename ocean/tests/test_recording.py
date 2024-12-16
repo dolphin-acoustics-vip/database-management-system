@@ -61,10 +61,10 @@ def test_hasattr_relative_directory(recording: models.Recording):
     assert hasattr(recording, "generate_relative_directory")
 
 def test_hasattr_created_datetime(recording: models.Recording):
-    
     assert hasattr(recording, "created_datetime")
     assert hasattr(recording, "get_created_datetime")
     assert hasattr(recording, "get_created_datetime_pretty")
+
 
 def test_hasattr_getters(recording: models.Recording):
     assert hasattr(recording, "get_start_time")
@@ -392,25 +392,68 @@ def test_update_status(recording: models.Recording):
     # TODO (WITH ASSIGNMENT TESTING)
     pass
 
-def test_generate_relative_directory(recording_with_encounter: models.Recording):
-    recording = recording_with_encounter
-    assert recording_with_encounter.generate_relative_directory() == os.path.join(f"Species-{recording.encounter.species.species_name}", f"Location-{recording.encounter.location}", f"Encounter-{recording.encounter.encounter_name}",f"Recording-{filespace_handler.format_date_for_filespace(recording.start_time)}")
+def test_generate_relative_directory(recording: models.Recording):
+    recording.encounter.species.species_name = f"TestSpecies"
+    recording.encounter.encounter_name = f"TestEncounter"
+    recording.encounter.location = f"TestLocation"
+    recording.start_time = datetime.datetime(2020,8,21,2,54,22)
+    assert recording.generate_relative_directory() == os.path.join(f"Species-TestSpecies", f"Location-TestLocation", f"Encounter-TestEncounter",f"Recording-20200821T025422")
 
-def test_generate_relative_directory_exception(recording_with_encounter: models.Recording):
-    recording_with_encounter.encounter = None
+def test_generate_relative_directory_invalid_characters(recording: models.Recording):
+    for c in ["/","\\","*","?","\"","<",">","|"," "]:
+        recording.encounter.species.species_name = f"Test{c}Species"
+        recording.encounter.encounter_name = f"Test{c}Encounter"
+        recording.encounter.location = f"Test{c}Location"
+        recording.start_time = datetime.datetime(2020,8,21,2,54,22)
+        assert recording.generate_relative_directory() == os.path.join(f"Species-Test_Species", f"Location-Test_Location", f"Encounter-Test_Encounter",f"Recording-20200821T025422")
+
+def test_generate_relative_directory_exception(recording: models.Recording):
+    recording.encounter = None
     with pytest.raises(ValueError):
-        recording_with_encounter.generate_relative_directory()
+        recording.generate_relative_directory()
 
-def test_generate_recording_file_name(recording_with_encounter: models.Recording):
-    recording = recording_with_encounter
-    assert recording_with_encounter.generate_recording_file_name() == f"Rec-{recording.encounter.species.species_name}-{recording.encounter.location}-{recording.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(recording.start_time)}"
+def test_generate_recording_file_name(recording: models.Recording):
+    recording.encounter.species.species_name = f"TestSpecies"
+    recording.encounter.encounter_name = f"TestEncounter"
+    recording.encounter.location = f"TestLocation"
+    recording.start_time = datetime.datetime(2020,8,21,2,54,22)
+    assert recording.generate_recording_file_name() == f"Rec-TestSpecies-TestLocation-TestEncounter-20200821T025422"
+
+def test_generate_recording_file_name_invalid_characters(recording: models.Recording):
+    for c in ["/","\\","*","?","\"","<",">","|"," "]:
+        recording.encounter.species.species_name = f"Test{c}Species"
+        recording.encounter.encounter_name = f"Test{c}Encounter"
+        recording.encounter.location = f"Test{c}Location"
+        recording.start_time = datetime.datetime(2020,8,21,2,54,22)
+        assert recording.generate_recording_file_name() == f"Rec-Test_Species-Test_Location-Test_Encounter-20200821T025422"
+
+def test_ensure_generate_recording_file_name_has_no_invalid_characters(recording: models.Recording):
+    recording.encounter.species.species_name = f"TestSpecies"
+    recording.encounter.encounter_name = f"TestEncounter"
+    recording.encounter.location = f"TestLocation"
+    recording.start_time = datetime.datetime(2020,8,21,2,54,22)
+    for c in recording.generate_recording_file_name():
+        assert c not in ["/","\\","*","?","\"","<",">","|"," "]
 
 def test_generate_selection_table_file_name(recording_with_encounter: models.Recording):
     recording = recording_with_encounter
-    assert recording_with_encounter.generate_recording_file_name() == f"SelTable-{recording.encounter.species.species_name}-{recording.encounter.location}-{recording.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(recording.start_time)}"
+    assert recording_with_encounter.generate_selection_table_file_name() == f"SelTable-{recording.encounter.species.species_name}-{recording.encounter.location}-{recording.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(recording.start_time)}"
     
+def test_generate_selection_table_file_name_invalid_characters(recording: models.Recording):
+    for c in ["/","\\","*","?","\"","<",">","|"," "]:
+        recording.encounter.species.species_name = f"Test{c}Species"
+        recording.encounter.encounter_name = f"Test{c}Encounter"
+        recording.encounter.location = f"Test{c}Location"
+        recording.start_time = datetime.datetime(2020,8,21,2,54,22)
+        assert recording.generate_selection_table_file_name() == f"SelTable-Test_Species-Test_Location-Test_Encounter-20200821T025422"
+
+def test_ensure_generate_selection_table_file_name_has_no_invalid_characters(recording: models.Recording):
+    recording.encounter.species.species_name = f"TestSpecies"
+    recording.encounter.encounter_name = f"TestEncounter"
+    recording.encounter.location = f"TestLocation"
+    recording.start_time = datetime.datetime(2020,8,21,2,54,22)
+    for c in recording.generate_selection_table_file_name():
+        assert c not in ["/","\\","*","?","\"","<",">","|"," "]
+
 # METHODS STILL TO UNIT TEST
 # generate_relative_path_for_selections - THIS NEEDS TO MOVE TO THE Selection MODULE
-# generate_recording_filename
-# generate_full_relative_path
-# generate_selection_table_filename
