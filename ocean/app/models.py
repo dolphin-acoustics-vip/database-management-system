@@ -262,7 +262,7 @@ class Encounter(database_handler.db.Model):
         This relative path can be used by Recording and Selection to generate their own sub-directories within this path.
         """
         species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
-        return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}"
+        return os.path.join(f"Species-{species_name.replace(' ', '_')}",f"Location-{self.location.replace(' ', '_')}",f"Encounter-{self.encounter_name.replace(' ', '_')}")
     
     def update_call(self):
         """
@@ -1023,7 +1023,6 @@ class Recording(database_handler.db.Model):
         
         if 'Selection' not in st_df.columns:
             raise exception_handler.WarningException("Missing required columns: Selection")
-            raise exception_handler.WarningException("Missing required columns: Selection")
 
         selection_table_selection_numbers = st_df.Selection.to_list()
         
@@ -1048,8 +1047,6 @@ class Recording(database_handler.db.Model):
                 if selection_num not in selection_numbers:
                     missing_selections.append({"selection_number":selection_num})
         return missing_selections
-
-        
 
     def delete_children(self, keep_file_reference=False):
         """
@@ -1080,28 +1077,43 @@ class Recording(database_handler.db.Model):
                 session.delete(selection)
                 session.commit()
 
+    def generate_relative_directory(self) -> str:
+        """Generate the relative directory as part of the filespace hierarchy.
+        All files pertaining to this recording (including the recording file
+        and selection table files) will be stored in this directory.
+
+        Raises:
+            ValueError: if the recording is missing crucial data (this usually means the database schema is corrupt)
+
+        Returns:
+            str: the directory (created using os.path.join)
+        """
+        from .filespace_handler import format_date_for_filespace
+        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate relative directory")
+        return os.path.join(self.encounter.generate_relative_path(), f"Recording-{format_date_for_filespace(self.get_start_time())}")
+
+    def generate_selection_table_file_name(self) -> str:
+        from .filespace_handler import format_date_for_filespace
+        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate recording file name.")
+        return f"SelTable-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{format_date_for_filespace(self.start_time)}"
+
+
+    def generate_recording_file_name(self) -> str:
+        from .filespace_handler import format_date_for_filespace
+        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate recording file name.")
+        return f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{format_date_for_filespace(self.start_time)}"
 
     def generate_relative_path_for_selections(self):
         folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
         return os.path.join(self.generate_relative_path(), folder_name)
 
     def generate_relative_path(self):
-        folder_name = self.start_time.strftime("Recording-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return os.path.join(encounter.generate_relative_path(), folder_name)
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return os.path.join(encounter.generate_relative_path(), folder_name)
-
+        return self.generate_relative_directory()
     def generate_recording_filename(self,extension=""):
         with database_handler.get_session() as session:
             encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
             return f"Rec-{encounter.species.species_name}-{encounter.location}-{encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"Rec-{encounter.species.species_name}-{encounter.location}-{encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
-    
+
     def generate_full_relative_path(self,extension=""):
         return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
 

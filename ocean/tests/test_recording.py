@@ -1,6 +1,7 @@
 # Standard library imports
 import uuid
 import datetime
+import os
 
 # Third-party libraries
 import pytest
@@ -11,6 +12,7 @@ from . import common
 from ..app import exception_handler
 from ..app import models
 from ..app import utils
+from ..app import filespace_handler
 
 EMPTY_CHARACTERS = common.EMPTY_CHARACTERS
 DATE_FORMAT = common.DATE_FORMAT
@@ -18,6 +20,27 @@ DATE_FORMAT = common.DATE_FORMAT
 @pytest.fixture
 def recording():
     return factories.RecordingFactory.create()
+
+
+ENCOUNTER_NAME = "EncounterName"
+ENCOUNTER_LOCATION = "EncounterLocation"
+ENCOUNTER_PROJECT = "EncounterProject"
+RECORDING_START_TIME = datetime.datetime(2020,8,21,2,54,22)
+SPECIES_NAME = "SpeciesName"
+
+@pytest.fixture
+def recording_with_encounter():
+    recording = factories.RecordingFactory.create()
+    encounter = factories.EncounterFactory.create()
+    species = factories.SpeciesFactory.create()
+    species.species_name = SPECIES_NAME
+    encounter.encounter_name = ENCOUNTER_NAME
+    encounter.location = ENCOUNTER_LOCATION
+    encounter.project = ENCOUNTER_PROJECT
+    encounter.species = species
+    recording.encounter = encounter
+    recording.start_time = RECORDING_START_TIME
+    return recording
 
 def test_hasattr_updated_by_id(recording: models.Recording):
     """Test if the Encounter object has the updated_by_id attribute"""
@@ -34,7 +57,11 @@ def test_hasattr_row_start(recording: models.Recording):
     assert hasattr(recording, "get_row_start")
     assert hasattr(recording, "get_row_start_pretty")
 
+def test_hasattr_relative_directory(recording: models.Recording):
+    assert hasattr(recording, "generate_relative_directory")
+
 def test_hasattr_created_datetime(recording: models.Recording):
+    
     assert hasattr(recording, "created_datetime")
     assert hasattr(recording, "get_created_datetime")
     assert hasattr(recording, "get_created_datetime_pretty")
@@ -71,38 +98,16 @@ def test_hasattr_other_methods(recording: models.Recording):
     assert hasattr(recording, "get_number_of_contours")
     assert hasattr(recording, "find_missing_selections")
     assert hasattr(recording, "export_selection_table")
+    assert hasattr(recording, "load_and_validate_selection_table")
+    assert hasattr(recording, "unpack_selection_table")
 
-def test_get_unique_name(recording: models.Recording):
-    encounter = factories.EncounterFactory.create()
-    encounter.set_encounter_name("EncounterName")
-    encounter.set_location("EncounterLocation")
-    encounter.set_project("EncounterProject")
-    recording.set_encounter(encounter)
-    start_time = datetime.datetime(2020,8,21,2,54,22)
-    recording.set_start_time(start_time)
+def test_get_unique_name(recording_with_encounter: models.Recording):
     # Note the default delimiter is dash (-)
-    assert recording.get_unique_name() == f"EncounterName-EncounterLocation-EncounterProject-Recording-{utils.pretty_date(start_time)}"
+    assert recording_with_encounter.get_unique_name() == f"{ENCOUNTER_NAME}-{ENCOUNTER_LOCATION}-{ENCOUNTER_PROJECT}-Recording-{utils.pretty_date(RECORDING_START_TIME)}"
 
-def test_get_unique_name_delimiter(recording: models.Recording):
-    encounter = factories.EncounterFactory.create()
-    encounter.set_encounter_name("EncounterName")
-    encounter.set_location("EncounterLocation")
-    encounter.set_project("EncounterProject")
-    recording.set_encounter(encounter)
-    start_time = datetime.datetime(2020,8,21,2,54,22)
-    recording.set_start_time(start_time)
-    assert recording.get_unique_name(delimiter=" ") == f"EncounterName EncounterLocation EncounterProject Recording {utils.pretty_date(start_time)}"
-
-def test_get_unique_name_no_seconds(recording: models.Recording):
-    encounter = factories.EncounterFactory.create()
-    encounter.set_encounter_name("EncounterName")
-    encounter.set_location("EncounterLocation")
-    encounter.set_project("EncounterProject")
-    recording.set_encounter(encounter)
-    start_time = datetime.datetime(2020,8,21,2,54)
-    recording.set_start_time(start_time)
-    assert recording.get_unique_name() == f"EncounterName-EncounterLocation-EncounterProject-Recording-{utils.pretty_date(start_time)}"
-
+def test_get_unique_name_delimiter(recording_with_encounter: models.Recording):
+    assert recording_with_encounter.get_unique_name(" ") == f"{ENCOUNTER_NAME} {ENCOUNTER_LOCATION} {ENCOUNTER_PROJECT} Recording {utils.pretty_date(RECORDING_START_TIME)}"
+    
 def test_set_start_time(recording: models.Recording):
     timestamp = datetime.datetime.now()
     for f in DATE_FORMAT:
@@ -387,11 +392,25 @@ def test_update_status(recording: models.Recording):
     # TODO (WITH ASSIGNMENT TESTING)
     pass
 
+def test_generate_relative_directory(recording_with_encounter: models.Recording):
+    recording = recording_with_encounter
+    assert recording_with_encounter.generate_relative_directory() == os.path.join(f"Species-{recording.encounter.species.species_name}", f"Location-{recording.encounter.location}", f"Encounter-{recording.encounter.encounter_name}",f"Recording-{filespace_handler.format_date_for_filespace(recording.start_time)}")
+
+def test_generate_relative_directory_exception(recording_with_encounter: models.Recording):
+    recording_with_encounter.encounter = None
+    with pytest.raises(ValueError):
+        recording_with_encounter.generate_relative_directory()
+
+def test_generate_recording_file_name(recording_with_encounter: models.Recording):
+    recording = recording_with_encounter
+    assert recording_with_encounter.generate_recording_file_name() == f"Rec-{recording.encounter.species.species_name}-{recording.encounter.location}-{recording.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(recording.start_time)}"
+
+def test_generate_selection_table_file_name(recording_with_encounter: models.Recording):
+    recording = recording_with_encounter
+    assert recording_with_encounter.generate_recording_file_name() == f"SelTable-{recording.encounter.species.species_name}-{recording.encounter.location}-{recording.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(recording.start_time)}"
+    
 # METHODS STILL TO UNIT TEST
-# load_and_validate_selection_table
-# unpack_selection_table
-# generate_relative_path_for_selections
-# generate_relative_path
+# generate_relative_path_for_selections - THIS NEEDS TO MOVE TO THE Selection MODULE
 # generate_recording_filename
 # generate_full_relative_path
 # generate_selection_table_filename
