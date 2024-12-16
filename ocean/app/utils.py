@@ -172,6 +172,12 @@ def validate_longitude(value: float | str | int, field: str, allow_none: bool = 
             raise exception_handler.WarningException(f"Field '{field}' must be between -90 and 90.")
     return value
 
+def validate_string(value: str, field=None, allow_none = False):
+    if not allow_none and (value is None or str(value).strip() == ""): raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    if value is None and allow_none: return None
+    if type(value) != str: raise ValueError(f'Field {field} must be of type str.')
+    value = str(value).strip()
+    return value
 
 def validate_float(value: float | str, field=None, allow_none=False) -> float:
     """

@@ -222,10 +222,69 @@ class DataSource(database_handler.db.Model):
 
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+    
     def __repr__(self):
         return '<DataSource %r>' % self.name
     
+    def set_updated_by_id(self, user_id: uuid.UUID | str):
+        """Set the user ID of the user who is updating the recording.
 
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = utils.validate_id(value=user_id, field="name")
+    
+    def get_name(self) -> str:
+        return self.name if self.name else ""
+
+    def set_name(self, value: str | None):
+        self.name = utils.validate_string(value=value, field="Name", allow_none=True)
+
+    def get_phone_number1(self) -> str:
+        return self.phone_number1 if self.phone_number1 else ""
+
+    def set_phone_number1(self, value: str | None):
+        self.phone_number1 = utils.validate_string(value=value, field="Phone Number 1", allow_none=True)
+
+    def get_phone_number2(self) -> str:
+        return self.phone_number2 if self.phone_number2 else ""
+
+    def set_phone_number2(self, value: str | None):
+        self.phone_number2 = utils.validate_string(value=value, field="Phone Number 2", allow_none=True)
+
+    def get_email1(self) -> str:
+        return self.email1 if self.email1 else ""
+
+    def set_email1(self, value: str | None):
+        self.email1 = utils.validate_string(value=value, field="Email 1", allow_none=True)
+
+    def get_email2(self) -> str:
+        return self.email2 if self.email2 else ""
+
+    def set_email2(self, value: str | None):
+        self.email2 = utils.validate_string(value=value, field="Email 2", allow_none=True)
+
+    def get_address(self) -> str:
+        return self.address if self.address else ""
+
+    def set_address(self, value: str | None):
+        self.address = utils.validate_string(value=value, field="Address", allow_none=True)
+
+    def get_notes(self) -> str:
+        return self.notes if self.notes else ""
+
+    def set_notes(self, value: str | None):
+        self.notes = utils.validate_string(value=value, field="Notes", allow_none=True)
+
+    def get_type(self) -> str:
+        return self.type
+
+    def set_type(self, value: str | None):
+        value = utils.validate_string(value=value, field="Type", allow_none=True)
+        if value is None or value == "": self.type = None
+        elif value.lower() == "person": self.type = "person"
+        elif value.lower() == "organisation": self.type = "organisation"
+        else: raise exception_handler.WarningException("Field 'Type' must either be 'organisation' or 'person' or None.")
 
 class Encounter(database_handler.db.Model):
     __tablename__ = 'encounter'
@@ -1330,14 +1389,7 @@ class Role(database_handler.db.Model):
     id = database_handler.db.Column(database_handler.db.Integer, primary_key=True)
     name = database_handler.db.Column(database_handler.db.String(100))
 
-"""
 
-class RecordingAudit(Audit, Recording, database_handler.db.Model):
-    __tablename__ = 'recording_audit'
-
-    record_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording.id'), nullable=False)
-    record = database_handler.db.relationship("Recording", foreign_keys=[record_id])
-"""
 class Selection(database_handler.db.Model):
     __tablename__ = 'selection'
 
