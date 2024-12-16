@@ -177,13 +177,34 @@ class RecordingPlatform(database_handler.db.Model):
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name
     
-    def set_updated_by_id(self, user_id: str):
+    def get_name(self):
+        """Return the name of the recording platform"""
+        return str(self.name) if self.name is not None else ""
+    
+    def set_name(self, value):
+        """Sets the name of the recording platform. The passed value
+        cannot be an empty string or None as this would violate the
+        database primary key constraint.
+
+        Args:
+            value (str): the value to set
+
+        Raises:
+            exception_handler.WarningException: if an empty string or null is passed
+            ValueError: if a non-string is passed
+        """
+        
+        if (not value) or (value and str(value).strip() == ""): raise exception_handler.WarningException("Field 'name' for recording platform cannot be empty.")
+        if type(value) != str: raise ValueError(f"Field 'name' for RecordingPlatform requires must be a string (for {type(value)}).")
+        self.name = str(value)
+    
+    def set_updated_by_id(self, user_id: uuid.UUID | str):
         """Set the user ID of the user who is updating the recording.
 
         Args:
             user_id (str): The user ID who is updating the recording.
         """
-        self.updated_by_id = user_id
+        self.updated_by_id = utils.validate_id(value=user_id, field="name")
 
 
 class DataSource(database_handler.db.Model):

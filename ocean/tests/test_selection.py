@@ -157,7 +157,6 @@ def test_generate_contour_stats_dict(selection: models.Selection):
     pass
 
 def test_upload_selection_table_data(selection: models.Selection):
-    
     pass
 
 
