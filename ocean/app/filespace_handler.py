@@ -25,6 +25,12 @@ from flask_login import current_user
 # Local application imports
 from . import database_handler
 from . import models
+from . import exception_handler
+
+
+def format_date_for_filespace(d: datetime.datetime) -> str:
+    if not d or type(d) != datetime.datetime: raise exception_handler.ValueError("Date is in the incorrect format.")
+    return d.strftime('%Y%m%dT%H%M%S')
 
 def get_path_to_temporary_file(file_id: str, filename: str):
     """Get the path to a file in the temporary directory based on the file_id and filename.

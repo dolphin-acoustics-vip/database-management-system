@@ -19,7 +19,7 @@
 from io import StringIO
 import os
 import uuid
-from datetime import datetime, timedelta
+import datetime
 
 # Third-party imports
 from flask import Response
@@ -41,33 +41,35 @@ from . import utils
 from .logger import logger
 
 
+
+
 ### UNUSED ###
 SYSTEM_GMT_OFFSET = 0
-def convert_to_gmt_time(system_time: datetime) -> datetime:
+def convert_to_gmt_time(system_time: datetime.datetime) -> datetime.datetime:
     """
     Converts a system time to GMT time by adding the system GMT offset.
     
     Parameters:
-        system_time (datetime): The system time to be converted.
+        system_time (datetime.datetime): The system time to be converted.
     
     Returns:
-        datetime: The GMT time equivalent to the provided system time.
+        datetime.datetime: The GMT time equivalent to the provided system time.
     """
-    gmt_offset = timedelta(hours=SYSTEM_GMT_OFFSET)
+    gmt_offset = datetime.timedelta(hours=SYSTEM_GMT_OFFSET)
     gmt_time = system_time + gmt_offset
     return gmt_time
 
-def convert_from_gmt(gmt_time: datetime) -> datetime:
+def convert_from_gmt(gmt_time: datetime.datetime) -> datetime.datetime:
     """
     Converts a GMT time to a system time by subtracting the system GMT offset.
     
     Parameters:
-        gmt_time (datetime): The GMT time to be converted.
+        gmt_time (datetime.datetime): The GMT time to be converted.
     
     Returns:
-        datetime: The system time equivalent to the provided GMT time.
+        datetime.datetime: The system time equivalent to the provided GMT time.
     """
-    gmt_offset = timedelta(hours=SYSTEM_GMT_OFFSET)
+    gmt_offset = datetime.timedelta(hours=SYSTEM_GMT_OFFSET)
     system_time = gmt_time - gmt_offset
     return system_time
 
@@ -432,12 +434,7 @@ class Encounter(database_handler.db.Model):
         Raises:
             ValueError: when the Species ID is not Null and not in UUID format
         """
-        try:
-            if type(self.species_id) == uuid.UUID: return self.species_id
-            if self.species_id == None: return None
-            return uuid.UUID(str(self.species_id))
-        except Exception as e:
-            raise exception_handler.WarningException(f"Invalid species ID: {e}")
+        return utils.validate_id(value=self.species_id, field="Species", allow_none=True)
         
     def get_data_source_id(self) -> uuid.UUID:
         """ Get the species ID of the recording. Note that if
@@ -448,14 +445,9 @@ class Encounter(database_handler.db.Model):
             uuid.UUID: the species ID
         
         Raises:
-            ValueError: when the Species ID is not Null and not in UUID format
+            WarningException: when the Species ID is not Null and not in UUID format
         """
-        try:
-            if type(self.data_source_id) == uuid.UUID: return self.data_source_id
-            if self.data_source_id == None: return None
-            return uuid.UUID(str(self.data_source_id))
-        except Exception as e:
-            raise exception_handler.WarningException(f"Invalid data source ID: {e}")
+        return utils.validate_id(value=self.data_source_id, field="Data Source", allow_none=True)
 
     def get_recording_platform_id(self) -> uuid.UUID:
         """ Get the species ID of the recording. Note that if
@@ -466,15 +458,9 @@ class Encounter(database_handler.db.Model):
             uuid.UUID: the species ID
         
         Raises:
-            ValueError: when the Species ID is not Null and not in UUID format
+            WarningException: when the Species ID is not Null and not in UUID format
         """
-        try:
-            if type(self.recording_platform_id) == uuid.UUID: return self.recording_platform_id
-            if self.recording_platform_id == None: return None
-            return uuid.UUID(str(self.recording_platform_id))
-        except Exception as e:
-            raise exception_handler.WarningException(f"Invalid recording platform ID: {e}")
-
+        return utils.validate_id(value=self.recording_platform_id, field="Recording Platform", allow_none=True)
 
 
 class File(database_handler.db.Model):
@@ -827,11 +813,9 @@ class Recording(database_handler.db.Model):
 
     id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
     start_time = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False)
-    duration = database_handler.db.Column(database_handler.db.Integer)
     recording_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     selection_table_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     encounter_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('encounter.id'), nullable=False)
-    ignore_selection_table_warnings = database_handler.db.Column(database_handler.db.Boolean, default=False)
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     created_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
     recording_file = database_handler.db.relationship("File", foreign_keys=[recording_file_id])
@@ -849,36 +833,23 @@ class Recording(database_handler.db.Model):
     )
 
     def get_unique_name(self, delimiter="-") -> str:
-        """Get a unique name for the recording based on the encounter and start time.
+        """Generate a unique name for the recording based on its encoutner and the start time.
+        The format of the unique name is `<ENCOUNTER>:<D>Recording<D>'%Y-%m-%dT%H:%M'`
+        See `encounter.get_unique_name()` for for more information on `<ENCOUNTER>`. The
+        delimiter (optional parameter) populates all `<D>`.
 
         Args:
-            delimiter (str, optional): The string to use to separate the variables in the unique name. Defaults to "-".
+            delimiter (str, optional): the delimiter splits values. Defaults to "-".
+
+        Raises:
+            ValueError: if there is no encoutner associated with this recording
 
         Returns:
-            str: The unique name for the recording based on the encounter and start time.
+            str: the unique name (see above for formatting)
         """
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(database_handler.db.session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"{encounter.get_unique_name(delimiter)}: recording {self.start_time}"
-    def get_unique_name(self, delimiter="-") -> str:
-        """Get a unique name for the recording based on the encounter and start time.
+        if self.encounter == None: raise ValueError("Unable to generate unique name as the recording does not have an encounter.")
+        return f"{self.encounter.get_unique_name(delimiter)}{delimiter}Recording{delimiter}{self.get_start_time_pretty()}"
 
-        Args:
-            delimiter (str, optional): The string to use to separate the variables in the unique name. Defaults to "-".
-
-        Returns:
-            str: The unique name for the recording based on the encounter and start time.
-        """
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(database_handler.db.session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"{encounter.get_unique_name(delimiter)}: recording {self.start_time}"
-
-    def is_complete(self) -> bool:
-        """Check if the recording has been reviewed or not.
-
-        Returns:
-            bool: True if the recording has been 'Reviewed' and False if not.
-        """
     def is_complete(self) -> bool:
         """Check if the recording has been reviewed or not.
 
@@ -901,39 +872,48 @@ class Recording(database_handler.db.Model):
         return True if self.status == 'On Hold' else False
 
     def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
+        """Set the user id of the user who is updating the recording.
 
         Args:
             user_id (str): The user ID who is updating the recording.
         """
         self.updated_by_id = user_id
 
-    def __set_status(self, status: str):
+    def set_status_change_datetime(self, value: str | datetime.datetime):
+        """Set the status_change_datetime. Can pass the value as either a
+        formatted string or datetime.datetime object. Note that if passing
+        as a formatted string it must conform to the requirements of `utils.validate_datetime()`
+
+        Args:
+            value (str | datetime.datetime): the value to set
+        """
+        self.status_change_datetime = utils.validate_datetime(value, "Status Change Timestamp")
+
+    def set_status(self, value: str):
         """Set the status of the recording. The status must be one of
-        'Unassigned', 'In Progress', 'Awaiting Review', 'Reviewed', 'On Hold'.
+        `Unassigned`, `In Progress`, `Awaiting Review`, `Reviewed`, `On Hold`.
         This method will automatically update a timestamp of when the status changed.
 
         Args:
             status (str): The new status of the recording.
         """
-    def __set_status(self, status: str):
-        """Set the status of the recording. The status must be one of
-        'Unassigned', 'In Progress', 'Awaiting Review', 'Reviewed', 'On Hold'.
-        This method will automatically update a timestamp of when the status changed.
-
-        Args:
-            status (str): The new status of the recording.
-        """
-        if self.status != status:
-            self.status_change_datetime = datetime.now()
-            self.status_change_datetime = datetime.now()
-        self.status = status
+        if str(value).lower() == "unassigned": new_status = "Unassigned"
+        elif str(value).lower() == "in progress": new_status = "In Progress"
+        elif str(value).lower() == "awaiting review": new_status = "Awaiting Review"
+        elif str(value).lower() == "reviewed": new_status = "Reviewed"
+        elif str(value).lower() == "on hold": new_status = "On Hold"
+        else:
+            raise exception_handler.WarningException("New recording status invalid.")
+        
+        if self.status != new_status:
+            self.set_status_change_datetime(datetime.datetime.now(datetime.timezone.utc))
+            self.status = new_status
 
     def update_status(self):
         """Update the status of the recording based on the assignment flags. 
         If the recording is not 'On Hold' or 'Reviewed', it will be set to 'Awaiting Review'. 
         If any individual user assignment is not completed, the status will be set to 'In Progress' (overrides previous requirement).
-        If the status has changed, the status_change_datetime will be set to the current datetime.
+        If the status has changed, the status_change_datetime will be set to the current datetime.datetime.
         """       
         with database_handler.get_session() as session:
             assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
@@ -949,15 +929,15 @@ class Recording(database_handler.db.Model):
             else:
                 new_status = self.status
 
-            self.__set_status(new_status)
+            self.set_status(new_status)
 
     def set_status_on_hold(self):
         """Set the status of the recording to 'On Hold'."""
-        self.__set_status('On Hold')
+        self.set_status('On Hold')
     
     def set_status_reviewed(self):
         """Set the status of the recording to 'Reviewed'."""
-        self.__set_status('Reviewed')
+        self.set_status('Reviewed')
 
         with database_handler.get_session() as session:
             assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
@@ -973,17 +953,16 @@ class Recording(database_handler.db.Model):
             else:
                 new_status = self.status
 
-            self.__set_status(new_status)
+            self.set_status(new_status)
 
     def set_status_on_hold(self):
         """Set the status of the recording to 'On Hold'."""
-        self.__set_status('On Hold')
+        self.set_status('On Hold')
     
     def set_status_reviewed(self):
         """Set the status of the recording to 'Reviewed'."""
-        self.__set_status('Reviewed')
+        self.set_status('Reviewed')
 
-        
     def get_number_of_selections(self):
         selections = database_handler.create_system_time_request(database_handler.db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         return len(selections)
@@ -1010,8 +989,6 @@ class Recording(database_handler.db.Model):
                 selection.update_call()
             session.commit()
         
-    
-
     def load_and_validate_selection_table(self, custom_file:str=None):
         """
         Parse a selection table file, automatically creating a Selection object for each row
@@ -1133,8 +1110,11 @@ class Recording(database_handler.db.Model):
     def get_start_time(self):
         return self.start_time
 
-    def set_start_time(self, datetime_object: datetime | str):
-        self.start_time = utils.validate_datetime(datetime_object)
+    def get_start_time_pretty(self):
+        return utils.pretty_date(self.get_start_time())
+
+    def set_start_time(self, value: datetime.datetime | str):
+        self.start_time = utils.validate_datetime(value, "Start Time")
 
     def match_start_time(self, match_datetime):
         return self.start_time == match_datetime
@@ -1200,46 +1180,104 @@ class Recording(database_handler.db.Model):
         response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
         
         return response
-    def export_selection_table(self, session, export_format):
-        headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
 
-        selections = database_handler.create_system_time_request(session, Selection, {"recording_id": self.id}, order_by="selection_number", one_result=False)
-        encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
+    def remove_recording_file(self) -> File:
+        """Remove the recording file.
+
+        Returns:
+            File: the removed recording file (or None if nothing changed)
+        """
+        old_recording_file = self.recording_file
+        self.recording_file_id = None
+        self.recording_file = None
+        return old_recording_file
+
+    def set_recording_file_id(self, value: str | uuid.UUID):
+        """ A method to populate the recording_file_id attribute. For safety reasons
+        the function to replace (either with None or a new ID) an existing recording file
+        is disabled. In order to populate the recording_file_id if one already exists
+        please use `remove_recording_file()` first.
+
+        Args:
+            value (str | UUID): the new ID
+
+        Raises:
+            ValueError: the `recording_file_id` is already populated
+            WarningException: if the given ID is not of type UUID or is of type str that cannot be converted to UUID
+        """
+        if self.recording_file_id or self.recording_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        self.recording_file_id = utils.validate_id(value, field="Recording File")
+
+    def set_recording_file(self, value: File):
+        if self.recording_file or self.recording_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        self.recording_file = utils.validate_type(value = value, target_type = File, field = "Recording File")
+
+    def set_encounter_id(self, value: str | uuid.UUID):
+        self.encounter_id = utils.validate_id(value=value, field="Encounter")
+
+    def set_encounter(self, value: Encounter):
+        self.encounter = utils.validate_type(value=value, target_type=Encounter, field="Encounter")
+
+    def set_notes(self, value: str) -> None:
+        """ Set the notes of the recording. If `value` is empty or `None`, set it to `None`.
+        If a non-string `value` is passed, convert it to a string.
+
+        Args:
+            value (str): the new value of notes
+        """
+        if value is not None and str(value).strip() == '': self.notes = None
+        elif value is None: self.notes = None
+        else: self.notes = str(value).strip()
+
+    def get_row_start(self) -> datetime.datetime:
+        if type(self.row_start) != datetime.datetime:
+            raise ValueError(f"Recording.row_start is of type {type(self.row_start)}, not datetime.datetime.")
+        return self.row_start
+    
+    def get_row_start_pretty(self):
+        utils.pretty_date(self.get_row_start())
+    
+    def get_created_datetime(self) -> datetime.datetime:
+        if type(self.created_datetime) != datetime.datetime:
+            raise ValueError(f"Recording.created_datetime is of type {type(self.created_datetime)}, not datetime.datetime.")
+        return self.created_datetime
+    
+    def get_created_datetime_pretty(self):
+        return utils.pretty_date(self.get_created_datetime())
+    
+    def get_recording_file_id(self) -> uuid.UUID | None:
+        """ Get the recording file id in UUID format. Returns None
+        if there is no recording file id.
+
+        Returns:
+            uuid.UUID: the recording file id (or None)
         
-        csv_data = StringIO()
-        if export_format == 'csv':
-            writer = csv.writer(csv_data, delimiter=',')
-        else:
-            writer = csv.writer(csv_data, delimiter='\t')
-        
-        writer.writerow(headers)
-        for selection in selections:
-            writer.writerow([
-                selection.selection_number,
-                selection.view,
-                selection.channel,
-                selection.begin_time,
-                selection.end_time,
-                selection.low_frequency,
-                selection.high_frequency,
-                selection.delta_time,
-                selection.delta_frequency,
-                selection.average_power,
-                selection.annotation
-            ])
+        Raises:
+            WarningException: when a non-Null recording file id is not in UUID format
+        """
+        return utils.validate_id(value=self.recording_file_id, field="Recording File", allow_none=True)
 
-        csv_data.seek(0)
+    def get_recording_file(self) -> File | None:
+        return utils.validate_type(value=self.recording_file, target_type=File, field="Recording File", allow_none=True)
 
-        if export_format == 'csv':
-            mimetype = 'text/csv'
-            file_name = f'selection-table-{encounter.encounter_name}-rec-{self.get_start_time_string()}.csv'
-        else:
-            mimetype = 'text/plain'
-            file_name = f'selection-table-{encounter.encounter_name}-rec-{self.get_start_time_string()}.txt'
+    def get_encounter_id(self) -> str | None:
+        return utils.validate_id(value=self.encounter_id, field="Encounter", allow_none=True)
 
-        response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
-        
-        return response
+    def get_encounter(self) -> Encounter | None:
+        return utils.validate_type(value=self.encounter, target_type=Encounter, field="Encounter", allow_none=True)
+
+    def get_status(self) -> str | None:
+        return str(self.status) if self.status else None
+
+    def get_status_change_datetime(self):
+        return utils.validate_datetime(self.status_change_datetime, field="Status Change Datetime", allow_none=True)
+
+    def get_status_change_datetime_pretty(self):
+        return utils.pretty_date(self.get_status_change_datetime())
+    
+
+    def get_notes(self):
+        return '' if self.notes is None else self.notes
 
 
 class Role(database_handler.db.Model):

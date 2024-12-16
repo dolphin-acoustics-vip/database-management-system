@@ -1,14 +1,19 @@
+# Standard library imports
 import uuid
+
+# Third-party libraries
 import pytest
+
+# Local application imports
 from . import factories
-from .factories import session
-from ..app.logger import logger
+from . import common
 from ..app import exception_handler
 
-EMPTY_CHARACTERS = ["", " ", "\n", "\t"]
+EMPTY_CHARACTERS = common.EMPTY_CHARACTERS
 
 @pytest.fixture
 def encounter():
+    
     return factories.EncounterFactory.create()
 
 def test_hasattr_updated_by_id(encounter):
@@ -153,7 +158,7 @@ def test_set_recording_platform(encounter):
     assert encounter.recording_platform == recording_platform
 
 def test_set_recording_platform_id(encounter):
-    recording_platform_id = uuid.uuid4().hex
+    recording_platform_id = uuid.uuid4()
     encounter.set_recording_platform_id(recording_platform_id)
     assert encounter.recording_platform_id == recording_platform_id
 
@@ -264,16 +269,19 @@ def test_set_species_none(encounter):
         encounter.set_species(None)
 
 def test_set_species_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         data_source = factories.DataSourceFactory.create()
         encounter.set_species(data_source)
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         encounter.set_species(1)
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         encounter.set_species("u8354")
 
 def test_set_species_id(encounter):
-    species_id = uuid.uuid4().hex
+    species_id = uuid.uuid4()
+    encounter.set_species_id(species_id.hex)
+    assert encounter.species_id == species_id
+    encounter.species_id = None
     encounter.set_species_id(species_id)
     assert encounter.species_id == species_id
 
@@ -297,17 +305,20 @@ def test_set_data_source_none(encounter):
     assert encounter.data_source == None
 
 def test_set_data_source_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         data_source = factories.SpeciesFactory.create()
         encounter.set_data_source(data_source)
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         encounter.set_data_source(1)
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         encounter.set_data_source("u8354")
 
 def test_set_data_source_id(encounter):
-    data_source_id = uuid.uuid4().hex
+    data_source_id = uuid.uuid4()
     encounter.set_data_source_id(data_source_id)
+    assert encounter.data_source_id == data_source_id
+    encounter.data_source_id = None
+    encounter.set_data_source_id(data_source_id.hex)
     assert encounter.data_source_id == data_source_id
 
 def test_set_data_source_id_none(encounter):
@@ -330,16 +341,19 @@ def test_set_recording_platform_none(encounter):
     assert encounter.recording_platform == None
 
 def test_set_recording_platform_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         recording_platform = factories.SpeciesFactory.create()
         encounter.set_recording_platform(recording_platform)
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         encounter.set_recording_platform(1)
-    with pytest.raises(exception_handler.WarningException):
+    with pytest.raises(ValueError):
         encounter.set_recording_platform("u8354")
 
 def test_set_recording_platform_id(encounter):
-    recording_platform_id = uuid.uuid4().hex
+    recording_platform_id = uuid.uuid4()
+    encounter.set_recording_platform_id(recording_platform_id.hex)
+    assert encounter.recording_platform_id == recording_platform_id
+    encounter.recording_platform_id = None
     encounter.set_recording_platform_id(recording_platform_id)
     assert encounter.recording_platform_id == recording_platform_id
 

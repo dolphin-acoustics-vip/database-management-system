@@ -84,7 +84,7 @@ def download_file(file_obj, file_name_generator=None):
         return flask.send_file(file_path, as_attachment=True)
 
 
-def validate_datetime(value: datetime.datetime | str, field=None, allow_empty=False) -> datetime.datetime:
+def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bool = False, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> datetime.datetime:
     """
     Parse a datetime (or convertable string) value, returning the parsed datetime
     object. A convertable string is one in the following format
@@ -94,23 +94,30 @@ def validate_datetime(value: datetime.datetime | str, field=None, allow_empty=Fa
     :param value: The datetime value to validate (or convertable string).
     :return: the parsed datetime object.
     """
-
-    if allow_empty and ((type(value) == str and value.strip() == "") or value is None):
-        return None
-
-    msg_sfx = "." if type(value) == str else ""
+    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    elif type(allow_none) == int and allow_none == 0: return 0
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
+    
+    if type(tzinfo) != datetime.timezone:
+        raise ValueError(f"Field '{field}' requires tzinfo to be datetime.tzinfo or a subclass thereof (currently {type(tzinfo)}).")
 
     if type(value) == str:
         try:
-            value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
+            value_naive = datetime.datetime.fromisoformat(value)
+            value_aware = datetime.datetime(value_naive.year, value_naive.month, value_naive.day, value_naive.hour, value_naive.minute, value_naive.second, tzinfo=tzinfo)
         except ValueError:
-            try:
-                value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M')  # Try without seconds
-            except ValueError:
-                raise exception_handler.WarningException(f"Invalid date format{msg_sfx}")
+            raise exception_handler.WarningException(f"Field '{field}' when given value as a string must be in standard ISO format.")
+        except OverflowError:
+            raise exception_handler.WarningException(f"Field '{field}' out of range.")
     elif type(value) != datetime.datetime:
-        raise exception_handler.WarningException(f"Invalid date format{msg_sfx}")
-    return value
+        raise exception_handler.WarningException(f"Field '{field}' must be of type aware datetime.datetime or str")
+    elif value.tzinfo is None:
+        value_naive = value
+        value_aware = datetime.datetime(value_naive.year, value_naive.month, value_naive.day, value_naive.hour, value_naive.minute, value_naive.second, tzinfo=tzinfo)
+    else:
+        value_aware = value
+
+    return value_aware
 
 def validate_latitude(value: float | str | int, field: str, allow_none: bool = False) -> float:
     """ Validate a given value as a latitude. This involves checking whether
@@ -208,7 +215,7 @@ def validate_id(value: str | uuid.UUID, field: str, allow_none: bool=False) -> s
         uuid.UUID(str(value))
     except ValueError:
         raise exception_handler.WarningException(f"Field '{field}' must be a valid UUID.")
-    return str(value)
+    return uuid.UUID(str(value))
 
 def validate_type(value, target_type, field, allow_none=False):
     """Validate the type of a value
@@ -221,14 +228,14 @@ def validate_type(value, target_type, field, allow_none=False):
 
     Raises:
         ValueError: if the value is not of the target type
-        ValueError: if the value is `None` or empty and `allow_none` is False
+        WarningException: if the value is `None` or empty and `allow_none` is False
 
     Returns:
         target_type: the validated value
     """
     if not allow_none and not value: raise exception_handler.WarningException(f"{field} cannot be empty")
     if allow_none and not value: return None
-    if not isinstance(value, target_type): raise exception_handler.WarningException(f"{field} must be of type {target_type}")
+    if not isinstance(value, target_type): raise ValueError(f"{field} must be of type {target_type}")
     return value
         
 
@@ -374,3 +381,11 @@ def parse_string_notempty(value:str, field:str) -> str:
         raise exception_handler.WarningException(f" Field '{field}' cannot be empty.")
     else:
         return str(value).strip()
+
+
+DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M'
+
+def pretty_date(d: datetime.datetime | None, format=DEFAULT_DATE_FORMAT):
+    if not d: return None
+    if type(d) != datetime.datetime: raise ValueError("Attempting to parse datetime object but not in datetime.datetime format.")
+    return d.strftime(format)
