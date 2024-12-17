@@ -54,7 +54,7 @@ def insert_or_update_recording(session, request, recording: models.Recording):
         recording_file.insert_path_and_filename(session, filespace_handler.get_path_to_temporary_file(recording_file_id, recording_filename), recording.generate_relative_directory(), recording.generate_recording_file_name())
         filespace_handler.remove_temporary_file(recording_file_id, recording_filename)
         session.add(recording_file)
-        recording.recording_file = recording_file
+        recording.set_recording_file(recording_file)
     filespace_handler.clean_filespace_temp()
     return recording
 

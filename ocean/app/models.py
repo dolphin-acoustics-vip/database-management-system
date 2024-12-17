@@ -1243,7 +1243,7 @@ class Recording(database_handler.db.Model):
     def reset_selection_table_values(self,session):
         selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         for selection in selections:
-            selection.reset_selection_table_values(session)
+            selection.reset_selection_table_values()
 
     def export_selection_table(self, session, export_format):
         headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
