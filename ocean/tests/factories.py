@@ -119,3 +119,11 @@ class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     login_id = factory.Faker('email')
     name = factory.Faker('name')
     is_active = True
+    
+class AssignmentFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = models.Assignment
+        sqlalchemy_session = Session
+    
+    completed_flag = False
+    

@@ -2336,13 +2336,52 @@ class Assignment(database_handler.db.Model):
     def set_recording_id(self, recording_id: str):
         self.recording_id = recording_id
 
-    def set_user_id(self, user_id: str):
-        self.user_id = user_id
-    
-    def set_recording_id(self, recording_id: str):
-        self.recording_id = recording_id
-
     def is_complete(self):
         return "Yes" if self.completed_flag else "No"
     
+    def get_completed_flag(self):
+        return self.completed_flag
 
+    def set_complete(self):
+        self.completed_flag = True
+    
+    def set_incomplete(self):
+        self.completed_flag = False
+    
+    def get_row_start(self):
+        return self.row_start
+    
+    def get_row_start_pretty(self):
+        return utils.pretty_date(self.get_row_start())
+    
+    def get_created_datetime(self):
+        return self.created_datetime
+    
+    def get_created_datetime_pretty(self):
+        return utils.pretty_date(self.get_created_datetime())
+
+    def get_user_id(self) -> uuid.UUID:
+        return utils.validate_id(value=self.user_id, field="User", allow_none=True)
+
+    def set_user_id(self, value: str | uuid.UUID):
+        self.user_id = utils.validate_id(value=value, field="User", allow_none=False)
+    
+    def get_user(self) -> User:
+        return self.user
+    
+    def set_user(self, value: User):
+        self.user = utils.validate_type(value=value, target_type=User, field="User", allow_none=False)
+
+    def get_recording_id(self) -> uuid.UUID:
+        return utils.validate_id(value=self.recording_id, field="Recording", allow_none=True)
+
+    def set_recording_id(self, value: str | uuid.UUID):
+        self.recording_id = utils.validate_id(value=value, field="Recording", allow_none=False)
+    
+    def get_recording(self) -> Recording:
+        return self.recording
+    
+    def set_recording(self, value: Recording):
+        self.recording = utils.validate_type(value=value, target_type=Recording, field="Recording", allow_none=False)
+    
+    

@@ -65,7 +65,6 @@ def test_hasattr_created_datetime(recording: models.Recording):
     assert hasattr(recording, "get_created_datetime")
     assert hasattr(recording, "get_created_datetime_pretty")
 
-
 def test_hasattr_getters(recording: models.Recording):
     assert hasattr(recording, "get_start_time")
     assert hasattr(recording, "get_recording_file_id")
