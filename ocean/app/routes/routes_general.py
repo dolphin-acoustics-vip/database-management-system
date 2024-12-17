@@ -207,7 +207,6 @@ def search_users():
                 models.User.name.ilike(f'%{search_term}%'),
                 models.User.login_id.ilike(f'%{search_term}%')
             ),
-            models.User.is_temporary == False
         ).all()
         user_list = [{'id': user.id, 'name': user.name, 'login_id': user.login_id} for user in users]
         return jsonify({'users': user_list})

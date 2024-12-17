@@ -102,10 +102,10 @@ def test_hasattr_other_methods(recording: models.Recording):
 
 def test_get_unique_name(recording_with_encounter: models.Recording):
     # Note the default delimiter is dash (-)
-    assert recording_with_encounter.get_unique_name() == f"{ENCOUNTER_NAME}-{ENCOUNTER_LOCATION}-{ENCOUNTER_PROJECT}-Recording-{utils.pretty_date(RECORDING_START_TIME)}"
+    assert recording_with_encounter.get_unique_name() == f"Encounter: {ENCOUNTER_NAME}-{ENCOUNTER_LOCATION}-{ENCOUNTER_PROJECT}, Recording: {utils.pretty_date(RECORDING_START_TIME)}"
 
 def test_get_unique_name_delimiter(recording_with_encounter: models.Recording):
-    assert recording_with_encounter.get_unique_name(" ") == f"{ENCOUNTER_NAME} {ENCOUNTER_LOCATION} {ENCOUNTER_PROJECT} Recording {utils.pretty_date(RECORDING_START_TIME)}"
+    assert recording_with_encounter.get_unique_name() == f"Encounter: {ENCOUNTER_NAME}-{ENCOUNTER_LOCATION}-{ENCOUNTER_PROJECT}, Recording: {utils.pretty_date(RECORDING_START_TIME)}"
     
 def test_set_start_time(recording: models.Recording):
     timestamp = datetime.datetime.now()

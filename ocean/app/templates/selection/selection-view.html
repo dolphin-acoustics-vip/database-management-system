@@ -86,7 +86,7 @@
                 href="{{url_for('selection.download_selection_file', selection_id = selection.id )}}">Download
                 Selection File</a>
             <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name(' - ') }}&redirect_link={{ request.referrer }}">See
+                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name() }}&redirect_link={{ request.referrer }}">See
                 Selection File Details</a>
             {% else %}
             <p style="margin-right:10px;">This selection has no selection file.</p>
@@ -96,7 +96,7 @@
                 href="{{url_for('selection.download_contour_file', selection_id = selection.id )}}">Download
                 Contour File</a>
             <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name(' - ')}}">See
+                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name()}}">See
                 Contour File Details</a>
 
             <a alt="Re-generate CTR file and re-calculate contour statistics" class="button small"

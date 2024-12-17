@@ -431,9 +431,8 @@ def admin_user():
     METHODS: GET.
     """
     with database_handler.get_session() as session:
-        users = session.query(models.User).filter_by(is_temporary=0).order_by(models.User.is_active.desc()).all()
-        temporary_users = session.query(models.User).filter_by(is_temporary=1).order_by(models.User.is_active.desc()).all()
-        return render_template('admin/admin-user.html', users=users, temporary_users=temporary_users)
+        users = session.query(models.User).order_by(models.User.is_active.desc()).all()
+        return render_template('admin/admin-user.html', users=users)
     
     
 @routes_admin.route('/admin/user/<user_id>/view', methods=['GET'])
@@ -587,7 +586,7 @@ def admin_temporary_user_insert():
     with database_handler.get_session() as session:
         user = models.User()
         session.add(user)
-        return update_or_insert_user(session, user, request, login_id=uuid.uuid4(), is_temporary=True, role_id=4)
+        return update_or_insert_user(session, user, request, login_id=uuid.uuid4(), role_id=4)
 
 @routes_admin.route('/admin/temporary-user/<user_id>/view', methods=['GET'])
 @database_handler.exclude_role_4
@@ -617,4 +616,4 @@ def admin_temporary_user_update(user_id):
     """
     with database_handler.get_session() as session:
         user = session.query(models.User).filter_by(id=user_id).first()
-        return update_or_insert_user(session, user, request, login_id=user.login_id, is_temporary=True, role_id=4)
+        return update_or_insert_user(session, user, request, login_id=user.login_id, role_id=4)

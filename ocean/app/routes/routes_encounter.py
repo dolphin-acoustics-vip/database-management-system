@@ -108,8 +108,8 @@ def encounter_insert():
 
             session.add(new_encounter)
             session.commit()
-            flash(f'Encounter added: {encounter_name}', 'success')
-            logger.info(f'Encounter added: {new_encounter.id}')
+            flash(f'Inserted {new_encounter.get_unique_name()}.', 'success')
+            logger.info(f'Inserted {new_encounter.get_unique_name()}.')
             return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
         except (Exception,SQLAlchemyError) as e:
             exception_handler.handle_exception(exception=e, prefix='Error inserting encounter', session=session)
@@ -175,8 +175,8 @@ def encounter_update(encounter_id):
             encounter.set_local_timezone(request.form['local-timezone'])
             session.commit()
             encounter.update_call()
-            flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
-            logger.info(f'Encounter updated: {encounter.id}')
+            flash('Updated {}.'.format(encounter.get_unique_name()), 'success')
+            logger.info(f'Updated {encounter.id}.')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session)
@@ -196,11 +196,12 @@ def encounter_delete(encounter_id):
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         else:
             try:
+                unique_name = encounter.get_unique_name()
                 encounter.delete_children()
                 session.delete(encounter)
                 session.commit()
-                logger.info(f'Encounter deleted: {encounter.id}')
-                flash(f'Encounter deleted: {encounter.get_unique_name("-")}.', 'success')
+                logger.info(f'Deleted {unique_name}.')
+                flash(f'Deleted {unique_name}.', 'success')
             except (SQLAlchemyError,Exception) as e:
                 exception_handler.handle_exception(exception=e, prefix='Error deleting encounter', session=session)
             return redirect(url_for('encounter.encounter'))

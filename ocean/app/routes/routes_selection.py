@@ -190,14 +190,14 @@ def process_contour():
             messages.append("<span style='color: red;'>Could not cross-reference selection number.</span>")
             valid = False
         
-        date = database_handler.parse_date(filename)
         # Check if the selection start time matches that of its recording
         recording = session.query(models.Recording).filter(database_handler.db.text("id = :recording_id")).params(recording_id=recording_id).first()
-        if not recording.match_start_time(date):
+        date = utils.parse_date(filename)
+        if not date:
+            messages.append("<span style='color: orange;'>Warning: no start time.</span>")            
+        elif not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
-        else:
-            messages.append("<span style='color: orange;'>Warning: no start time.</span>")
-    
+            
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
 @routes_selection.route('/process_selection', methods=['GET'])
@@ -273,11 +273,12 @@ def process_selection():
 
         # Check if the selection start time matches that of its recording
         recording = session.query(models.Recording).filter(database_handler.db.text("id = :recording_id")).params(recording_id=recording_id).first()
-        date = database_handler.parse_date(filename)
-        if not recording.match_start_time(date):
+        date = utils.parse_date(filename)
+        if not date:
+            messages.append("<span style='color: orange;'>Warning: no start time.</span>")            
+        elif not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
-        else:
-            messages.append("<span style='color: orange;'>Warning: no start time.</span>")
+            
 
     print(jsonify(id=selection_number,messages=messages,valid=valid))
     return jsonify(id=selection_number,messages=messages,valid=valid)

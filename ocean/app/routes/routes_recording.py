@@ -58,7 +58,6 @@ def insert_or_update_recording(session, request, recording: models.Recording):
     filespace_handler.clean_filespace_temp()
     return recording
 
-
 @routes_recording.route('/recording/<recording_id>/refresh-selection-table', methods=['POST'])
 def refresh_selection_table(recording_id):
     with database_handler.get_session() as session:
@@ -136,7 +135,6 @@ def export_selection_table(recording_id, export_format):
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
 @routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
-@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_4
 @login_required
@@ -159,7 +157,7 @@ def recording_selection_table_delete(recording_id: str) -> Response:
             recording.selection_table_file = None
             session.commit()
             recording.update_selection_traced_status()
-            flash(f'Selection table deleted for {recording.get_unique_name()}', 'success')
+            flash(f'Deleted selection table from {recording.get_unique_name()}.', 'success')
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(exception=e, session=session)
         finally:
@@ -184,11 +182,10 @@ def recording_insert(encounter_id: str) -> Response:
     with database_handler.get_session() as session:
         try:
             recording_obj = models.Recording(encounter_id=encounter_id)
-            print("I GOT HERE 2")
             session.add(recording_obj)
             insert_or_update_recording(session, request, recording_obj)
             session.commit()
-            flash(f'Recording inserted for {recording_obj.get_unique_name()}', 'success')
+            flash(f'Inserted {recording_obj.get_unique_name()}.', 'success')
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(exception=e, prefix="Error inserting recording", session=session)
         finally:
@@ -349,7 +346,7 @@ def recording_update(recording_id):
             recording_obj = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
             insert_or_update_recording(session, request, recording_obj)
             session.commit()
-            flash(f'Recording updated for {recording_obj.get_unique_name()}', 'success')
+            flash(f'Updated {recording_obj.get_unique_name()}.', 'success')
             recording_obj.update_call()
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (SQLAlchemyError,Exception) as e:
@@ -373,7 +370,7 @@ def recording_delete(encounter_id,recording_id):
                 recording.delete_children(keep_file_reference=True)
                 session.delete(recording)
                 session.commit()
-                flash(f'Deleted recording: {unique_name}', 'success')
+                flash(f'Deleted {unique_name}.', 'success')
         except (Exception,SQLAlchemyError) as e:
             exception_handler.handle_exception(exception=e, session=session)
         return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
@@ -396,7 +393,7 @@ def recording_file_delete(recording_id,file_id):
             file = session.query(models.File).filter_by(id=file_id).first()
             file.delete()
             session.commit()
-            flash(f'Deleted recording file for {recording.get_unique_name()}', 'success')
+            flash(f'Deleted recording file from {recording.get_unique_name()}.', 'success')
         except (Exception,SQLAlchemyError) as e:
             exception_handler.handle_exception(exception=e, session=session)
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
@@ -432,7 +429,7 @@ def recording_delete_selections():
                 counter += 1
             except (SQLAlchemyError,Exception) as e:
                 exception_handler.handle_exception(exception=e,prefix="Error deleting selection", session=session)
-        flash(f'Deleted {counter} selections', 'success')
+        flash(f'Deleted {counter} selections.', 'success')
         return jsonify({'message': 'Bulk delete completed'}), 200
 
 

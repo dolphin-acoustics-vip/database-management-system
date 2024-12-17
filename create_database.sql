@@ -400,7 +400,6 @@ CREATE TABLE `user` (
   `role_id` int(11) NOT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `expiry` date DEFAULT (curdate() + interval 1 year),
-  `is_temporary` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `login_id` (`login_id`),
   KEY `role_id` (`role_id`),

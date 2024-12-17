@@ -404,4 +404,39 @@ DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M'
 def pretty_date(d: datetime.datetime | None, format=DEFAULT_DATE_FORMAT):
     if not d: return None
     if type(d) != datetime.datetime: raise ValueError("Attempting to parse datetime object but not in datetime.datetime format.")
-    return d.strftime(format)
+    return d.ctime()
+
+
+def parse_date(date_string: str) -> datetime.datetime:
+    """
+    This function takes a string and attempts to parse it as a date. This method is used 
+    wherever it is necessary to read a date from a filename.
+    The date can be in two formats:
+    - yyyymmdd_HHMMSS
+    - yymmdd-HHMMSS
+    
+    :param date_string: The string to parse as a date
+    :type date_string: str
+    :return: The parsed date
+    """
+    import re
+    date = None
+    match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
+    if not match:
+        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
+        if not match:
+            match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+            if not match:
+                match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                if not match:
+                    return None
+    if len(match.group(1)) == 2: year = int("20" + match.group(1))
+    else: year = int(match.group(1))
+    month = int(match.group(2))
+    day = int(match.group(3))
+    hour = int(match.group(4))
+    minute = int(match.group(5))
+    second = int(match.group(6))
+    date = datetime.datetime(year, month, day, hour, minute, second)
+    print(date)
+    return date

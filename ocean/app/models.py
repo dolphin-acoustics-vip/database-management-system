@@ -317,17 +317,8 @@ class Encounter(database_handler.db.Model):
         """
         self.updated_by_id = user_id
 
-    def get_unique_name(self, delimiter='-'):
-        """
-        Generate a unique name using encounter_name, location and project which are defined in
-        the schema as a unique constraint. The name is of the format:
-
-        'Encounter {encounter_name}-{location}-{project}', where - can be replaced by any delimiter.
-
-        :param delimiter: the delimiter used to separate unique variables
-        :type delimiter: str
-        """
-        return f"{self.encounter_name}{delimiter}{self.location}{delimiter}{self.project}"
+    def get_unique_name(self):
+        return f"Encounter: {self.encounter_name}-{self.location}-{self.project}"
 
     def get_number_of_recordings(self):
         """
@@ -704,6 +695,7 @@ class File(database_handler.db.Model):
         self.filename=new_filename
         self.extension=new_extension
         self.verify_hash()
+        session.commit()
     
 
     def rename_loose_file(self,loose_file_directory:str, loose_file_name:str, loose_file_extension:str) -> None:
@@ -801,6 +793,7 @@ class File(database_handler.db.Model):
 
         logger.info(f"Saved file to {destination_path}.")
         self.verify_hash()
+        session.commit()
         from .filespace_handler import clean_filespace_temp
         clean_filespace_temp()
 
@@ -910,23 +903,9 @@ class Recording(database_handler.db.Model):
         database_handler.db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
-    def get_unique_name(self, delimiter="-") -> str:
-        """Generate a unique name for the recording based on its encounter and the start time.
-        The format of the unique name is `<ENCOUNTER>:<D>Recording<D>'%Y-%m-%dT%H:%M'`
-        See `encounter.get_unique_name()` for for more information on `<ENCOUNTER>`. The
-        delimiter (optional parameter) populates all `<D>`.
-
-        Args:
-            delimiter (str, optional): the delimiter splits values. Defaults to "-".
-
-        Raises:
-            ValueError: if there is no encounter associated with this recording
-
-        Returns:
-            str: the unique name (see above for formatting)
-        """
+    def get_unique_name(self) -> str:
         if self.encounter == None: raise ValueError("Unable to generate unique name as the recording does not have an encounter.")
-        return f"{self.encounter.get_unique_name(delimiter)}{delimiter}Recording{delimiter}{self.get_start_time_pretty()}"
+        return f"{self.encounter.get_unique_name()}, Recording: {self.get_start_time_pretty()}"
 
     def is_complete(self) -> bool:
         """Check if the recording has been reviewed or not.
@@ -1929,7 +1908,7 @@ class Selection(database_handler.db.Model):
             except ValueError as e:
                 raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
 
-    def get_unique_name(self, delimiter: str = "-"):
+    def get_unique_name(self):
         """Generate a unique name for the encounter based on its recording and the selection number.
         The format of the unique name is `<RECORDING>: Selection <SELECTION_NUMBER>`
         See `recording.get_unique_name()` for for more information on `<RECORDING>`.
@@ -1944,7 +1923,7 @@ class Selection(database_handler.db.Model):
             str: the unique name (see above for formatting)
         """
         if self.recording == None: raise ValueError("Unable to generate unique name as the encounter does not have a recording.")
-        return f"{self.recording.get_unique_name(delimiter)}: Selection {self.selection_number}"
+        return f"{self.recording.get_unique_name()}, Selection: {self.selection_number}"
 
 
 

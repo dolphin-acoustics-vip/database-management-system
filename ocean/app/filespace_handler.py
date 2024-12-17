@@ -165,7 +165,7 @@ def get_orphaned_files(session, deleted: bool, temp: bool) -> list:
     :param temp: whether to query temporary files
     :return: a list of dictionaries of orphaned files where the key is the models.File.id and the value is the models.File object
     """
-
+    # TODO: REMOVE ABSOLUTE PATHS FROM HERE
     orphaned_files = []
     root_path = database_handler.get_root_directory(deleted, temp)
     for root, dirs, files in os.walk(root_path):

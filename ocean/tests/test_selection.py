@@ -3,6 +3,7 @@ import pytest
 from . import factories
 from ..app import models
 from ..app import exception_handler
+from ..app import utils
 from . import common
 import uuid
 
@@ -23,6 +24,7 @@ def test_hasattr_delete_children(selection: models.Selection):
     assert hasattr(selection, "delete_children") == True    
 
 def test_hasattr_row_start(selection: models.Selection):
+    
     assert hasattr(selection, "row_start")
     assert hasattr(selection, "get_row_start")
     assert hasattr(selection, "get_row_start_pretty")
@@ -401,7 +403,7 @@ def test_get_unique_name(selection: models.Selection):
     selection.recording.encounter.project = "TestProject"
     selection.recording.start_time = datetime.datetime(2020,8,21,2,54,22)
     selection.selection_number = 1
-    assert selection.get_unique_name() == f"TestEncounter-TestLocation-TestProject-Recording-2020-08-21T02:54: Selection 1"
+    assert selection.get_unique_name() == f"Encounter: TestEncounter-TestLocation-TestProject, Recording: {utils.pretty_date(selection.recording.start_time)}, Selection: 1"
 
 def test_deactivate(selection: models.Selection):
     selection.traced = True

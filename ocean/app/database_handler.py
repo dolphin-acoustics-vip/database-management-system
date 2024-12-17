@@ -571,25 +571,22 @@ def parse_date(date_string: str) -> datetime:
     import re
     date = None
     match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
-    if match:
-        year = match.group(1)
-        month = match.group(2)
-        day = match.group(3)
-        hour = match.group(4)
-        minute = match.group(5)
-        second = match.group(6)
-        date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
-        date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
     if not match:
         match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
-        if match:
-            year = match.group(1)
-            month = match.group(2)
-            day = match.group(3)
-            hour = match.group(4)
-            minute = match.group(5)
-            second = match.group(6)
-            date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
-            date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
+        if not match:
+            match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+            if not match:
+                match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                if not match:
+                    return None
+
+    year = match.group(1)
+    month = match.group(2)
+    day = match.group(3)
+    hour = match.group(4)
+    minute = match.group(5)
+    second = match.group(6)
+    date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+    date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
 
     return date

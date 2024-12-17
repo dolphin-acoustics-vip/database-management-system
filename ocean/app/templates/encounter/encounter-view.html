@@ -12,12 +12,12 @@ Variables required:
 {% include 'partials/header.html' %}
 
 <head>
-  <title>Edit Encounter: {{ encounter.get_unique_name(' - ') }}</title>
+  <title>Edit Encounter: {{ encounter.get_unique_name() }}</title>
 </head>
 
 <body>
   <div class="outer-div">
-    <h1>Encounter: {{ encounter.get_unique_name(' - ') }}</h1>
+    <h1>Encounter: {{ encounter.get_unique_name() }}</h1>
 
     <!-- Encounter Summary -->
     <section id="encounter-summary">
@@ -42,7 +42,7 @@ Variables required:
       {% if not session['snapshot_date'] %}
       <a title="Edit the encounter" class="button"
         href="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">Edit Encounter: {{
-        encounter.get_unique_name(' - ') }}</a>
+        encounter.get_unique_name() }}</a>
       {% endif %}
 
       <div class="audit-history">
@@ -132,7 +132,7 @@ Variables required:
       <button class="gray small" id="delete-encounter-button"
         title="Delete the entire encounter. All recordings in the encounter must be deleted before proceeding."
         type="button" style="margin-top: 1rem;" class="delete-button" data-encounter-id="{{ encounter.id }}"
-        delete-info="{{encounter.get_unique_name('-')}}">Delete Encounter</button>
+        delete-info="{{encounter.get_unique_name()}}">Delete Encounter</button>
     </form>
     </section>
     {% endif %}
