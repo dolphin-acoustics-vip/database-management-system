@@ -93,7 +93,7 @@ def test_set_recording_id_wrong_type(assignment: models.Assignment):
     with pytest.raises(exception_handler.WarningException):
         assignment.set_recording_id("this-is-not-a-uuid")
 
-def test_set_user(assignment: models.Assignment):
+def test_set_recording(assignment: models.Assignment):
     recording = factories.RecordingFactory.create()
     assignment.set_recording(recording)
     assert assignment.recording == recording

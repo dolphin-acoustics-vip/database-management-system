@@ -1210,7 +1210,7 @@ class Recording(database_handler.db.Model):
 
     def generate_relative_path_for_selections(self):
         folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
-        return os.path.join(self.generate_relative_path(), folder_name)
+        return os.path.join(self.generate_relative_directory(), folder_name)
 
     def get_start_time(self):
         return self.start_time
@@ -1408,8 +1408,6 @@ class Selection(database_handler.db.Model):
     recording_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     ctr_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
-    spectogram_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
-    plot_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     sampling_rate = database_handler.db.Column(database_handler.db.Float, nullable=False)
     traced = database_handler.db.Column(database_handler.db.Boolean, nullable=True, default=None)
     deactivated = database_handler.db.Column(database_handler.db.Boolean, nullable=True, default=False)
@@ -1493,8 +1491,6 @@ class Selection(database_handler.db.Model):
     selection_file = database_handler.db.relationship("File", foreign_keys=[selection_file_id])
     recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])
     ctr_file = database_handler.db.relationship("File", foreign_keys=[ctr_file_id])
-    spectogram_file = database_handler.db.relationship("File", foreign_keys=[spectogram_file_id])
-    plot_file = database_handler.db.relationship("File", foreign_keys=[plot_file_id])
     
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
@@ -1505,6 +1501,68 @@ class Selection(database_handler.db.Model):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+
+    def get_selection_number(self) -> int:
+        return utils.validate_int(value=self.selection_number, field="Selection Number", allow_none=False)
+    
+    def get_selection_file_id(self) -> uuid.UUID | None:
+        return utils.validate_id(value=self.selection_file_id, field="Selection File", allow_none=True)
+    
+    def set_selection_file_id(self, value: str | uuid.UUID):
+        """WARNING: this method will not automatically calculate sampling rate. It is recommended to
+        use `set_selection_file` instead.
+        """
+        if self.selection_file_id or self.selection_file_id: raise ValueError('Please delete the existing selection file before inserting a new one.')
+        self.selection_file_id = utils.validate_id(value, field="Selection File")
+
+    def set_selection_file(self, value: File):
+        if self.selection_file or self.selection_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        value = utils.validate_type(value = value, target_type = File, field = "Selection File")
+        if value.extension != 'wav':
+            raise exception_handler.WarningException(f"Selection {self.selection_number} needs to be of type 'wav' but is '{value.extension}'")
+        self.selection_file = value
+        try:
+            self.calculate_sampling_rate()
+        except Exception:
+            pass
+    
+    def set_contour_file_id(self, value: str | uuid.UUID):
+        if self.contour_file_id or self.contour_file_id: raise ValueError('Please delete the existing selection file before inserting a new one.')
+        self.contour_file_id = utils.validate_id(value, field="Contour File")
+
+    def set_contour_file(self, value: File):
+        if self.contour_file or self.contour_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        value = utils.validate_type(value = value, target_type = File, field = "Contour File")
+        if value.extension != 'csv':
+            raise exception_handler.WarningException(f"Contour file for selection {self.selection_number} needs to be of type 'csv' but is '{value.extension}'")
+        self.contour_file = value
+    
+    def set_ctr_file_id(self, value: str | uuid.UUID):
+        if self.ctr_file_id or self.ctr_file_id: raise ValueError('Please delete the existing selection file before inserting a new one.')
+        self.ctr_file_id = utils.validate_id(value, field="CTR File")
+
+    def set_ctr_file(self, value: File):
+        if self.ctr_file or self.ctr_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        value = utils.validate_type(value = value, target_type = File, field = "CTR File")
+        if value.extension != 'ctr':
+            raise exception_handler.WarningException(f"Contour file for selection {self.selection_number} needs to be of type 'csv' but is '{value.extension}'")
+        self.ctr_file = value
+    
+    
+    def get_contour_file_id(self) -> uuid.UUID | None:
+        return utils.validate_id(value=self.contour_file_id, field="Contour File", allow_none=True)
+   
+    def get_ctr_file_id(self) -> uuid.UUID | None:
+        return utils.validate_id(value=self.ctr_file_id, field="CTR File", allow_none=True)
+
+    def get_ctr_file(self) -> File | None:
+        return utils.validate_type(value=self.ctr_file, target_type=File, field="CTR File", allow_none=True)
+    
+    def get_contour_file(self) -> File | None:
+        return utils.validate_type(value=self.contour_file, target_type=File, field="Contour File", allow_none=True)
+    
+    def get_selection_file(self) -> File | None:
+        return utils.validate_type(value=self.selection_file, target_type=File, field="Selection File", allow_none=True)
 
     def get_row_start(self) -> datetime.datetime:
         if type(self.row_start) != datetime.datetime:
@@ -1519,9 +1577,51 @@ class Selection(database_handler.db.Model):
             raise ValueError(f"Recording.created_datetime is of type {type(self.created_datetime)}, not datetime.datetime.")
         return self.created_datetime
     
-    def get_created_datetime_pretty(self):
+    def get_created_datetime_pretty(self) -> str:
         return utils.pretty_date(self.get_created_datetime())
     
+    def get_sampling_rate(self) -> float:
+        return utils.validate_float(value=self.sampling_rate, field="Sampling Rate", allow_none=True)
+
+    def set_sampling_rate(self, value: float | int | str):
+        self.sampling_rate = utils.validate_float(value=value, field="Sampling Rate", allow_none=True)
+
+    def get_recording_id(self) -> uuid.UUID:
+        return utils.validate_id(value=self.recording_id, field="Recording", allow_none=True)
+
+    def set_recording_id(self, value: str | uuid.UUID):
+        self.recording_id = utils.validate_id(value=value, field="Recording", allow_none=False)
+    
+    def get_recording(self) -> Recording:
+        return self.recording
+    
+    def set_recording(self, value: Recording):
+        self.recording = utils.validate_type(value=value, target_type=Recording, field="Recording", allow_none=False)
+    
+    
+
+
+    def get_deactivated(self):
+        
+        return self.deactivated
+
+    def get_traced(self):
+        return self.traced
+    
+    def get_default_fft_size(self):
+        return utils.validate_float(value=self.default_fft_size, field="Default FFT Size", allow_none=True)
+
+    def set_default_fft_size(self, value: float | int | str):
+        self.default_fft_size = utils.validate_float(value=value, field="Default FFT Size", allow_none=True)
+
+
+    def get_default_hop_size(self):
+        return utils.validate_float(value=self.default_hop_size, field="Default Hop Size", allow_none=True)
+        
+    def set_default_hop_size(self, value: float | int | str):
+        self.default_hop_size = utils.validate_float(value=value, field="Default Hop Size", allow_none=True)
+
+ 
 
     def get_freq_max(self) -> float:
         return utils.validate_float(self.freq_max, field="freq_max", allow_none = True)
@@ -1882,12 +1982,6 @@ class Selection(database_handler.db.Model):
         else:
             self.traced = None
             
-    def set_selection_file(self, selection_file: File):
-        if selection_file.extension != 'wav':
-            raise exception_handler.WarningException(f"Selection {self.selection_number} needs to be of type 'wav' but is '{selection_file.extension}'")
-        self.calculate_sampling_rate()
-        self.selection_file = selection_file
-
     def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None, update_permissions=False):
         from .contour_statistics import ContourFile
         warning = ""
@@ -2370,6 +2464,7 @@ class Assignment(database_handler.db.Model):
         return self.user
     
     def set_user(self, value: User):
+        
         self.user = utils.validate_type(value=value, target_type=User, field="User", allow_none=False)
 
     def get_recording_id(self) -> uuid.UUID:
@@ -2383,5 +2478,3 @@ class Assignment(database_handler.db.Model):
     
     def set_recording(self, value: Recording):
         self.recording = utils.validate_type(value=value, target_type=Recording, field="Recording", allow_none=False)
-    
-    

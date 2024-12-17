@@ -57,7 +57,7 @@ def insert_or_update_selection(session, selection_number: str, file, recording_i
     if selection_obj.selection_file_id is not None:
         raise exception_handler.WarningException(f"Selection file for {selection_obj.get_unique_name()} already exists.")
     selection_file = file
-    selection_filename = selection_obj.generate_selection_filename()
+    selection_filename = selection_obj.generate_selection_file_name()
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = models.File()
     new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename)
@@ -108,7 +108,7 @@ def insert_or_update_contour(session, selection: models.Selection, contour_file)
     if selection.contour_file is not None:
         raise exception_handler.WarningException(f"Contour file for selection {selection.selection_number} already exists.")
     new_file = models.File()
-    new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_filename())
+    new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_file_name())
     session.add(new_file)
     session.commit()
     print("new file: " + new_file.id)
@@ -410,19 +410,19 @@ def selection_insert(recording_id):
 def download_ctr_file(selection_id):
     with database_handler.get_session() as session:
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        return utils.download_file(selection.ctr_file, selection.generate_ctr_filename)
+        return utils.download_file(selection.get_ctr_file(), selection.generate_ctr_file_name)
 
 @routes_selection.route('/selection/<selection_id>/download-contour', methods=['GET'])
 def download_contour_file(selection_id):
     with database_handler.get_session() as session:
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        return utils.download_file(selection.contour_file, selection.generate_contour_filename)
+        return utils.download_file(selection.get_contour_file(), selection.generate_contour_file_name)
 
 @routes_selection.route('/selection/<selection_id>/download-selection', methods=['GET'])
 def download_selection_file(selection_id):
     with database_handler.get_session() as session:
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        return utils.download_file(selection.selection_file, selection.generate_selection_filename)
+        return utils.download_file(selection.get_selection_file(), selection.generate_selection_file_name)
 
 @routes_selection.route('/selection/<selection_id>/view', methods=['GET'])
 @login_required

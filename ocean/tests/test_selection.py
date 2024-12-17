@@ -3,6 +3,10 @@ import pytest
 from . import factories
 from ..app import models
 from ..app import exception_handler
+from . import common
+import uuid
+
+EMPTY_CHARACTERS = common.EMPTY_CHARACTERS
 
 @pytest.fixture
 def selection():
@@ -36,7 +40,360 @@ def test_hasattr_other_methods(selection: models.Selection):
     assert hasattr(selection, "generate_ctr_file")
     assert hasattr(selection, "delete_contour_file")
     
+def test_hasattr_getters(selection: models.Selection):
+    assert hasattr(selection, "get_selection_number")
+    assert hasattr(selection, "get_selection_file_id")
+    assert hasattr(selection, "get_selection_file")
+    assert hasattr(selection, "get_ctr_file_id")
+    assert hasattr(selection, "get_ctr_file")
+    assert hasattr(selection, "get_contour_file_id")
+    assert hasattr(selection, "get_contour_file")
+    assert hasattr(selection, "get_sampling_rate")
+    assert hasattr(selection, "get_deactivated")
+    assert hasattr(selection, "get_traced")
+    assert hasattr(selection, "get_default_fft_size")
+    assert hasattr(selection, "get_default_hop_size")
+    assert hasattr(selection, "get_recording_id")
+    assert hasattr(selection, "get_recording")
     
+def test_hasattr_setters(selection: models.Selection):
+    assert hasattr(selection, "set_selection_number")
+    assert hasattr(selection, "set_selection_file_id")
+    assert hasattr(selection, "set_selection_file")
+    assert hasattr(selection, "set_ctr_file_id")
+    assert hasattr(selection, "set_ctr_file")
+    assert hasattr(selection, "set_contour_file_id")
+    assert hasattr(selection, "set_contour_file")
+    assert hasattr(selection, "set_sampling_rate")
+    assert hasattr(selection, "set_default_fft_size")
+    assert hasattr(selection, "set_default_hop_size")
+    assert hasattr(selection, "set_recording_id")
+    assert hasattr(selection, "set_recording")
+    
+@pytest.mark.parametrize("value", [True, False, None])
+def test_get_traced(selection: models.Selection, value: bool):
+    selection.traced = value
+    assert selection.get_traced() == value
+    
+@pytest.mark.parametrize("value, expected", [(15000,15000.0), (0,0.0), (-20.1345,-20.1345), ("15000", 15000.0)])
+def test_get_sampling_rate(selection: models.Selection, value, expected):
+    selection.sampling_rate = value
+    assert selection.get_sampling_rate() == expected
+    
+@pytest.mark.parametrize("value, expected", [(15000,15000.0), (0,0.0), (-20.1345,-20.1345), ("15000", 15000.0), (" ", None), (None, None)])
+def test_set_sampling_rate(selection: models.Selection, value, expected):
+    selection.set_sampling_rate(value)
+    assert selection.sampling_rate == expected
+
+def test_set_sampling_rate_wrong_format(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_sampling_rate('not-a-number')
+
+
+def test_set_selection_file_id(selection: models.Selection):
+    selection_file_id = uuid.uuid4()
+    selection.set_selection_file_id(selection_file_id)
+    assert selection.selection_file_id == selection_file_id
+    
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_selection_file_id_none(selection: models.Selection, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_selection_file_id(c)
+
+def test_set_selection_file_id_wrong_type(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_selection_file_id("this-is-not-a-uuid")
+
+def test_set_selection_file_id_already_exists(selection: models.Selection):
+    selection.set_selection_file_id(uuid.uuid4())
+    with pytest.raises(ValueError):
+        selection.set_selection_file_id(uuid.uuid4())
+
+def test_set_selection_file(selection: models.Selection):
+    selection_file = factories.FileFactory.create()
+    selection_file.extension = "wav"
+    selection.set_selection_file(selection_file)
+    assert selection.selection_file == selection_file
+
+def test_set_selection_file_none(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_selection_file(None)
+
+def test_set_selection_file_wrong_type(selection: models.Selection):
+    with pytest.raises(ValueError):
+        selection_file = factories.FileFactory.create()
+        selection_file.extension = "wav"
+        selection.set_selection_file(factories.SpeciesFactory.create())
+
+def test_set_selection_file_already_exists(selection: models.Selection):
+    selection_file = factories.FileFactory.create()
+    selection_file.extension = "wav"
+    selection.set_selection_file(selection_file)
+    with pytest.raises(ValueError):
+        selection_file = factories.FileFactory.create()
+        selection_file.extension = "wav"
+        selection.set_selection_file(selection_file)
+
+def test_set_selection_file_wrong_type(selection: models.Selection):
+    selection_file = factories.FileFactory.create()
+    selection_file.extension = "txt"
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_selection_file(selection_file)
+
+
+
+def test_set_contour_file_id(selection: models.Selection):
+    contour_file_id = uuid.uuid4()
+    selection.set_contour_file_id(contour_file_id)
+    assert selection.contour_file_id == contour_file_id
+    
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_contour_file_id_none(selection: models.Selection, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_contour_file_id(c)
+
+def test_set_contour_file_id_wrong_type(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_contour_file_id("this-is-not-a-uuid")
+
+def test_set_contour_file_id_already_exists(selection: models.Selection):
+    selection.set_contour_file_id(uuid.uuid4())
+    with pytest.raises(ValueError):
+        selection.set_contour_file_id(uuid.uuid4())
+
+def test_set_contour_file(selection: models.Selection):
+    contour_file = factories.FileFactory.create()
+    contour_file.extension = "csv"
+    selection.set_contour_file(contour_file)
+    assert selection.contour_file == contour_file
+
+def test_set_contour_file_none(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_contour_file(None)
+
+def test_set_contour_file_wrong_type(selection: models.Selection):
+    with pytest.raises(ValueError):
+        contour_file = factories.FileFactory.create()
+        contour_file.extension = "csv"
+        selection.set_contour_file(factories.SpeciesFactory.create())
+
+def test_set_contour_file_already_exists(selection: models.Selection):
+    contour_file = factories.FileFactory.create()
+    contour_file.extension = "csv"
+    selection.set_contour_file(contour_file)
+    with pytest.raises(ValueError):
+        contour_file = factories.FileFactory.create()
+        contour_file.extension = "csv"
+        selection.set_contour_file(contour_file)
+
+def test_set_contour_file_wrong_type(selection: models.Selection):
+    contour_file = factories.FileFactory.create()
+    contour_file.extension = "txt"
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_contour_file(contour_file)
+
+
+
+
+def test_set_ctr_file_id(selection: models.Selection):
+    ctr_file_id = uuid.uuid4()
+    selection.set_ctr_file_id(ctr_file_id)
+    assert selection.ctr_file_id == ctr_file_id
+    
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_ctr_file_id_none(selection: models.Selection, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_ctr_file_id(c)
+
+def test_set_ctr_file_id_wrong_type(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_ctr_file_id("this-is-not-a-uuid")
+
+def test_set_ctr_file_id_already_exists(selection: models.Selection):
+    selection.set_ctr_file_id(uuid.uuid4())
+    with pytest.raises(ValueError):
+        selection.set_ctr_file_id(uuid.uuid4())
+
+def test_set_ctr_file(selection: models.Selection):
+    ctr_file = factories.FileFactory.create()
+    ctr_file.extension = "ctr"
+    selection.set_ctr_file(ctr_file)
+    assert selection.ctr_file == ctr_file
+
+def test_set_ctr_file_none(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_ctr_file(None)
+
+def test_set_ctr_file_wrong_type(selection: models.Selection):
+    with pytest.raises(ValueError):
+        ctr_file = factories.FileFactory.create()
+        ctr_file.extension = "ctr"
+        selection.set_ctr_file(factories.SpeciesFactory.create())
+
+def test_set_ctr_file_already_exists(selection: models.Selection):
+    ctr_file = factories.FileFactory.create()
+    ctr_file.extension = "ctr"
+    selection.set_ctr_file(ctr_file)
+    with pytest.raises(ValueError):
+        ctr_file = factories.FileFactory.create()
+        ctr_file.extension = "ctr"
+        selection.set_ctr_file(ctr_file)
+
+def test_set_ctr_file_wrong_type(selection: models.Selection):
+    ctr_file = factories.FileFactory.create()
+    ctr_file.extension = "txt"
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_ctr_file(ctr_file)
+
+
+
+
+
+def test_set_recording_id(selection: models.Selection):
+    recording_id = uuid.uuid4()
+    selection.set_recording_id(recording_id)
+    assert selection.recording_id == recording_id
+    
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_recording_id_none(selection: models.Selection, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_recording_id(c)
+
+def test_set_recording_id_wrong_type(selection: models.Selection):
+    
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_recording_id("this-is-not-a-uuid")
+
+def test_set_recording(selection: models.Selection):
+    recording = factories.RecordingFactory.create()
+    selection.set_recording(recording)
+    assert selection.recording == recording
+
+def test_set_recording_none(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_recording(None)
+
+def test_set_recording_wrong_type(selection: models.Selection):
+    with pytest.raises(ValueError):
+        selection.set_recording(factories.SpeciesFactory.create())
+
+
+
+@pytest.mark.parametrize("value, expected", [(15000,15000.0), (0,0.0), (-20.1345,-20.1345), ("15000", 15000.0)])
+def test_get_default_fft_size(selection: models.Selection, value, expected):
+    selection.default_fft_size = value
+    assert selection.get_default_fft_size() == expected
+    
+@pytest.mark.parametrize("value, expected", [(15000,15000.0), (0,0.0), (-20.1345,-20.1345), ("15000", 15000.0), (" ", None), (None, None)])
+def test_set_default_fft_size(selection: models.Selection, value, expected):
+    selection.set_default_fft_size(value)
+    assert selection.default_fft_size == expected
+
+def test_set_default_fft_size_wrong_format(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_default_fft_size('not-a-number')
+
+
+@pytest.mark.parametrize("value, expected", [(15000,15000.0), (0,0.0), (-20.1345,-20.1345), ("15000", 15000.0)])
+def test_get_default_hop_size(selection: models.Selection, value, expected):
+    selection.default_hop_size = value
+    assert selection.get_default_hop_size() == expected
+    
+@pytest.mark.parametrize("value, expected", [(15000,15000.0), (0,0.0), (-20.1345,-20.1345), ("15000", 15000.0), (" ", None), (None, None)])
+def test_set_default_hop_size(selection: models.Selection, value, expected):
+    selection.set_default_hop_size(value)
+    assert selection.default_hop_size == expected
+
+def test_set_default_hop_size_wrong_format(selection: models.Selection):
+    with pytest.raises(exception_handler.WarningException):
+        selection.set_default_hop_size('not-a-number')
+
+    
+    
+def test_get_selection_number(selection: models.Selection):
+    selection.selection_number = 1
+    assert selection.get_selection_number() == 1
+    selection.selection_number = 0
+    assert selection.get_selection_number() == 0
+    selection.selection_number = "0"
+    assert selection.get_selection_number() == 0
+
+def test_get_selection_number_invalid(selection: models.Selection):
+    selection.selection_number = "24gs"
+    with pytest.raises(exception_handler.WarningException):
+        selection.get_selection_number()
+
+
+def test_get_selection_file_id(selection: models.Selection):
+    selection_file_id = uuid.uuid4()
+    selection.selection_file_id = selection_file_id
+    assert selection.get_selection_file_id() == selection_file_id
+    selection_file_id = uuid.uuid4()
+    selection.selection_file_id = selection_file_id.hex
+    assert selection.get_selection_file_id() == selection_file_id
+    selection.selection_file_id = None
+    assert selection.get_selection_file_id() == None
+    selection.selection_file_id = "not-a-uuid"
+    with pytest.raises(exception_handler.WarningException):
+        selection.get_selection_file_id()
+
+def test_get_selection_file(selection: models.Selection):
+    selection_file = factories.FileFactory.create()
+    selection.selection_file = selection_file
+    assert selection.get_selection_file() == selection_file
+    selection.selection_file = None
+    assert selection.get_selection_file() == None
+    selection.selection_file = factories.SpeciesFactory.create()
+    with pytest.raises(ValueError):
+        selection.get_selection_file()
+
+def test_get_contour_file_id(selection: models.Selection):
+    contour_file_id = uuid.uuid4()
+    selection.contour_file_id = contour_file_id
+    assert selection.get_contour_file_id() == contour_file_id
+    contour_file_id = uuid.uuid4()
+    selection.contour_file_id = contour_file_id.hex
+    assert selection.get_contour_file_id() == contour_file_id
+    selection.contour_file_id = None
+    assert selection.get_contour_file_id() == None
+    selection.contour_file_id = "not-a-uuid"
+    with pytest.raises(exception_handler.WarningException):
+        selection.get_contour_file_id()
+
+def test_get_contour_file(selection: models.Selection):
+    contour_file = factories.FileFactory.create()
+    selection.contour_file = contour_file
+    assert selection.get_contour_file() == contour_file
+    selection.contour_file = None
+    assert selection.get_contour_file() == None
+    selection.contour_file = factories.SpeciesFactory.create()
+    with pytest.raises(ValueError):
+        selection.get_contour_file()
+
+def test_get_ctr_file_id(selection: models.Selection):
+    ctr_file_id = uuid.uuid4()
+    selection.ctr_file_id = ctr_file_id
+    assert selection.get_ctr_file_id() == ctr_file_id
+    ctr_file_id = uuid.uuid4()
+    selection.ctr_file_id = ctr_file_id.hex
+    assert selection.get_ctr_file_id() == ctr_file_id
+    selection.ctr_file_id = None
+    assert selection.get_ctr_file_id() == None
+    selection.ctr_file_id = "not-a-uuid"
+    with pytest.raises(exception_handler.WarningException):
+        selection.get_ctr_file_id()
+
+def test_get_ctr_file(selection: models.Selection):
+    ctr_file = factories.FileFactory.create()
+    selection.ctr_file = ctr_file
+    assert selection.get_ctr_file() == ctr_file
+    selection.ctr_file = None
+    assert selection.get_ctr_file() == None
+    selection.ctr_file = factories.SpeciesFactory.create()
+    with pytest.raises(ValueError):
+        selection.get_ctr_file()
+
+
 def test_get_unique_name(selection: models.Selection):
     selection.recording.encounter.species.species_name = f"TestSpecies"
     selection.recording.encounter.encounter_name = f"TestEncounter"
