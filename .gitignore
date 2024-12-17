@@ -12,3 +12,5 @@ database-management-system.code-workspace
 file_space_path.txt
 *.coverage
 override_authentication.txt
+.vscode/
+.pytest_cache/

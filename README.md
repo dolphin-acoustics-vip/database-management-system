@@ -1,13 +1,13 @@
 > ⚠️ **Warning:** this project is still in a developmental stage. Some sections of the code and documentation may be incomplete.
 
 
-# Dolphin Acoustics VIP Database Management System
+# Odontocete Call Environment and Archival Network
 
-The Database Management System (DBMS) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
+The Odontocete Call Environment and Archival Network (OCEAN) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
 
 The ensuing documentation details the [installation](#installation) and [operation](#maintaining-and-operating-the-web-app) of the code.
 
-Familiarity with the data pipeline and implementation strategy found in the Project's GitHub Wiki are required. General computer science competency, as well as more specific familiarity with the [requirements](#requirements) are also prerequesite.
+Familiarity with the data pipeline and implementation strategy found in the Project's Wiki are essential. General computer science competency, as well as more specific familiarity with the [requirements](#requirements) are also prerequesite.
 
 <a name="requirements"></a>
 <a name="dependencies" depracated></a>
@@ -70,21 +70,15 @@ pip3 install -r requirements.txt
 
 To create the database, open a MariaDB shell and run the DDL script [create_database.sql](create_database.sql). This will create all empty tables apart from a single administrator user which can be used to log into the Web App initially.
 
-The database connection is made in [database_handler.py](database_handler.py), however configuration for the database is made in [config.py](config.py). Here exist three different profiles. In [main.py](main.py), the profile can be changed by changing the argument passed in the mainline:
+The database connection is made in [database_handler.py](ocean/ocean/database_handler.py), however configuration for the database is made in [config.py](ocean/config.py). Here exist three different profiles. In [main.py](main.py), the profile can be changed by changing the argument passed in the mainline:
 
 ```
-if __name__ == '__main__':
-    # For development configuration
-    app = create_app('config.DevelopmentConfig')
-    # For testing configuration
-    app = create_app('config.TestingConfig')
-    # For production configuration
-    app = create_app('config.ProductionConfig')
-    if app is None:
-        logger.fatal('Exiting program...')
-        exit(1)
-    logger.info('Starting application')
-    app.run()
+# For development configuration (DEFAULT)
+app = create_app('config.DevelopmentConfig')
+# For testing configuration
+app = create_app('config.TestingConfig')
+# For production configuration
+app = create_app('config.ProductionConfig')
 ```
 
 Each configuration required different global environment variables to be set to ensure an operational database connection.
@@ -93,33 +87,38 @@ Each configuration required different global environment variables to be set to 
 #### Configuring the Development Database
 
 Set the following global environment variables:
-- `DEV_STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost` for development environment)
-- `DEV_STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root` for development environment)
-- `DEV_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database
-- `DEV_STADOLPHINACOUSTICS_DATABASE` to set the name of the database
+- `DEV_OCEAN_HOST` to set the host of the database (usually `localhost` for development environment)
+- `DEV_OCEAN_USER` to set the user of the database (usually `root` for development environment)
+- `DEV_OCEAN_PASSWORD` to set the password of the database
+- `DEV_OCEAN_DATABASE` to set the name of the database
 
 #### Configuring the Testing Database
 
 Set the following global environment variables:
-- `TESTING_STADOLPHINACOUSTICS_HOST` to set the host of the database (usually `localhost` for the test environment)
-- `TESTING_STADOLPHINACOUSTICS_USER` to set the user of the database (usually `root` for the test environment)
-- `TESTING_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database
-- `TESTING_STADOLPHINACOUSTICS_DATABASE` to set the name of the database
+- `TESTING_OCEAN_HOST` to set the host of the database (usually `localhost` for the test environment)
+- `TESTING_OCEAN_USER` to set the user of the database (usually `root` for the test environment)
+- `TESTING_OCEAN_PASSWORD` to set the password of the database
+- `TESTING_OCEAN_DATABASE` to set the name of the database
 
 #### Configuring the Production Database
 
 Set the following global environment variables:
-- `PROD_STADOLPHINACOUSTICS_HOST` to set the host of the database
-- `PROD_STADOLPHINACOUSTICS_USER` to set the user of the database
-- `PROD_STADOLPHINACOUSTICS_PASSWORD` to set the password of the database
-- `PROD_STADOLPHINACOUSTICS_DATABASE` to set the name of the database
+- `PROD_OCEAN_HOST` to set the host of the database
+- `PROD_OCEAN_USER` to set the user of the database
+- `PROD_OCEAN_PASSWORD` to set the password of the database
+- `PROD_OCEAN_DATABASE` to set the name of the database
 
-### Creating and Linking the Filespace
-The File Space is simply a designated path on the server system. To set this folder, insert the relative or absolute path into [file_space_path.txt](file_space_path.txt) in the program root.
+#### Configuring the Filespace
 
-Note that by default the path in [file_space_path.txt](file_space_path.txt) is relative, however should you enter an absolute path (for example one beginning with `C:`), this will automatically be recognised.
+The File Space is simply a designated path on the server system. To set this folder, insert the relative or absolute path into the `OCEAN_FILESPACE_PATH` environment variable. 
 
-No folders or files need to be inserted in the Filespace. However the Filespace folder itself must exist in the system before operating the Web App.
+No folders or files need to be inserted in the Filespace. However the Filespace folder itself must exist in the system before operating OCEAN. If this is not done OCEAN will not start.
+
+#### Using Single-Sign On
+
+The web app requires each request that a user makes to contian the environment variable `HTTP_EPPN` which must contain the username (most likely email) of the user in the database. This authentication method is good for SSO on the production environment, but can be a nuicanse in the test or development environmnet. For this reason a global environment `OCEAN_SSO_OVERRIDE` variable can be defined which will override any other authentication method.
+
+WARNING: THIS MUST NEVER BE USED ON THE PRODUCTION ENVIRONMENT. IT WILL ALLOW ANY INDIVIDUAL TO ACCESS OCEAN WITHOUT PROPER AUTHENTICATION.
 
 ### Starting the Web App
 
