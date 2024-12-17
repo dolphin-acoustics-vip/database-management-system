@@ -1389,6 +1389,15 @@ class Role(database_handler.db.Model):
     id = database_handler.db.Column(database_handler.db.Integer, primary_key=True)
     name = database_handler.db.Column(database_handler.db.String(100))
 
+    def get_id(self):
+        if self.id is None: raise ValueError("Field 'id' of the role class must not be None.")
+        try:
+            return int(self.id)
+        except ValueError:
+            raise ValueError(f"Field 'id' of the Role class must be an integer (got {type(self.id)}).")
+    
+    def get_name(self):
+        return self.name if self.name else ""
 
 class Selection(database_handler.db.Model):
     __tablename__ = 'selection'
@@ -2231,30 +2240,59 @@ class Selection(database_handler.db.Model):
 class User(database_handler.db.Model, UserMixin):
     id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
     login_id = database_handler.db.Column(database_handler.db.String(100), unique=True)
-    password = database_handler.db.Column(database_handler.db.String(100))
     name = database_handler.db.Column(database_handler.db.String(1000))
     role_id = database_handler.db.Column(database_handler.db.Integer, database_handler.db.ForeignKey('role.id'))
     is_active = database_handler.db.Column(database_handler.db.Boolean, default=True)
-    is_temporary = database_handler.db.Column(database_handler.db.Boolean, default=False)
     expiry = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
-    
     role=database_handler.db.relationship('Role', backref='users', lazy=True)
 
     def set_login_id(self, value):
         self.login_id = value
     
-    def set_role_id(self, value):
+    def get_role_id(self):
+        return self.role_id
+    
+    def get_role(self):
+        return self.role
+    
+    def set_role_id(self, value: int | str):
+        """Set the role ID of this user. Must either be an integer
+        or an integer-convertable string. This method does not verify
+        foreign key constraints.
+
+        Args:
+            value (int | str): the new value
+
+        Raises:
+            exception_handler.WarningException: `value` is not of the type stated above
+            exception_handler.WarningException: `value` is `None`
+        """
+        if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Role' cannot be empty or None.")
+        try:
+            value = int(float(value))
+        except Exception:
+            raise exception_handler.WarningException("Field 'role' must be of type integer (a whole number).")
         self.role_id = value
+    
+    def set_role(self, value: Role):
+        self.role = utils.validate_type(value=value, target_type=Role, field="Role", allow_none=False)
     
     def set_expiry(self, value):
         self.expiry = value
     
     def set_name(self, value):
-        
-        self.name = value
+        self.name = utils.validate_string(self.name, field="Name", allow_none=True)
+    
+    def get_name(self):
+        return utils.validate_string(self.name, field="Name", allow_none=True)
     
     def get_login_id(self):
-        return '' if self.login_id is None else self.login_id
+        # NOTE: the login ID must never be altered or formatted
+        return self.login_id
+
+    def set_login_id(self, value: str):
+        if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Login ID' cannot be None.")
+        self.login_id = str(value)
 
     def activate(self):
         """
@@ -2268,7 +2306,17 @@ class User(database_handler.db.Model, UserMixin):
         """
         self.is_active = False
 
+    def get_is_active(self):
+        return self.is_active if self.is_active else False
 
+    def get_expiry(self):
+        return utils.validate_datetime(value=self.expiry, field="Expiry", allow_none=True)
+    
+    def get_expiry_pretty(self):
+        return utils.pretty_date(self.get_expiry())
+    
+    def set_expiry(self, value):
+        self.expiry = utils.validate_datetime(value=value, field="Expiry", allow_none=False)
 
 
 class Assignment(database_handler.db.Model):

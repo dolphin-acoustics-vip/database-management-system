@@ -69,28 +69,28 @@ def test_set_encounter_name(encounter):
     encounter.set_encounter_name("Test")
     assert encounter.encounter_name == "Test"
 
-def test_set_encounter_name_invalid(encounter):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            encounter.set_encounter_name(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_encounter_name_invalid(encounter: models.Encounter, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        encounter.set_encounter_name(c)
     
 def test_set_location(encounter):
     encounter.set_location("Test")
     assert encounter.location == "Test"
 
-def test_set_location_invalid(encounter):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            encounter.set_location(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_location_invalid(encounter: models.Encounter, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        encounter.set_location(c)
 
 def test_set_project(encounter):
     encounter.set_project("Test")
     assert encounter.project == "Test"
 
-def test_set_project_invalid(encounter):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            encounter.set_project(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_project_invalid(encounter: models.Encounter, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        encounter.set_project(c)
 
 def set_set_latitude(encounter):
     encounter.set_latitude(45.0)

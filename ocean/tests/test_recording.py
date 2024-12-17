@@ -131,10 +131,10 @@ def test_set_start_time_str_incorrect_format(recording: models.Recording):
     with pytest.raises(exception_handler.WarningException):
         recording.set_start_time("this-is-not-a-date")
  
-def test_set_start_time_empty(recording: models.Recording):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            recording.set_start_time(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_start_time_empty(recording: models.Recording, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        recording.set_start_time(c)
         
 def test_remove_recording_file(recording: models.Recording):
     recording.recording_file_id = uuid.uuid4()
@@ -160,10 +160,10 @@ def test_set_recording_file_id(recording: models.Recording):
     recording.set_recording_file_id(recording_file_id)
     assert recording.recording_file_id == recording_file_id
     
-def test_set_recording_file_id_none(recording: models.Recording):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            recording.set_recording_file_id(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_recording_file_id_none(recording: models.Recording, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        recording.set_recording_file_id(c)
 
 def test_set_recording_file_id_wrong_type(recording: models.Recording):
     with pytest.raises(exception_handler.WarningException):
@@ -197,10 +197,10 @@ def test_set_encounter_id(recording: models.Recording):
     recording.set_encounter_id(encounter_id)
     assert recording.encounter_id == encounter_id
     
-def test_set_encounter_id_none(recording: models.Recording):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            recording.set_encounter_id(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_encounter_id_none(recording: models.Recording, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        recording.set_encounter_id(c)
 
 def test_set_encounter_id_wrong_type(recording: models.Recording):
     with pytest.raises(exception_handler.WarningException):
@@ -286,10 +286,10 @@ def test_set_notes_multiple_lines(recording: models.Recording):
     recording.set_notes("Test\nTest")
     assert recording.notes == "Test\nTest"
 
-def test_set_notes_empty(recording: models.Recording):
-    for c in EMPTY_CHARACTERS:
-        recording.set_notes(c)
-        assert recording.notes == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_notes_empty(recording: models.Recording, c: str):
+    recording.set_notes(c)
+    assert recording.notes == None
         
 def test_get_start_time(recording: models.Recording):
     timestamp = datetime.datetime.now(datetime.timezone.utc)

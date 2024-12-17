@@ -21,10 +21,10 @@ def test_set_updated_by_id(data_source: models.RecordingPlatform):
     data_source.set_updated_by_id(user_id)
     assert data_source.updated_by_id == user_id
 
-def test_set_updated_by_id_empty(data_source: models.RecordingPlatform):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            data_source.set_updated_by_id(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_updated_by_id_empty(data_source: models.RecordingPlatform, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        data_source.set_updated_by_id(c)
 
 def test_set_updated_by_id_wrong_type(data_source: models.RecordingPlatform):
     with pytest.raises(exception_handler.WarningException):
@@ -61,10 +61,10 @@ def test_set_name(data_source: models.DataSource):
     data_source.set_name("  " + VALUE + "\n ")
     assert data_source.name == VALUE
 
-def test_set_name_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_name(c)
-        assert data_source.name == "" if c is not None else data_source.name == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_name_none(data_source: models.DataSource, c: str):
+    data_source.set_name(c)
+    assert data_source.name == "" if c is not None else data_source.name == None
     
 
 def test_get_phone_number1(data_source: models.DataSource):
@@ -78,10 +78,10 @@ def test_set_phone_number1(data_source: models.DataSource):
     data_source.set_phone_number1("  " + VALUE + "\n ")
     assert data_source.phone_number1 == VALUE
 
-def test_set_phone_number1_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_phone_number1(c)
-        assert data_source.phone_number1 == "" if c is not None else data_source.name == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_phone_number1_none(data_source: models.DataSource, c: str):
+    data_source.set_phone_number1(c)
+    assert data_source.phone_number1 == "" if c is not None else data_source.name == None
     
 
 def test_get_phone_number2(data_source: models.DataSource):
@@ -95,10 +95,10 @@ def test_set_phone_number2(data_source: models.DataSource):
     data_source.set_phone_number2("  " + VALUE + "\n ")
     assert data_source.phone_number2 == VALUE
 
-def test_set_phone_number2_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_phone_number2(c)
-        assert data_source.phone_number2 == "" if c is not None else data_source.name == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_phone_number2_none(data_source: models.DataSource, c: str):
+    data_source.set_phone_number2(c)
+    assert data_source.phone_number2 == "" if c is not None else data_source.name == None
     
     
 def test_get_email1(data_source: models.DataSource):
@@ -112,10 +112,10 @@ def test_set_email1(data_source: models.DataSource):
     data_source.set_email1("  " + VALUE + "\n ")
     assert data_source.email1 == VALUE
 
-def test_set_email1_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_email1(c)
-        assert data_source.email1 == "" if c is not None else data_source.name == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_email1_none(data_source: models.DataSource, c: str):
+    data_source.set_email1(c)
+    assert data_source.email1 == "" if c is not None else data_source.name == None
     
 
 def test_get_email2(data_source: models.DataSource):
@@ -129,10 +129,10 @@ def test_set_email2(data_source: models.DataSource):
     data_source.set_email2("  " + VALUE + "\n ")
     assert data_source.email2 == VALUE
 
-def test_set_email2_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_email2(c)
-        assert data_source.email2 == "" if c is not None else data_source.name == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_email2_none(data_source: models.DataSource, c: str):
+    data_source.set_email2(c)
+    assert data_source.email2 == "" if c is not None else data_source.name == None
     
 
 def test_get_address(data_source: models.DataSource):
@@ -146,10 +146,10 @@ def test_set_address(data_source: models.DataSource):
     data_source.set_address("  " + VALUE + "\n ")
     assert data_source.address == VALUE
 
-def test_set_address_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_address(c)
-        assert data_source.address == "" if c is not None else data_source.name == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_address_none(data_source: models.DataSource, c: str):
+    data_source.set_address(c)
+    assert data_source.address == "" if c is not None else data_source.name == None
     
     
 def test_get_notes(data_source: models.DataSource):
@@ -163,10 +163,10 @@ def test_set_notes(data_source: models.DataSource):
     data_source.set_notes("  " + VALUE + "\n ")
     assert data_source.notes == VALUE
 
-def test_set_notes_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_notes(c)
-        assert data_source.notes == "" if c is not None else data_source.name == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_notes_none(data_source: models.DataSource, c: str):
+    data_source.set_notes(c)
+    assert data_source.notes == "" if c is not None else data_source.name == None
     
 
 def test_get_type(data_source: models.DataSource):
@@ -181,10 +181,10 @@ def test_set_type(data_source: models.DataSource):
     data_source.set_type("organisation")
     assert data_source.type == "organisation"
     
-def test_set_notes_none(data_source: models.DataSource):
-    for c in EMPTY_CHARACTERS:
-        data_source.set_type(c)
-        assert data_source.type == None
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_notes_none(data_source: models.DataSource, c: str):
+    data_source.set_type(c)
+    assert data_source.type == None
 
 def test_set_type_wrong(data_source: models.DataSource):
     with pytest.raises(exception_handler.WarningException):

@@ -101,3 +101,21 @@ class SelectionFactory(factory.alchemy.SQLAlchemyModelFactory):
     selection_number = factory.Faker('random_int')
     recording = factory.SubFactory(RecordingFactory)
     updated_by = None
+    
+class RoleFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = models.Role
+        sqlalchemy_session = Session
+    
+    id = factory.Faker('random_int')
+    name = factory.Faker('name')
+    
+class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = models.User
+        sqlalchemy_session = Session
+    
+    id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
+    login_id = factory.Faker('email')
+    name = factory.Faker('name')
+    is_active = True

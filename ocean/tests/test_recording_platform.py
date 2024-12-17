@@ -21,10 +21,10 @@ def test_set_updated_by_id(recording_platform: models.RecordingPlatform):
     recording_platform.set_updated_by_id(user_id)
     assert recording_platform.updated_by_id == user_id
 
-def test_set_updated_by_id_empty(recording_platform: models.RecordingPlatform):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            recording_platform.set_updated_by_id(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_updated_by_id_empty(recording_platform: models.RecordingPlatform, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        recording_platform.set_updated_by_id(c)
 
 def test_set_updated_by_id_wrong_type(recording_platform: models.RecordingPlatform):
     with pytest.raises(exception_handler.WarningException):
@@ -34,10 +34,10 @@ def test_set_name(recording_platform: models.RecordingPlatform):
     recording_platform.set_name("TestName")
     assert recording_platform.name == "TestName"
 
-def test_set_name_empty(recording_platform: models.RecordingPlatform):
-    for c in EMPTY_CHARACTERS:
-        with pytest.raises(exception_handler.WarningException):
-            recording_platform.set_name(c)
+@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
+def test_set_name_empty(recording_platform: models.RecordingPlatform, c: str):
+    with pytest.raises(exception_handler.WarningException):
+        recording_platform.set_name(c)
 
 def test_set_name_wrong_type(recording_platform: models.RecordingPlatform):
     with pytest.raises(ValueError):
