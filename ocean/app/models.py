@@ -31,6 +31,8 @@ import scipy.io
 import numpy as np
 import pandas as pd
 import librosa
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # Local application imports
@@ -1989,6 +1991,7 @@ class Selection(database_handler.db.Model):
             
     def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None, update_permissions=False):
         from .contour_statistics import ContourFile
+        
         warning = ""
         
         # Set default FFT and hop sizes if not provided

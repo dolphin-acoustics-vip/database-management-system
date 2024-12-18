@@ -16,6 +16,7 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Standard library imports
+import os
 import re
 import tempfile
 
@@ -29,6 +30,7 @@ from .. import database_handler
 from .. import models
 from .. import exception_handler
 from .. import utils
+from .. import filespace_handler
 
 routes_selection = Blueprint('selection', __name__)
 
@@ -298,15 +300,16 @@ def serve_plot(selection_id: str):
     :type hop_size: int (HTTP argument), default None
     :return: a PNG image of the spectrogram
     """
-    fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
-    hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
-    with database_handler.get_session() as session:
-        selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        # Create the file in a temporary path
-        with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+    with database_handler.get_operation_lock() as operation_lock:
+        fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
+        hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
+        with database_handler.get_session() as session:
+            filespace_handler.clean_filespace_temp()
+            selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
+            temp_dir = tempfile.mkdtemp(dir=database_handler.get_tempdir())  # Use mkdtemp for manual cleanup
             update_permissions = True if current_user.role_id != 4 else False
             plot_file_path = selection.create_temp_plot(session, temp_dir, fft_size, hop_size, update_permissions=update_permissions)
-            return send_file(plot_file_path, mimetype='image/png')
+        return send_file(plot_file_path, mimetype='image/png')
 
 
 @routes_selection.route('/recording/<recording_id>/contour-insert', methods=['POST'])

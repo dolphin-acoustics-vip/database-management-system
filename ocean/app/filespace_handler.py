@@ -109,7 +109,7 @@ def clean_filespace_temp() -> None:
     """
     directory = database_handler.get_temp_space()
     # Define the time threshold (5 hours ago)
-    cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=1)
+    cutoff_time = datetime.datetime.now() - datetime.timedelta(minutes=1)
 
     # Walk through the directory in reverse order (to process files before directories)
     for root, dirs, files in os.walk(directory, topdown=False):

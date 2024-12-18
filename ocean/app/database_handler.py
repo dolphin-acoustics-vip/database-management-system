@@ -26,6 +26,8 @@ from sqlalchemy.orm import sessionmaker
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask import Flask, abort, g, render_template, request, session as client_session
+from threading import Lock
+operation_lock = Lock()
 
 # Local application imports
 from . import exception_handler
@@ -116,6 +118,13 @@ def get_root_directory(deleted: bool, temp: bool) -> str:
     """
     return get_tempdir() if temp else (get_trash_path() if deleted else get_file_space_path()) 
 
+def get_operation_lock():
+    """
+    Should be used to lock to prevent physical resources from being accessed simultaneously by two or more threads.
+
+    Usage: `with database_handler.get_operation_lock() as operation_lock:`.
+    """
+    return operation_lock
 
 #################################
 # INITIALISE DATABASE ORM MODEL #
