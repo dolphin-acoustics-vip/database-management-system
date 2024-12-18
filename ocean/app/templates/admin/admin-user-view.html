@@ -10,7 +10,6 @@
         <h1>New User</h1>
         <form action="{{ url_for('admin.admin_user_update', user_id=user.id) }}" method="post">
             {% set editing = True %}
-            {% set temporary_user = False %}
             {% include 'admin/admin-user-template.html' %}
         </form>
     </div>

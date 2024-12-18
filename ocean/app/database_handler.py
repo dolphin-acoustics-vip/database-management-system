@@ -26,6 +26,8 @@ from sqlalchemy.orm import sessionmaker
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask import Flask, abort, g, render_template, request, session as client_session
+from threading import Lock
+operation_lock = Lock()
 
 # Local application imports
 from . import exception_handler
@@ -39,15 +41,7 @@ from .logger import logger
 DATA_DIR = 'data'
 TEMP_DIR = 'temp_space'
 TRASH_DIR = 'trash'
-
-
-# Define the file space folder and get the Google API key from a file
-FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
-if FILE_SPACE_PATH == None or FILE_SPACE_PATH == "":
-    logger.critical("The system variable 'OCEAN_FILESPACE_PATH' not found.")
-if not os.path.exists(FILE_SPACE_PATH):
-    logger.critical(f"The system variable 'OCEAN_FILESPACE_PATH' found but the path '{FILE_SPACE_PATH}' does not exist.")
-    startup_error_flag = True
+FILE_SPACE_PATH = None
 
 def get_file_space() -> str:
     """The file space is the location in which ALL files are stored.
@@ -116,6 +110,13 @@ def get_root_directory(deleted: bool, temp: bool) -> str:
     """
     return get_tempdir() if temp else (get_trash_path() if deleted else get_file_space_path()) 
 
+def get_operation_lock():
+    """
+    Should be used to lock to prevent physical resources from being accessed simultaneously by two or more threads.
+
+    Usage: `with database_handler.get_operation_lock() as operation_lock:`.
+    """
+    return operation_lock
 
 #################################
 # INITIALISE DATABASE ORM MODEL #
@@ -154,6 +155,14 @@ def init_db(app: Flask, run_script: str=None):
     :param (Flask) app: the Flask application
     :param (str) run_script: (optional) the path to a DDL script to run on the database
     """
+
+    global FILE_SPACE_PATH
+    # Define the file space folder and get the Google API key from a file
+    FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
+    if FILE_SPACE_PATH == None or FILE_SPACE_PATH == "":
+        logger.critical("The system variable 'OCEAN_FILESPACE_PATH' not found.")
+    if not os.path.exists(FILE_SPACE_PATH):
+        logger.critical(f"The system variable 'OCEAN_FILESPACE_PATH' found but the path '{FILE_SPACE_PATH}' does not exist.")
 
     db.init_app(app)
 
@@ -431,7 +440,7 @@ def create_system_time_request(session: sessionmaker, db_object, filters:dict=No
         try:
             queried_db_object = queried_db_object[0]
         except Exception as e:
-            raise exception_handler.NotFoundException(f"{db_object.__tablename__} not found")
+            return None
 
     return queried_db_object
 
@@ -571,25 +580,22 @@ def parse_date(date_string: str) -> datetime:
     import re
     date = None
     match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
-    if match:
-        year = match.group(1)
-        month = match.group(2)
-        day = match.group(3)
-        hour = match.group(4)
-        minute = match.group(5)
-        second = match.group(6)
-        date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
-        date = datetime.strptime(date_string, '%d/%m/%Y %H:%M:%S')
     if not match:
         match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
-        if match:
-            year = match.group(1)
-            month = match.group(2)
-            day = match.group(3)
-            hour = match.group(4)
-            minute = match.group(5)
-            second = match.group(6)
-            date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
-            date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
+        if not match:
+            match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+            if not match:
+                match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                if not match:
+                    return None
+
+    year = match.group(1)
+    month = match.group(2)
+    day = match.group(3)
+    hour = match.group(4)
+    minute = match.group(5)
+    second = match.group(6)
+    date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
+    date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
 
     return date

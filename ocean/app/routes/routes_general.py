@@ -87,11 +87,6 @@ def critical_exception(e):
     logger.exception('Critical exception')
     return render_template('general-error.html', error_message=str(e), current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Back")
 
-@routes_general.errorhandler(exception_handler.NotFoundException)
-def not_found(e):
-    logger.warning('Not found exception: ' + str(e))
-    return render_template('error.html', error_code=404, error=str(e) + "<br>" + str(e.details), goback_link=request.referrer, goback_message="Go Back")
-
 @routes_general.errorhandler(Exception)
 def general_exception(e):
     logger.exception('General exception')
@@ -212,7 +207,6 @@ def search_users():
                 models.User.name.ilike(f'%{search_term}%'),
                 models.User.login_id.ilike(f'%{search_term}%')
             ),
-            models.User.is_temporary == False
         ).all()
         user_list = [{'id': user.id, 'name': user.name, 'login_id': user.login_id} for user in users]
         return jsonify({'users': user_list})

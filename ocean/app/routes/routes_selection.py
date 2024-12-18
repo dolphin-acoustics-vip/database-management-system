@@ -16,6 +16,7 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Standard library imports
+import os
 import re
 import tempfile
 
@@ -29,6 +30,7 @@ from .. import database_handler
 from .. import models
 from .. import exception_handler
 from .. import utils
+from .. import filespace_handler
 
 routes_selection = Blueprint('selection', __name__)
 
@@ -57,7 +59,7 @@ def insert_or_update_selection(session, selection_number: str, file, recording_i
     if selection_obj.selection_file_id is not None:
         raise exception_handler.WarningException(f"Selection file for {selection_obj.get_unique_name()} already exists.")
     selection_file = file
-    selection_filename = selection_obj.generate_selection_filename()
+    selection_filename = selection_obj.generate_selection_file_name()
     selection_relative_path = selection_obj.generate_relative_path()
     new_file = models.File()
     new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename)
@@ -90,7 +92,7 @@ def contour_file_delete(selection_id: str):
             else:
                 raise exception_handler.WarningException(f"Unable to delete contour file due to internal error.")
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e, "Error deleting contour file")
+            exception_handler.handle_exception(exception=e, prefix="Error deleting contour file", session=session)
         return redirect(request.referrer)
 
 def insert_or_update_contour(session, selection: models.Selection, contour_file):
@@ -108,7 +110,7 @@ def insert_or_update_contour(session, selection: models.Selection, contour_file)
     if selection.contour_file is not None:
         raise exception_handler.WarningException(f"Contour file for selection {selection.selection_number} already exists.")
     new_file = models.File()
-    new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_filename())
+    new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_file_name())
     session.add(new_file)
     session.commit()
     print("new file: " + new_file.id)
@@ -190,14 +192,14 @@ def process_contour():
             messages.append("<span style='color: red;'>Could not cross-reference selection number.</span>")
             valid = False
         
-        date = database_handler.parse_date(filename)
         # Check if the selection start time matches that of its recording
         recording = session.query(models.Recording).filter(database_handler.db.text("id = :recording_id")).params(recording_id=recording_id).first()
-        if not recording.match_start_time(date):
+        date = utils.parse_date(filename)
+        if not date:
+            messages.append("<span style='color: orange;'>Warning: no start time.</span>")            
+        elif not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
-        else:
-            messages.append("<span style='color: orange;'>Warning: no start time.</span>")
-    
+            
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
 @routes_selection.route('/process_selection', methods=['GET'])
@@ -273,11 +275,12 @@ def process_selection():
 
         # Check if the selection start time matches that of its recording
         recording = session.query(models.Recording).filter(database_handler.db.text("id = :recording_id")).params(recording_id=recording_id).first()
-        date = database_handler.parse_date(filename)
-        if not recording.match_start_time(date):
+        date = utils.parse_date(filename)
+        if not date:
+            messages.append("<span style='color: orange;'>Warning: no start time.</span>")            
+        elif not recording.match_start_time(date):
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
-        else:
-            messages.append("<span style='color: orange;'>Warning: no start time.</span>")
+            
 
     print(jsonify(id=selection_number,messages=messages,valid=valid))
     return jsonify(id=selection_number,messages=messages,valid=valid)
@@ -297,15 +300,16 @@ def serve_plot(selection_id: str):
     :type hop_size: int (HTTP argument), default None
     :return: a PNG image of the spectrogram
     """
-    fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
-    hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
-    with database_handler.get_session() as session:
-        selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        # Create the file in a temporary path
-        with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+    with database_handler.get_operation_lock() as operation_lock:
+        fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
+        hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
+        with database_handler.get_session() as session:
+            filespace_handler.clean_filespace_temp()
+            selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
+            temp_dir = tempfile.mkdtemp(dir=database_handler.get_tempdir())  # Use mkdtemp for manual cleanup
             update_permissions = True if current_user.role_id != 4 else False
             plot_file_path = selection.create_temp_plot(session, temp_dir, fft_size, hop_size, update_permissions=update_permissions)
-            return send_file(plot_file_path, mimetype='image/png')
+        return send_file(plot_file_path, mimetype='image/png')
 
 
 @routes_selection.route('/recording/<recording_id>/contour-insert', methods=['POST'])
@@ -345,7 +349,7 @@ def contour_insert(recording_id):
             else:
                 raise exception_handler.WarningException("Bad file in request")
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session,e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             if last == True:
                 if counter > 0:
@@ -396,7 +400,7 @@ def selection_insert(recording_id):
                 raise exception_handler.WarningException("Bad file in request")
         except (Exception,SQLAlchemyError) as e:
             success = False
-            exception_handler.handle_exception(session,e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             if last == True:
                 if counter > 0:
@@ -410,19 +414,19 @@ def selection_insert(recording_id):
 def download_ctr_file(selection_id):
     with database_handler.get_session() as session:
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        return utils.download_file(selection.ctr_file, selection.generate_ctr_filename)
+        return utils.download_file(selection.get_ctr_file(), selection.generate_ctr_file_name)
 
 @routes_selection.route('/selection/<selection_id>/download-contour', methods=['GET'])
 def download_contour_file(selection_id):
     with database_handler.get_session() as session:
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        return utils.download_file(selection.contour_file, selection.generate_contour_filename)
+        return utils.download_file(selection.get_contour_file(), selection.generate_contour_file_name)
 
 @routes_selection.route('/selection/<selection_id>/download-selection', methods=['GET'])
 def download_selection_file(selection_id):
     with database_handler.get_session() as session:
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        return utils.download_file(selection.selection_file, selection.generate_selection_filename)
+        return utils.download_file(selection.get_selection_file(), selection.generate_selection_file_name)
 
 @routes_selection.route('/selection/<selection_id>/view', methods=['GET'])
 @login_required

@@ -47,6 +47,29 @@ def delete_orphan_file():
     return redirect(url_for('filespace.filespace_view'))
 
 
+@routes_filespace.route('/filespace/delete/orphaned-files', methods=['POST'])
+@login_required
+@database_handler.exclude_role_2
+@database_handler.exclude_role_3
+@database_handler.exclude_role_4
+def delete_orphaned_files():
+    file_paths=[]
+    file_paths_string = request.form['file_paths[]']
+    print(file_paths_string)
+    deleted = request.form['deleted']
+    print("DELETED", deleted)
+    if deleted == "True": deleted = True
+    else: deleted = False
+    if file_paths_string != "":
+        file_paths = file_paths_string.split(",")
+    print(file_paths)
+    success_counter = 0
+    for file_path in file_paths:
+        filespace_handler.delete_orphan_file(file_path, deleted=deleted, temp=False)
+        success_counter += 1
+    flash(f"Deleted {success_counter} orphaned files.", "success")
+    return redirect(url_for('filespace.filespace_view'))
+
 
 @routes_filespace.route('/filespace/delete-file/<string:file_id>', methods=['GET'])
 @login_required
@@ -63,7 +86,7 @@ def filespace_delete_file(file_id):
                 session.delete(file)
                 session.commit()
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
     return redirect(url_for('filespace.filespace_view'))
 
 def get_directory_size(directory):
@@ -139,7 +162,7 @@ def trash_delete_file_helper(file_id):
                 session.delete(file)
             session.commit()
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
 
 @routes_filespace.route('/filespace/trash/delete/files', methods=['POST'])
 @login_required

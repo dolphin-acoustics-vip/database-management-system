@@ -25,6 +25,22 @@ from flask_login import current_user
 # Local application imports
 from . import database_handler
 from . import models
+from . import exception_handler
+
+
+# Characters which need to be replaced by an underscore in paths
+INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," "]
+
+def validate(s: str) -> str:
+    from .logger import logger
+    for c in INVALID_CHARACTERS:
+        s = s.replace(c,"_")
+        
+    return s
+
+def format_date_for_filespace(d: datetime.datetime) -> str:
+    if not d or type(d) != datetime.datetime: raise exception_handler.ValueError("Date is in the incorrect format.")
+    return d.strftime('%Y%m%dT%H%M%S')
 
 def get_path_to_temporary_file(file_id: str, filename: str):
     """Get the path to a file in the temporary directory based on the file_id and filename.
@@ -46,6 +62,11 @@ def get_path_to_temporary_file(file_id: str, filename: str):
     if not os.path.exists(directory):
         os.makedirs(directory)
     path = os.path.join(directory, filename)
+    return path
+
+def get_complete_temporary_file(file_id: str, filename: str):
+    path = get_path_to_temporary_file(file_id=file_id, filename=filename)
+    if not os.path.exists(path): raise exception_handler.WarningException("Request timed out. Please try again.")
     return path
 
 def remove_temporary_file(file_id: str, filename: str):
@@ -93,7 +114,7 @@ def clean_filespace_temp() -> None:
     """
     directory = database_handler.get_temp_space()
     # Define the time threshold (5 hours ago)
-    cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=1)
+    cutoff_time = datetime.datetime.now() - datetime.timedelta(minutes=5)
 
     # Walk through the directory in reverse order (to process files before directories)
     for root, dirs, files in os.walk(directory, topdown=False):
@@ -149,7 +170,7 @@ def get_orphaned_files(session, deleted: bool, temp: bool) -> list:
     :param temp: whether to query temporary files
     :return: a list of dictionaries of orphaned files where the key is the models.File.id and the value is the models.File object
     """
-
+    # TODO: REMOVE ABSOLUTE PATHS FROM HERE
     orphaned_files = []
     root_path = database_handler.get_root_directory(deleted, temp)
     for root, dirs, files in os.walk(root_path):

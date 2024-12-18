@@ -16,7 +16,10 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Standard library imports
+import hashlib
+import io
 import uuid, datetime, tempfile
+from werkzeug.utils import secure_filename
 
 # Third-party imports
 import shutil, zipfile, flask
@@ -25,10 +28,10 @@ import shutil, zipfile, flask
 from . import exception_handler
 from . import database_handler
 
-def zip_and_download_files(file_paths, zip_filename):
+
+def download_files(file_objects, file_names, zip_filename):
     """
-    Creates a zip file from the given list of file paths and returns
-    the file as a response object.
+    Creates and streams a zip file from the given list of file paths.
 
     :param file_paths: A list of file paths to add to the zip file.
     :type file_paths: list
@@ -37,54 +40,124 @@ def zip_and_download_files(file_paths, zip_filename):
     :return: A response object containing the zip file.
     :rtype: flask.Response
     """
-    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
-        with zipfile.ZipFile(os.path.join(temp_dir, zip_filename), 'w') as zipf:
-            for file_path in file_paths:
-                zipf.write(file_path, os.path.basename(file_path))
-        return flask.send_file(os.path.join(temp_dir, zip_filename), as_attachment=True)
+    def generate():
+        """
+        A generator function that streams the zip file contents.
+        """
+        zip_buffer = io.BytesIO()
 
-def download_files(file_paths, file_names, zip_filename):
-    """
-    Creates a zip file from the given list of file paths and returns
-    the file as a response object.
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_object, file_name in zip(file_objects, file_names):
+                # If the file does not exist, create a text entry explaining it
+                if not os.path.exists(file_object.get_full_absolute_path()):
+                    error_message = f"The file {file_name} was not found."
+                    zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
+                    continue
+                binary = file_object.get_binary()
+                file_hash = hashlib.sha256(binary).hexdigest()
+                if file_hash != None and file_hash != file_object.get_hash():
+                    # If the hash does not match, create a text entry explaining the mismatch
+                    error_message = f"The hash for {file_name} does not match."
+                    zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
+                    continue
+                # Secure the filename for zip entry
+                zipf.writestr(secure_filename(file_name + "." + file_object.extension), binary)
+        
+        # Move the cursor to the start of the BytesIO object to begin streaming
+        zip_buffer.seek(0)
 
-    :param file_paths: A list of file paths to add to the zip file.
-    :type file_paths: list
-    :param file_names: A list of names to use for the files in the zip file.
-    :type file_names: list
-    :param zip_filename: The name of the zip file to create.
-    :type zip_filename: str
-    :return: A response object containing the zip file.
-    :rtype: flask.Response
-    """
-    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
-        new_file_paths = []
-        for file_path, file_name in zip(file_paths, file_names):
-            if not file_name.endswith("."):
-                file_extension = os.path.splitext(file_path)[1]
-                new_file_name = f"{file_name}{file_extension}"
-            else:
-                new_file_name = file_name
-            new_file_path = os.path.join(temp_dir, new_file_name)
-            shutil.copy(file_path, new_file_path)
-            new_file_paths.append(new_file_path)
+        while chunk := zip_buffer.read(1024 * 1024):  # Read in 1MB chunks
+            yield chunk
+
+    return flask.Response(generate(), 
+                          mimetype='application/zip', 
+                          headers={'Content-Disposition': f'attachment; filename={zip_filename}'})
+
+# def zip_and_download_files(file_paths, zip_filename):
+#     """
+#     Creates a zip file from the given list of file paths and returns
+#     the file as a response object.
+
+#     :param file_paths: A list of file paths to add to the zip file.
+#     :type file_paths: list
+#     :param zip_filename: The name of the zip file to create.
+#     :type zip_filename: str
+#     :return: A response object containing the zip file.
+#     :rtype: flask.Response
+#     """
+#     with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+#         with zipfile.ZipFile(os.path.join(temp_dir, zip_filename), 'w') as zipf:
+#             for file_path in file_paths:
+#                 zipf.write(file_path, os.path.basename(file_path))
+#         return flask.send_file(os.path.join(temp_dir, zip_filename), as_attachment=True)
+
+# def download_files(file_paths, file_names, zip_filename):
+#     """
+#     Creates a zip file from the given list of file paths and returns
+#     the file as a response object.
+
+#     :param file_paths: A list of file paths to add to the zip file.
+#     :type file_paths: list
+#     :param file_names: A list of names to use for the files in the zip file.
+#     :type file_names: list
+#     :param zip_filename: The name of the zip file to create.
+#     :type zip_filename: str
+#     :return: A response object containing the zip file.
+#     :rtype: flask.Response
+#     """
+#     with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+#         new_file_paths = []
+#         for file_path, file_name in zip(file_paths, file_names):
+#             if not file_name.endswith("."):
+#                 file_extension = os.path.splitext(file_path)[1]
+#                 new_file_name = f"{file_name}{file_extension}"
+#             else:
+#                 new_file_name = file_name
+#             new_file_path = os.path.join(temp_dir, new_file_name)
+#             shutil.copy(file_path, new_file_path)
+#             new_file_paths.append(new_file_path)
             
-        return zip_and_download_files(new_file_paths, zip_filename)
+#         return zip_and_download_files(new_file_paths, zip_filename)
     
 def download_file(file_obj, file_name_generator=None):
     """
     Takes a file object and sends the file to the user. Before doing so,
     uses the file_name_generator() method passed to rename the file during
-    export.
+    export without copying or moving the file.
     """
-    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
-        file_path = os.path.join(temp_dir, file_name_generator() if file_name_generator else file_obj.filename)
-        if not file_path.endswith(file_obj.extension): file_path = f"{file_path}.{file_obj.extension}"
-        shutil.copy(file_obj.get_full_absolute_path(), file_path)
-        return flask.send_file(file_path, as_attachment=True)
+    try:
+        # Generate a custom filename for the download
+        custom_filename = file_name_generator() if file_name_generator else file_obj.filename
+        if not custom_filename.endswith(file_obj.extension):
+            custom_filename = f"{custom_filename}.{file_obj.extension}"
+        
+        # Get the binary content of the file
+        binary_content = file_obj.get_binary()
 
+        # Calculate the SHA-256 hash of the file content
+        file_hash = hashlib.sha256(binary_content).hexdigest()
 
-def validate_datetime(value: datetime.datetime | str, field=None, allow_empty=False) -> datetime.datetime:
+        if file_obj.get_hash() != None:
+            if file_hash != file_obj.get_hash():
+                raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
+
+        # Create an in-memory binary stream
+        file_stream = io.BytesIO(binary_content)
+
+        # Send the file stream as an attachment
+        response = flask.send_file(
+            file_stream,
+            as_attachment=True,
+            download_name=secure_filename(custom_filename),  # Custom download filename
+        )
+
+        return response
+    except exception_handler.WarningException as e:
+        # Log or handle the exception as needed
+        exception_handler.handle_exception(exception=e, prefix="Error downloading file")
+        return flask.redirect(flask.request.referrer)
+
+def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bool = False, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> datetime.datetime:
     """
     Parse a datetime (or convertable string) value, returning the parsed datetime
     object. A convertable string is one in the following format
@@ -94,61 +167,92 @@ def validate_datetime(value: datetime.datetime | str, field=None, allow_empty=Fa
     :param value: The datetime value to validate (or convertable string).
     :return: the parsed datetime object.
     """
-
-    if allow_empty and ((type(value) == str and value.strip() == "") or value is None):
-        return None
-
-    msg_sfx = "." if type(value) == str else ""
+    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    elif type(allow_none) == int and allow_none == 0: return 0
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
+    
+    if type(tzinfo) != datetime.timezone:
+        raise ValueError(f"Field '{field}' requires tzinfo to be datetime.tzinfo or a subclass thereof (currently {type(tzinfo)}).")
 
     if type(value) == str:
         try:
-            value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')  # Modify the format to include milliseconds
+            value_naive = datetime.datetime.fromisoformat(value)
+            value_aware = datetime.datetime(value_naive.year, value_naive.month, value_naive.day, value_naive.hour, value_naive.minute, value_naive.second, tzinfo=tzinfo)
         except ValueError:
-            try:
-                value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M')  # Try without seconds
-            except ValueError:
-                raise exception_handler.WarningException(f"Invalid date format{msg_sfx}")
+            raise exception_handler.WarningException(f"Field '{field}' when given value as a string must be in standard ISO format.")
+        except OverflowError:
+            raise exception_handler.WarningException(f"Field '{field}' out of range.")
     elif type(value) != datetime.datetime:
-        raise exception_handler.WarningException(f"Invalid date format{msg_sfx}")
-    return value
+        raise exception_handler.WarningException(f"Field '{field}' must be of type aware datetime.datetime or str")
+    elif value.tzinfo is None:
+        value_naive = value
+        value_aware = datetime.datetime(value_naive.year, value_naive.month, value_naive.day, value_naive.hour, value_naive.minute, value_naive.second, tzinfo=tzinfo)
+    else:
+        value_aware = value
 
-def validate_latitude(value: float | str, field=None, allow_empty=False) -> float:
+    return value_aware
+
+def validate_latitude(value: float | str | int, field: str, allow_none: bool = False) -> float:
+    """ Validate a given value as a latitude. This involves checking whether
+    the provided float (if given a a string, converted to a float) fits within
+    the bounds defining latitude (-90 to 90 inclusive). 
+
+    Args:
+        value (float | str | int): the latitude to be validated (if a string, it must be in a convertable format for float)
+        field (str): the name of the field being validated (used in exception messages)
+        allow_none (bool, optional): whether the value can be None. Defaults to False.
+
+    Raises:
+        ValueError: if the value is not a valid float nor latitude
+        ValueError: if the value is None when `allow_none` is False
+
+    Returns:
+        float: the validated latitude in float format
     """
-    Parse a float (or convertable string) value and validate it is between -90 and 90.
-
-    :param value: The float value to validate.
-
-    :return: the parsed float value.
-
-    :raise exception_handler.WarningException: If value is not a float (or convertable string) or value is not between -90 and 90.
-    """
-    if allow_empty and ((type(value) == str and value.strip() == "") or value is None):
-        return None
-
-    msg_sfx="." if field is None else f" in {field}"
-
-    value = validate_float(value, field=field, allow_empty=allow_empty)
+    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    elif type(allow_none) == int and allow_none == 0: return 0
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
+    value = validate_float(value, field=field, allow_none=allow_none)
     if value is not None:
         if value < -90 or value > 90:
-            raise exception_handler.WarningException(f"Latitude must be between -90 and 90{msg_sfx}")
+            raise exception_handler.WarningException(f"Field '{field}' must be between -90 and 90.")
     return value
 
 
-def validate_longitude(value: float | str, field=None, allow_empty=False) -> float:
-    if allow_empty and ((type(value) == str and value.strip() == "") or value is None):
-        return None
+def validate_longitude(value: float | str | int, field: str, allow_none: bool = False) -> float:
+    """ Validate a given value as a longitude. This involves checking whether
+    the provided float (if given a a string, converted to a float) fits within
+    the bounds defining longitude (-180 to 180 inclusive).
 
-    msg_sfx = "." if field is None else f" in {field}"
+    Args:
+        value (float | str): the longitude to be validated
+        field (str): the name of the field being validated
+        allow_none (bool, optional): whether `value` can be `None`. Defaults to False.
 
-    value = validate_float(value, field=field, allow_empty=allow_empty)
+    Raises:
+        ValueError: if `value` is not a valid float nor longitude
+        ValueError: if `value` is `None` when `allow_none` is False
+
+    Returns:
+        float: the validated longitude in float format
+    """
+    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    elif type(allow_none) == int and allow_none == 0: return 0
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
+    value = validate_float(value, field=field, allow_none=allow_none)
     if value is not None:
         if value < -180 or value > 180:
-            raise exception_handler.WarningException(f"Longitude must be between -180 and 180{msg_sfx}")
-        return value
-    else: 
-        return None
+            raise exception_handler.WarningException(f"Field '{field}' must be between -90 and 90.")
+    return value
 
-def validate_float(value: float | str, field=None, allow_empty=False) -> float:
+def validate_string(value: str, field=None, allow_none = False):
+    if not allow_none and (value is None or str(value).strip() == ""): raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    if value is None and allow_none: return None
+    if type(value) != str: raise ValueError(f'Field {field} must be of type str.')
+    value = str(value).strip()
+    return value
+
+def validate_float(value: float | str, field=None, allow_none=False) -> float:
     """
     Parse a float value and validate it is a float.
 
@@ -158,66 +262,102 @@ def validate_float(value: float | str, field=None, allow_empty=False) -> float:
 
     :raise exception_handler.WarningException: If the float value cannot be converted to a float.
     """
+    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    elif type(allow_none) == int and allow_none == 0: return 0
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
+    try:
+        value = float(value)
+    except ValueError:
+        raise exception_handler.WarningException(f"Field '{field}' must be of type float.")
+    return float(value)
 
+def validate_int(value: int | str, field=None, allow_none=False) -> int:
+    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    elif type(allow_none) == int and allow_none == 0: return 0
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
+    try:
+        value = int(float(value))
+    except ValueError:
+        raise exception_handler.WarningException(f"Field '{field}' must be of type int.")
+    return int(float(value))
 
-    if allow_empty and ((type(value) == str and value.strip() == "") or value is None):
+def validate_id(value: str | uuid.UUID, field: str, allow_none: bool=False) -> str:
+    """Validate a value is a valid UUID
+
+    Args:
+        value (str | uuid.UUID): the value to be validated
+        field (str, optional): the name of the field being validated.
+        allow_none (bool, optional): whether `value` can be `None `or empty. Defaults to False.
+
+    Raises:
+        ValueError: if the value is not a valid UUID
+        ValueError: if the value is `None` and `allow_none` is False
+
+    Returns:
+        str: the validated UUID in str format
+    """
+    if not allow_none and ((type(value) == str and value.strip() == "") or value is None):
+        raise exception_handler.WarningException(f"Field '{field}' cannot be none or empty.")
+    elif allow_none and ((type(value) == str and value.strip() == "") or value is None):
         return None
-    
-    msg_sfx = "." if field is None else f" in {field}"
-    if value is not None:
-        try:
-            value = float(value)
-        except ValueError:
-            raise exception_handler.WarningException(f"Invalid float format{msg_sfx}")
+    try:
+        uuid.UUID(str(value))
+    except ValueError:
+        raise exception_handler.WarningException(f"Field '{field}' must be a valid UUID.")
+    return uuid.UUID(str(value))
+
+def validate_type(value, target_type, field, allow_none=False):
+    """Validate the type of a value
+
+    Args:
+        value (Any): the value to validate
+        target_type (Any): a type to match with the value (e.g. str, int, Object)
+        field (str): the name of the field being validated (to be used in exception messages)
+        allow_none (bool, optional): whether an exception should be thrown if the value is None. Defaults to False.
+
+    Raises:
+        ValueError: if the value is not of the target type
+        WarningException: if the value is `None` or empty and `allow_none` is False
+
+    Returns:
+        target_type: the validated value
+    """
+    if not allow_none and not value: raise exception_handler.WarningException(f"{field} cannot be empty")
+    if allow_none and not value: return None
+    if not isinstance(value, target_type): raise ValueError(f"{field} must be of type {target_type}")
     return value
+        
 
-def validate_id(value: str | uuid.UUID, field=None, allow_empty=False) -> str:
-    """
-    Parse an ID value and validate it is a valid UUID.
-
-    :param value: The ID value to validate.
+def validate_timezone(value: int | str, field: str, allow_none=False) -> float:
+    """Parse a timezone value and validate it is between GMT-12 and GMT+14 (inclusive). 
+    The timezone is given in minutes before (negative) or after (positive) GMT+0. For
+    example, GMT-2 is -120, GMT+1 is +60 and GMT+0 or GMT-0 is 0.
     
-    :return: the parsed ID value as a string.
-
-    :raise exception_handler.WarningException: If the ID value cannot be converted to a UUID.
-    """
-    if allow_empty and ((type(value) == str and value.strip() == "") or value is None):
-        return None
-
-    msg_sfx = "." if field is None else f" in {field}"
-
-    if value is not None:
-        try:
-            uuid.UUID(str(value))
-        except ValueError:
-            raise exception_handler.WarningException(f"Invalid ID format{msg_sfx}")
-    return str(value)
-
-
-def validate_timezone(value: int | str, field=None, allow_empty=False) -> int:
-    """
-    Parse a timezone value and validate it is between GMT-12 and GMT+14 (inclusive). 
+    WARNING: do not validate timezones greater than -720 (GMT-12) or less than 840 (GMT+14)
     
-    :raise exception_handler.WarningException: If the timezone value is not an 
-    integer or a string that can be converted to an integer.
+    Args:
+        value (int | str): the timezone to be validated (if passed as a string it must be in an integer format, if passed as a string or string any decimal points are truncated)
+        field (str): the name of the field being validated
+        allow_none (bool, optional): whether `value` can be `None`. Defaults to False.
 
-    :param value: The timezone value to validate (if passed as string must be convertable to an integer).
+    Raises:
+        ValueError: if the value is not a valid integer or is not between -720 and +840
+        ValueError: if the value is `None` and `allow_none` is False
 
-    :return: the parsed timezone value.
+    Returns:
+        int: the validated timezone
+    
     """
 
-    if allow_empty and ((type(value) == str and value.strip() == "") or value is None):
-        return None
-    
-    msg_sfx = "." if field is None else f" in {field}"
-
-    if value is not None:
-        try:
-            value = int(value)
-        except ValueError:
-            raise exception_handler.WarningException(f"Timezone must be an integer{msg_sfx}")
+    if not allow_none and not value: raise exception_handler.WarningException(f"{field} cannot be empty")
+    elif type(value) == int and value == 0: return 0
+    elif allow_none and not value or str(value).strip() == "": return None
+    try:
+        value = int(float(value))
+    except Exception:
+        raise exception_handler.WarningException(f"Field '{field}' must be a valid timezone in integer minutes.")
     if value is not None and (value < -720 or value > 840):
-        raise exception_handler.WarningException(f"Timezone must be between GMT-12 and GMT+14 (inclusive){msg_sfx}")
+        raise exception_handler.WarningException(f"Field '{field}' must be a timezone between -720 and +840 (inclusive).")
     return value
 
 
@@ -305,3 +445,71 @@ def extract_args(arg, datatype=str, allow_empty=False):
             return datatype(value)
         except ValueError:
             raise ValueError(f"Invalid value for argument: {arg}")
+        
+        
+def parse_string_notempty(value:str, field:str) -> str:
+    """Parse a value and validate that it is neither None nor
+    an empty string. Empty strings include all "" and those which
+    have whitespace such as " " or "\t" or "\n". If the value is
+    valid then it is converted to a string and stripped of whitespace.
+
+    Args:
+        value (str): the value to be parsed
+        field (str): the name of the field being parsed
+
+    Raises:
+        ValueError: value is None
+        ValueError: value is an empty string
+
+    Returns:
+        str: the value as a string with no whitespace
+    """
+    if value is None:
+        raise exception_handler.WarningException(f"Field '{field}' cannot be null.")
+    if str(value).strip() == "":
+        raise exception_handler.WarningException(f" Field '{field}' cannot be empty.")
+    else:
+        return str(value).strip()
+
+
+DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M'
+
+def pretty_date(d: datetime.datetime | None, format=DEFAULT_DATE_FORMAT):
+    if not d: return None
+    if type(d) != datetime.datetime: raise ValueError("Attempting to parse datetime object but not in datetime.datetime format.")
+    return d.ctime()
+
+
+def parse_date(date_string: str) -> datetime.datetime:
+    """
+    This function takes a string and attempts to parse it as a date. This method is used 
+    wherever it is necessary to read a date from a filename.
+    The date can be in two formats:
+    - yyyymmdd_HHMMSS
+    - yymmdd-HHMMSS
+    
+    :param date_string: The string to parse as a date
+    :type date_string: str
+    :return: The parsed date
+    """
+    import re
+    date = None
+    match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
+    if not match:
+        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
+        if not match:
+            match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+            if not match:
+                match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                if not match:
+                    return None
+    if len(match.group(1)) == 2: year = int("20" + match.group(1))
+    else: year = int(match.group(1))
+    month = int(match.group(2))
+    day = int(match.group(3))
+    hour = int(match.group(4))
+    minute = int(match.group(5))
+    second = int(match.group(6))
+    date = datetime.datetime(year, month, day, hour, minute, second)
+    print(date)
+    return date

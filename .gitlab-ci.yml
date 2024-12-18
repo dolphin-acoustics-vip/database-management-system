@@ -15,7 +15,15 @@ include:
     - scp -o stricthostkeychecking=no -r * .env $SSH_USER@$SSH_SERVER:$DEPLOY_PATH
 
 stages:
+  - test
   - deploy-test
+
+test:
+  stage: test
+  before_script:
+    - pip install -r requirements.txt
+  script:
+    - pytest
 
 deploy-test:
   stage: deploy-test

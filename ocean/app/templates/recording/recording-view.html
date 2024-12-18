@@ -10,7 +10,7 @@
 
 <body>
     <div class="outer-div">
-
+        <h1>View Recording {{ recording.get_unique_name() }}</h1>
 
         {% if current_user.role_id in [1, 2] %}
 
@@ -142,7 +142,7 @@
             <label>Assignment Status: NOT ASSIGNED TO CURRENT USER</label>
             {% endif %}
             {% endif %}
-            <label>Start date: {{ recording.start_time }}</label>
+            <label>Start date: {{ recording.get_start_time_pretty() }}</label>
             <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
                 recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
             <label>Number of selections: {{ recording.get_number_of_selections() }}</label>
@@ -247,7 +247,7 @@
                         href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download
                         TXT</a>
                     <a style="margin-left: 0.25rem" class="button small"
-                        href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.get_unique_name(' - ')}}">File
+                        href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.get_unique_name()}}">File
                         Details</a>
                     <a style="margin-left: 0.25rem;" class="button small"
                         href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download
@@ -288,7 +288,7 @@
 
                 {% endif %}
 
-                <h2>Selections for recording {{ recording.get_start_time_string() }}</h2>
+                <h2>Selections for recording {{ recording.get_start_time_pretty() }}</h2>
                 {% if selections|length > 0 %}
                 <div class="table-responsive">
                     <table class="table-striped">
