@@ -566,6 +566,11 @@ class File(database_handler.db.Model):
             cls.temp == temp
         ).first() is not None
 
+    def get_hash(self):
+        if self.hash == None:
+            self.hash = self.calculate_hash()
+        return self.hash.hex()
+
     def calculate_hash(self):
         import hashlib
         with open(self.get_full_absolute_path(), 'rb') as file:
@@ -694,9 +699,10 @@ class File(database_handler.db.Model):
         self.path=new_directory
         self.filename=new_filename
         self.extension=new_extension
-        self.verify_hash()
+        self.hash = self.calculate_hash()
         session.commit()
-    
+        logger.info(f"Inserted directory and filename for {self.path} with hash {self.get_hash()}.")
+
 
     def rename_loose_file(self,loose_file_directory:str, loose_file_name:str, loose_file_extension:str) -> None:
         """
@@ -790,9 +796,9 @@ class File(database_handler.db.Model):
                     dest_file.write(chunk)
                 else:
                     break
-
-        logger.info(f"Saved file to {destination_path}.")
-        self.verify_hash()
+        self.hash = self.calculate_hash()
+        logger.info(f"Saved file to {destination_path} with hash {self.get_hash()}.")
+        
         session.commit()
         from .filespace_handler import clean_filespace_temp
         clean_filespace_temp()
@@ -878,6 +884,26 @@ class File(database_handler.db.Model):
         else:
             pass
             return False
+
+    def get_binary(self):
+        """
+        Reads and returns the binary content of the file represented by this object.
+
+        :return: The binary content of the file.
+        :raises FileNotFoundError: If the file does not exist.
+        :raises IOError: If there is an issue reading the file.
+        """
+        absolute_path = self.get_full_absolute_path()
+        
+        try:
+            with open(absolute_path, 'rb') as file:
+                return file.read()
+        except IOError as e:
+            logger.error(f"Failed to read the file at {absolute_path}: {e}")
+            raise exception_handler.WarningException(f"Unable to access file. This issue has been logged.")
+        except FileNotFoundError as e:
+            logger.error(f"File not found at {absolute_path}: {e}")
+            raise exception_handler.WarningException(f"Unable to access file. This issue has been logged.")
 
 class Recording(database_handler.db.Model):
     __tablename__ = 'recording'

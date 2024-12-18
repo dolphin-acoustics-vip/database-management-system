@@ -16,7 +16,10 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Standard library imports
+import hashlib
+import io
 import uuid, datetime, tempfile
+from werkzeug.utils import secure_filename
 
 # Third-party imports
 import shutil, zipfile, flask
@@ -25,10 +28,10 @@ import shutil, zipfile, flask
 from . import exception_handler
 from . import database_handler
 
-def zip_and_download_files(file_paths, zip_filename):
+
+def download_files(file_objects, file_names, zip_filename):
     """
-    Creates a zip file from the given list of file paths and returns
-    the file as a response object.
+    Creates and streams a zip file from the given list of file paths.
 
     :param file_paths: A list of file paths to add to the zip file.
     :type file_paths: list
@@ -37,52 +40,123 @@ def zip_and_download_files(file_paths, zip_filename):
     :return: A response object containing the zip file.
     :rtype: flask.Response
     """
-    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
-        with zipfile.ZipFile(os.path.join(temp_dir, zip_filename), 'w') as zipf:
-            for file_path in file_paths:
-                zipf.write(file_path, os.path.basename(file_path))
-        return flask.send_file(os.path.join(temp_dir, zip_filename), as_attachment=True)
+    def generate():
+        """
+        A generator function that streams the zip file contents.
+        """
+        zip_buffer = io.BytesIO()
 
-def download_files(file_paths, file_names, zip_filename):
-    """
-    Creates a zip file from the given list of file paths and returns
-    the file as a response object.
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_object, file_name in zip(file_objects, file_names):
+                # If the file does not exist, create a text entry explaining it
+                if not os.path.exists(file_object.get_full_absolute_path()):
+                    error_message = f"The file {file_name} was not found."
+                    zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
+                    continue
+                binary = file_object.get_binary()
+                file_hash = hashlib.sha256(binary).hexdigest()
+                if file_hash != None and file_hash != file_object.get_hash():
+                    # If the hash does not match, create a text entry explaining the mismatch
+                    error_message = f"The hash for {file_name} does not match."
+                    zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
+                    continue
+                with open(file_object.get_full_absolute_path(), 'rb') as file:
+                    # Secure the filename for zip entry
+                    zipf.writestr(secure_filename(file_name), file.read())
+        
+        # Move the cursor to the start of the BytesIO object to begin streaming
+        zip_buffer.seek(0)
 
-    :param file_paths: A list of file paths to add to the zip file.
-    :type file_paths: list
-    :param file_names: A list of names to use for the files in the zip file.
-    :type file_names: list
-    :param zip_filename: The name of the zip file to create.
-    :type zip_filename: str
-    :return: A response object containing the zip file.
-    :rtype: flask.Response
-    """
-    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
-        new_file_paths = []
-        for file_path, file_name in zip(file_paths, file_names):
-            if not file_name.endswith("."):
-                file_extension = os.path.splitext(file_path)[1]
-                new_file_name = f"{file_name}{file_extension}"
-            else:
-                new_file_name = file_name
-            new_file_path = os.path.join(temp_dir, new_file_name)
-            shutil.copy(file_path, new_file_path)
-            new_file_paths.append(new_file_path)
+        while chunk := zip_buffer.read(1024 * 1024):  # Read in 1MB chunks
+            yield chunk
+
+    return flask.Response(generate(), 
+                          mimetype='application/zip', 
+                          headers={'Content-Disposition': f'attachment; filename={zip_filename}'})
+
+# def zip_and_download_files(file_paths, zip_filename):
+#     """
+#     Creates a zip file from the given list of file paths and returns
+#     the file as a response object.
+
+#     :param file_paths: A list of file paths to add to the zip file.
+#     :type file_paths: list
+#     :param zip_filename: The name of the zip file to create.
+#     :type zip_filename: str
+#     :return: A response object containing the zip file.
+#     :rtype: flask.Response
+#     """
+#     with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+#         with zipfile.ZipFile(os.path.join(temp_dir, zip_filename), 'w') as zipf:
+#             for file_path in file_paths:
+#                 zipf.write(file_path, os.path.basename(file_path))
+#         return flask.send_file(os.path.join(temp_dir, zip_filename), as_attachment=True)
+
+# def download_files(file_paths, file_names, zip_filename):
+#     """
+#     Creates a zip file from the given list of file paths and returns
+#     the file as a response object.
+
+#     :param file_paths: A list of file paths to add to the zip file.
+#     :type file_paths: list
+#     :param file_names: A list of names to use for the files in the zip file.
+#     :type file_names: list
+#     :param zip_filename: The name of the zip file to create.
+#     :type zip_filename: str
+#     :return: A response object containing the zip file.
+#     :rtype: flask.Response
+#     """
+#     with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
+#         new_file_paths = []
+#         for file_path, file_name in zip(file_paths, file_names):
+#             if not file_name.endswith("."):
+#                 file_extension = os.path.splitext(file_path)[1]
+#                 new_file_name = f"{file_name}{file_extension}"
+#             else:
+#                 new_file_name = file_name
+#             new_file_path = os.path.join(temp_dir, new_file_name)
+#             shutil.copy(file_path, new_file_path)
+#             new_file_paths.append(new_file_path)
             
-        return zip_and_download_files(new_file_paths, zip_filename)
+#         return zip_and_download_files(new_file_paths, zip_filename)
     
 def download_file(file_obj, file_name_generator=None):
     """
     Takes a file object and sends the file to the user. Before doing so,
     uses the file_name_generator() method passed to rename the file during
-    export.
+    export without copying or moving the file.
     """
-    with tempfile.TemporaryDirectory(dir=database_handler.get_tempdir()) as temp_dir:
-        file_path = os.path.join(temp_dir, file_name_generator() if file_name_generator else file_obj.filename)
-        if not file_path.endswith(file_obj.extension): file_path = f"{file_path}.{file_obj.extension}"
-        shutil.copy(file_obj.get_full_absolute_path(), file_path)
-        return flask.send_file(file_path, as_attachment=True)
+    try:
+        # Generate a custom filename for the download
+        custom_filename = file_name_generator() if file_name_generator else file_obj.filename
+        if not custom_filename.endswith(file_obj.extension):
+            custom_filename = f"{custom_filename}.{file_obj.extension}"
+        
+        # Get the binary content of the file
+        binary_content = file_obj.get_binary()
 
+        # Calculate the SHA-256 hash of the file content
+        file_hash = hashlib.sha256(binary_content).hexdigest()
+
+        if file_obj.get_hash() != None:
+            if file_hash != file_obj.get_hash():
+                raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
+
+        # Create an in-memory binary stream
+        file_stream = io.BytesIO(binary_content)
+
+        # Send the file stream as an attachment
+        response = flask.send_file(
+            file_stream,
+            as_attachment=True,
+            download_name=custom_filename,  # Custom download filename
+        )
+
+        return response
+    except exception_handler.WarningException as e:
+        # Log or handle the exception as needed
+        exception_handler.handle_exception(exception=e, prefix="Error downloading file")
+        return flask.redirect(flask.request.referrer)
 
 def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bool = False, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> datetime.datetime:
     """

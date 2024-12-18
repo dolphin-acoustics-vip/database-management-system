@@ -585,9 +585,9 @@ def download_ctr_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
         file_names = [selection.generate_ctr_file_name() for selection in selections if selection.ctr_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_ctr_files.zip"
+        zip_filename = f"{recording.encounter.species.get_species_name()}-{recording.encounter.get_encounter_name()}-{recording.encounter.get_location()}-{filespace_handler.format_date_for_filespace(recording.get_start_time())}_ctr_files.zip"
         file_paths = [ctr_file.get_full_absolute_path() for ctr_file in ctr_files]
-        response = utils.download_files(file_paths, file_names, zip_filename)
+        response = utils.download_files(ctr_files, file_names, zip_filename)
         
         return response
     
@@ -606,10 +606,10 @@ def download_selection_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
-        file_names = [selection.generate_selection_filename() for selection in selections if selection.selection_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_selection_files.zip"
+        file_names = [selection.generate_selection_file_name() for selection in selections if selection.selection_file is not None]
+        zip_filename = f"{recording.encounter.species.get_species_name()}-{recording.encounter.get_encounter_name()}-{recording.encounter.get_location()}-{filespace_handler.format_date_for_filespace(recording.get_start_time())}_selection_files.zip"
         file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
-        response = utils.download_files(file_paths, file_names, zip_filename)
+        response = utils.download_files(selection_files, file_names, zip_filename)
         return response
 
 @routes_recording.route('/recording/<recording_id>/download-contour-files', methods=['GET'])
@@ -626,10 +626,10 @@ def download_contour_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
-        file_names = [selection.generate_contour_filename() for selection in selections if selection.contour_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{recording.start_time}_contour_files.zip"
+        file_names = [selection.generate_contour_file_name() for selection in selections if selection.contour_file is not None]
+        zip_filename = f"{recording.encounter.species.get_species_name()}-{recording.encounter.get_encounter_name()}-{recording.encounter.get_location()}-{filespace_handler.format_date_for_filespace(recording.get_start_time())}_contour_files.zip"
         file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
-        response = utils.download_files(file_paths, file_names, zip_filename)
+        response = utils.download_files(contour_files, file_names, zip_filename)
         return response
     
 @routes_recording.route('/recording/<recording_id>/download-recording-file', methods=['GET'])
