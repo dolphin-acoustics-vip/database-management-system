@@ -12,24 +12,24 @@ Variables required:
 {% include 'partials/header.html' %}
 
 <head>
-  <title>Edit Encounter: {{ encounter.get_unique_name() }}</title>
+  <title>{{ encounter.get_unique_name() }}</title>
 </head>
 
 <body>
   <div class="outer-div">
-    <h1>Encounter: {{ encounter.get_unique_name() }}</h1>
+    <h1>{{ encounter.get_unique_name() }}</h1>
 
     <!-- Encounter Summary -->
     <section id="encounter-summary">
       <div id="summary">
         <h2>Encounter Summary</h2>
-        <p>Encounter: {{ encounter.encounter_name }}</p>
-        <p>Location: {{ encounter.location }}</p>
-        <p>Project: {% if encounter.project %}{{ encounter.project }} {% else %}Not entered{% endif %}</p>
-        <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
-        <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {% else %}Not
+        <p>Encounter: {{ encounter.get_encounter_name() }}</p>
+        <p>Location: {{ encounter.get_location() }}</p>
+        <p>Project: {% if encounter.get_project() %}{{ encounter.get_project() }} {% else %}Not entered{% endif %}</p>
+        <p>Species: {{ encounter.species.get_species_name() }} ({{ encounter.species.get_common_name() }})</p>
+        <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.get_name()}} {% else %}Not
           entered{% endif %}</p>
-        <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{% endif %}
+        <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.get_name()}} {% else %}Not entered{% endif %}
         </p>
         <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
       </div>

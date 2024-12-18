@@ -370,9 +370,10 @@ def recording_delete(encounter_id,recording_id):
                 session.delete(recording)
                 session.commit()
                 flash(f'Deleted {unique_name}.', 'success')
+            return redirect(url_for("encounter.encounter_view", encounter_id=encounter_id))
         except (Exception,SQLAlchemyError) as e:
             exception_handler.handle_exception(exception=e, session=session)
-        return redirect(request.referrer)
+            return redirect(request.referrer)
 
 @routes_recording.route('/encounter/recording/<recording_id>/recording-file/<file_id>/delete',methods=['GET'])
 @database_handler.require_live_session
