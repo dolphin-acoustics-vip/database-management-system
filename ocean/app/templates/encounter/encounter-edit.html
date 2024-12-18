@@ -17,7 +17,7 @@ Required variables:
     <div class="outer-div">
         <h2>Edit Encounter</h2>
         {% set editing = True %}
-        {encounter.get_unique_name()}
+        {{encounter.get_unique_name()}}
         <form method="post" action="{{ url_for('encounter.encounter_update', encounter_id=encounter.id) }}">
             {% include 'encounter/encounter-form-template.html' %}
         </form>

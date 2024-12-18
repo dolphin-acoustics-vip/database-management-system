@@ -61,7 +61,7 @@ def download_files(file_objects, file_names, zip_filename):
                     zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
                     continue
                 # Secure the filename for zip entry
-                zipf.writestr(secure_filename(file_name), binary)
+                zipf.writestr(secure_filename(file_name + "." + file_object.extension), binary)
         
         # Move the cursor to the start of the BytesIO object to begin streaming
         zip_buffer.seek(0)
@@ -148,7 +148,7 @@ def download_file(file_obj, file_name_generator=None):
         response = flask.send_file(
             file_stream,
             as_attachment=True,
-            download_name=custom_filename,  # Custom download filename
+            download_name=secure_filename(custom_filename),  # Custom download filename
         )
 
         return response
