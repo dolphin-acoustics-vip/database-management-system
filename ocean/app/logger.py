@@ -77,7 +77,7 @@ class TimezoneFormatter(logging.Formatter):
 
 
 # Create a file handler
-file_handler = CustomRotatingFileHandler(os.path.join(log_dir,'app.log'), mode='w')
+file_handler = CustomRotatingFileHandler(os.path.join(log_dir,'app.log'), mode='a', maxBytes=1000 * 1024 * 1024, backupCount=0)
 file_handler.setLevel(logging.DEBUG)
 
 def delete_files():
