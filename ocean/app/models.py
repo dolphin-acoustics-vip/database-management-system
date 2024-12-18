@@ -34,6 +34,7 @@ import librosa
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from werkzeug.utils import secure_filename
 
 # Local application imports
 from . import contour_statistics
@@ -331,7 +332,7 @@ class Encounter(database_handler.db.Model):
 
     def generate_relative_directory(self):
         from . import filespace_handler
-        return os.path.join(f"Species-{filespace_handler.validate(self.species.species_name)}",f"Location-{filespace_handler.validate(self.location)}",f"Encounter-{filespace_handler.validate(self.encounter_name)}")
+        return os.path.join(f"Species-{secure_filename(filespace_handler.validate(self.species.species_name))}",f"Location-{secure_filename(filespace_handler.validate(self.location))}",f"Encounter-{secure_filename(filespace_handler.validate(self.encounter_name))}")
 
     def update_call(self):
         """
@@ -781,7 +782,7 @@ class File(database_handler.db.Model):
             raise ValueError("The `file` parameter must be either a file path or a file-like object with a `stream`.")
 
         self.path = new_directory
-        self.filename = new_filename  # filename without extension
+        self.filename = secure_filename(new_filename)  # filename without extension
         self.original_filename = file_basename
         self.extension = override_extension if override_extension else file_extension
         
@@ -839,7 +840,7 @@ class File(database_handler.db.Model):
         
         """
         
-        new_relative_file_path = os.path.join(new_directory, new_filename)
+        new_relative_file_path = os.path.join(new_directory, secure_filename(new_filename))
             
         current_relative_file_path = self.get_full_absolute_path()
         
@@ -857,16 +858,17 @@ class File(database_handler.db.Model):
             new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
         else:
             new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
+        
 
         # make the directory of the new_relative_file_path_with_root
         if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
-            os.makedirs(os.path.dirname(new_relative_file_path_with_root))
+            os.makedirs( os.path.dirname(new_relative_file_path_with_root))
             logger.info(f"Created directory: {os.path.dirname(new_relative_file_path_with_root)}")
 
         # if the new and current file paths are not the same
         if new_relative_file_path_with_root != current_relative_file_path:
             self.path = os.path.dirname(new_relative_file_path)
-            self.filename = os.path.basename(new_relative_file_path).split(".")[0]
+            self.filename = secure_filename(os.path.basename(new_relative_file_path).split(".")[0])
             self.rename_loose_file(self.path, self.filename, self.extension)
             if os.path.exists(current_relative_file_path):
                 os.rename(current_relative_file_path, new_relative_file_path_with_root)
@@ -1175,7 +1177,7 @@ class Recording(database_handler.db.Model):
         """
         from .filespace_handler import format_date_for_filespace
         if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate relative directory")
-        return os.path.join(self.encounter.generate_relative_directory(), f"Recording-{format_date_for_filespace(self.get_start_time())}")
+        return os.path.join(self.encounter.generate_relative_directory(), f"Recording-{secure_filename(format_date_for_filespace(self.get_start_time()))}")
 
     def generate_selection_table_file_name(self) -> str:
         """Generate the file name allocated to the selection table file for this

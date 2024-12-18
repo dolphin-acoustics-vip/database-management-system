@@ -45,13 +45,13 @@ def insert_or_update_recording(session, request, recording: models.Recording):
     :return: The Recording object that was inserted or updated
     """
     recording.set_start_time(request.form['time_start'])
-    session.commit()
+    session.flush()
     # If a recording file has been given, add it to the Recording object
     if 'recording_file_id' in request.form and request.form['recording_file_id'] != "":
         recording_file_id = request.form['recording_file_id']
         recording_filename = request.form['recording_filename']
         recording_file = models.File()
-        recording_file.insert_path_and_filename(session, filespace_handler.get_path_to_temporary_file(recording_file_id, recording_filename), recording.generate_relative_directory(), recording.generate_recording_file_name())
+        recording_file.insert_path_and_filename(session, filespace_handler.get_complete_temporary_file(recording_file_id, recording_filename), recording.generate_relative_directory(), recording.generate_recording_file_name())
         filespace_handler.remove_temporary_file(recording_file_id, recording_filename)
         session.add(recording_file)
         recording.set_recording_file(recording_file)
@@ -158,10 +158,10 @@ def recording_selection_table_delete(recording_id: str) -> Response:
             session.commit()
             recording.update_selection_traced_status()
             flash(f'Deleted selection table from {recording.get_unique_name()}.', 'success')
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(exception=e, session=session)
-        finally:
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            return redirect(request.referrer)            
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @database_handler.require_live_session
@@ -178,7 +178,6 @@ def recording_insert(encounter_id: str) -> Response:
     Returns:
         flask.Response: The rendered template for the encounter view page.
     """
-    print("I GOT HERE")
     with database_handler.get_session() as session:
         try:
             recording_obj = models.Recording(encounter_id=encounter_id)
@@ -186,10 +185,10 @@ def recording_insert(encounter_id: str) -> Response:
             insert_or_update_recording(session, request, recording_obj)
             session.commit()
             flash(f'Inserted {recording_obj.get_unique_name()}.', 'success')
+            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(exception=e, prefix="Error inserting recording", session=session)
-        finally:
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            return redirect(request.referrer)
 
 @routes_recording.route('/recording/<recording_id>/view', methods=['GET'])
 @login_required
@@ -351,7 +350,7 @@ def recording_update(recording_id):
             return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(exception=e, session=session)
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            return redirect(request.referrer)
 
 @routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['GET'])
 @database_handler.require_live_session
@@ -373,7 +372,7 @@ def recording_delete(encounter_id,recording_id):
                 flash(f'Deleted {unique_name}.', 'success')
         except (Exception,SQLAlchemyError) as e:
             exception_handler.handle_exception(exception=e, session=session)
-        return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+        return redirect(request.referrer)
 
 @routes_recording.route('/encounter/recording/<recording_id>/recording-file/<file_id>/delete',methods=['GET'])
 @database_handler.require_live_session
@@ -394,9 +393,11 @@ def recording_file_delete(recording_id,file_id):
             file.delete()
             session.commit()
             flash(f'Deleted recording file from {recording.get_unique_name()}.', 'success')
+            return redirect(url_for('recording.recording_view', recording_id=recording_id))
         except (Exception,SQLAlchemyError) as e:
             exception_handler.handle_exception(exception=e, session=session)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            return redirect(request.referrer)
+        
 
 @routes_recording.route('/recording/recording_delete_selections', methods=['DELETE'])
 @database_handler.require_live_session

@@ -181,16 +181,9 @@ def _parse_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
     elif isinstance(exception, CriticalException):
         logger.exception(str(exception))
         raise CriticalException(str(exception))
-    elif isinstance(exception, Exception):
-        logger.exception(str(exception))
-        raise Exception(str(exception))
     else:
-        # This is theoretically never reached as Exception is a 
-        # superclass of all possible exception types. However
-        # if a non-exception type is passed to this function for
-        # some reason this code will be reached.
         logger.exception(str(exception))
-        raise Exception(str(exception))    
+        raise CriticalException("An unexpected error ocurred. It has been logged. Please notify your administrator and try again later.")
 
 def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None, session:orm.Session=None) -> str:
     """Parse an exception and rollback a SQLAlchemy session. The way in which an exception is parsed

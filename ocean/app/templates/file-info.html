@@ -10,7 +10,7 @@
     <p>Uploaded date: {{ file.get_uploaded_date_utc() }}</p>
     <p>Extension: {{ file.extension }}</p>
     <p>Original filename: {{ file.original_filename }}</p>
-    <p>Hash: {{ file.calculate_hash() }}</p>
+    <p>Hash (SHA-256): {{ file.get_hash() }}</p>
     <p>Hash matching: {{ file.verify_hash() }}</p>
   </div>
 </body>

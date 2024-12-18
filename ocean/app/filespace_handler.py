@@ -64,6 +64,11 @@ def get_path_to_temporary_file(file_id: str, filename: str):
     path = os.path.join(directory, filename)
     return path
 
+def get_complete_temporary_file(file_id: str, filename: str):
+    path = get_path_to_temporary_file(file_id=file_id, filename=filename)
+    if not os.path.exists(path): raise exception_handler.WarningException("Request timed out. Please try again.")
+    return path
+
 def remove_temporary_file(file_id: str, filename: str):
     """Remove a file in the temporary directory based on the file_id and filename.
     This is used to remove temporary files during the upload process. The file_id and filename
@@ -109,7 +114,7 @@ def clean_filespace_temp() -> None:
     """
     directory = database_handler.get_temp_space()
     # Define the time threshold (5 hours ago)
-    cutoff_time = datetime.datetime.now() - datetime.timedelta(minutes=1)
+    cutoff_time = datetime.datetime.now() - datetime.timedelta(seconds=5)
 
     # Walk through the directory in reverse order (to process files before directories)
     for root, dirs, files in os.walk(directory, topdown=False):
