@@ -41,15 +41,7 @@ from .logger import logger
 DATA_DIR = 'data'
 TEMP_DIR = 'temp_space'
 TRASH_DIR = 'trash'
-
-
-# Define the file space folder and get the Google API key from a file
-FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
-if FILE_SPACE_PATH == None or FILE_SPACE_PATH == "":
-    logger.critical("The system variable 'OCEAN_FILESPACE_PATH' not found.")
-if not os.path.exists(FILE_SPACE_PATH):
-    logger.critical(f"The system variable 'OCEAN_FILESPACE_PATH' found but the path '{FILE_SPACE_PATH}' does not exist.")
-    startup_error_flag = True
+FILE_SPACE_PATH = None
 
 def get_file_space() -> str:
     """The file space is the location in which ALL files are stored.
@@ -163,6 +155,14 @@ def init_db(app: Flask, run_script: str=None):
     :param (Flask) app: the Flask application
     :param (str) run_script: (optional) the path to a DDL script to run on the database
     """
+
+    global FILE_SPACE_PATH
+    # Define the file space folder and get the Google API key from a file
+    FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
+    if FILE_SPACE_PATH == None or FILE_SPACE_PATH == "":
+        logger.critical("The system variable 'OCEAN_FILESPACE_PATH' not found.")
+    if not os.path.exists(FILE_SPACE_PATH):
+        logger.critical(f"The system variable 'OCEAN_FILESPACE_PATH' found but the path '{FILE_SPACE_PATH}' does not exist.")
 
     db.init_app(app)
 
