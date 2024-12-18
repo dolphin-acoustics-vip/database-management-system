@@ -60,9 +60,8 @@ def download_files(file_objects, file_names, zip_filename):
                     error_message = f"The hash for {file_name} does not match."
                     zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
                     continue
-                with open(file_object.get_full_absolute_path(), 'rb') as file:
-                    # Secure the filename for zip entry
-                    zipf.writestr(secure_filename(file_name), file.read())
+                # Secure the filename for zip entry
+                zipf.writestr(secure_filename(file_name), binary)
         
         # Move the cursor to the start of the BytesIO object to begin streaming
         zip_buffer.seek(0)
