@@ -1,4 +1,4 @@
-image: python:bookworm
+image: python:bullseye
 
 include:
   - project: 'ResComp/gitlab-ci-includes'
