@@ -89,7 +89,7 @@ def admin_data_source_view(data_source_id):
             data_source = session.query(models.DataSource).filter_by(id=data_source_id).first()  
             return render_template('admin/admin-data-source-view.html', data_source=data_source, data_source_type_values  = models.DataSource.type.type.enums)
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
             return redirect(url_for('admin.admin_dashboard'))
         
 @routes_admin.route('/admin/data-source/<data_source_id>/edit', methods=['POST'])
@@ -118,7 +118,7 @@ def admin_data_source_edit(data_source_id):
             session.commit()
             flash('Data source updated: {}'.format(data_source.name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
     return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/data-source/new', methods=['GET'])
@@ -172,7 +172,7 @@ def admin_data_source_insert():
             session.commit()
             flash('Data source created: {}'.format(new_data_source.name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -194,7 +194,7 @@ def admin_data_source_delete(data_source_id):
             session.commit()
             flash('Data source deleted: {}'.format(data_source.name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
             
     return redirect(url_for('admin.admin_dashboard'))
 
@@ -213,7 +213,7 @@ def admin_recording_platform_view(recording_platform_id):
             recording_platform = session.query(models.RecordingPlatform).filter_by(id=recording_platform_id).first()  
             return render_template('admin/admin-recording-platform-view.html', recording_platform=recording_platform)
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
             return redirect(url_for('admin.admin_dashboard'))
         
 @routes_admin.route('/admin/recording-platform/<recording_platform_id>/edit', methods=['POST'])
@@ -235,7 +235,7 @@ def admin_recording_platform_edit(recording_platform_id):
             session.commit()
             flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -272,7 +272,7 @@ def admin_recording_platform_insert():
             session.commit()
             flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -293,7 +293,7 @@ def admin_recording_platform_delete(recording_platform_id):
             session.commit()
             flash('Recording platform deleted: {}'.format(recording_platform.name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -314,7 +314,7 @@ def admin_species_view(species_id):
             species_data = session.query(models.Species).filter_by(id=species_id).first()
             return render_template('admin/admin-species-view.html', species=species_data)
         except Exception as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
             return redirect(url_for('admin.admin_dashboard'))
     
 @routes_admin.route('/admin/species/<species_id>/edit', methods=['POST'])
@@ -346,7 +346,7 @@ def admin_species_edit(species_id):
                 species_data.update_call()
                 flash('Species updated: {}'.format(species_name), 'success')
             except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(session, e)
+                exception_handler.handle_exception(exception=e, session=session)
         else:
             flash('Species with ID {} not found'.format(species_id), 'error')
             session.rollback()
@@ -373,7 +373,7 @@ def admin_species_delete(species_id):
             session.commit()
             flash('Species deleted: {}'.format(species_name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
         finally:
             return redirect(url_for('admin.admin_dashboard'))
 
@@ -415,7 +415,7 @@ def admin_species_insert():
             session.commit()
             flash('Species added: {}.'.format(species_name), 'success')
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session,e)
+            exception_handler.handle_exception(exception=e, session=session)
     return redirect(url_for('admin.admin_dashboard'))
 
 
@@ -431,9 +431,8 @@ def admin_user():
     METHODS: GET.
     """
     with database_handler.get_session() as session:
-        users = session.query(models.User).filter_by(is_temporary=0).order_by(models.User.is_active.desc()).all()
-        temporary_users = session.query(models.User).filter_by(is_temporary=1).order_by(models.User.is_active.desc()).all()
-        return render_template('admin/admin-user.html', users=users, temporary_users=temporary_users)
+        users = session.query(models.User).order_by(models.User.is_active.desc()).all()
+        return render_template('admin/admin-user.html', users=users)
     
     
 @routes_admin.route('/admin/user/<user_id>/view', methods=['GET'])
@@ -587,7 +586,7 @@ def admin_temporary_user_insert():
     with database_handler.get_session() as session:
         user = models.User()
         session.add(user)
-        return update_or_insert_user(session, user, request, login_id=uuid.uuid4(), is_temporary=True, role_id=4)
+        return update_or_insert_user(session, user, request, login_id=uuid.uuid4(), role_id=4)
 
 @routes_admin.route('/admin/temporary-user/<user_id>/view', methods=['GET'])
 @database_handler.exclude_role_4
@@ -617,4 +616,4 @@ def admin_temporary_user_update(user_id):
     """
     with database_handler.get_session() as session:
         user = session.query(models.User).filter_by(id=user_id).first()
-        return update_or_insert_user(session, user, request, login_id=user.login_id, is_temporary=True, role_id=4)
+        return update_or_insert_user(session, user, request, login_id=user.login_id, role_id=4)

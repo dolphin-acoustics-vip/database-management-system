@@ -215,3 +215,13 @@ def test_extract_to_dataframe_nonexistent_file():
     with pytest.raises(FileNotFoundError) as e:
         df = utils.extract_to_dataframe(path)
 
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("sel_01_HICEAS020814115547.wav",datetime(2002,8,14,11,55,47)),
+])
+def test_parse_pate(value, expected):
+    from . import common
+    assert common.equate_timestamps(utils.parse_date(value), expected)
+    
+    

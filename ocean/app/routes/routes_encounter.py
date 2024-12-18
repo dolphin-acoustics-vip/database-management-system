@@ -37,7 +37,7 @@ def encounter():
             encounter_list = database_handler.create_system_time_request(session, models.Encounter, {}, order_by="row_start DESC")
             return render_template('encounter/encounter.html', encounter_list=encounter_list)
         except SQLAlchemyError as e:
-            exception_handler.handle_sqlalchemy_exception(session, e)
+            exception_handler.handle_exception(exception=e, session=session)
             return redirect(url_for('general.home'))
 
 @routes_encounter.route('/encounter/new', methods=['GET'])
@@ -101,18 +101,18 @@ def encounter_insert():
             new_encounter.set_species_id(species_id)
             new_encounter.set_latitude(latitude)
             new_encounter.set_longitude(longitude)
-            new_encounter.set_data_source_id(session, data_source_id)
-            new_encounter.set_recording_platform_id(session, recording_platform_id)
+            new_encounter.set_data_source_id(data_source_id)
+            new_encounter.set_recording_platform_id(recording_platform_id)
             new_encounter.set_file_timezone(file_timezone)
             new_encounter.set_local_timezone(local_timezone)
 
             session.add(new_encounter)
             session.commit()
-            flash(f'Encounter added: {encounter_name}', 'success')
-            logger.info(f'Encounter added: {new_encounter.id}')
+            flash(f'Inserted {new_encounter.get_unique_name()}.', 'success')
+            logger.info(f'Inserted {new_encounter.get_unique_name()}.')
             return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(session, e, 'Error inserting encounter')
+            exception_handler.handle_exception(exception=e, prefix='Error inserting encounter', session=session)
             return redirect(url_for('encounter.encounter'))
 
 
@@ -125,8 +125,8 @@ def encounter_view(encounter_id):
     with database_handler.get_session() as session:
         try:
             encounter = database_handler.create_system_time_request(session, models.Encounter, {"id":encounter_id}, one_result=True)
-            if encounter is None:
-                raise exception_handler.NotFoundException("Encounter not found", details="This may be due to a local modification of the web page or an unknown error on the backend. Try reloading the page and if the error persists contact an administrator.")
+            if not encounter:
+                raise exception_handler.CriticalException(f"Encounter not found.")
             species = database_handler.create_system_time_request(session, models.Species, {"id":encounter.species_id}, one_result=True)
             encounter.species=species
             recordings = database_handler.create_system_time_request(session, models.Recording, {"encounter_id":encounter_id})
@@ -137,7 +137,7 @@ def encounter_view(encounter_id):
             unassigned_recordings = [recording for recording in recordings if recording.id not in assignment_recording_ids]
             return render_template('encounter/encounter-view.html', encounter=encounter, encounter_history=encounter_history, assignment_recording_ids=assignment_recording_ids,assigned_recordings=assigned_recordings,unassigned_recordings=unassigned_recordings)
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_sqlalchemy_exception(session, e, 'Error viewing encounter')
+            exception_handler.handle_exception(exception=e, prefix="Error viewing encounter", session=session)
             return redirect(url_for('encounter.encounter'))
 
 @routes_encounter.route('/encounter/<encounter_id>/edit', methods=['GET'])
@@ -168,18 +168,18 @@ def encounter_update(encounter_id):
             encounter.set_project(request.form['project'])
             encounter.set_latitude(request.form['latitude-start'])
             encounter.set_longitude(request.form['longitude-start'])
-            encounter.set_data_source_id(session, request.form['data_source'])
-            encounter.set_recording_platform_id(session, request.form['recording_platform'])
+            encounter.set_data_source_id(request.form['data_source'])
+            encounter.set_recording_platform_id(request.form['recording_platform'])
             encounter.set_notes(request.form['notes'])
             encounter.set_file_timezone(request.form['file-timezone'])
             encounter.set_local_timezone(request.form['local-timezone'])
             session.commit()
             encounter.update_call()
-            flash('Updated encounter: {}.'.format(encounter.encounter_name), 'success')
-            logger.info(f'Encounter updated: {encounter.id}')
+            flash('Updated {}.'.format(encounter.get_unique_name()), 'success')
+            logger.info(f'Updated {encounter.id}.')
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(session, e, prefix="Error updating encounter")
+            exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session)
             return redirect(url_for('encounter.encounter'))
 
         
@@ -196,11 +196,12 @@ def encounter_delete(encounter_id):
             return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         else:
             try:
+                unique_name = encounter.get_unique_name()
                 encounter.delete_children()
                 session.delete(encounter)
                 session.commit()
-                logger.info(f'Encounter deleted: {encounter.id}')
-                flash(f'Encounter deleted: {encounter.get_unique_name("-")}.', 'success')
+                logger.info(f'Deleted {unique_name}.')
+                flash(f'Deleted {unique_name}.', 'success')
             except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(session, e, 'Error deleting encounter')
+                exception_handler.handle_exception(exception=e, prefix='Error deleting encounter', session=session)
             return redirect(url_for('encounter.encounter'))

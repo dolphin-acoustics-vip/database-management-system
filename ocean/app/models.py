@@ -19,7 +19,7 @@
 from io import StringIO
 import os
 import uuid
-from datetime import datetime, timedelta
+import datetime
 
 # Third-party imports
 from flask import Response
@@ -41,57 +41,170 @@ from . import utils
 from .logger import logger
 
 
+
+
 ### UNUSED ###
 SYSTEM_GMT_OFFSET = 0
-def convert_to_gmt_time(system_time: datetime) -> datetime:
+def convert_to_gmt_time(system_time: datetime.datetime) -> datetime.datetime:
     """
     Converts a system time to GMT time by adding the system GMT offset.
     
     Parameters:
-        system_time (datetime): The system time to be converted.
+        system_time (datetime.datetime): The system time to be converted.
     
     Returns:
-        datetime: The GMT time equivalent to the provided system time.
+        datetime.datetime: The GMT time equivalent to the provided system time.
     """
-    gmt_offset = timedelta(hours=SYSTEM_GMT_OFFSET)
+    gmt_offset = datetime.timedelta(hours=SYSTEM_GMT_OFFSET)
     gmt_time = system_time + gmt_offset
     return gmt_time
 
-def convert_from_gmt(gmt_time: datetime) -> datetime:
+def convert_from_gmt(gmt_time: datetime.datetime) -> datetime.datetime:
     """
     Converts a GMT time to a system time by subtracting the system GMT offset.
     
     Parameters:
-        gmt_time (datetime): The GMT time to be converted.
+        gmt_time (datetime.datetime): The GMT time to be converted.
     
     Returns:
-        datetime: The system time equivalent to the provided GMT time.
+        datetime.datetime: The system time equivalent to the provided GMT time.
     """
-    gmt_offset = timedelta(hours=SYSTEM_GMT_OFFSET)
+    gmt_offset = datetime.timedelta(hours=SYSTEM_GMT_OFFSET)
     system_time = gmt_time - gmt_offset
     return system_time
 
-def parse_string_notempty(string:str, field:str) -> str:
-    """
-    Remove whitespace from a string, or raise exception_handler.WarningException()
-    if the string is none or blank (stripped). This method should only be used on
-    data fields which are mandatory, and thus must not be left blank.
 
-    :param string: the string being parsed
-    :type string: str
 
-    :param field: the name of the field of the string being parsed (is used in the
-    event of a raised exception)
-    :type field: str
+class Species(database_handler.db.Model):
+    __tablename__ = 'species'
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
+    # TODO rename to scientific_name (refactor with actual database)
+    species_name = database_handler.db.Column(database_handler.db.String(100), nullable=False, unique=True)
+    genus_name = database_handler.db.Column(database_handler.db.String(100))
+    common_name = database_handler.db.Column(database_handler.db.String(100))
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
-    :return: the parsed string stripped of its whitespace
-    """
-    if type(string) != str:
-        raise exception_handler.WarningException(f'{field} must be a string.')
-    if string == None or string.strip() == "":
-        raise exception_handler.WarningException(f'{field} cannot be blank.')
-    else:
-        return string.strip()
+    def update_call(self):
+        """
+        Call update_call() in all Encounter objects linked to the Species object.
+        This method should be called when a metadata change occurs in the Species
+        object that requires files (in Recording and Selection) be given a new
+        path based on that metadata.
+        """
+        with database_handler.get_session() as session:
+            encounters = session.query(Encounter).with_for_update().filter_by(species_id=self.id).all()
+            for encounter in encounters:
+                encounter.update_call()
+    
+    def set_updated_by_id(self, user_id: str):
+        """Set the `updated_by_id` attribute of the Species object. This attribute is used to record
+        the user who is making any changes. There should be a method in `database_handler.py` which
+        calls this method automatically when changes are flushed or committed to the ORM model.
+
+        Args:
+            user_id (str): The `id` of the `User` object who is making the changes
+        """
+        self.updated_by_id = user_id
+
+    def get_species_name(self) -> str:
+        """Get the `species_name` of a particular species. If the `species_name` is None, return an empty string.
+
+        Returns:
+            str: the species' name
+        """
+        return '' if self.species_name is None else self.species_name
+
+    def set_species_name(self, value: str) -> None:
+        """Set the `species_name` of a particular species. The given value is converted to a string and stripped
+        of whitespace at the start and end. This value cannot be empty or None. This method does not commit or 
+        flush the changes in any ORM context.
+
+        Args:
+            value (str): the name of the species
+
+        Raises:
+            ValueError: if `value` is None or empty
+        """
+        if value is None or value.strip() == '': raise ValueError("Species name cannot be empty")
+        self.species_name = str(value).strip()
+    
+    def get_genus_name(self) -> str:
+        """Get the `genus_name` of a particular species. If the `genus_name` is None, return an empty string.
+
+        Returns:
+            str: the species' genus name
+        """
+        return '' if self.genus_name is None else self.genus_name
+    
+    def set_genus_name(self, value: str | None) -> None:
+        """Set the `genus_name` of a particular species. The given value is converted to a string and
+        stripped of whitespace at the start and end. This method does not commit or flush the changes
+        in any ORM context. If None or an empty string is passed, the `genus_name` is set to None.
+
+        Args:
+            value (str): the genus name
+        """
+        self.genus_name = None if not value or str(value).strip() == "" else str(value).strip()
+
+    def get_common_name(self) -> str:
+        """Get the `common_name` of a particular species. If the `common_name` is None, return an empty string.
+
+        Returns:
+            str: the species' common name
+        """
+        return '' if self.common_name is None else self.common_name
+    
+    def set_common_name(self, value: str | None) -> None:
+        """Set the `common_name` of a particular species. The given value is converted to a string and
+        stripped of whitespace at the start and end. This method does not commit or flush the changes 
+        in any ORM context. If None or an empty string is passed, the `genus_name` is set to None.
+
+        Args:
+            value (str): the common name
+        """
+        self.common_name = None if not value or str(value).strip() == "" else str(value).strip()
+
+
+
+class RecordingPlatform(database_handler.db.Model):
+    __tablename__ = 'recording_platform'
+
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
+    name = database_handler.db.Column(database_handler.db.String(100), unique=True, nullable=False)
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+    def __repr__(self):
+        return '<RecordingPlatform %r>' % self.name
+    
+    def get_name(self):
+        """Return the name of the recording platform"""
+        return str(self.name) if self.name is not None else ""
+    
+    def set_name(self, value):
+        """Sets the name of the recording platform. The passed value
+        cannot be an empty string or None as this would violate the
+        database primary key constraint.
+
+        Args:
+            value (str): the value to set
+
+        Raises:
+            exception_handler.WarningException: if an empty string or null is passed
+            ValueError: if a non-string is passed
+        """
+        
+        if (not value) or (value and str(value).strip() == ""): raise exception_handler.WarningException("Field 'name' for recording platform cannot be empty.")
+        if type(value) != str: raise ValueError(f"Field 'name' for RecordingPlatform requires must be a string (for {type(value)}).")
+        self.name = str(value)
+    
+    def set_updated_by_id(self, user_id: uuid.UUID | str):
+        """Set the user ID of the user who is updating the recording.
+
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = utils.validate_id(value=user_id, field="name")
 
 
 class DataSource(database_handler.db.Model):
@@ -109,10 +222,69 @@ class DataSource(database_handler.db.Model):
 
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+    
     def __repr__(self):
         return '<DataSource %r>' % self.name
     
+    def set_updated_by_id(self, user_id: uuid.UUID | str):
+        """Set the user ID of the user who is updating the recording.
 
+        Args:
+            user_id (str): The user ID who is updating the recording.
+        """
+        self.updated_by_id = utils.validate_id(value=user_id, field="name")
+    
+    def get_name(self) -> str:
+        return self.name if self.name else ""
+
+    def set_name(self, value: str | None):
+        self.name = utils.validate_string(value=value, field="Name", allow_none=True)
+
+    def get_phone_number1(self) -> str:
+        return self.phone_number1 if self.phone_number1 else ""
+
+    def set_phone_number1(self, value: str | None):
+        self.phone_number1 = utils.validate_string(value=value, field="Phone Number 1", allow_none=True)
+
+    def get_phone_number2(self) -> str:
+        return self.phone_number2 if self.phone_number2 else ""
+
+    def set_phone_number2(self, value: str | None):
+        self.phone_number2 = utils.validate_string(value=value, field="Phone Number 2", allow_none=True)
+
+    def get_email1(self) -> str:
+        return self.email1 if self.email1 else ""
+
+    def set_email1(self, value: str | None):
+        self.email1 = utils.validate_string(value=value, field="Email 1", allow_none=True)
+
+    def get_email2(self) -> str:
+        return self.email2 if self.email2 else ""
+
+    def set_email2(self, value: str | None):
+        self.email2 = utils.validate_string(value=value, field="Email 2", allow_none=True)
+
+    def get_address(self) -> str:
+        return self.address if self.address else ""
+
+    def set_address(self, value: str | None):
+        self.address = utils.validate_string(value=value, field="Address", allow_none=True)
+
+    def get_notes(self) -> str:
+        return self.notes if self.notes else ""
+
+    def set_notes(self, value: str | None):
+        self.notes = utils.validate_string(value=value, field="Notes", allow_none=True)
+
+    def get_type(self) -> str:
+        return self.type
+
+    def set_type(self, value: str | None):
+        value = utils.validate_string(value=value, field="Type", allow_none=True)
+        if value is None or value == "": self.type = None
+        elif value.lower() == "person": self.type = "person"
+        elif value.lower() == "organisation": self.type = "organisation"
+        else: raise exception_handler.WarningException("Field 'Type' must either be 'organisation' or 'person' or None.")
 
 class Encounter(database_handler.db.Model):
     __tablename__ = 'encounter'
@@ -128,11 +300,9 @@ class Encounter(database_handler.db.Model):
     notes = database_handler.db.Column(database_handler.db.String(1000))
     file_timezone = database_handler.db.Column(database_handler.db.Integer)
     local_timezone = database_handler.db.Column(database_handler.db.Integer)
-    
     species = database_handler.db.relationship("Species")
     data_source = database_handler.db.relationship("DataSource")
     recording_platform = database_handler.db.relationship("RecordingPlatform")
-
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
     __table_args__ = (
@@ -147,18 +317,8 @@ class Encounter(database_handler.db.Model):
         """
         self.updated_by_id = user_id
 
-
-    def get_unique_name(self, delimiter='-'):
-        """
-        Generate a unique name using encounter_name, location and project which are defined in
-        the schema as a unique constraint. The name is of the format:
-
-        'Encounter {encounter_name}-{location}-{project}', where - can be replaced by any delimiter.
-
-        :param delimiter: the delimiter used to separate unique variables
-        :type delimiter: str
-        """
-        return f"{self.encounter_name}{delimiter}{self.location}{delimiter}{self.project}"
+    def get_unique_name(self):
+        return f"Encounter: {self.encounter_name}-{self.location}-{self.project}"
 
     def get_number_of_recordings(self):
         """
@@ -167,14 +327,10 @@ class Encounter(database_handler.db.Model):
         num_recordings = database_handler.db.session.query(Recording).filter_by(encounter_id=self.id).count()
         return num_recordings
 
-    def generate_relative_path(self):
-        """
-        Generate a relative path for files stored in the file space based on the species, location, and encounter name.
-        This relative path can be used by Recording and Selection to generate their own sub-directories within this path.
-        """
-        species_name = self.species.species_name  # Assuming the relationship is named 'species' and the species name field is 'name'
-        return f"Species-{species_name.replace(' ', '_')}/Location-{self.location.replace(' ', '_')}/Encounter-{self.encounter_name.replace(' ', '_')}"
-    
+    def generate_relative_directory(self):
+        from . import filespace_handler
+        return os.path.join(f"Species-{filespace_handler.validate(self.species.species_name)}",f"Location-{filespace_handler.validate(self.location)}",f"Encounter-{filespace_handler.validate(self.encounter_name)}")
+
     def update_call(self):
         """
         Call update_call() in all Recording objects linked to the Encounter object.
@@ -199,73 +355,179 @@ class Encounter(database_handler.db.Model):
                 session.delete(recording)
 
     def get_latitude(self) -> float:
-        return self.latitude
-
-    def get_latitude_string(self) -> str:
-        return '' if self.latitude is None else self.latitude
-
+        try:
+            return float(self.latitude)
+        except (TypeError,ValueError):
+            return None
+    
     def set_latitude(self, value: float):
-        self.latitude = utils.validate_latitude(value, allow_empty=True)
+        self.latitude = utils.validate_latitude(value, field="latitude", allow_none=True)
     
     def set_longitude(self, value: float):
-        self.longitude = utils.validate_longitude(value, allow_empty=True)
+        self.longitude = utils.validate_longitude(value, field="longitude", allow_none=True)
 
     def get_longitude(self) -> float:
-        return self.longitude
-    
-    def get_longitude_string(self) -> str:
-        return '' if self.longitude is None else str(self.longitude)
-    
+        try:
+            return float(self.longitude)
+        except (TypeError,ValueError):
+            return None
+        
     def get_encounter_name(self) -> str:
         return '' if self.encounter_name is None else self.encounter_name
 
     def set_encounter_name(self, value: str):
-        self.encounter_name = parse_string_notempty(value, 'Encounter name')
+        """Set the encounter name of the recording. If the value is empty, raise an error.
+
+        Args:
+            value (str): _description_
+        """
+        if value is None or value.strip() == '': raise exception_handler.WarningException("Encounter name cannot be empty")
+        self.encounter_name = utils.parse_string_notempty(value, 'Encounter name')
 
     def get_location(self) -> str:
         return '' if self.location is None else self.location
 
     def set_location(self, value: str):
-        self.location = parse_string_notempty(value, 'Location')
+        self.location = utils.parse_string_notempty(value, 'Location')
 
     def get_project(self) -> str:
         return '' if self.project is None else self.project
 
     def set_project(self, value: str):
-        self.project = parse_string_notempty(value, 'Project')
+        self.project = utils.parse_string_notempty(value, 'Project')
 
     def get_notes(self) -> str:
         return '' if self.notes is None else self.notes
 
-    def set_notes(self, value: str):
-        self.notes = value.strip()
+    def set_notes(self, value: str) -> None:
+        """ Set the notes of the recording. If `value` is empty or `None`, set it to `None`.
+        If a non-string `value` is passed, convert it to a string.
+
+        Args:
+            value (str): the new value of notes
+        """
+        if value is not None and str(value).strip() == '': self.notes = None
+        elif value is None: self.notes = None
+        else: self.notes = str(value).strip()
 
     def get_species(self):
         return self.species
 
-    def set_species_id(self, species_id: str):
-        self.species_id = utils.validate_id(species_id, field="Species", allow_empty=False)
-    
-    def set_data_source_id(self, session, data_source_id):
-        data_source_id = utils.validate_id(data_source_id, field="Data Source", allow_empty=True)
-        self.data_source_id = data_source_id
+    def set_species(self, value: Species):
+        """Set the species of the recording.
 
-    def set_recording_platform_id(self, session, recording_platform_id):
-        recording_platform_id = utils.validate_id(recording_platform_id, field="Recording Platform", allow_empty=True)
-        self.recording_platform_id = recording_platform_id
+        Args:
+            value (Species): The species to set.
+
+        Raises:
+            ValueError: If the value is not of type Species
+        """
+        self.species = utils.validate_type(value, Species, "species")
+
+
+    def set_species_id(self, species_id: str):
+        self.species_id = utils.validate_id(species_id, field="species")
+    
+    def set_data_source_id(self, value):
+        self.data_source_id = utils.validate_id(value, field="data_source", allow_none=True)
+
+    def set_data_source(self, value: DataSource):
+        """Set the data source of the recording.
+
+        Args:
+            value (DataSource): the new data source
+            
+        Raises:
+            ValueError: the the new value is None or not of the correct type
+        """
+        self.data_source = utils.validate_type(value, DataSource, "data_source", allow_none=True)
+
+    def set_recording_platform_id(self, recording_platform_id: str | uuid.UUID):
+        """Set the recording platform ID of the recording
+
+        Args:
+            recording_platform_id (str | uuid.UUID): the new recording platform ID (if given as a string it must be a valid UUID)
+        
+        Raises:
+            ValueError: the new value is None or not of uuid.UUID or convertable str type
+        """
+        self.recording_platform_id = utils.validate_id(recording_platform_id, field="Recording Platform", allow_none=True)
+
+    def set_recording_platform(self, value: RecordingPlatform):
+        """Set the recording platform of the recording
+
+        Args:
+            value (RecordingPlatform): the new recording platform
+            
+        Raises:
+            ValueError: the new value is None or not the correct type
+        """
+        self.recording_platform = utils.validate_type(value, RecordingPlatform, "recording_platform", allow_none=True)
 
     def set_file_timezone(self, value: int | str):
-        self.file_timezone = utils.validate_timezone(value)
+        """Set the timezone of the file
+
+        Args:
+            value (int | str): The new timezone. If given as a string, it must be a valid timezone string.
+        
+        Raises:
+            ValueError: the new value is None or not of int or valid timezone string type
+        """
+        self.file_timezone = utils.validate_timezone(value, field="file_timezone", allow_none=True)
     
     def get_file_timezone(self) -> int:
-        return self.file_timezone
+        try:
+            return int(self.file_timezone)
+        except Exception:
+            return None
     
     def set_local_timezone(self, value: int | str):
-        self.local_timezone = utils.validate_timezone(value)
+        self.local_timezone = utils.validate_timezone(value, field="local_timezone", allow_none=True)
     
     def get_local_timezone(self) -> int:
-        return self.local_timezone
+        try:
+            return int(self.local_timezone)
+        except Exception:
+            return None
 
+    def get_species_id(self) -> uuid.UUID:
+        """ Get the species ID of the recording. Note that if
+        the species ID is not a valid UUID or is`None`, then `None`
+        is returned.
+
+        Returns:
+            uuid.UUID: the species ID
+        
+        Raises:
+            ValueError: when the Species ID is not Null and not in UUID format
+        """
+        return utils.validate_id(value=self.species_id, field="Species", allow_none=True)
+        
+    def get_data_source_id(self) -> uuid.UUID:
+        """ Get the species ID of the recording. Note that if
+        the species ID is not a valid UUID or is`None`, then `None`
+        is returned.
+
+        Returns:
+            uuid.UUID: the species ID
+        
+        Raises:
+            WarningException: when the Species ID is not Null and not in UUID format
+        """
+        return utils.validate_id(value=self.data_source_id, field="Data Source", allow_none=True)
+
+    def get_recording_platform_id(self) -> uuid.UUID:
+        """ Get the species ID of the recording. Note that if
+        the species ID is not a valid UUID or is`None`, then `None`
+        is returned.
+
+        Returns:
+            uuid.UUID: the species ID
+        
+        Raises:
+            WarningException: when the Species ID is not Null and not in UUID format
+        """
+        return utils.validate_id(value=self.recording_platform_id, field="Recording Platform", allow_none=True)
 
 
 class File(database_handler.db.Model):
@@ -433,6 +695,7 @@ class File(database_handler.db.Model):
         self.filename=new_filename
         self.extension=new_extension
         self.verify_hash()
+        session.commit()
     
 
     def rename_loose_file(self,loose_file_directory:str, loose_file_name:str, loose_file_extension:str) -> None:
@@ -530,6 +793,7 @@ class File(database_handler.db.Model):
 
         logger.info(f"Saved file to {destination_path}.")
         self.verify_hash()
+        session.commit()
         from .filespace_handler import clean_filespace_temp
         clean_filespace_temp()
 
@@ -542,22 +806,21 @@ class File(database_handler.db.Model):
         """
         unique_name = str(uuid.uuid4())
         file_name = self.filename
-        trash_file_path = os.path.join(self.get_directory(),file_name + '_' +  unique_name)
-        self.move_file(trash_file_path, move_to_trash=True)
+        self.move_file(self.get_directory(), file_name + '_' +  unique_name, move_to_trash=True)
 
     def delete_file(self):
         if os.path.exists(self.get_full_absolute_path()):
             logger.info(f"Parmanently deleted file {self.get_full_absolute_path()}.")
             os.remove(self.get_full_absolute_path())
 
-    def save_permanently(self, new_relative_file_path):
+    def save_permanently(self, new_directory, new_filename):
         if (self.temp == True and os.path.exists(self.get_full_absolute_path())):
-            self.move_file(new_relative_file_path)
+            self.move_file(new_directory, new_filename)
             self.temp = False
         else:
             raise exception_handler.WarningException(f"An unexpected error ocurred while trying to save the file.")
 
-    def move_file(self, new_relative_file_path, move_to_trash=False, override_extension=None):
+    def move_file(self, new_directory, new_filename, move_to_trash=False, override_extension=None):
         """
         Move a file to a new location with the provided session.
 
@@ -565,8 +828,11 @@ class File(database_handler.db.Model):
         - session: The session object to use for the database transaction
         - new_relative_file_path: The new relative file path to move the file to
         - return: False if the file already exists at the new location, None otherwise
+        
         """
         
+        new_relative_file_path = os.path.join(new_directory, new_filename)
+            
         current_relative_file_path = self.get_full_absolute_path()
         
         if move_to_trash: 
@@ -618,11 +884,9 @@ class Recording(database_handler.db.Model):
 
     id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
     start_time = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False)
-    duration = database_handler.db.Column(database_handler.db.Integer)
     recording_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     selection_table_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     encounter_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('encounter.id'), nullable=False)
-    ignore_selection_table_warnings = database_handler.db.Column(database_handler.db.Boolean, default=False)
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     created_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
     recording_file = database_handler.db.relationship("File", foreign_keys=[recording_file_id])
@@ -639,37 +903,10 @@ class Recording(database_handler.db.Model):
         database_handler.db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
 
-    def get_unique_name(self, delimiter="-") -> str:
-        """Get a unique name for the recording based on the encounter and start time.
+    def get_unique_name(self) -> str:
+        if self.encounter == None: raise ValueError("Unable to generate unique name as the recording does not have an encounter.")
+        return f"{self.encounter.get_unique_name()}, Recording: {self.get_start_time_pretty()}"
 
-        Args:
-            delimiter (str, optional): The string to use to separate the variables in the unique name. Defaults to "-".
-
-        Returns:
-            str: The unique name for the recording based on the encounter and start time.
-        """
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(database_handler.db.session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"{encounter.get_unique_name(delimiter)}: recording {self.start_time}"
-    def get_unique_name(self, delimiter="-") -> str:
-        """Get a unique name for the recording based on the encounter and start time.
-
-        Args:
-            delimiter (str, optional): The string to use to separate the variables in the unique name. Defaults to "-".
-
-        Returns:
-            str: The unique name for the recording based on the encounter and start time.
-        """
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(database_handler.db.session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"{encounter.get_unique_name(delimiter)}: recording {self.start_time}"
-
-    def is_complete(self) -> bool:
-        """Check if the recording has been reviewed or not.
-
-        Returns:
-            bool: True if the recording has been 'Reviewed' and False if not.
-        """
     def is_complete(self) -> bool:
         """Check if the recording has been reviewed or not.
 
@@ -692,39 +929,48 @@ class Recording(database_handler.db.Model):
         return True if self.status == 'On Hold' else False
 
     def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
+        """Set the user id of the user who is updating the recording.
 
         Args:
             user_id (str): The user ID who is updating the recording.
         """
         self.updated_by_id = user_id
 
-    def __set_status(self, status: str):
+    def set_status_change_datetime(self, value: str | datetime.datetime):
+        """Set the status_change_datetime. Can pass the value as either a
+        formatted string or datetime.datetime object. Note that if passing
+        as a formatted string it must conform to the requirements of `utils.validate_datetime()`
+
+        Args:
+            value (str | datetime.datetime): the value to set
+        """
+        self.status_change_datetime = utils.validate_datetime(value, "Status Change Timestamp")
+
+    def set_status(self, value: str):
         """Set the status of the recording. The status must be one of
-        'Unassigned', 'In Progress', 'Awaiting Review', 'Reviewed', 'On Hold'.
+        `Unassigned`, `In Progress`, `Awaiting Review`, `Reviewed`, `On Hold`.
         This method will automatically update a timestamp of when the status changed.
 
         Args:
             status (str): The new status of the recording.
         """
-    def __set_status(self, status: str):
-        """Set the status of the recording. The status must be one of
-        'Unassigned', 'In Progress', 'Awaiting Review', 'Reviewed', 'On Hold'.
-        This method will automatically update a timestamp of when the status changed.
-
-        Args:
-            status (str): The new status of the recording.
-        """
-        if self.status != status:
-            self.status_change_datetime = datetime.now()
-            self.status_change_datetime = datetime.now()
-        self.status = status
+        if str(value).lower() == "unassigned": new_status = "Unassigned"
+        elif str(value).lower() == "in progress": new_status = "In Progress"
+        elif str(value).lower() == "awaiting review": new_status = "Awaiting Review"
+        elif str(value).lower() == "reviewed": new_status = "Reviewed"
+        elif str(value).lower() == "on hold": new_status = "On Hold"
+        else:
+            raise exception_handler.WarningException("New recording status invalid.")
+        
+        if self.status != new_status:
+            self.set_status_change_datetime(datetime.datetime.now(datetime.timezone.utc))
+            self.status = new_status
 
     def update_status(self):
         """Update the status of the recording based on the assignment flags. 
         If the recording is not 'On Hold' or 'Reviewed', it will be set to 'Awaiting Review'. 
         If any individual user assignment is not completed, the status will be set to 'In Progress' (overrides previous requirement).
-        If the status has changed, the status_change_datetime will be set to the current datetime.
+        If the status has changed, the status_change_datetime will be set to the current datetime.datetime.
         """       
         with database_handler.get_session() as session:
             assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
@@ -740,15 +986,15 @@ class Recording(database_handler.db.Model):
             else:
                 new_status = self.status
 
-            self.__set_status(new_status)
+            self.set_status(new_status)
 
     def set_status_on_hold(self):
         """Set the status of the recording to 'On Hold'."""
-        self.__set_status('On Hold')
+        self.set_status('On Hold')
     
     def set_status_reviewed(self):
         """Set the status of the recording to 'Reviewed'."""
-        self.__set_status('Reviewed')
+        self.set_status('Reviewed')
 
         with database_handler.get_session() as session:
             assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
@@ -764,17 +1010,16 @@ class Recording(database_handler.db.Model):
             else:
                 new_status = self.status
 
-            self.__set_status(new_status)
+            self.set_status(new_status)
 
     def set_status_on_hold(self):
         """Set the status of the recording to 'On Hold'."""
-        self.__set_status('On Hold')
+        self.set_status('On Hold')
     
     def set_status_reviewed(self):
         """Set the status of the recording to 'Reviewed'."""
-        self.__set_status('Reviewed')
+        self.set_status('Reviewed')
 
-        
     def get_number_of_selections(self):
         selections = database_handler.create_system_time_request(database_handler.db.session, Selection, {"recording_id":self.id}, order_by="selection_number")
         return len(selections)
@@ -787,12 +1032,12 @@ class Recording(database_handler.db.Model):
         if self.recording_file is not None:
             with database_handler.get_session() as session:
                 recording_file = session.query(File).with_for_update().get(self.recording_file_id)
-                recording_file.move_file(self.generate_full_relative_path())
+                recording_file.move_file(self.generate_relative_directory(), self.generate_recording_file_name())
                 session.commit()
         if self.selection_table_file is not None:
             with database_handler.get_session() as session:
                 selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
-                selection_table_file.move_file(self.generate_full_relative_path())
+                selection_table_file.move_file(self.generate_relative_directory(), self.generate_selection_table_file_name())
                 session.commit()
         
         with database_handler.get_session() as session:
@@ -801,8 +1046,6 @@ class Recording(database_handler.db.Model):
                 selection.update_call()
             session.commit()
         
-    
-
     def load_and_validate_selection_table(self, custom_file:str=None):
         """
         Parse a selection table file, automatically creating a Selection object for each row
@@ -837,7 +1080,6 @@ class Recording(database_handler.db.Model):
         
         if 'Selection' not in st_df.columns:
             raise exception_handler.WarningException("Missing required columns: Selection")
-            raise exception_handler.WarningException("Missing required columns: Selection")
 
         selection_table_selection_numbers = st_df.Selection.to_list()
         
@@ -862,8 +1104,6 @@ class Recording(database_handler.db.Model):
                 if selection_num not in selection_numbers:
                     missing_selections.append({"selection_number":selection_num})
         return missing_selections
-
-        
 
     def delete_children(self, keep_file_reference=False):
         """
@@ -894,38 +1134,71 @@ class Recording(database_handler.db.Model):
                 session.delete(selection)
                 session.commit()
 
+    def generate_relative_directory(self) -> str:
+        """Generate the relative directory as part of the filespace hierarchy.
+        All files pertaining to this recording (including the recording file
+        and selection table files) will be stored in this directory.
+
+        Raises:
+            ValueError: corrupt database schema (cannot access the metadata required)
+
+        Returns:
+            str: the directory for the recording (relative, not including the directory of the filespace itself)
+        """
+        from .filespace_handler import format_date_for_filespace
+        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate relative directory")
+        return os.path.join(self.encounter.generate_relative_directory(), f"Recording-{format_date_for_filespace(self.get_start_time())}")
+
+    def generate_selection_table_file_name(self) -> str:
+        """Generate the file name allocated to the selection table file for this
+        recording in the file space. It is unique based on the metadata of this
+        recording object and the encounter it is a part of.
+        
+        The format of the selection table file name is given below where {} signifies a variable:
+        
+        `SelTable-{species.species_name}-{encounter.location}-{encounter.encounter_name}-{recording.start_time}`
+
+        Raises:
+            ValueError: corrupt database schema (cannot access the metadata required)
+
+        Returns:
+            str: the selection table file name (no extension)
+        """
+        from . import filespace_handler
+        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate recording file name.")
+        return filespace_handler.validate(f"SelTable-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(self.start_time)}")
+
+    def generate_recording_file_name(self) -> str:
+        """Generate the file name allocated to the recording file for this
+        recording in the file space. It is unique based on the metadata of this
+        recording object and the encounter it is a part of.
+        
+        The format of the recording file name is given below where {} signifies a variable:
+
+        `Rec-{species.species_name}-{encounter.location}-{encounter.encounter_name}-{recording.start_time}`
+
+        Raises:
+            ValueError: corrupt database schema (cannot access the metadata required)
+
+        Returns:
+            str: the recording file name (no extension)
+        """
+        from . import filespace_handler
+        if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate recording file name.")
+        return filespace_handler.validate(f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(self.start_time)}")
 
     def generate_relative_path_for_selections(self):
         folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
-        return os.path.join(self.generate_relative_path(), folder_name)
+        return os.path.join(self.generate_relative_directory(), folder_name)
 
-    def generate_relative_path(self):
-        folder_name = self.start_time.strftime("Recording-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return os.path.join(encounter.generate_relative_path(), folder_name)
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return os.path.join(encounter.generate_relative_path(), folder_name)
-
-    def generate_recording_filename(self,extension=""):
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"Rec-{encounter.species.species_name}-{encounter.location}-{encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
-        with database_handler.get_session() as session:
-            encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-            return f"Rec-{encounter.species.species_name}-{encounter.location}-{encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
-    
-    def generate_full_relative_path(self,extension=""):
-        return os.path.join(self.generate_relative_path(), self.generate_recording_filename(extension=extension))
-
-    def generate_selection_table_filename(self):
-        return f"Sel-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{self.start_time.strftime('%Y%m%d%H%M%S')}"
     def get_start_time(self):
         return self.start_time
 
-    def set_start_time(self, datetime_object: datetime | str):
-        self.start_time = utils.validate_datetime(datetime_object)
+    def get_start_time_pretty(self):
+        return utils.pretty_date(self.get_start_time())
+
+    def set_start_time(self, value: datetime.datetime | str):
+        self.start_time = utils.validate_datetime(value, "Start Time")
 
     def match_start_time(self, match_datetime):
         return self.start_time == match_datetime
@@ -949,7 +1222,7 @@ class Recording(database_handler.db.Model):
     def reset_selection_table_values(self,session):
         selections = database_handler.create_system_time_request(session, Selection, {"recording_id":self.id}, order_by="selection_number")
         for selection in selections:
-            selection.reset_selection_table_values(session)
+            selection.reset_selection_table_values()
 
     def export_selection_table(self, session, export_format):
         headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
@@ -991,79 +1264,120 @@ class Recording(database_handler.db.Model):
         response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
         
         return response
-    def export_selection_table(self, session, export_format):
-        headers = ['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Delta Time (s)', 'Delta Freq (Hz)', 'Avg Power Density (dB FS/Hz)', 'Annotation']
 
-        selections = database_handler.create_system_time_request(session, Selection, {"recording_id": self.id}, order_by="selection_number", one_result=False)
-        encounter = database_handler.create_system_time_request(session, Encounter, {"id":self.encounter_id},one_result=True)
-        
-        csv_data = StringIO()
-        if export_format == 'csv':
-            writer = csv.writer(csv_data, delimiter=',')
-        else:
-            writer = csv.writer(csv_data, delimiter='\t')
-        
-        writer.writerow(headers)
-        for selection in selections:
-            writer.writerow([
-                selection.selection_number,
-                selection.view,
-                selection.channel,
-                selection.begin_time,
-                selection.end_time,
-                selection.low_frequency,
-                selection.high_frequency,
-                selection.delta_time,
-                selection.delta_frequency,
-                selection.average_power,
-                selection.annotation
-            ])
+    def remove_recording_file(self) -> File:
+        """Remove the recording file.
 
-        csv_data.seek(0)
+        Returns:
+            File: the removed recording file (or None if nothing changed)
+        """
+        old_recording_file = self.recording_file
+        self.recording_file_id = None
+        self.recording_file = None
+        return old_recording_file
 
-        if export_format == 'csv':
-            mimetype = 'text/csv'
-            file_name = f'selection-table-{encounter.encounter_name}-rec-{self.get_start_time_string()}.csv'
-        else:
-            mimetype = 'text/plain'
-            file_name = f'selection-table-{encounter.encounter_name}-rec-{self.get_start_time_string()}.txt'
-
-        response = Response(csv_data.getvalue(), mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={file_name}'})
-        
-        return response
-
-
-class RecordingPlatform(database_handler.db.Model):
-    __tablename__ = 'recording_platform'
-
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    name = database_handler.db.Column(database_handler.db.String(100), unique=True, nullable=False)
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-    def __repr__(self):
-        return '<RecordingPlatform %r>' % self.name
-    
-    def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
+    def set_recording_file_id(self, value: str | uuid.UUID):
+        """ A method to populate the recording_file_id attribute. For safety reasons
+        the function to replace (either with None or a new ID) an existing recording file
+        is disabled. In order to populate the recording_file_id if one already exists
+        please use `remove_recording_file()` first.
 
         Args:
-            user_id (str): The user ID who is updating the recording.
+            value (str | UUID): the new ID
+
+        Raises:
+            ValueError: the `recording_file_id` is already populated
+            WarningException: if the given ID is not of type UUID or is of type str that cannot be converted to UUID
         """
-        self.updated_by_id = user_id
+        if self.recording_file_id or self.recording_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        self.recording_file_id = utils.validate_id(value, field="Recording File")
+
+    def set_recording_file(self, value: File):
+        if self.recording_file or self.recording_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        self.recording_file = utils.validate_type(value = value, target_type = File, field = "Recording File")
+
+    def set_encounter_id(self, value: str | uuid.UUID):
+        self.encounter_id = utils.validate_id(value=value, field="Encounter")
+
+    def set_encounter(self, value: Encounter):
+        self.encounter = utils.validate_type(value=value, target_type=Encounter, field="Encounter")
+
+    def set_notes(self, value: str) -> None:
+        """ Set the notes of the recording. If `value` is empty or `None`, set it to `None`.
+        If a non-string `value` is passed, convert it to a string.
+
+        Args:
+            value (str): the new value of notes
+        """
+        if value is not None and str(value).strip() == '': self.notes = None
+        elif value is None: self.notes = None
+        else: self.notes = str(value).strip()
+
+    def get_row_start(self) -> datetime.datetime:
+        if type(self.row_start) != datetime.datetime:
+            raise ValueError(f"Recording.row_start is of type {type(self.row_start)}, not datetime.datetime.")
+        return self.row_start
+    
+    def get_row_start_pretty(self):
+        utils.pretty_date(self.get_row_start())
+    
+    def get_created_datetime(self) -> datetime.datetime:
+        if type(self.created_datetime) != datetime.datetime:
+            raise ValueError(f"Recording.created_datetime is of type {type(self.created_datetime)}, not datetime.datetime.")
+        return self.created_datetime
+    
+    def get_created_datetime_pretty(self):
+        return utils.pretty_date(self.get_created_datetime())
+    
+    def get_recording_file_id(self) -> uuid.UUID | None:
+        """ Get the recording file id in UUID format. Returns None
+        if there is no recording file id.
+
+        Returns:
+            uuid.UUID: the recording file id (or None)
+        
+        Raises:
+            WarningException: when a non-Null recording file id is not in UUID format
+        """
+        return utils.validate_id(value=self.recording_file_id, field="Recording File", allow_none=True)
+
+    def get_recording_file(self) -> File | None:
+        return utils.validate_type(value=self.recording_file, target_type=File, field="Recording File", allow_none=True)
+
+    def get_encounter_id(self) -> str | None:
+        return utils.validate_id(value=self.encounter_id, field="Encounter", allow_none=True)
+
+    def get_encounter(self) -> Encounter | None:
+        return utils.validate_type(value=self.encounter, target_type=Encounter, field="Encounter", allow_none=True)
+
+    def get_status(self) -> str | None:
+        return str(self.status) if self.status else None
+
+    def get_status_change_datetime(self):
+        return utils.validate_datetime(self.status_change_datetime, field="Status Change Datetime", allow_none=True)
+
+    def get_status_change_datetime_pretty(self):
+        return utils.pretty_date(self.get_status_change_datetime())
+    
+
+    def get_notes(self):
+        return '' if self.notes is None else self.notes
 
 
 class Role(database_handler.db.Model):
     id = database_handler.db.Column(database_handler.db.Integer, primary_key=True)
     name = database_handler.db.Column(database_handler.db.String(100))
 
-"""
+    def get_id(self):
+        if self.id is None: raise ValueError("Field 'id' of the role class must not be None.")
+        try:
+            return int(self.id)
+        except ValueError:
+            raise ValueError(f"Field 'id' of the Role class must be an integer (got {type(self.id)}).")
+    
+    def get_name(self):
+        return self.name if self.name else ""
 
-class RecordingAudit(Audit, Recording, database_handler.db.Model):
-    __tablename__ = 'recording_audit'
-
-    record_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording.id'), nullable=False)
-    record = database_handler.db.relationship("Recording", foreign_keys=[record_id])
-"""
 class Selection(database_handler.db.Model):
     __tablename__ = 'selection'
 
@@ -1073,14 +1387,14 @@ class Selection(database_handler.db.Model):
     recording_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording.id'), nullable=False)
     contour_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     ctr_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
-    spectogram_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
-    plot_file_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('file.id'))
     sampling_rate = database_handler.db.Column(database_handler.db.Float, nullable=False)
     traced = database_handler.db.Column(database_handler.db.Boolean, nullable=True, default=None)
     deactivated = database_handler.db.Column(database_handler.db.Boolean, nullable=True, default=False)
     row_start = database_handler.db.Column(database_handler.db.DateTime(timezone=True), server_default=func.current_timestamp())
     default_fft_size = database_handler.db.Column(database_handler.db.Integer)
     default_hop_size = database_handler.db.Column(database_handler.db.Integer)
+    created_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
+
 
     ### Selection Table data ###
     view = database_handler.db.Column(database_handler.db.Text)
@@ -1156,8 +1470,6 @@ class Selection(database_handler.db.Model):
     selection_file = database_handler.db.relationship("File", foreign_keys=[selection_file_id])
     recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])
     ctr_file = database_handler.db.relationship("File", foreign_keys=[ctr_file_id])
-    spectogram_file = database_handler.db.relationship("File", foreign_keys=[spectogram_file_id])
-    plot_file = database_handler.db.relationship("File", foreign_keys=[plot_file_id])
     
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
@@ -1167,6 +1479,409 @@ class Selection(database_handler.db.Model):
         database_handler.db.UniqueConstraint('selection_number', 'recording_id', name='unique_selection_number_recording'),
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
+
+
+    def get_selection_number(self) -> int:
+        return utils.validate_int(value=self.selection_number, field="Selection Number", allow_none=False)
+    
+    def get_selection_file_id(self) -> uuid.UUID | None:
+        return utils.validate_id(value=self.selection_file_id, field="Selection File", allow_none=True)
+    
+    def set_selection_file_id(self, value: str | uuid.UUID):
+        """WARNING: this method will not automatically calculate sampling rate. It is recommended to
+        use `set_selection_file` instead.
+        """
+        if self.selection_file_id or self.selection_file_id: raise ValueError('Please delete the existing selection file before inserting a new one.')
+        self.selection_file_id = utils.validate_id(value, field="Selection File")
+
+    def set_selection_file(self, value: File):
+        if self.selection_file or self.selection_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        value = utils.validate_type(value = value, target_type = File, field = "Selection File")
+        if value.extension != 'wav':
+            raise exception_handler.WarningException(f"Selection {self.selection_number} needs to be of type 'wav' but is '{value.extension}'")
+        self.selection_file = value
+        try:
+            self.calculate_sampling_rate()
+        except Exception:
+            pass
+    
+    def set_contour_file_id(self, value: str | uuid.UUID):
+        if self.contour_file_id or self.contour_file_id: raise ValueError('Please delete the existing selection file before inserting a new one.')
+        self.contour_file_id = utils.validate_id(value, field="Contour File")
+
+    def set_contour_file(self, value: File):
+        if self.contour_file or self.contour_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        value = utils.validate_type(value = value, target_type = File, field = "Contour File")
+        if value.extension != 'csv':
+            raise exception_handler.WarningException(f"Contour file for selection {self.selection_number} needs to be of type 'csv' but is '{value.extension}'")
+        self.contour_file = value
+    
+    def set_ctr_file_id(self, value: str | uuid.UUID):
+        if self.ctr_file_id or self.ctr_file_id: raise ValueError('Please delete the existing selection file before inserting a new one.')
+        self.ctr_file_id = utils.validate_id(value, field="CTR File")
+
+    def set_ctr_file(self, value: File):
+        if self.ctr_file or self.ctr_file_id: raise ValueError('Please delete the existing recording file before inserting a new one.')
+        value = utils.validate_type(value = value, target_type = File, field = "CTR File")
+        if value.extension != 'ctr':
+            raise exception_handler.WarningException(f"Contour file for selection {self.selection_number} needs to be of type 'csv' but is '{value.extension}'")
+        self.ctr_file = value
+    
+    
+    def get_contour_file_id(self) -> uuid.UUID | None:
+        return utils.validate_id(value=self.contour_file_id, field="Contour File", allow_none=True)
+   
+    def get_ctr_file_id(self) -> uuid.UUID | None:
+        return utils.validate_id(value=self.ctr_file_id, field="CTR File", allow_none=True)
+
+    def get_ctr_file(self) -> File | None:
+        return utils.validate_type(value=self.ctr_file, target_type=File, field="CTR File", allow_none=True)
+    
+    def get_contour_file(self) -> File | None:
+        return utils.validate_type(value=self.contour_file, target_type=File, field="Contour File", allow_none=True)
+    
+    def get_selection_file(self) -> File | None:
+        return utils.validate_type(value=self.selection_file, target_type=File, field="Selection File", allow_none=True)
+
+    def get_row_start(self) -> datetime.datetime:
+        if type(self.row_start) != datetime.datetime:
+            raise ValueError(f"Recording.row_start is of type {type(self.row_start)}, not datetime.datetime.")
+        return self.row_start
+    
+    def get_row_start_pretty(self):
+        utils.pretty_date(self.get_row_start())
+    
+    def get_created_datetime(self) -> datetime.datetime:
+        if type(self.created_datetime) != datetime.datetime:
+            raise ValueError(f"Recording.created_datetime is of type {type(self.created_datetime)}, not datetime.datetime.")
+        return self.created_datetime
+    
+    def get_created_datetime_pretty(self) -> str:
+        return utils.pretty_date(self.get_created_datetime())
+    
+    def get_sampling_rate(self) -> float:
+        return utils.validate_float(value=self.sampling_rate, field="Sampling Rate", allow_none=True)
+
+    def set_sampling_rate(self, value: float | int | str):
+        self.sampling_rate = utils.validate_float(value=value, field="Sampling Rate", allow_none=True)
+
+    def get_recording_id(self) -> uuid.UUID:
+        return utils.validate_id(value=self.recording_id, field="Recording", allow_none=True)
+
+    def set_recording_id(self, value: str | uuid.UUID):
+        self.recording_id = utils.validate_id(value=value, field="Recording", allow_none=False)
+    
+    def get_recording(self) -> Recording:
+        return self.recording
+    
+    def set_recording(self, value: Recording):
+        self.recording = utils.validate_type(value=value, target_type=Recording, field="Recording", allow_none=False)
+    
+    
+
+
+    def get_deactivated(self):
+        
+        return self.deactivated
+
+    def get_traced(self):
+        return self.traced
+    
+    def get_default_fft_size(self):
+        return utils.validate_float(value=self.default_fft_size, field="Default FFT Size", allow_none=True)
+
+    def set_default_fft_size(self, value: float | int | str):
+        self.default_fft_size = utils.validate_float(value=value, field="Default FFT Size", allow_none=True)
+
+
+    def get_default_hop_size(self):
+        return utils.validate_float(value=self.default_hop_size, field="Default Hop Size", allow_none=True)
+        
+    def set_default_hop_size(self, value: float | int | str):
+        self.default_hop_size = utils.validate_float(value=value, field="Default Hop Size", allow_none=True)
+
+ 
+
+    def get_freq_max(self) -> float:
+        return utils.validate_float(self.freq_max, field="freq_max", allow_none = True)
+    def set_freq_max(self, value: float):
+        self.freq_max = utils.validate_float(value, field="freq_max", allow_none = False)
+
+    def get_freq_min(self) -> float:
+        return utils.validate_float(self.freq_min, field="freq_min", allow_none = True)
+    def set_freq_min(self, value: float):
+        self.freq_min = utils.validate_float(value, field="freq_min", allow_none = False)
+
+    def get_duration(self) -> float:
+        return utils.validate_float(self.duration, field="duration", allow_none = True)
+    def set_duration(self, value: float):
+        self.duration = utils.validate_float(value, field="duration", allow_none = False)
+
+    def get_freq_begin(self) -> float:
+        return utils.validate_float(self.freq_begin, field="freq_begin", allow_none = True)
+    def set_freq_begin(self, value: float):
+        self.freq_begin = utils.validate_float(value, field="freq_begin", allow_none = False)
+
+    def get_freq_end(self) -> float:
+        return utils.validate_float(self.freq_end, field="freq_end", allow_none = True)
+    def set_freq_end(self, value: float):
+        self.freq_end = utils.validate_float(value, field="freq_end", allow_none = False)
+
+    def get_freq_range(self) -> float:
+        return utils.validate_float(self.freq_range, field="freq_range", allow_none = True)
+    def set_freq_range(self, value: float):
+        self.freq_range = utils.validate_float(value, field="freq_range", allow_none = False)
+
+    def get_dc_mean(self) -> float:
+        return utils.validate_float(self.dc_mean, field="dc_mean", allow_none = True)
+    def set_dc_mean(self, value: float):
+        self.dc_mean = utils.validate_float(value, field="dc_mean", allow_none = False)
+
+    def get_dc_standarddeviation(self) -> float:
+        return utils.validate_float(self.dc_standarddeviation, field="dc_standarddeviation", allow_none = True)
+    def set_dc_standarddeviation(self, value: float):
+        self.dc_standarddeviation = utils.validate_float(value, field="dc_standarddeviation", allow_none = False)
+
+    def get_freq_mean(self) -> float:
+        return utils.validate_float(self.freq_mean, field="freq_mean", allow_none = True)
+    def set_freq_mean(self, value: float):
+        self.freq_mean = utils.validate_float(value, field="freq_mean", allow_none = False)
+
+    def get_freq_standarddeviation(self) -> float:
+        return utils.validate_float(self.freq_standarddeviation, field="freq_standarddeviation", allow_none = True)
+    def set_freq_standarddeviation(self, value: float):
+        self.freq_standarddeviation = utils.validate_float(value, field="freq_standarddeviation", allow_none = False)
+
+    def get_freq_median(self) -> float:
+        return utils.validate_float(self.freq_median, field="freq_median", allow_none = True)
+    def set_freq_median(self, value: float):
+        self.freq_median = utils.validate_float(value, field="freq_median", allow_none = False)
+
+    def get_freq_center(self) -> float:
+        return utils.validate_float(self.freq_center, field="freq_center", allow_none = True)
+    def set_freq_center(self, value: float):
+        self.freq_center = utils.validate_float(value, field="freq_center", allow_none = False)
+
+    def get_freq_relbw(self) -> float:
+        return utils.validate_float(self.freq_relbw, field="freq_relbw", allow_none = True)
+    def set_freq_relbw(self, value: float):
+        self.freq_relbw = utils.validate_float(value, field="freq_relbw", allow_none = False)
+
+    def get_freq_maxminratio(self) -> float:
+        return utils.validate_float(self.freq_maxminratio, field="freq_maxminratio", allow_none = True)
+    def set_freq_maxminratio(self, value: float):
+        self.freq_maxminratio = utils.validate_float(value, field="freq_maxminratio", allow_none = False)
+
+    def get_freq_begendratio(self) -> float:
+        return utils.validate_float(self.freq_begendratio, field="freq_begendratio", allow_none = True)
+    def set_freq_begendratio(self, value: float):
+        self.freq_begendratio = utils.validate_float(value, field="freq_begendratio", allow_none = False)
+
+    def get_freq_quarter1(self) -> float:
+        return utils.validate_float(self.freq_quarter1, field="freq_quarter1", allow_none = True)
+    def set_freq_quarter1(self, value: float):
+        self.freq_quarter1 = utils.validate_float(value, field="freq_quarter1", allow_none = False)
+
+    def get_freq_quarter2(self) -> float:
+        return utils.validate_float(self.freq_quarter2, field="freq_quarter2", allow_none = True)
+    def set_freq_quarter2(self, value: float):
+        self.freq_quarter2 = utils.validate_float(value, field="freq_quarter2", allow_none = False)
+
+    def get_freq_quarter3(self) -> float:
+        return utils.validate_float(self.freq_quarter3, field="freq_quarter3", allow_none = True)
+    def set_freq_quarter3(self, value: float):
+        self.freq_quarter3 = utils.validate_float(value, field="freq_quarter3", allow_none = False)
+
+    def get_freq_spread(self) -> float:
+        return utils.validate_float(self.freq_spread, field="freq_spread", allow_none = True)
+    def set_freq_spread(self, value: float):
+        self.freq_spread = utils.validate_float(value, field="freq_spread", allow_none = False)
+
+    def get_dc_quarter1mean(self) -> float:
+        return utils.validate_float(self.dc_quarter1mean, field="dc_quarter1mean", allow_none = True)
+    def set_dc_quarter1mean(self, value: float):
+        self.dc_quarter1mean = utils.validate_float(value, field="dc_quarter1mean", allow_none = False)
+
+    def get_dc_quarter2mean(self) -> float:
+        return utils.validate_float(self.dc_quarter2mean, field="dc_quarter2mean", allow_none = True)
+    def set_dc_quarter2mean(self, value: float):
+        self.dc_quarter2mean = utils.validate_float(value, field="dc_quarter2mean", allow_none = False)
+
+    def get_dc_quarter3mean(self) -> float:
+        return utils.validate_float(self.dc_quarter3mean, field="dc_quarter3mean", allow_none = True)
+    def set_dc_quarter3mean(self, value: float):
+        self.dc_quarter3mean = utils.validate_float(value, field="dc_quarter3mean", allow_none = False)
+
+    def get_dc_quarter4mean(self) -> float:
+        return utils.validate_float(self.dc_quarter4mean, field="dc_quarter4mean", allow_none = True)
+    def set_dc_quarter4mean(self, value: float):
+        self.dc_quarter4mean = utils.validate_float(value, field="dc_quarter4mean", allow_none = False)
+
+    def get_freq_cofm(self) -> float:
+        return utils.validate_float(self.freq_cofm, field="freq_cofm", allow_none = True)
+    def set_freq_cofm(self, value: float):
+        self.freq_cofm = utils.validate_float(value, field="freq_cofm", allow_none = False)
+
+    def get_freq_slopemean(self) -> float:
+        return utils.validate_float(self.freq_slopemean, field="freq_slopemean", allow_none = True)
+    def set_freq_slopemean(self, value: float):
+        self.freq_slopemean = utils.validate_float(value, field="freq_slopemean", allow_none = False)
+
+    def get_freq_absslopemean(self) -> float:
+        return utils.validate_float(self.freq_absslopemean, field="freq_absslopemean", allow_none = True)
+    def set_freq_absslopemean(self, value: float):
+        self.freq_absslopemean = utils.validate_float(value, field="freq_absslopemean", allow_none = False)
+
+    def get_freq_posslopemean(self) -> float:
+        return utils.validate_float(self.freq_posslopemean, field="freq_posslopemean", allow_none = True)
+    def set_freq_posslopemean(self, value: float):
+        self.freq_posslopemean = utils.validate_float(value, field="freq_posslopemean", allow_none = False)
+
+    def get_freq_negslopemean(self) -> float:
+        return utils.validate_float(self.freq_negslopemean, field="freq_negslopemean", allow_none = True)
+    def set_freq_negslopemean(self, value: float):
+        self.freq_negslopemean = utils.validate_float(value, field="freq_negslopemean", allow_none = False)
+
+    def get_freq_sloperatio(self) -> float:
+        return utils.validate_float(self.freq_sloperatio, field="freq_sloperatio", allow_none = True)
+    def set_freq_sloperatio(self, value: float):
+        self.freq_sloperatio = utils.validate_float(value, field="freq_sloperatio", allow_none = False)
+
+    def get_freq_sweepuppercent(self) -> float:
+        return utils.validate_float(self.freq_sweepuppercent, field="freq_sweepuppercent", allow_none = True)
+    def set_freq_sweepuppercent(self, value: float):
+        self.freq_sweepuppercent = utils.validate_float(value, field="freq_sweepuppercent", allow_none = False)
+
+    def get_freq_sweepdownpercent(self) -> float:
+        return utils.validate_float(self.freq_sweepdownpercent, field="freq_sweepdownpercent", allow_none = True)
+    def set_freq_sweepdownpercent(self, value: float):
+        self.freq_sweepdownpercent = utils.validate_float(value, field="freq_sweepdownpercent", allow_none = False)
+
+    def get_freq_sweepflatpercent(self) -> float:
+        return utils.validate_float(self.freq_sweepflatpercent, field="freq_sweepflatpercent", allow_none = True)
+    def set_freq_sweepflatpercent(self, value: float):
+        self.freq_sweepflatpercent = utils.validate_float(value, field="freq_sweepflatpercent", allow_none = False)
+
+    def get_inflection_maxdelta(self) -> float:
+        return utils.validate_float(self.inflection_maxdelta, field="inflection_maxdelta", allow_none = True)
+    def set_inflection_maxdelta(self, value: float):
+        self.inflection_maxdelta = utils.validate_float(value, field="inflection_maxdelta", allow_none = False)
+
+    def get_inflection_mindelta(self) -> float:
+        return utils.validate_float(self.inflection_mindelta, field="inflection_mindelta", allow_none = True)
+    def set_inflection_mindelta(self, value: float):
+        self.inflection_mindelta = utils.validate_float(value, field="inflection_mindelta", allow_none = False)
+
+    def get_inflection_maxmindelta(self) -> float:
+        return utils.validate_float(self.inflection_maxmindelta, field="inflection_maxmindelta", allow_none = True)
+    def set_inflection_maxmindelta(self, value: float):
+        self.inflection_maxmindelta = utils.validate_float(value, field="inflection_maxmindelta", allow_none = False)
+
+    def get_inflection_mediandelta(self) -> float:
+        return utils.validate_float(self.inflection_mediandelta, field="inflection_mediandelta", allow_none = True)
+    def set_inflection_mediandelta(self, value: float):
+        self.inflection_mediandelta = utils.validate_float(value, field="inflection_mediandelta", allow_none = False)
+
+    def get_inflection_meandelta(self) -> float:
+        return utils.validate_float(self.inflection_meandelta, field="inflection_meandelta", allow_none = True)
+    def set_inflection_meandelta(self, value: float):
+        self.inflection_meandelta = utils.validate_float(value, field="inflection_meandelta", allow_none = False)
+
+    def get_inflection_standarddeviationdelta(self) -> float:
+        return utils.validate_float(self.inflection_standarddeviationdelta, field="inflection_standarddeviationdelta", allow_none = True)
+    def set_inflection_standarddeviationdelta(self, value: float):
+        self.inflection_standarddeviationdelta = utils.validate_float(value, field="inflection_standarddeviationdelta", allow_none = False)
+
+    def get_inflection_duration(self) -> float:
+        return utils.validate_float(self.inflection_duration, field="inflection_duration", allow_none = True)
+    def set_inflection_duration(self, value: float):
+        self.inflection_duration = utils.validate_float(value, field="inflection_duration", allow_none = False)
+
+    def get_step_duration(self) -> float:
+        return utils.validate_float(self.step_duration, field="step_duration", allow_none = True)
+    def set_step_duration(self, value: float):
+        self.step_duration = utils.validate_float(value, field="step_duration", allow_none = False)
+
+    def get_freq_stepup(self) -> int:
+        return utils.validate_int(self.freq_stepup, field="freq_stepup", allow_none = True)
+    def set_freq_stepup(self, value: int):
+        self.freq_stepup = utils.validate_int(value, field="freq_stepup", allow_none = False)
+
+    def get_freq_stepdown(self) -> int:
+        return utils.validate_int(self.freq_stepdown, field="freq_stepdown", allow_none = True)
+    def set_freq_stepdown(self, value: int):
+        self.freq_stepdown = utils.validate_int(value, field="freq_stepdown", allow_none = False)
+
+    def get_freq_numsteps(self) -> int:
+        return utils.validate_int(self.freq_numsteps, field="freq_numsteps", allow_none = True)
+    def set_freq_numsteps(self, value: int):
+        self.freq_numsteps = utils.validate_int(value, field="freq_numsteps", allow_none = False)
+
+    def get_freq_begsweep(self) -> int:
+        return utils.validate_int(self.freq_begsweep, field="freq_begsweep", allow_none = True)
+    def set_freq_begsweep(self, value: int):
+        self.freq_begsweep = utils.validate_int(value, field="freq_begsweep", allow_none = False)
+
+    def get_freq_begup(self) -> int:
+        return utils.validate_int(self.freq_begup, field="freq_begup", allow_none = True)
+    def set_freq_begup(self, value: int):
+        self.freq_begup = utils.validate_int(value, field="freq_begup", allow_none = False)
+
+    def get_freq_begdown(self) -> int:
+        return utils.validate_int(self.freq_begdown, field="freq_begdown", allow_none = True)
+    def set_freq_begdown(self, value: int):
+        self.freq_begdown = utils.validate_int(value, field="freq_begdown", allow_none = False)
+
+    def get_freq_endsweep(self) -> int:
+        return utils.validate_int(self.freq_endsweep, field="freq_endsweep", allow_none = True)
+    def set_freq_endsweep(self, value: int):
+        self.freq_endsweep = utils.validate_int(value, field="freq_endsweep", allow_none = False)
+
+    def get_freq_endup(self) -> int:
+        return utils.validate_int(self.freq_endup, field="freq_endup", allow_none = True)
+    def set_freq_endup(self, value: int):
+        self.freq_endup = utils.validate_int(value, field="freq_endup", allow_none = False)
+
+    def get_freq_enddown(self) -> int:
+        return utils.validate_int(self.freq_enddown, field="freq_enddown", allow_none = True)
+    def set_freq_enddown(self, value: int):
+        self.freq_enddown = utils.validate_int(value, field="freq_enddown", allow_none = False)
+
+    def get_num_sweepsupdown(self) -> int:
+        return utils.validate_int(self.num_sweepsupdown, field="num_sweepsupdown", allow_none = True)
+    def set_num_sweepsupdown(self, value: int):
+        self.num_sweepsupdown = utils.validate_int(value, field="num_sweepsupdown", allow_none = False)
+
+    def get_num_sweepsdownup(self) -> int:
+        return utils.validate_int(self.num_sweepsdownup, field="num_sweepsdownup", allow_none = True)
+    def set_num_sweepsdownup(self, value: int):
+        self.num_sweepsdownup = utils.validate_int(value, field="num_sweepsdownup", allow_none = False)
+
+    def get_num_sweepsupflat(self) -> int:
+        return utils.validate_int(self.num_sweepsupflat, field="num_sweepsupflat", allow_none = True)
+    def set_num_sweepsupflat(self, value: int):
+        self.num_sweepsupflat = utils.validate_int(value, field="num_sweepsupflat", allow_none = False)
+
+    def get_num_sweepsdownflat(self) -> int:
+        return utils.validate_int(self.num_sweepsdownflat, field="num_sweepsdownflat", allow_none = True)
+    def set_num_sweepsdownflat(self, value: int):
+        self.num_sweepsdownflat = utils.validate_int(value, field="num_sweepsdownflat", allow_none = False)
+
+    def get_num_sweepsflatup(self) -> int:
+        return utils.validate_int(self.num_sweepsflatup, field="num_sweepsflatup", allow_none = True)
+    def set_num_sweepsflatup(self, value: int):
+        self.num_sweepsflatup = utils.validate_int(value, field="test_get_num_sweepsflatup", allow_none = False)
+
+    def get_num_sweepsflatdown(self) -> int:
+        return utils.validate_int(self.num_sweepsflatdown, field="num_sweepsflatdown", allow_none = True)
+    def set_num_sweepsflatdown(self, value: int):
+        self.num_sweepsflatdown = utils.validate_int(value, field="num_sweepsflatdown", allow_none = False)
+
+    def get_num_inflections(self) -> int:
+        return utils.validate_int(self.num_inflections, field="num_inflections", allow_none = True)
+    def set_num_inflections(self, value: int):
+        self.num_inflections = utils.validate_int(value, field="num_inflections", allow_none = False)
+
 
     def get_rounded_value(self, value:int|float, decimal_places:int=3) -> int|float:
         """
@@ -1193,33 +1908,24 @@ class Selection(database_handler.db.Model):
             except ValueError as e:
                 raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
 
+    def get_unique_name(self):
+        """Generate a unique name for the encounter based on its recording and the selection number.
+        The format of the unique name is `<RECORDING>: Selection <SELECTION_NUMBER>`
+        See `recording.get_unique_name()` for for more information on `<RECORDING>`.
 
-    def recalculate_contour_statistics(self, session):
+        Args:
+            delimiter (str, optional): the delimiter splits values. Defaults to "-".
+
+        Raises:
+            ValueError: if there is no recording associated with this recording
+
+        Returns:
+            str: the unique name (see above for formatting)
         """
-        Recalculate contour statistics for the given selection.
-
-        :param session: The current sqlalchemy session
-        :type session: sqlalchemy.orm.session.Session
-        :param selection: The selection object to recalculate the contour statistics for
-        :type selection: Selection
-        """
-        self.reset_contour_stats()
-        if self.contour_file is not None:
-            try:
-                contour_file_obj = contour_statistics.ContourFile(self.contour_file.get_full_absolute_path(),self.selection_number)
-                contour_rows = contour_file_obj.calculate_statistics(session, self)
-                self.generate_ctr_file(session, contour_rows)
-            except ValueError as e:
-                raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
+        if self.recording == None: raise ValueError("Unable to generate unique name as the encounter does not have a recording.")
+        return f"{self.recording.get_unique_name()}, Selection: {self.selection_number}"
 
 
-    def get_unique_name(self, delimiter="-"):
-        with database_handler.get_session() as session:
-            recording = database_handler.create_system_time_request(session, Recording, {"id":self.recording_id},one_result=True)
-            return f"{recording.get_unique_name(delimiter)}: selection {self.selection_number}"
-        with database_handler.get_session() as session:
-            recording = database_handler.create_system_time_request(session, Recording, {"id":self.recording_id},one_result=True)
-            return f"{recording.get_unique_name(delimiter)}: selection {self.selection_number}"
 
     def calculate_sampling_rate(self):
         if self.selection_file:
@@ -1232,10 +1938,10 @@ class Selection(database_handler.db.Model):
         self.deactivated = True
 
     def reactivate(self):
-        self.traced = self.update_traced_status()
+        self.traced = None
         self.deactivated = False
 
-    def reset_selection_table_values(self, session):
+    def reset_selection_table_values(self):
         self.view = None
         self.channel = None
         self.begin_time = None
@@ -1252,32 +1958,9 @@ class Selection(database_handler.db.Model):
             self.traced = True
         elif not self.contour_file and (self.annotation == "N"):
             self.traced = False
-        elif self.contour_file:
-            self.traced = True
         else:
             self.traced = None
-
-
-    def getWarnings(self):
-        warnings = []
-        if self.contour_file and self.annotation=="N":
-            warnings.append("Contour file exists but annotated 'N'.")
-        elif not self.contour_file and self.annotation=="Y" or self.annotation=="M":
-            warnings.append(f"Selection annotated '{self.annotation}' but no contour file.")
-        if not self.recording.selection_table_file:
-            warnings.append("No Selection Table file.")
-        ## ADD CHECK THAT SELECTION TABLE HAS BEEN UPLOADED
-        return warnings
-
-    def generate_ctr_file_name(self):
-        return f"contour-{self.selection_number}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
-
-    def set_selection_file(self, selection_file: File):
-        if selection_file.extension != 'wav':
-            raise exception_handler.WarningException(f"Selection {self.selection_number} needs to be of type 'wav' but is '{selection_file.extension}'")
-        self.calculate_sampling_rate()
-        self.selection_file = selection_file
-
+            
     def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None, update_permissions=False):
         from .contour_statistics import ContourFile
         warning = ""
@@ -1367,7 +2050,7 @@ class Selection(database_handler.db.Model):
         fig.tight_layout()
 
         # Save the plot as a PNG
-        plot_path = os.path.join(temp_dir, self.generate_plot_filename() + ".png")
+        plot_path = os.path.join(temp_dir, self.generate_plot_file_name() + ".png")
         plt.savefig(plot_path, bbox_inches='tight')
 
         plt.close('all')
@@ -1549,17 +2232,17 @@ class Selection(database_handler.db.Model):
         if self.selection_file is not None:
             with database_handler.get_session() as session:
                 selection_file = session.query(File).with_for_update().get(self.selection_file_id)
-                selection_file.move_file(os.path.join(self.generate_relative_path(),self.generate_selection_filename()))
+                selection_file.move_file(self.generate_relative_path(),self.generate_selection_file_name())
                 session.commit()
         if self.contour_file is not None:
             with database_handler.get_session() as session:
                 contour_file = session.query(File).with_for_update().get(self.contour_file_id)
-                contour_file.move_file(os.path.join(self.generate_relative_path(),self.generate_contour_filename()))
+                contour_file.move_file(self.generate_relative_path(),self.generate_contour_file_name())
                 session.commit()
         if self.ctr_file is not None:
             with database_handler.get_session() as session:
                 ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
-                ctr_file.move_file(os.path.join(self.generate_relative_path(),self.generate_ctr_file_name()))
+                ctr_file.move_file(self.generate_relative_path(),self.generate_ctr_file_name())
                 session.commit()
 
     def delete_children(self,keep_file_reference=True):        
@@ -1584,22 +2267,28 @@ class Selection(database_handler.db.Model):
                 ctr_file.delete()
                 if not keep_file_reference: self.ctr_file = None
                 session.commit()
+    
+    def generate_plot_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"Plot-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
 
-            
-    def generate_plot_filename(self):
-        return f"Selectionplot-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_plot"
+    def generate_selection_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"Selection-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
 
-    def generate_spectogram_filename(self):
-        return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}_spectrogram"
-
-    def generate_selection_filename(self):
-        return f"Selection-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
-
-    def generate_contour_filename(self):
-        return f"Contour-{str(self.selection_number)}-{self.recording.start_time.strftime('%Y%m%d%H%M%S')}"
+    def generate_contour_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"Contour-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
+    
+    def generate_ctr_file_name(self):
+        from . import filespace_handler
+        if not self.recording: raise ValueError("Encounter not linked to recording. Call session.flush() before calling this method.")
+        return filespace_handler.validate(f"CTR-{self.selection_number}-{filespace_handler.format_date_for_filespace(self.recording.get_start_time())}")
     
     def generate_relative_path(self):
-        
         return os.path.join(self.recording.generate_relative_path_for_selections())
 
     def generate_full_relative_path(self):
@@ -1620,84 +2309,63 @@ class Selection(database_handler.db.Model):
 
 
 
-class Species(database_handler.db.Model):
-    __tablename__ = 'species'
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
-    # TODO rename to scientific_name (refactor with actual database)
-    species_name = database_handler.db.Column(database_handler.db.String(100), nullable=False, unique=True)
-    genus_name = database_handler.db.Column(database_handler.db.String(100))
-    common_name = database_handler.db.Column(database_handler.db.String(100))
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-
-    def update_call(self):
-        """
-        Call update_call() in all Encounter objects linked to the Species object.
-        This method should be called when a metadata change occurs in the Species
-        object that requires files (in Recording and Selection) be given a new
-        path based on that metadata.
-        """
-        with database_handler.get_session() as session:
-            encounters = session.query(Encounter).with_for_update().filter_by(species_id=self.id).all()
-            for encounter in encounters:
-                encounter.update_call()
-    
-    def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
-        self.updated_by_id = user_id
-
-
-    def get_species_name(self):
-        return '' if self.species_name is None else self.species_name
-
-    def set_species_name(self, value):
-        self.species_name = None if value.strip() == '' else value.strip()
-    
-    def get_genus_name(self):
-        return '' if self.genus_name is None else self.genus_name
-    
-    def set_genus_name(self, value):
-        self.genus_name = None if value.strip() == '' else value.strip()
-
-    def get_common_name(self):
-        return '' if self.common_name is None else self.common_name
-    
-    def set_common_name(self, value):
-        self.common_name = None if value.strip() == '' else value.strip()
-
-
 
 class User(database_handler.db.Model, UserMixin):
     id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
     login_id = database_handler.db.Column(database_handler.db.String(100), unique=True)
-    password = database_handler.db.Column(database_handler.db.String(100))
     name = database_handler.db.Column(database_handler.db.String(1000))
     role_id = database_handler.db.Column(database_handler.db.Integer, database_handler.db.ForeignKey('role.id'))
     is_active = database_handler.db.Column(database_handler.db.Boolean, default=True)
-    is_temporary = database_handler.db.Column(database_handler.db.Boolean, default=False)
     expiry = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
-    
     role=database_handler.db.relationship('Role', backref='users', lazy=True)
 
     def set_login_id(self, value):
         self.login_id = value
     
-    def set_role_id(self, value):
+    def get_role_id(self):
+        return self.role_id
+    
+    def get_role(self):
+        return self.role
+    
+    def set_role_id(self, value: int | str):
+        """Set the role ID of this user. Must either be an integer
+        or an integer-convertable string. This method does not verify
+        foreign key constraints.
+
+        Args:
+            value (int | str): the new value
+
+        Raises:
+            exception_handler.WarningException: `value` is not of the type stated above
+            exception_handler.WarningException: `value` is `None`
+        """
+        if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Role' cannot be empty or None.")
+        try:
+            value = int(float(value))
+        except Exception:
+            raise exception_handler.WarningException("Field 'role' must be of type integer (a whole number).")
         self.role_id = value
+    
+    def set_role(self, value: Role):
+        self.role = utils.validate_type(value=value, target_type=Role, field="Role", allow_none=False)
     
     def set_expiry(self, value):
         self.expiry = value
     
     def set_name(self, value):
-        
-        self.name = value
+        self.name = utils.validate_string(self.name, field="Name", allow_none=True)
+    
+    def get_name(self):
+        return utils.validate_string(self.name, field="Name", allow_none=True)
     
     def get_login_id(self):
-        return '' if self.login_id is None else self.login_id
+        # NOTE: the login ID must never be altered or formatted
+        return self.login_id
+
+    def set_login_id(self, value: str):
+        if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Login ID' cannot be None.")
+        self.login_id = str(value)
 
     def activate(self):
         """
@@ -1711,7 +2379,17 @@ class User(database_handler.db.Model, UserMixin):
         """
         self.is_active = False
 
+    def get_is_active(self):
+        return self.is_active if self.is_active else False
 
+    def get_expiry(self):
+        return utils.validate_datetime(value=self.expiry, field="Expiry", allow_none=True)
+    
+    def get_expiry_pretty(self):
+        return utils.pretty_date(self.get_expiry())
+    
+    def set_expiry(self, value):
+        self.expiry = utils.validate_datetime(value=value, field="Expiry", allow_none=False)
 
 
 class Assignment(database_handler.db.Model):
@@ -1731,13 +2409,51 @@ class Assignment(database_handler.db.Model):
     def set_recording_id(self, recording_id: str):
         self.recording_id = recording_id
 
-    def set_user_id(self, user_id: str):
-        self.user_id = user_id
-    
-    def set_recording_id(self, recording_id: str):
-        self.recording_id = recording_id
-
     def is_complete(self):
         return "Yes" if self.completed_flag else "No"
     
+    def get_completed_flag(self):
+        return self.completed_flag
 
+    def set_complete(self):
+        self.completed_flag = True
+    
+    def set_incomplete(self):
+        self.completed_flag = False
+    
+    def get_row_start(self):
+        return self.row_start
+    
+    def get_row_start_pretty(self):
+        return utils.pretty_date(self.get_row_start())
+    
+    def get_created_datetime(self):
+        return self.created_datetime
+    
+    def get_created_datetime_pretty(self):
+        return utils.pretty_date(self.get_created_datetime())
+
+    def get_user_id(self) -> uuid.UUID:
+        return utils.validate_id(value=self.user_id, field="User", allow_none=True)
+
+    def set_user_id(self, value: str | uuid.UUID):
+        self.user_id = utils.validate_id(value=value, field="User", allow_none=False)
+    
+    def get_user(self) -> User:
+        return self.user
+    
+    def set_user(self, value: User):
+        
+        self.user = utils.validate_type(value=value, target_type=User, field="User", allow_none=False)
+
+    def get_recording_id(self) -> uuid.UUID:
+        return utils.validate_id(value=self.recording_id, field="Recording", allow_none=True)
+
+    def set_recording_id(self, value: str | uuid.UUID):
+        self.recording_id = utils.validate_id(value=value, field="Recording", allow_none=False)
+    
+    def get_recording(self) -> Recording:
+        return self.recording
+    
+    def set_recording(self, value: Recording):
+        self.recording = utils.validate_type(value=value, target_type=Recording, field="Recording", allow_none=False)

@@ -1,17 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{% macro orphaned_file_template(orphaned_files) %}
+<script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
+
+{% macro orphaned_file_template(orphaned_files, deleted, unique_id) %}
+
+<button class="gray" style="width:50%; margin-top:0.5rem; margin-bottom: 1rem" id="delete-selected-orphaned-files-{{unique_id}}">Delete Selected Orphaned Files</button>
 
 <div class="table-responsive">
+    <form id="delete-orhpaned-files-form-{{unique_id}}" method="post" action="{{ url_for('filespace.delete_orphaned_files') }}">
+        <input type="hidden" id="file-paths-{{unique_id}}" name="file_paths[]">
+        <input type="hidden" id="deleted" name="deleted" value="{{deleted}}">
+    </form>
 <table class="table-striped">
     <tr>
+        <th><input type="checkbox" name="checkboxes-{{unique_id}}" class="select-all"></th>
         <th>Path</th>
         <th>Download</th>
         <th>Resolve</th>
     </tr>
     {% for orphaned_file in orphaned_files %}
     <tr>
+        <td>
+            <input type="checkbox" name="checkboxes-{{unique_id}}" value="{{orphaned_file['path']}}">
+        </td>
         <td>
             <label for="file">{{ orphaned_file['path'] }}</label><br>
             
@@ -27,10 +39,14 @@
     {% endfor %}
 </table>
 </div>
+<script>
+    addShiftClickFunctionality(document.querySelectorAll('input[name="checkboxes-{{unique_id}}"]'));
+    addCheckboxFormSubmission(document.querySelectorAll('input[name="checkboxes-{{unique_id}}"]'), document.getElementById('delete-selected-orphaned-files-{{unique_id}}'), document.getElementById('file-paths-{{unique_id}}'), document.getElementById('delete-orhpaned-files-form-{{unique_id}}'));
+</script>
 {% endmacro %}
 
 
-{% macro invalid_link_template(invalid_links) %}
+{% macro invalid_link_template(invalid_links, deleted, unique_id) %}
 <div class="table-responsive">
 <table class="table-striped">
         <tr>
@@ -93,11 +109,11 @@
 
         <h2>Orphaned Files</h2>
         <p>Orphaned files. These files are not referenced by any other file object.</p>
-        {{ orphaned_file_template(orphaned_files) }}
+        {{ orphaned_file_template(orphaned_files, False, "1") }}
 
         <h2>Orphaned Deleted Files</h2>
         <p>Orphaned deleted files. These files are not referenced by any other file object.</p>
-        {{ orphaned_file_template(orphaned_deleted_files) }}
+        {{ orphaned_file_template(orphaned_deleted_files, True, "2") }}
     </div>
 
 </body>
