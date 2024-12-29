@@ -27,6 +27,7 @@ from .. import models
 from .. import exception_handler
 from .. import utils
 from .. import contour_statistics
+from .. import response_handler
 
 routes_recording = Blueprint('recording', __name__)
 
@@ -53,6 +54,7 @@ def insert_or_update_recording(session, request, recording: models.Recording):
         recording_file = models.File()
         recording_file.insert_path_and_filename(session, filespace_handler.get_complete_temporary_file(recording_file_id, recording_filename), recording.generate_relative_directory(), recording.generate_recording_file_name())
         filespace_handler.remove_temporary_file(recording_file_id, recording_filename)
+        if recording_file.extension != "wav": raise exception_handler.WarningException(f"Recording needs to be of type 'wav' but is '{recording_file.extension}'")
         session.add(recording_file)
         recording.set_recording_file(recording_file)
     filespace_handler.clean_filespace_temp()
@@ -340,6 +342,8 @@ def recording_update(recording_id):
     """
     Updates a recording in the encounter with the specified encounter ID and recording ID.
     """
+
+    response = response_handler.JSONResponse(redirect=request.referrer)
     with database_handler.get_session() as session:
         try:
             recording_obj = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
@@ -347,10 +351,11 @@ def recording_update(recording_id):
             session.commit()
             flash(f'Updated {recording_obj.get_unique_name()}.', 'success')
             recording_obj.update_call()
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            return response.to_json()
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+            response.set_redirect(None)
+            return response.to_json()
 
 @routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['GET'])
 @database_handler.require_live_session

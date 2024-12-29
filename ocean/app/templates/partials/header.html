@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
-
     <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='hero-section.css') }}">
     <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='input-styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='general-style.css') }}">
@@ -89,6 +88,8 @@
       menu.classList.toggle('show');
     }
     </script>
+    <script src="https://unpkg.com/htmx.org@1.5.0"></script>
 
   </body>
 </html>
+<script src="{{ url_for('general.serve_script', filename='requests.js') }}"></script>

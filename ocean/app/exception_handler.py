@@ -22,6 +22,7 @@ from sqlalchemy import orm
 
 # Local application imports
 from .logger import logger
+from .response_handler import JSONResponse
 
 class CriticalException(Exception):
     def __init__(self, message:str):
@@ -185,7 +186,7 @@ def _parse_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
         logger.exception(str(exception))
         raise CriticalException("An unexpected error ocurred. It has been logged. Please notify your administrator and try again later.")
 
-def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None, session:orm.Session=None) -> str:
+def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None, session:orm.Session=None, show_flash:bool=True) -> str:
     """Parse an exception and rollback a SQLAlchemy session. The way in which an exception is parsed
     is dependent on the type of exception. There are three categories:
 
@@ -214,6 +215,8 @@ def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
         str: The parsed error message (note that when `CriticalException` or `Exception` are re-raised nothing will be returned)
     """
 
+    
+
     if session:
         # Rollback any newly created File objects
         from .models import File
@@ -223,5 +226,5 @@ def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
         session.rollback()
 
     error_string = _parse_exception(exception=exception, prefix = prefix)
-    flash(error_string, category='error')
+    if show_flash: flash(error_string, category='error')
     return error_string
