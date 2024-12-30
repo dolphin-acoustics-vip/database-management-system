@@ -25,6 +25,7 @@ from .. import database_handler
 from .. import models
 from .. import exception_handler
 from .. import utils
+from .. import response_handler
 from ..logger import logger
 
 routes_encounter = Blueprint('encounter', __name__)
@@ -61,10 +62,28 @@ def encounter_new():
 @database_handler.exclude_role_4
 @database_handler.require_live_session
 def encounter_insert():
+    """ Route to insert a new encounter. The response is created using response_handler.JSONResponse. If the insertion
+    is successful, a message is added to flask.flash() and a redirect link is passed to the JSONResponse. If the insertion
+    fails, an error message is added to the JSONResponse and no redirect link is passed to the JSONResponse (this is because
+    the user should not be redirected, but rather instructed to fix the issue that caused the error).
+
+    Requires the following form fields:
+    encounter_name: str (not empty or None)
+    location: str (not empty or None)
+    species: str (not empty or None and a valid UUID pointing to a Species)
+    latitude-start: str
+    longitude-start: str
+    data_source: str (none or a valid UUID pointing to a DataSource)
+    recording_platform: str (None or a valid UUID pointing to a RecordingPlatform)
+    project: str (not empty or None)
+    notes: str
+
+    Returns:
+        flask.Response: The JSON response
     """
-    Inserts a new encounter into the database based on the provided form data.
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
+        # Verify required fields of the form are present
         encounter_form_data = utils.get_form_data(request, {
             'encounter_name': str,
             'location': str,
@@ -79,41 +98,28 @@ def encounter_insert():
             'local-timezone': str
         })
 
-        encounter_name = encounter_form_data['encounter_name']
-        location = encounter_form_data['location']
-        species_id = encounter_form_data['species']
-        latitude = encounter_form_data['latitude-start']
-        longitude = encounter_form_data['longitude-start']
-        data_source_id = encounter_form_data['data_source']
-        recording_platform_id = encounter_form_data['recording_platform']
-        project = encounter_form_data['project']
-        notes = encounter_form_data['notes']
-        file_timezone = encounter_form_data['file-timezone']
-        local_timezone = encounter_form_data['local-timezone']
-
         try:
             new_encounter = models.Encounter()
-
-            new_encounter.set_encounter_name(encounter_name)
-            new_encounter.set_location(location)
-            new_encounter.set_project(project)
-            new_encounter.set_notes(notes)
-            new_encounter.set_species_id(species_id)
-            new_encounter.set_latitude(latitude)
-            new_encounter.set_longitude(longitude)
-            new_encounter.set_data_source_id(data_source_id)
-            new_encounter.set_recording_platform_id(recording_platform_id)
-            new_encounter.set_file_timezone(file_timezone)
-            new_encounter.set_local_timezone(local_timezone)
-
+            new_encounter.set_encounter_name(encounter_form_data['encounter_name'])
+            new_encounter.set_location(encounter_form_data['location'])
+            new_encounter.set_project(encounter_form_data['project'])
+            new_encounter.set_notes(encounter_form_data['notes'])
+            new_encounter.set_species_id(encounter_form_data['species'])
+            new_encounter.set_latitude(encounter_form_data['latitude-start'])
+            new_encounter.set_longitude(encounter_form_data['longitude-start'])
+            new_encounter.set_data_source_id(encounter_form_data['data_source'])
+            new_encounter.set_recording_platform_id(encounter_form_data['recording_platform'])
+            new_encounter.set_file_timezone(encounter_form_data['file-timezone'])
+            new_encounter.set_local_timezone(encounter_form_data['local-timezone'])
             session.add(new_encounter)
             session.commit()
             flash(f'Inserted {new_encounter.get_unique_name()}.', 'success')
             logger.info(f'Inserted {new_encounter.get_unique_name()}.')
-            return redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
+            response.set_redirect(url_for('encounter.encounter_view', encounter_id=new_encounter.id))
+            return response.to_json()
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix='Error inserting encounter', session=session)
-            return redirect(url_for('encounter.encounter'))
+            response.add_error(exception_handler.handle_exception(exception=e, prefix='Error inserting encounter', session=session, show_flash=False))
+            return response.to_json()
 
 
 @routes_encounter.route('/encounter/<encounter_id>/view', methods=['GET'])
@@ -144,9 +150,6 @@ def encounter_view(encounter_id):
 @login_required
 @database_handler.require_live_session
 def encounter_edit(encounter_id):
-    """
-    Route to show the encounter edit page.
-    """
     with database_handler.get_session() as session:
         encounter = session.query(models.Encounter).join(models.Species).filter(models.Encounter.id == encounter_id).first()
         species_list = session.query(models.Species).all()
@@ -159,6 +162,29 @@ def encounter_edit(encounter_id):
 @login_required
 @database_handler.require_live_session
 def encounter_update(encounter_id):
+    """ Route to update an encounter. The response is created using response_handler.JSONResponse. If the update
+    is successful, a message is added to flask.flash() and a redirect link is passed to the JSONResponse. If the update
+    fails, an error message is added to the JSONResponse and no redirect link is passed to the JSONResponse (this is because
+    the user should not be redirected, but rather instructed to fix the issue that caused the error).
+
+    Requires the following form fields:
+    encounter_name: str (not empty or None)
+    location: str (not empty or None)
+    species: str (not empty or None and a valid UUID pointing to a Species)
+    latitude-start: str
+    longitude-start: str
+    data_source: str (none or a valid UUID pointing to a DataSource)
+    recording_platform: str (None or a valid UUID pointing to a RecordingPlatform)
+    project: str (not empty or None)
+    notes: str
+
+    Args:
+        encounter_id (str): The ID of the encounter to update
+
+    Returns:
+        flask.Response: The JSON response
+    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try :
             encounter = session.query(models.Encounter).with_for_update().join(models.Species).filter(models.Encounter.id == encounter_id).first()
@@ -177,10 +203,11 @@ def encounter_update(encounter_id):
             encounter.update_call()
             flash('Updated {}.'.format(encounter.get_unique_name()), 'success')
             logger.info(f'Updated {encounter.id}.')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            return response.to_json()
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session)
-            return redirect(url_for('encounter.encounter'))
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session, show_flash=False))
+            return response.to_json()
 
         
 
@@ -188,12 +215,12 @@ def encounter_update(encounter_id):
 @login_required
 @database_handler.require_live_session
 def encounter_delete(encounter_id):
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         encounter = session.query(models.Encounter).with_for_update().filter_by(id=encounter_id).first()
         recordings = session.query(models.Recording).filter_by(encounter_id=encounter_id).all()
         if len(recordings) > 0:
-            flash('Encounter cannot be deleted. Please delete all recordings first.', 'error')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            response.add_error('Encounter cannot be deleted. Please delete all recordings first.')
         else:
             try:
                 unique_name = encounter.get_unique_name()
@@ -202,6 +229,7 @@ def encounter_delete(encounter_id):
                 session.commit()
                 logger.info(f'Deleted {unique_name}.')
                 flash(f'Deleted {unique_name}.', 'success')
+                response.set_redirect(url_for('encounter.encounter'))
             except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(exception=e, prefix='Error deleting encounter', session=session)
-            return redirect(url_for('encounter.encounter'))
+                response.add_error(exception_handler.handle_exception(exception=e, prefix='Error deleting encounter', session=session))
+    return response.to_json()

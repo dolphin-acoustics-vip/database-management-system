@@ -126,7 +126,7 @@ Variables required:
 
     {% if not session['snapshot_date'] %}
     <section id="delete-encounter"></section>
-    <form type="hidden" id="deleteForm_{{ encounter.id }}" method="post"
+    <form type="hidden" id="delete-encounter-form-{{ encounter.id }}" method="post"
       action="{{ url_for('encounter.encounter_delete', encounter_id=encounter.id) }}">
       <input type="hidden" name="_method" value="DELETE">
       <button class="gray small" id="delete-encounter-button"
@@ -140,18 +140,18 @@ Variables required:
   </div>
 
 
-
   <script>
     // Add an event listener to the delete button to confirm deletion
     $("#delete-encounter-button").on("click", function (event) {
       // Get the encounter ID from the button's data attribute
       var encounterId = $(this).data("encounter-id");
       var deleteInfo = $(this).attr('delete-info');
+      var form = document.getElementById("delete-encounter-form-" + encounterId);
 
       // Confirm deletion with the user
       if (confirm("Are you sure you want to delete encounter: " + deleteInfo + "?\nBefore this action is completed, all recordings must be deleted individually.")) {
         // If confirmed, submit the delete form
-        $("#deleteForm_" + encounterId).submit();
+        makeAjaxRequestForm(form)
       } else {
         // If not confirmed, prevent the default form submission
         event.preventDefault();

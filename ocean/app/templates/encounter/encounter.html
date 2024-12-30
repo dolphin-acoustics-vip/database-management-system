@@ -56,18 +56,6 @@ Variables required:
 </body>
 <script>
     $(document).ready(function() {
-        $('.delete-link').on('click', function(e) {
-            e.preventDefault();
-            var encounterId = $(this).data('encounter-id');
-            var confirmed = confirm("Are you sure you want to delete this encounter?");
-            if (confirmed) {
-                var formId = 'deleteForm_' + encounterId;
-                var form = document.getElementById(formId);
-                form.querySelector('input[name="_method"]').value = "DELETE";
-                form.submit();
-            }
-            
-        });
         $('#filter-input').on('input', function() {
                 console.log("I got here")
                 var filterValue = $(this).val().toLowerCase();

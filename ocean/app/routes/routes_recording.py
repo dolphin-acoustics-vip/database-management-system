@@ -32,6 +32,11 @@ from .. import response_handler
 routes_recording = Blueprint('recording', __name__)
 
 
+def check_editable(recording: models.Recording):
+    if recording.get_status() == "Reviewed" or recording.get_status() == "On Hold":
+        if current_user.role.id == 3 or current_user.role.id == 4:
+            raise exception_handler.WarningException("You do not have permission to edit this recording.")
+
 def insert_or_update_recording(session, request, recording: models.Recording):
     """
     Insert or update a recording in the database. This function should be called
@@ -218,13 +223,19 @@ def recording_view(recording_id: str) -> Response:
 @database_handler.exclude_role_4
 @login_required
 def update_notes(recording_id):
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
-        recording = session.query(models.Recording).filter_by(id=recording_id).first()
-        notes = request.form.get('notes')
-        recording.notes = notes.strip()
-        recording.notes = notes.strip()
-        session.commit()
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))  # Redirect to the recording view page
+        try:
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            check_editable(recording)
+            notes = request.form.get('notes')
+            recording.notes = notes.strip()
+            recording.notes = notes.strip()
+            session.commit()
+            response.set_redirect(request.referrer)
+        except (Exception, SQLAlchemyError) as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating notes", session=session, show_flash=False))
+        return response.to_json()
 
 
 def flag_user_assignment(session, recording_id, user_id, completed_flag):
@@ -352,6 +363,7 @@ def recording_update(recording_id: str) -> Response:
     with database_handler.get_session() as session:
         try:
             recording_obj = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
+            check_editable(recording_obj)
             insert_or_update_recording(session, request, recording_obj)
             session.commit()
             flash(f'Updated {recording_obj.get_unique_name()}.', 'success')
@@ -554,41 +566,50 @@ def recalculate_contour_statistics_for_selection(selection_id):
             exception_handler.handle_exception(exception=e, prefix="Error refreshing contour statistics", session=session)
     return redirect(request.referrer)
 
-@routes_recording.route('/recording/<recording_id>/recalculate-contour-statistics', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/recalculate-contour-statistics', methods=['POST'])
 @login_required
 @database_handler.exclude_role_4
 @database_handler.require_live_session
-def recalculate_contour_statistics_for_recording(recording_id):
-    """
-    Recalculates the contour statistics for all selections associated with the recording specified by recording_id.
+def recalculate_contour_statistics_for_recording(recording_id: str):
+    """Recalculates the contour statistics for all selections associated with the recording specified by recording_id.
+    Any errors processing contours will not halt the recalculation - it will merely be skipped and an error message added
+    to the response (see response_handler.JSONResponse).
 
-    :param recording_id: The ID of the recording to recalculate contour statistics for.
-    :type recording_id: str
-    :return: Redirects to the recording view page.
-    :rtype: flask.Response
+    Args:
+        recording_id (str): The ID of the recording to recalculate contour statistics for.
+
+    Returns:
+        flask.Response: A JSON response containing the updated recording and any errors that occurred.
     """
-    counter = 0
+    response = response_handler.JSONResponse()
 
     with database_handler.get_session() as session:
-        # no with_for_update() as this session/query is only for SELECT (no updates)
-        selections = session.query(models.Selection).filter_by(recording_id=recording_id).all()
-        selection_ids = [selection.id for selection in selections]
-        session.close()
-    
-    for selection_id in selection_ids:
         try:
-            # need to query selection in new session to atomise transaction
-            with database_handler.get_session() as selection_session:
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            selections = session.query(models.Selection).filter_by(recording_id=recording_id).all()
+            check_editable(recording)
+            selection_ids = [s.id for s in selections]
+        except (Exception, SQLAlchemyError) as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+            return response.to_json()
+
+    updated_count = 0
+    for selection_id in selection_ids:
+        with database_handler.get_session() as selection_session:
+            try:
                 selection = selection_session.query(models.Selection).with_for_update().filter_by(id=selection_id).first()
                 selection.recalculate_contour_statistics(selection_session)
                 selection_session.commit()
-                counter += 1
-                selection_session.close()
-            selection_session = None
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=selection_session)
-    flash(f'Recalculated {counter} contour statistics.', 'success')
-    return redirect(url_for('recording.recording_view', recording_id=recording_id))
+                updated_count += 1
+            except (Exception, SQLAlchemyError) as e:
+                response.add_error(exception_handler.handle_exception(exception=e, session=selection_session, show_flash=False))
+
+    if updated_count > 0:
+        response.set_redirect(request.referrer)
+        flash(f"Refreshed contour statistics for {updated_count} selections.", 'success')
+    else:
+        response.add_error('No contour statistics recalculated.')
+    return response.to_json()
     
 
 @routes_recording.route('/recording/<recording_id>/download-ctr-files', methods=['GET'])

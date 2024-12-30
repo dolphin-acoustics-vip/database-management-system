@@ -576,6 +576,8 @@ class File(database_handler.db.Model):
 
     def calculate_hash(self):
         import hashlib
+        if os.path.exists(self.get_full_absolute_path()) == False:
+            return None
         with open(self.get_full_absolute_path(), 'rb') as file:
             hash_value = hashlib.sha256(file.read()).digest()
         return hash_value
@@ -1937,6 +1939,8 @@ class Selection(database_handler.db.Model):
                 self.generate_ctr_file(session, contour_rows)
             except ValueError as e:
                 raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
+            except FileNotFoundError as e:
+                raise exception_handler.WarningException(f"Error processing contour {self.selection_number} (file no longer exists)")
 
     def get_unique_name(self):
         """Generate a unique name for the encounter based on its recording and the selection number.

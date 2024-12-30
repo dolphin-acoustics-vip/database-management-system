@@ -8,10 +8,10 @@
 
 <body>
     <div class="outer-div">
+        
         <h1>View Recording {{ recording.get_unique_name() }}</h1>
 
         {% if current_user.role_id in [1, 2] %}
-
         <h2>Administration Actions</h3>
             {% if not session['snapshot_date'] %}
             <h3>Edit Recording Metadata</h3>
@@ -20,12 +20,11 @@
                 {% from 'recording/recording-form-template.html' import recording_form %}
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
                                     local_timezone=recording.encounter.local_timezone, recording=recording) }}
-                <button class="blue" type="submit" id="recording-update-form-submit" style="margin-top: 0.7rem;">Update</button><br>
+                <button class="blue" type="submit" id="recording-update-form-submit" style="margin-top: 0.7rem;">Update</button>
             </form>
             <script>
                 ajaxifyForm(document.getElementById('recording-form'));
             </script>
-
 
             <h3>Review</h3>
             <label>Status: {{recording.status}} {% if recording.status_change_datetime %}
@@ -134,7 +133,7 @@
             <label>Number of selections: {{ recording.get_number_of_selections() }}</label>
             <label>Number of contours: {{ recording.get_number_of_contours() }}</label>
 
-            <form action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
+            <form id="update-notes-form" action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
                 <label for="notes">Notes:</label>
                 <textarea id="notes" name="notes" rows="4" cols="50" {% if session['snapshot_date'] or current_user.role_id == 4 %}disabled{% endif
                     %}>{% if recording.notes %} {{ recording.notes }} {% endif %}</textarea>
@@ -144,6 +143,9 @@
                 {% endif %}
                 {% endif %}
             </form><br>
+            <script>
+                ajaxifyForm(document.getElementById('update-notes-form'));
+            </script>
 
 
 
@@ -158,9 +160,12 @@
                 <form action="{{url_for('selection.extract_contour_stats', recording_id=recording.id)}}" method="get">
                     <button class="link small" type="submit">Download Contour Stats</button>
                 </form>
-                <form action="{{url_for('recording.recalculate_contour_statistics_for_recording', recording_id=recording.id)}}">
+                <form id="recalculate-contour-statistics-form" method="post" action="{{url_for('recording.recalculate_contour_statistics_for_recording', recording_id=recording.id)}}">
                     <button class="link small" type="submit">Recalculate Contour Statistics</button>
                 </form>
+                <script>
+                    ajaxifyForm(document.getElementById('recalculate-contour-statistics-form'));
+                </script>
 
                 <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
                     <button class="link small" type="submit">Download CTR Files</button>
@@ -583,25 +588,9 @@
 
     async function reactivateSelectedRows(override_selection_id = null) {
         var selectionIds = getSelectedSelectionIds();
-        if (override_selection_id) selectionIds = [override_selection_id];
-
-        try {
-            const response = await $.ajax({
-                url: "{{url_for('selection.reactivate_selections')}}",
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ selection_ids: selectionIds }),
-                success: function (data, textStatus, jqXHR) {
-                    window.location.href = window.location.href
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    console.error('Error deactivating selection:', textStatus, errorThrown);
-                }
-            });
-        } catch (error) {
-            console.error('Error deactivating selection:', error);
-        }
+        makeAjaxRequest("{{url_for('selection.reactivate_selections')}}", "POST", JSON.stringify({ selection_ids: selectionIds }), contentType="application/json");
     }
+
 
     /**
      * Reactivates the selection with the given ID.
@@ -646,26 +635,8 @@
      */
     async function deactivateSelectedRows(override_selection_id = null) {
         var selectionIds = getSelectedSelectionIds();
-        if (override_selection_id) selectionIds = [override_selection_id];
-
-        try {
-            const response = await $.ajax({
-                url: "{{url_for('selection.deactivate_selections')}}",
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ selection_ids: selectionIds }),
-                success: function (data, textStatus, jqXHR) {
-                    window.location.href = window.location.href
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    console.error('Error deactivating selection:', textStatus, errorThrown);
-                }
-            });
-        } catch (error) {
-            console.error('Error deactivating selection:', error);
-        }
+        makeAjaxRequest("{{url_for('selection.deactivate_selections')}}", "POST", JSON.stringify({ selection_ids: selectionIds }), contentType="application/json");
     }
-
 
 
     /**

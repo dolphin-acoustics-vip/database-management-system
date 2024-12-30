@@ -14,9 +14,12 @@ Variables required:
     <div class="outer-div">
         <h2>Add New Encounter</h2>
         {% set editing = False %}
-        <form method="post" action="{{ url_for('encounter.encounter_insert') }}">
+        <form id="encounter-insert-form" method="post" action="{{ url_for('encounter.encounter_insert') }}">
         {% include 'encounter/encounter-form-template.html' %}
         </form>
+        <script>
+            ajaxifyForm(document.getElementById('encounter-insert-form'));
+        </script>
     </div>
 </body>
 </html>
