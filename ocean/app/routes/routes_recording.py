@@ -338,11 +338,16 @@ def flag_as_complete():
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
-def recording_update(recording_id):
-    """
-    Updates a recording in the encounter with the specified encounter ID and recording ID.
-    """
+def recording_update(recording_id: str) -> Response:
+    """Updates a recording in the encounter with the specified encounter ID and recording ID.
 
+    Args:
+        recording_id (str): The ID of the recording to update.
+
+    Returns:
+        flask.Response: redirect to the referring page.
+    """
+    # Create a response with redirect to the referring page
     response = response_handler.JSONResponse(redirect=request.referrer)
     with database_handler.get_session() as session:
         try:
@@ -357,7 +362,7 @@ def recording_update(recording_id):
             response.set_redirect(None)
             return response.to_json()
 
-@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['GET'])
+@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
@@ -366,6 +371,7 @@ def recording_delete(encounter_id,recording_id):
     """
     Function for deleting a recording of a given ID
     """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
@@ -375,10 +381,11 @@ def recording_delete(encounter_id,recording_id):
                 session.delete(recording)
                 session.commit()
                 flash(f'Deleted {unique_name}.', 'success')
-            return redirect(url_for("encounter.encounter_view", encounter_id=encounter_id))
+            response.set_redirect(url_for("encounter.encounter_view", encounter_id=encounter_id))
+            return response.to_json()
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+            return response.to_json()
 
 @routes_recording.route('/encounter/recording/<recording_id>/recording-file/<file_id>/delete',methods=['GET'])
 @database_handler.require_live_session

@@ -10,7 +10,7 @@
  * The function will be called with the xhr object, status string, and error string as its arguments.
  */
 function makeAjaxRequest(url, method, data, error_popups = true, message_popups = true, successCallback = null, errorCallback = null) {
-    $.ajax({
+  $.ajax({
       url: url,
       method: method,
       data: data,
@@ -20,6 +20,7 @@ function makeAjaxRequest(url, method, data, error_popups = true, message_popups 
           if (error_popups) {
             alert( "Error(s) occurred: " + errorMessage);
           }
+          response.errors = null;
         }
         else if (response.messages && response.messages.length > 0) {
           const errorMessage = response.messages.join('\n');
@@ -33,7 +34,6 @@ function makeAjaxRequest(url, method, data, error_popups = true, message_popups 
         if (response.redirect) {
           window.location.href = response.redirect;
         }
-
       },
       error: function(xhr, status, error) {
         alert('An error occurred: ' + error);
@@ -44,17 +44,21 @@ function makeAjaxRequest(url, method, data, error_popups = true, message_popups 
     });
   }
 
+  function makeAjaxRequestForm(form, error_popups = true, message_popups = true, successCallback = null, errorCallback = null) {
+    var url = form.action;
+    var method = form.method;
+    var data = {};
+    Array.prototype.forEach.call(form.elements, function(element) {
+      if (element.name) {
+        data[element.name] = element.value;
+      }
+    });
+    makeAjaxRequest(url, method, data, error_popups, message_popups, successCallback, errorCallback);
+  }
+
   function ajaxifyForm(form, error_popups = true, message_popups = true, successCallback = null, errorCallback = null) {
     form.addEventListener('submit', function(event) {
       event.preventDefault();
-      var url = form.action;
-      var method = form.method;
-      var data = {};
-      Array.prototype.forEach.call(form.elements, function(element) {
-        if (element.name) {
-          data[element.name] = element.value;
-        }
-      });
-      makeAjaxRequest(url, method, data, error_popups, message_popups, successCallback, errorCallback);
+      makeAjaxRequestForm(form, error_popups, message_popups, successCallback, errorCallback);
     });
   }

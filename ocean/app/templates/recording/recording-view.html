@@ -4,8 +4,6 @@
 
 <head>
     <title>View Selections</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 </head>
 
 <body>
@@ -22,25 +20,12 @@
                 {% from 'recording/recording-form-template.html' import recording_form %}
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
                                     local_timezone=recording.encounter.local_timezone, recording=recording) }}
-                <!-- <div style="display: flex;">
-                    <span style="display: none; padding-right: 0.5rem;" id="progress-text">0%</span>
-                    <progress style="display: none;" id="progress-bar" value="0" max="100"></progress>
-                </div> -->
                 <button class="blue" type="submit" id="recording-update-form-submit" style="margin-top: 0.7rem;">Update</button><br>
             </form>
             <script>
                 ajaxifyForm(document.getElementById('recording-form'));
-                document.addEventListener('DOMContentLoaded', function() {
-                fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-update-form-submit'));
-                });
             </script>
 
-
-            <!-- <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    uploadFormWithProgress('recording-form', 'progress-bar', 'progress-text');
-                });
-            </script> -->
 
             <h3>Review</h3>
             <label>Status: {{recording.status}} {% if recording.status_change_datetime %}
@@ -403,9 +388,9 @@
                 {% if not session['snapshot_date'] %}
                 {% if current_user.role_id in [1, 2] %}
 
-                <form type="hidden" id="recording-delete-form_{{ recording.id }}" method="GET"
+                <form type="hidden" id="recording-delete-form_{{ recording.id }}" method="POST"
                     action="{{ url_for('recording.recording_delete', encounter_id=recording.encounter_id, recording_id=recording.id) }}">
-                    <input type="hidden" name="_method" value="GET">
+                    <input type="hidden" name="_method" value="POST">
                     <button class="link small" id="delete-recording-button" title="Delete the entire recording."
                         type="submit" style="margin-top: 1rem;" data-recording-id="{{ recording.id }}"
                         delete-info="{{recording.get_start_time_string()}}">Delete Recording</button>
@@ -417,16 +402,17 @@
 </body>
 
 <script>
-
     $("#delete-recording-button").on("click", function (event) {
+        event.preventDefault();
         // Get the recording ID from the button's data attribute
         var recordingId = $(this).data("recording-id");
         var deleteInfo = $(this).attr('delete-info');
+        var form = document.getElementById("recording-delete-form_" + recordingId);
 
         // Confirm deletion with the user
         if (confirm("Are you sure you want to delete recording: " + deleteInfo + "?\nThis will delete ALL selections and CANNOT be undone.")) {
             // If confirmed, submit the delete form
-            $("#recording-delete-form_" + recordingId).submit();
+            makeAjaxRequestForm(form)
         } else {
             // If not confirmed, prevent the default form submission
             event.preventDefault();

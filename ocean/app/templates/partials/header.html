@@ -1,95 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='hero-section.css') }}">
-    <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='input-styles.css') }}">
-    <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='general-style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='app-styles.css') }}">
-    <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='header-styles.css') }}">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='hero-section.css') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='input-styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='general-style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='app-styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='header-styles.css') }}">
+  <script src="{{ url_for('general.serve_script', filename='jquery-3.7.1.js') }}"></script>
+  <script src="{{ url_for('general.serve_script', filename='requests.js') }}"></script>
+</head>
 
-
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  </head>
-  <body>
-    <header>
-      <div class="header-container ">
-        <div class="brand-logo">
-          <a href="{{ url_for('general.home') }}">
-            <img src="{{ url_for('general.serve_resource', filename='OCEAN-banner.png') }}" alt="">
-          </a>
-        </div>
-        <div class="brand-title">
-          <label class="app-brand-title font-scale-1">OCEAN</label>
-        </div>
-        <div class="user-message">
-          <label>{% if current_user.is_authenticated %}You are signed in as {{ current_user.name }} ({{current_user.role.name}}){% else %}You are not signed in{% endif %}</label>
-        </div>
-        <button onclick="toggleMenu()" class="hamburger">&#9776;</button>
-
+<body>
+  <header>
+    <div class="header-container">
+      <div class="brand-logo">
+        <a href="{{ url_for('general.home') }}">
+          <img src="{{ url_for('general.serve_resource', filename='OCEAN-banner.png') }}" alt="">
+        </a>
       </div>
+      <div class="brand-title">
+        <label class="app-brand-title font-scale-1">OCEAN</label>
+      </div>
+      <div class="user-message">
+        <label>{% if current_user.is_authenticated %}You are signed in as {{ current_user.name }}
+          ({{current_user.role.name}}){% else %}You are not signed in{% endif %}</label>
+      </div>
+      <button onclick="toggleMenu()" class="hamburger">&#9776;</button>
 
-      {% if session['snapshot_date'] %}
-      <div id="warning-bar" style="background-color: red; color: white; padding: 10px; margin-top: 10px;">
-        Archive mode: viewing snapshot date {{ session['snapshot_date'] }} (<a href="{{ url_for('general.reset_snapshot_in_session') }}">Exit View</a>)
-      </div>
-      {% endif %}
-      <div class="blue-bar">
-        <div class="user-message">
-            {% if current_user.is_authenticated %}You are signed in as {{ current_user.name }} ({{current_user.role.name}}){% else %}You are not signed in{% endif %}
-        </div>
-      </div>
-      <nav class="menu">
-        <a href="{{url_for('general.home')}}" title="Go to home page" class="menu-item dynamic">Home</a>
-        {% if current_user.is_authenticated %}
-        <a href="{{url_for('encounter.encounter')}}" title="Go to encounters page" class="menu-item dynamic">Encounters</a>
-        {% if current_user.role_id in [1,2] %}
-        <a href="{{url_for('datahub.datahub_view')}}" title="Go to data hub page" class="menu-item dynamic">Data Hub</a>
-        <a href="{{ url_for('healthcentre.healthcentre_view') }}" title="Go to health centre page" class="menu-item dynamic">Health Centre</a>
-        <a href="{{ url_for('admin.admin_dashboard') }}" title="Go to admin page" class="menu-item dynamic">Admin</a>
-        {% endif %}
-        {% else %}
-        <a href="/login" class="menu-item dynamic">Login</a>
-        {% endif %}
-      </nav>
-    </header>
-    <div id="flashMessages">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-      {% for category, message in messages %}
-      <div class="flash-container" style="padding-top:0px;" role="alert">
-        <div class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}"
-          style="padding-top:10px; padding: 10px 10px">
-          <span class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}">{{ message }}</span>
-          <button type="button" class="close" aria-label="Close" onclick="closeFlashMessage()">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-      </div>
-      {% endfor %}
-      {% endif %}
-      {% endwith %}
     </div>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <script>
-      function closeFlashMessage() {
-        const flashContainers = document.querySelectorAll('.flash-container');
-        flashContainers.forEach(container => {
-          container.remove();
-        });
-      }
+    {% if session['snapshot_date'] %}
+    <div id="warning-bar" style="background-color: red; color: white; padding: 10px; margin-top: 10px;">
+      Archive mode: viewing snapshot date {{ session['snapshot_date'] }} (<a
+        href="{{ url_for('general.reset_snapshot_in_session') }}">Exit View</a>)
+    </div>
+    {% endif %}
+    <div class="blue-bar">
+      <div class="user-message">
+        {% if current_user.is_authenticated %}You are signed in as {{ current_user.name }}
+        ({{current_user.role.name}}){% else %}You are not signed in{% endif %}
+      </div>
+    </div>
+    <nav class="menu">
+      <a href="{{url_for('general.home')}}" title="Go to home page" class="menu-item dynamic">Home</a>
+      {% if current_user.is_authenticated %}
+      <a href="{{url_for('encounter.encounter')}}" title="Go to encounters page"
+        class="menu-item dynamic">Encounters</a>
+      {% if current_user.role_id in [1,2] %}
+      <a href="{{url_for('datahub.datahub_view')}}" title="Go to data hub page" class="menu-item dynamic">Data Hub</a>
+      <a href="{{ url_for('healthcentre.healthcentre_view') }}" title="Go to health centre page"
+        class="menu-item dynamic">Health Centre</a>
+      <a href="{{ url_for('admin.admin_dashboard') }}" title="Go to admin page" class="menu-item dynamic">Admin</a>
+      {% endif %}
+      {% else %}
+      <a href="/login" class="menu-item dynamic">Login</a>
+      {% endif %}
+    </nav>
+  </header>
+  <div id="flashMessages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash-container" style="padding-top:0px;" role="alert">
+      <div class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}"
+        style="padding-top:10px; padding: 10px 10px">
+        <span
+          class="{% if category == 'success' %}success-message{% elif category == 'error' %}error-message{% endif %}">{{
+          message }}</span>
+        <button type="button" class="close" aria-label="Close" onclick="closeFlashMessage()">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+  </div>
+
+  <script>
+    function closeFlashMessage() {
+      const flashContainers = document.querySelectorAll('.flash-container');
+      flashContainers.forEach(container => {
+        container.remove();
+      });
+    }
 
 
 
     function toggleMenu() {
-        const menu = document.querySelector('.menu');
+      const menu = document.querySelector('.menu');
       menu.classList.toggle('show');
     }
-    </script>
-    <script src="https://unpkg.com/htmx.org@1.5.0"></script>
+  </script>
+</body>
 
-  </body>
 </html>
-<script src="{{ url_for('general.serve_script', filename='requests.js') }}"></script>
