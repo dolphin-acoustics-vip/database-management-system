@@ -1,3 +1,4 @@
+/* General styles (including sections, images, progress bars etc.) */
 
 .outer-div {
     padding: 10px 20px;
@@ -21,8 +22,6 @@
     width: 120px;
 }
 
-
-
 section {
     display: block;
 }
@@ -32,15 +31,6 @@ img {
     border: 0;
     height: auto;
     max-width: 100%;
-}
-
-* {
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-}
-
-img {
     overflow-clip-margin: content-box;
     overflow: clip;
 }
@@ -48,20 +38,6 @@ img {
 div {
     display: block;
 }
-
-.hero-section .hero-section__heading {
-    background: #00539b;
-    color: white;
-    font-size: 1.8rem;
-    margin: 0 -15px;
-    padding: 10px 15px;
-}
-
-
-
-
-
-
 
 hr {
     border: none;
@@ -73,15 +49,6 @@ hr {
     background-repeat: no-repeat;
   }
 
-
-
-
-
-
-
-
-
-
   .app-brand-title {
       display: block;
       margin-left: 7px;
@@ -90,9 +57,6 @@ hr {
       line-height: 1.2;
       font-weight: normal;
   }
-
-  
-
 
   .brand-logo {
       display: flex;
