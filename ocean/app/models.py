@@ -569,6 +569,9 @@ class File(database_handler.db.Model):
             cls.temp == temp
         ).first() is not None
 
+    def __init__(self, filename=None):
+        self.filename, self.extension = os.path.splitext(filename) if filename != None else (None, None)
+
     def get_hash(self):
         if self.hash == None:
             self.hash = self.calculate_hash()
@@ -615,9 +618,11 @@ class File(database_handler.db.Model):
 
         :param session: the SQLAlchemy session
         """
-        if self in session.new:
-            os.remove(self.get_full_absolute_path())
-
+        if self not in session.identity_map:
+            try:
+                os.remove(self.get_full_absolute_path())
+            except Exception:
+                pass
     def get_uploaded_date_utc(self):
         """
         This method should return the uploaded date in UTC timezone, however has not yet been implemented
@@ -705,7 +710,7 @@ class File(database_handler.db.Model):
         self.filename=new_filename
         self.extension=new_extension
         self.hash = self.calculate_hash()
-        session.commit()
+        session.flush()
         logger.info(f"Inserted directory and filename for {self.path} with hash {self.get_hash()}.")
 
 
@@ -804,7 +809,7 @@ class File(database_handler.db.Model):
         self.hash = self.calculate_hash()
         logger.info(f"Saved file to {destination_path} with hash {self.get_hash()}.")
         
-        session.commit()
+        session.flush()
         from .filespace_handler import clean_filespace_temp
         clean_filespace_temp()
 
@@ -1019,6 +1024,14 @@ class Recording(database_handler.db.Model):
                 new_status = self.status
 
             self.set_status(new_status)
+
+    def recalculate_contour_statistics(self, session):
+        """Rec
+
+        Args:
+            session (_type_): _description_
+        """
+        pass
 
     def set_status_on_hold(self):
         """Set the status of the recording to 'On Hold'."""
@@ -1922,7 +1935,7 @@ class Selection(database_handler.db.Model):
         """
         return round(value, decimal_places) if value is not None and type(value) is float else value
 
-    def recalculate_contour_statistics(self, session):
+    def recalculate_contour_statistics(self):
         """
         Recalculate contour statistics for the given selection.
 
@@ -1932,11 +1945,10 @@ class Selection(database_handler.db.Model):
         :type selection: Selection
         """
         self.reset_contour_stats()
-        if self.contour_file is not None:
+        if self.contour_file_id is not None:
             try:
                 contour_file_obj = contour_statistics.ContourFile(self.contour_file.get_full_absolute_path(),self.selection_number)
-                contour_rows = contour_file_obj.calculate_statistics(session, self)
-                self.generate_ctr_file(session, contour_rows)
+                contour_file_obj.calculate_statistics(self)
             except ValueError as e:
                 raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
             except FileNotFoundError as e:
@@ -2092,9 +2104,22 @@ class Selection(database_handler.db.Model):
 
         return plot_path
 
-    def generate_ctr_file(self, session, contour_rows):
-        import matplotlib.pyplot as plt
+    def calculate_ctr_data(self):
+        """Calculate the CTR data (based on the selection's contour file). The CTR
+        data is returned as a dictionary with the following key-value pairs:
 
+        - 'tempRes' is the most common difference between the time values in the contour file
+        - 'freqContour' is a list of the peak frequencies in the contour file
+        - 'ctrLength' is the total length of the contour file in seconds
+
+        If the selection has no contour file, then None is returned
+
+        Returns:
+            dict: the CTR data
+        """
+        if not self.contour_file: return None
+        contour_file_obj = contour_statistics.ContourFile(self.contour_file.get_full_absolute_path(), self.selection_number)
+        contour_rows = contour_file_obj.get_dataframe()
 
         def find_most_common_difference(arr):
             differences = []
@@ -2102,27 +2127,27 @@ class Selection(database_handler.db.Model):
                 differences.append(arr[i + 1] - arr[i])
             most_common_difference = max(set(differences), key=differences.count)
             return most_common_difference
-
-
-        
-        if self.ctr_file:
-            self.ctr_file.move_to_trash()
-            self.ctr_file = None
-            
+  
         temp_res = find_most_common_difference([unit.time_milliseconds for unit in contour_rows])/1000
         ctr_length = temp_res*len(contour_rows)
         # Create a dictionary to store the data in the .ctr format
         mat_data = {'tempRes':temp_res,'freqContour': np.array([unit.peak_frequency for unit in contour_rows]),'ctrLength':ctr_length}
-        # Save the data to a MATLAB file
-        scipy.io.savemat(os.path.join(database_handler.get_file_space_path(), os.path.join(self.generate_relative_path(), self.generate_ctr_file_name())) + ".ctr", mat_data)
-        
-        file_obj = File()
-        file_obj.insert_path_and_filename_file_already_in_place(session, self.generate_relative_path(),self.generate_ctr_file_name().split(".")[0], "ctr")
-        session.add(file_obj)
-        self.ctr_file = file_obj
+        return mat_data
 
-        session.commit()
+    def calculate_and_save_ctr_data(self):
+        """Calculate and save CTR data (based on the selection's contour file). If the
+        selection does not have a contour file, then the CTR file does not generate nor
+        get saved. 
 
+        Regardless of whether the selection does or does not have a contour file any
+        existing CTR file for the selection is deleted.
+        """
+        if self.ctr_file:
+            self.ctr_file.move_to_trash()
+            self.ctr_file = None
+        mat_data = self.calculate_ctr_data()
+        if mat_data:
+            scipy.io.savemat(os.path.join(database_handler.get_file_space_path(), os.path.join(self.generate_relative_path(), self.generate_ctr_file_name())) + ".ctr", mat_data)
 
 
     def reset_contour_stats(self):
@@ -2197,14 +2222,16 @@ class Selection(database_handler.db.Model):
         for required_column in ('Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation'):
             if required_column not in st_df.columns:
                 missing_columns.append(required_column)
-        missing_columns = []
+            else:
+                column_dtype = st_df[required_column].dtype
+                if required_column == ('Selection','Channel'):
+                    if column_dtype != 'int64':
+                        raise exception_handler.WarningException(f"Column '{required_column}' must be int.")
 
-        for required_column in ('Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation'):
-            if required_column not in st_df.columns:
-                missing_columns.append(required_column)
-        
-        if len(missing_columns) > 0:
-            raise exception_handler.WarningException(f"Missing required columns: {', '.join(missing_columns)}")
+                if required_column in ('Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)'):
+                    if column_dtype != 'float64':
+                        raise exception_handler.WarningException(f"Column '{required_column}' must be float.")
+        missing_columns = []
 
         selection_index = st_df.columns.get_loc('Selection')
         if len(missing_columns) > 0:
@@ -2235,30 +2262,19 @@ class Selection(database_handler.db.Model):
             raise exception_handler.WarningException("Invalid selection number")
 
         # Set the other fields based on the available columns
-        self.view = st_df.iloc[0, st_df.columns.get_loc('View')]
-        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')]
-        self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')]
-        self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')]
-        self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')]
-        self.high_frequency = st_df.iloc[0, st_df.columns.get_loc('High Freq (Hz)')]
-        self.delta_time = st_df.iloc[0, st_df.columns.get_loc('Delta Time (s)')] if 'Delta Time (s)' in st_df.columns else None
-        self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else None
-        self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else None
+        self.view = str(st_df.iloc[0, st_df.columns.get_loc('View')])
+        self.channel = str(st_df.iloc[0, st_df.columns.get_loc('Channel')])
+        self.begin_time = float(st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')])
+        self.end_time = float(st_df.iloc[0, st_df.columns.get_loc('End Time (s)')])
+        self.low_frequency = float(st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')])
+        self.high_frequency = float(st_df.iloc[0, st_df.columns.get_loc('High Freq (Hz)')])
+        self.delta_time = float(st_df.iloc[0, st_df.columns.get_loc('Delta Time (s)')]) if 'Delta Time (s)' in st_df.columns else None
+        self.delta_frequency = float(st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')]) if 'Delta Freq (Hz)' in st_df.columns else None
+        self.average_power = float(st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')]) if 'Avg Power Density (dB FS/Hz)' in st_df.columns else None
 
         if not self.delta_time: self.delta_time = self.end_time - self.begin_time
         if not self.delta_frequency: self.delta_frequency = self.high_frequency - self.low_frequency
-        self.view = st_df.iloc[0, st_df.columns.get_loc('View')]
-        self.channel = st_df.iloc[0, st_df.columns.get_loc('Channel')]
-        self.begin_time = st_df.iloc[0, st_df.columns.get_loc('Begin Time (s)')]
-        self.end_time = st_df.iloc[0, st_df.columns.get_loc('End Time (s)')]
-        self.low_frequency = st_df.iloc[0, st_df.columns.get_loc('Low Freq (Hz)')]
-        self.high_frequency = st_df.iloc[0, st_df.columns.get_loc('High Freq (Hz)')]
-        self.delta_time = st_df.iloc[0, st_df.columns.get_loc('Delta Time (s)')] if 'Delta Time (s)' in st_df.columns else None
-        self.delta_frequency = st_df.iloc[0, st_df.columns.get_loc('Delta Freq (Hz)')] if 'Delta Freq (Hz)' in st_df.columns else None
-        self.average_power = st_df.iloc[0, st_df.columns.get_loc('Avg Power Density (dB FS/Hz)')] if 'Avg Power Density (dB FS/Hz)' in st_df.columns else None
 
-        if not self.delta_time: self.delta_time = self.end_time - self.begin_time
-        if not self.delta_frequency: self.delta_frequency = self.high_frequency - self.low_frequency
 
     def update_call(self):
         self.move_file()

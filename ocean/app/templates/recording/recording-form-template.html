@@ -40,6 +40,8 @@
 <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
 
 {% endif %}
+<button type="submit" class="blue" style="margin-top: 1rem;" id="recording-insert-form-submit">Submit</button>
+
 <script src="{{ url_for('general.serve_script', filename='time-management.js') }}"></script>
 
 <script>
@@ -52,35 +54,36 @@
      * @param {string} fileName - The name of the file to extract the date from.
      */
     function extractDate(fileName) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', "{{ url_for('recording.extract_date', filename='') }}" + encodeURIComponent(fileName), true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            console.log(xhr)
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                if (response.date != null) {
-                    var date = new Date(response.date);
+        makeAjaxRequest(
+            "{{ url_for('recording.extract_date') }}",
+            "POST",
+            {'filename': fileName},
+            undefined,
+            true,
+            true,
+            successCallback = (response) => {
+                date_string = response.data.date;
+                if (date_string != null) {
+                    var date = new Date(date_string);
                     // cut out milliseconds
                     var formattedDate = date.toISOString().slice(0, 19);
                     if ('{{editing}}' == 'False') {
                         document.getElementById('time_start').value = formattedDate;
-
                     }
                     calculateTimeOffsets('time_start', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
-
                 }
             }
-        }
-        xhr.send();
+        )
+
     }
 
     $(document).ready(function () {
         if ('{{editing}}' == 'True') {
             calculateTimeOffsets('time_start', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
         }
-    });
+        fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-insert-form-submit'));
 
+    });
 
 </script>
 

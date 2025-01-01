@@ -36,40 +36,112 @@ from .routes_recording import check_editable
 
 routes_selection = Blueprint('selection', __name__)
 
-def insert_or_update_selection(session, selection_number: str, file, recording_id: str, selection_id:str=None) -> models.Selection:
-    """
-    A function to either insert a new Selection object or update an existing one in the database.
-    
-    :param session: The database session
-    :param selection_number: the number of the selection
-    :param file: the file to be associated with the selection (the datatype is FileStorage of the Flask werkzeug framework)
-    :param recording_id: the id of the recording
-    :param selection_id: the id of the selection to be updated (default is None if inserting a new selection)
-    
-    :return: the Selection object that was inserted or updated
-    """
+def insert_or_update_selection(session, selection_number: str, file, recording_id: str, selection:models.Selection=None) -> models.Selection:
+    """ A helper function to insert or update a selection in the database. If the selection
+    already exists, it will be updated. If the selection does not exist, it will be inserted.
+    This function will also create the selection file and insert it into the database. If the
+    selection file does not fulfil validity requirements, the entire transaction is cancelled.
 
-    # get Selection object if updating or make a new one if inserting
-    if selection_id is not None:
-        selection_obj = session.query(models.Selection).filter_by(id=selection_id).first()
-    else:
-        selection_obj = models.Selection()
-        selection_obj.recording_id = recording_id
-        session.add(selection_obj)
-        selection_obj.set_selection_number(selection_number)
-    session.flush()
-    if selection_obj.selection_file_id is not None:
-        raise exception_handler.WarningException(f"Selection file for {selection_obj.get_unique_name()} already exists.")
-    selection_file = file
-    selection_filename = selection_obj.generate_selection_file_name()
-    selection_relative_path = selection_obj.generate_relative_path()
+    Args:
+        session (Session): The current database session.
+        selection_number (str): The number identifying the selection.
+        file (FileStorage): The file to be associated with the selection.
+        recording_id (str): The ID of the recording to which the selection belongs.
+        selection_id (str, optional): The ID of the selection to update. If None, a new selection will be created.
+
+    Raises:
+        exception_handler.WarningException: If a selection file already exists for the given selection.
+        SQLAlchemyError: If a database error occurs during the transaction.
+
+    Returns:
+        models.Selection: The selection object that was inserted or updated.
+    """
+    
+    # Create a new selection object if one was not given
+    if selection is None:
+        selection = models.Selection()
+        selection.recording_id = recording_id
+        session.add(selection)
+        selection.set_selection_number(selection_number)
+        # This flush is crucial for generate_relative_path() and generate_selection_file_name() used below
+        session.flush()
+    # Raise an exception if a selection file already exists
+    if selection.selection_file_id is not None:
+        raise exception_handler.WarningException(f"Selection file for {selection.get_unique_name()} already exists.")
     new_file = models.File()
-    new_file.insert_path_and_filename(session, selection_file, selection_relative_path, selection_filename)
-    selection_obj.set_selection_file(new_file)
     session.add(new_file)
-    session.commit()
-    return selection_obj
 
+    new_file.insert_path_and_filename(session, file, selection.generate_relative_path(), selection.generate_selection_file_name())
+
+    # Try to assign the new selection file to the selection
+    # The method Selection.set_selection_file() will throw an exception if the selection file is not valid
+    try:
+        selection.set_selection_file(new_file)
+    except Exception as e:
+        new_file.rollback(session)
+        raise e
+    session.flush()
+    return selection
+
+def generate_ctr_file(session, selection_id):
+    """A method to generate a CTR file (based on a contour file in `selection`). This method
+    will handle the generation of the CTR file, as well as the saving of the contour file.
+
+    Raises:
+        exception_handler.WarningException: if a non-critical error occurs
+        Exception: if an unexpected error occurs
+        sqlalchemy.exc.SQLAlchemyError: if a database error occurs
+
+    Returns:
+        None
+    """
+    selection = session.query(models.Selection).filter_by(id=selection_id).first()
+    if not selection.contour_file: return
+    selection.calculate_and_save_ctr_data()
+    # Reflect this change in the database
+    file_obj = models.File()
+    file_obj.insert_path_and_filename_file_already_in_place(session, selection.generate_relative_path(),selection.generate_ctr_file_name().split(".")[0], "ctr")
+    session.add(file_obj)
+    selection.ctr_file = file_obj
+    session.commit()
+
+@routes_selection.route('/selection/<selection_id>/regenerate-contour-calculations', methods=['POST'])
+@login_required
+@database_handler.exclude_role_4
+@database_handler.require_live_session
+def regenerate_contour_calculations(selection_id):
+    """
+    This route uses `response_handler.JSONResponse` to return a JSON response. Please follow the protocol presented by
+    this object in the client code. More information can be found in `response_handler.py`.
+
+    Route to regenerate the contour calculations for a selection. This involved both regenerating the CTR file and 
+    recalculating the contour statistics of the selection. Both these operations require a contour file to be present
+    in the selection. Failure to have a contour file present will cause an error to be added to the response. Successful
+    completion of the recalculation will cause a redirect to the referrer of the request in the response.
+
+    Args:
+        selection_id (_type_): the UUID of the selection for which the CTR file and contour statistics are to be recalculated
+
+    Returns:
+        flask.Response: a JSON response
+    """
+    response = response_handler.JSONResponse()
+    with database_handler.get_session() as session:
+        try:
+            selection = session.query(models.Selection).filter_by(id=selection_id).first()
+            # Check if the user has permission to edit the selection
+            recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
+            check_editable(recording)
+            generate_ctr_file(session, selection_id)
+            selection.recalculate_contour_statistics()
+            session.commit()
+            flash(f"Contour statistics for {selection.get_unique_name()} have been recalculated.", "success")
+            response.set_redirect(request.referrer)
+        except (Exception, SQLAlchemyError) as e:
+            # A ValueError from Selection.recalculate_contour_statistics() occurs when the contour file is missing
+            if type(e) == ValueError: e = exception_handler.WarningException(e.args[0])
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error refreshing contour statistics", session=session, show_flash=False))
+    return response.to_json()
 
 @routes_selection.route('/contour_file_delete/<selection_id>', methods=["GET", "POST"])
 @database_handler.require_live_session
@@ -83,19 +155,23 @@ def contour_file_delete(selection_id: str):
     :param selection_id: the id of the selection to be deleted
     :return: redirects to the recording view of the recording associated with the selection.
     """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             selection_obj = session.query(models.Selection).filter_by(id=selection_id).first()
             if selection_obj:
+                recording_obj = session.query(models.Recording).filter_by(id=selection_obj.recording_id).first()
+                check_editable(recording_obj)
                 selection_obj.delete_contour_file(False)
                 session.flush()
                 selection_obj.update_traced_status()
                 session.commit()
+                response.set_redirect(request.referrer)
             else:
-                raise exception_handler.WarningException(f"Unable to delete contour file due to internal error.")
+                response.add_error(f"Unable to delete contour file due to internal error.")
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error deleting contour file", session=session)
-        return redirect(request.referrer)
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error deleting contour file", session=session, show_flash=False))
+        return response.to_json()
 
 def insert_or_update_contour(session, selection: models.Selection, contour_file):
     """
@@ -107,29 +183,19 @@ def insert_or_update_contour(session, selection: models.Selection, contour_file)
     :param contour_file: the contour file to be inserted or updated (the datatype is FileStorage of the Flask werkzeug framework)
     :return: the updated selection object
     """
-    # Create a new File object for the contour file
     session.flush()
+    # Create a new File object for the contour file
     if selection.contour_file is not None:
         raise exception_handler.WarningException(f"Contour file for selection {selection.selection_number} already exists.")
     new_file = models.File()
+    selection.contour_file = new_file
     new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_file_name())
     session.add(new_file)
-    session.commit()
-    print("new file: " + new_file.id)
-
+    session.flush()
     # Attribute the new contour file to the selection
     # and reset the traced status
-    selection.contour_file = new_file
     selection.update_traced_status()
-    print("new file: " + new_file.id)
-
-    selection.recalculate_contour_statistics(session)
-
-    # Create all contour statistics
-    #contour_file_obj = contour_code.ContourFile(new_file.get_full_absolute_path(), selection.selection_number)
-    #contour_rows = contour_file_obj.calculate_statistics(session, selection)
-
-
+    selection.recalculate_contour_statistics()
     return selection
 
 @routes_selection.route('/process_contour', methods=["GET"])
@@ -329,10 +395,8 @@ def contour_insert(recording_id):
     :type recording_id: str
     :return: a JSON response with a success message
     """
-    last = request.form.get('last')
-    if last == 'true': last = True
-    else: last = False
-    counter = int(request.form.get('successCounter'))
+    response = response_handler.JSONResponse()
+
     with database_handler.get_session() as session:
         try:
             if 'file' in request.files and request.files['file'].filename != '':
@@ -344,19 +408,15 @@ def contour_insert(recording_id):
                 current_selection_object = session.query(models.Selection).filter(database_handler.db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=id, recording_id=recording_id).first()
                 if current_selection_object is not None:
                     insert_or_update_contour(session, current_selection_object, file)
-                    counter += 1
                 else:
-                    raise exception_handler.WarningException("Bad contour number in request")
+                    response.add_error(f"Could not find corresponding selection with selection number {id}.")
                 session.commit()
             else:
-                raise exception_handler.WarningException("Bad file in request")
+                response.add_error("Bad file in request.")
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=session)
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
         finally:
-            if last == True:
-                if counter > 0:
-                    flash(f"Uploaded {counter} contours", 'success')
-            return jsonify(successCounter=counter)
+            return response.to_json()
 
 @routes_selection.route('/recording/<recording_id>/selection-insert', methods=['POST'])
 @database_handler.require_live_session
@@ -378,39 +438,26 @@ def selection_insert(recording_id):
     :type recording_id: str
     :return: a JSON response with a success message if the files are uploaded successfully
     """
-    
-    last = request.form.get('last')
-    if last == 'true': last = True
-    else: last = False
-    counter = int(request.form.get('successCounter'))
-    
-    success = True
+
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            check_editable(recording)
             if 'file' in request.files and request.files['file'].filename != '':
                 file = request.files.get('file')
                 id = request.form.get('id')
-                current_selection_object = session.query(models.Selection).filter(database_handler.db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=id, recording_id=recording_id).first()
-                if current_selection_object is not None:
-                    insert_or_update_selection(session,id, file, recording_id, selection_id=current_selection_object.id)
-                else:
-                    insert_or_update_selection(session,id, file, recording_id)
-                counter += 1
+                selection = session.query(models.Selection).filter(database_handler.db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=id, recording_id=recording_id).first()
+                if selection is not None: insert_or_update_selection(session,id, file, recording=recording, selection=selection)
+                else: insert_or_update_selection(session,id, file, recording_id)
                 session.commit()
             else:
-                success = False
-                raise exception_handler.WarningException("Bad file in request")
+                response.add_error(f"Bad file in request.")
         except (Exception,SQLAlchemyError) as e:
-            success = False
-            exception_handler.handle_exception(exception=e, session=session)
-        finally:
-            if last == True:
-                if counter > 0:
-                    flash(f"Uploaded {counter} selections successfully", "success")
-            if success == False:
-                return jsonify({'message': '', 'successCounter': counter}), 200
-            else:
-                return jsonify({'message': '', 'successCounter': counter}), 200
+            response.add_error(exception_handler.handle_exception(exception=e, session=session,show_flash=False))
+        # If the final selection was uploaded flash a success message
+        # Otherwise add the counter to the response data
+        return response.to_json()
 
 @routes_selection.route('/selection/<selection_id>/download-ctr', methods=['GET'])
 def download_ctr_file(selection_id):
@@ -509,10 +556,10 @@ def selection_view(selection_id):
         return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict)
 
 
-@routes_selection.route('/selection/confirm_no_contour_upload', methods=['POST'])
+@routes_selection.route('/selection/confirm_no_file_upload', methods=['POST'])
 @database_handler.require_live_session
 @login_required
-def confirm_no_contour_upload():
+def confirm_no_file_upload():
     """
     Set traced to False for a selection. This is done when an annotation is Y or M but no contour file
     has been uploaded (i.e. the user has changed their mind on the annotation, and decided not to upload a contour).
@@ -522,15 +569,23 @@ def confirm_no_contour_upload():
     :type selection_id: str
     :return: a JSON response with a success message if the selection is updated successfully
     """
-    selection_id = request.args.get('selection_id')
+    response = response_handler.JSONResponse()
+    print(request.data)
+    data = request.get_json()
+    selection_id = data.get('selection_id', None)
     if not selection_id:
-        return jsonify({'success': False}),400
+        response.add_error('No selection ID provided')
+        return response.to_json()
     with database_handler.get_session() as session:
-        selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id})[0]
-        selection.traced = False
-        session.commit()
-        return jsonify({'success': True}),200
-    
+        try:
+            selection = session.query(models.Selection).filter(models.Selection.id == selection_id).first()
+            recording = session.query(models.Recording).filter(models.Recording.id == selection.recording_id).first()
+            check_editable(recording)
+            selection.traced = False
+            session.commit()
+        except (Exception, SQLAlchemyError) as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating selection", session=session, show_flash=False))
+    return response.to_json()
 
 import csv
 from flask import Response

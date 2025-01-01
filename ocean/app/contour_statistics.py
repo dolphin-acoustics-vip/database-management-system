@@ -78,15 +78,16 @@ class ContourFile:
         if file_path: self.insert_from_file(file_path, sel_number)
 
     def insert_from_file(self, file_path, sel_number):   
-             
-        extension = os.path.splitext(file_path)[-1].lower()
-        if extension == '.csv':
-            df = pd.read_csv(file_path)
-        elif extension == '.xlsx':
-            df = pd.read_excel(file_path)
-        else:
-            raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
-        
+        try:
+            extension = os.path.splitext(file_path)[-1].lower()
+            if extension == '.csv':
+                df = pd.read_csv(file_path)
+            elif extension == '.xlsx':
+                df = pd.read_excel(file_path)
+            else:
+                raise ValueError("Unsupported file format. Please provide a CSV or Excel file.")
+        except FileNotFoundError as e:
+            raise ValueError(f"Contour file {sel_number} not found.")
         # check columns and datatypes
         expected_columns = {
             'Time [ms]': int,
@@ -108,8 +109,13 @@ class ContourFile:
         for index, row in df.iterrows():
             self.contour_rows.append(self.ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS']))
 
+    def get_dataframe(self):
+        """Method to return a pandas dataframe of the contour data (taken from the contour file
+        provided in the constructor)
+        """
+        return self.contour_rows
 
-    def calculate_statistics(self, session, selection):
+    def calculate_statistics(self, selection):
         """
         Calculate contour statistics using the data in contour_rows. The contour stats
         are stored in the selection object (in the Database).

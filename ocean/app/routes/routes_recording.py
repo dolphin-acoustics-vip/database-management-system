@@ -37,6 +37,18 @@ def check_editable(recording: models.Recording):
         if current_user.role.id == 3 or current_user.role.id == 4:
             raise exception_handler.WarningException("You do not have permission to edit this recording.")
 
+@routes_recording.route('/recording/<recording_id>/check-editable', methods=['POST'])
+def check_editable_recording(recording_id):
+    response = response_handler.JSONResponse()
+    with database_handler.get_session() as session:
+        try:
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            check_editable(recording)
+            response.data['editable'] = 1
+        except (Exception, SQLAlchemyError) as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+
+    return response.to_json()
 def insert_or_update_recording(session, request, recording: models.Recording):
     """
     Insert or update a recording in the database. This function should be called
@@ -92,9 +104,11 @@ def recording_selection_table_add(encounter_id,recording_id):
 
     :return: a redirect to the recording view
     """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            check_editable(recording)
             # If a selection file has been given, add it to the Recording object
             if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
                 selection_table_file = request.files['selection-table-file'] # required in the POST request
@@ -111,12 +125,14 @@ def recording_selection_table_add(encounter_id,recording_id):
                 recording.update_selection_traced_status()
                 
                 flash("Selection table uploaded successfully", "success")
+                response.set_redirect(request.referrer)
             else:
-                raise exception_handler.WarningException("The form did not send a selection table file.")
+                response.add_error("The form did not send a selection table file.")
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error adding selection table", session=session)
+            print(e)
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Unable to upload selection table", session=session, show_flash=False))
         
-    return redirect(url_for('recording.recording_view', recording_id=recording_id))
+    return response.to_json()
  
 
 @routes_recording.route('/export-selection-table/<recording_id>/<export_format>')
@@ -185,17 +201,19 @@ def recording_insert(encounter_id: str) -> Response:
     Returns:
         flask.Response: The rendered template for the encounter view page.
     """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
-            recording_obj = models.Recording(encounter_id=encounter_id)
-            session.add(recording_obj)
-            insert_or_update_recording(session, request, recording_obj)
+            recording = models.Recording(encounter_id=encounter_id)
+            session.add(recording)
+            session.flush()
+            insert_or_update_recording(session, request, recording)
             session.commit()
-            flash(f'Inserted {recording_obj.get_unique_name()}.', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+            flash(f'Inserted {recording.get_unique_name()}.', 'success')
+            response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
         except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error inserting recording", session=session)
-            return redirect(request.referrer)
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error inserting recording", session=session, show_flash=False))
+    return response.to_json()
 
 @routes_recording.route('/recording/<recording_id>/view', methods=['GET'])
 @login_required
@@ -232,7 +250,7 @@ def update_notes(recording_id):
             recording.notes = notes.strip()
             recording.notes = notes.strip()
             session.commit()
-            response.set_redirect(request.referrer)
+            response.add_message("Notes updated successfully.")
         except (Exception, SQLAlchemyError) as e:
             response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating notes", session=session, show_flash=False))
         return response.to_json()
@@ -429,39 +447,54 @@ def recording_file_delete(recording_id,file_id):
 @database_handler.exclude_role_4
 @login_required
 def recording_delete_selections():
-    """
-    Bulk delete selections from the database.
+    """ 
+    Function for deleting multiple selections of a recording. If no changes are made (either
+    because `selectionIds` is empty or `selectionIds` is not empty but all deletions fail) then
+    no redirect link is given, and errors are returned in the response_handler.JSONResponse object.
 
-    :param selectionIds: A JSON list of selection IDs to delete.
+    If `selectionIds` are given and any are successful, then a redirect link is given. Any failures
+    are added to the response_handler.JSONResponse object.
 
-    Expects a JSON payload with a list of selection IDs under the key "selectionIds".
-    Returns a JSON response with a message indicating the number of selections deleted.
+    Note that this method requires `selectionIds` to be passed to the data.
+
+    Returns:
+        flask.Response: the response object (see response_handler.JSONResponse)
     """
+    response = response_handler.JSONResponse()
+
+
     data = request.get_json()
 
     selection_ids = data.get('selectionIds', [])
     if selection_ids == None or len(selection_ids) == 0:
-        exception_handler.handle_exception(exception=exception_handler.WarningException('No selections selected for deletion.'), session=session)
+        response.add_error('No selections selected for deletion.')
+        return response.to_json()
     
     with database_handler.get_session() as session:
         counter=0
         for selection_id in selection_ids:
+            selection = None
             try:
                 selection = session.query(models.Selection).filter_by(id=selection_id).first()
+                recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
+                check_editable(recording)
                 selection.delete_children()
                 session.delete(selection)
-
                 session.commit()
                 counter += 1
             except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(exception=e,prefix="Error deleting selection", session=session)
-        flash(f'Deleted {counter} selections.', 'success')
-        return jsonify({'message': 'Bulk delete completed'}), 200
+                response.add_error(exception_handler.handle_exception(exception=e,prefix=f"Error deleting selection {selection.selection_number if selection else ''}", session=session, show_flash=False))
+        if counter > 0:
+            flash(f'Deleted {counter} selections.', 'success')
+            response.set_redirect(request.referrer)
+        else:
+            response.add_error(f'No selections deleted.')
+        return response.to_json()
 
 
   
 
-@routes_recording.route('/encounter/extract_date', methods=['GET'])
+@routes_recording.route('/encounter/extract_date', methods=['GET', 'POST'])
 def extract_date():
     """
     Extracts a date from a filename.
@@ -470,9 +503,18 @@ def extract_date():
     :type filename: str
     :return date: The date extracted from the filename in JSON format {date:value}, or {date:None}.
     """
-    filename = request.args.get('filename')
-    date = database_handler.parse_date(filename)
-    return jsonify(date=date)
+    response = response_handler.JSONResponse()
+    try:
+        filename = request.form.get('filename')
+        date = database_handler.parse_date(filename)
+        if not date:
+            response.add_error('No date found in filename.')
+        else:
+            response.add_message('Date found in filename.')
+        response.data['date'] = date
+    except (Exception) as e:
+        response.add_error(exception_handler.handle_exception(exception=e, session=None, show_flash=False))
+    return response.to_json()
 
 @routes_recording.route('/assign_recording', methods=['GET'])
 @database_handler.require_live_session
@@ -536,35 +578,7 @@ def unassign_recording():
         except (SQLAlchemyError,Exception) as e:
             exception_handler.handle_exception(exception=e, session=session)
 
-def recalculate_contour_statistics(session, selection):
-    """
-    Recalculate contour statistics for the given selection.
 
-    :param session: The current sqlalchemy session
-    :type session: sqlalchemy.orm.session.Session
-    :param selection: The selection object to recalculate the contour statistics for
-    :type selection: Selection
-    """
-    selection.reset_contour_stats()
-    if selection and selection.contour_file is not None:
-        contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path(),selection.selection_number)
-        contour_rows = contour_file_obj.calculate_statistics(session, selection)
-        selection.generate_ctr_file(session, contour_rows)
-
-@routes_recording.route('/selection/<selection_id>/recalculate-contour-statistics', methods=['GET'])
-@login_required
-@database_handler.exclude_role_4
-@database_handler.require_live_session
-def recalculate_contour_statistics_for_selection(selection_id):
-    with database_handler.get_session() as session:
-        try:
-            selection = session.query(models.Selection).filter_by(id=selection_id).first()
-            selection.recalculate_contour_statistics(session)
-            session.commit()
-            flash(f"Refreshed contour statistics for {selection.get_unique_name()}", 'success')
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error refreshing contour statistics", session=session)
-    return redirect(request.referrer)
 
 @routes_recording.route('/recording/<recording_id>/recalculate-contour-statistics', methods=['POST'])
 @login_required
@@ -583,32 +597,35 @@ def recalculate_contour_statistics_for_recording(recording_id: str):
     """
     response = response_handler.JSONResponse()
 
+    # First collect all the selections in the recording
     with database_handler.get_session() as session:
+        # Preamble - checking the user has permissions to edit the recording and collecting
+        # all selections of the recording
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            selections = session.query(models.Selection).filter_by(recording_id=recording_id).all()
             check_editable(recording)
-            selection_ids = [s.id for s in selections]
+            selections = session.query(models.Selection).filter_by(recording_id=recording_id).all()
         except (Exception, SQLAlchemyError) as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
             return response.to_json()
-
-    updated_count = 0
-    for selection_id in selection_ids:
-        with database_handler.get_session() as selection_session:
+        
+        count = 0
+        for selection in selections:
             try:
-                selection = selection_session.query(models.Selection).with_for_update().filter_by(id=selection_id).first()
-                selection.recalculate_contour_statistics(selection_session)
-                selection_session.commit()
-                updated_count += 1
+                # Check if the user has permission to edit the selection
+                recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
+                check_editable(recording)
+                from .routes_selection import generate_ctr_file
+                generate_ctr_file(session, selection.id)
+                selection.recalculate_contour_statistics()
+                session.commit()
+                count += 1
             except (Exception, SQLAlchemyError) as e:
-                response.add_error(exception_handler.handle_exception(exception=e, session=selection_session, show_flash=False))
-
-    if updated_count > 0:
-        response.set_redirect(request.referrer)
-        flash(f"Refreshed contour statistics for {updated_count} selections.", 'success')
-    else:
-        response.add_error('No contour statistics recalculated.')
+                # A ValueError from Selection.recalculate_contour_statistics() occurs when the contour file is missing
+                if type(e) == ValueError: e = exception_handler.WarningException(e.args[0])
+                response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    
+    response.add_message(f"{count} contour statistic(s) and CTR file(s) were regenerated.")
     return response.to_json()
     
 

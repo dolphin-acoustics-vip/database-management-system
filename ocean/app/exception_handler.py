@@ -89,8 +89,8 @@ def _parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
             duplicate_value = exception.orig.args[1].split("Duplicate entry ")[1].split(" for key ")[0]
             exc_msg += f"Unable to add record as it already exists ({duplicate_value})."
         else:
-            foreign_key_constraint = exc_msg.split('`')[3]
-            exc_msg += "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)
+            logger.exception(exception)
+            exc_msg += "Database integrity error. This error has been logged."
     elif isinstance(exception, exc.OperationalError):
         # Wraps a DB-API OperationalError.
         logger.exception(exception)

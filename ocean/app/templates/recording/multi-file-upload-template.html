@@ -7,7 +7,7 @@
 
     <button class="blue small" id="{{unique_id}}-bulk-upload" style="margin-bottom: 5px;" type="submit"
         hidden="true">Upload</button>
-    <div style="display:none; margin-bottom: 0.3rem;" class="progress" id="{{unique_id}}-submission-progress">
+    <div style="margin-bottom: 0.3rem;" class="progress" id="{{unique_id}}-submission-progress" hidden>
         <div id="{{unique_id}}-submission-progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0"
             aria-valuemin="0" aria-valuemax="100"></div>
     </div>
@@ -316,44 +316,89 @@
          * Finally, it sends the form data to the server and handles the server response. If the response is OK, it reloads the page. Otherwise, it displays an error message.
          */
         async function updateFileInputForSubmission() {
-            document.getElementById("{{unique_id}}-submission-progress").style.display = "block"
+            // Adjust UI elements
+            document.getElementById("{{unique_id}}-submission-progress").hidden = false;
             document.getElementById("{{unique_id}}-bulk-upload-status-message").innerHTML = "Uploading... Please wait and do not close your browser.";
             document.getElementById("{{unique_id}}-bulk-upload-status-message").hidden = false;
             document.getElementById("{{unique_id}}-bulk-upload").hidden = true;
             document.getElementById("{{unique_id}}-bulk-upload-validate").hidden = true;
             document.getElementById("{{unique_id}}-bulk-upload-clear").hidden = true;
-
+            // Get all files to be submitted (any marked for deletion will not be submitted)
             var fileInput = document.getElementById('{{unique_id}}-files');
             var filesToSubmitFiltered = filesToSubmit.filter(file => !filesToDelete.includes(file));
+            // The following three variables are used to keep track of the progress.
+            // Any upload, whether successful or not, will increment counter.
+            // Successful uploads will increment successCounter whilst failed uploads will add
+            // an error message to errors.
             var numberOfFilesToSubmit = filesToSubmitFiltered.length
             var counter = 0
             var successCounter = 0
+            var errors = []
+            var success = false;
 
-            for (var i = 0; i < filesToSubmitFiltered.length; i++) {
-                var file = filesToSubmitFiltered[i];
+            await makeAjaxRequest(
+                "{{ url_for('recording.check_editable_recording', recording_id=recording.id) }}",
+                "POST",
+                undefined,
+                undefined,
+                true,
+                false,
+                successCallback = async (response) => {
+                    if (response.data.editable != 1) {
+                        clearBulkUpload(undefined);
+                        return
+                    } else {
+
+                        for await (const file of filesToSubmitFiltered) {
                 var formData = new FormData();
                 formData.append('file', file.file);
                 formData.append('id', file.id);
-                if (i == filesToSubmitFiltered.length - 1) {
-                    formData.append('last', true)
-                } else {
-                    formData.append('last', false)
-                }
-                formData.append('successCounter', successCounter)
 
-                response = await fetch("{{ url_for(insert_route, recording_id=recording.id) }}", {
-                    method: 'POST',
-                    body: formData
-                });
+                await makeAjaxRequest(
+                    "{{ url_for(insert_route, recording_id=recording.id) }}",
+                    "POST",
+                    formData,
+                    undefined,
+                    false,
+                    false,
+                    successCallback = async (response) => {
+                        counter = counter + 1;
+                        successCounter = successCounter + 1
+                        await updateProgress(Math.round((counter / numberOfFilesToSubmit) * 100));
+                        if (counter == numberOfFilesToSubmit && counter == successCounter) {
+                            alert(successCounter + " files uploaded successfully.")
+                            window.location.reload();
+                        }
+                    },
+                    errorCallback = async (response) => {
+                        console.log("ERROR CALLBACK")
+                        counter = counter + 1
+                        await errors.push(file.file.name + " - " + response.errors);
+                        await updateProgress(Math.round((counter / numberOfFilesToSubmit) * 100));
+                        if (counter >= numberOfFilesToSubmit) {
+                            if (errors.length > 0) {
+                                clearBulkUpload(undefined)
+                                alert(successCounter + " file(s) uploaded successfully.\n\n " + errors.length + " error(s) ocurred.");
+                            }
+                            if (successCounter > 0) {
+                                    window.location.reload();
+                            }
+                        }
+                    }
+                );
 
-                const jsonData = await response.json();
-                successCounter = jsonData.successCounter
-                counter = counter + 1
-                updateProgress(Math.round((counter / numberOfFilesToSubmit) * 100))
+                
+                // window.location.reload();
+
             }
+            
+                    }
+                }
+            )
+            
 
-            // Refresh page after all files have been sent
-            window.location.href = window.location.href;
+            
+
         }
 
 
@@ -364,8 +409,9 @@
          * 
          * @param {Event} event - The event object from the button click
          */
-        function clearBulkUpload(event) {
-            event.preventDefault(); // Prevent default button behavior
+        function clearBulkUpload(event = null) {
+            if (event)
+                event.preventDefault(); // Prevent default button behavior
 
             // Reset the file input field
             document.getElementById('{{unique_id}}-files').value = "";
@@ -379,6 +425,13 @@
             document.getElementById('{{unique_id}}-bulk-upload-validate').hidden = true;
             document.getElementById('{{unique_id}}-bulk-upload').hidden = true;
             document.getElementById('{{unique_id}}-bulk-upload-clear').hidden = true;
+
+            document.getElementById('{{unique_id}}-submission-progress').hidden = true;
+            document.getElementById('{{unique_id}}-submission-progress').value = 0;
+
+            // Clear the filesToSubmit and filesToDelete arrays
+            filesToSubmit = [];
+            filesToDelete = [];
         }
     })();
 </script>

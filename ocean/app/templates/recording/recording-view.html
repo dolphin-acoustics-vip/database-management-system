@@ -20,7 +20,6 @@
                 {% from 'recording/recording-form-template.html' import recording_form %}
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
                                     local_timezone=recording.encounter.local_timezone, recording=recording) }}
-                <button class="blue" type="submit" id="recording-update-form-submit" style="margin-top: 0.7rem;">Update</button>
             </form>
             <script>
                 ajaxifyForm(document.getElementById('recording-form'));
@@ -266,13 +265,17 @@
                 {% if not session['snapshot_date'] %}
                 {% if current_user.role_id in [1, 2, 3] %}
                 <form
-                    action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
+                id="upload-selection-table-form"    
+                action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
                     method="post" enctype="multipart/form-data">
                     <div style="display:flex;">
                         <input class="small" type="file" name="selection-table-file" id="selection-table-file" accept=".xlsx, .csv, .txt">
                         <button class="gray small" type="submit">Upload</button>
                     </div>
                 </form>
+                <script>
+                    ajaxifyForm(document.getElementById('upload-selection-table-form'));
+                </script>
                 {% endif %}
 
                 {% endif %}
@@ -340,8 +343,9 @@
                                 </form>
                                 <script>
                                     $("#contour-delete-form-{{selection.id}}").submit(function (event) {
-                                        if (!confirm("Are you sure you want to delete the contour file?")) {
-                                            event.preventDefault();
+                                        event.preventDefault();
+                                        if (confirm("Are you sure you want to delete the contour file?")) {
+                                            makeAjaxRequestForm(event.target);
                                         }
                                     });
                                 </script>
@@ -515,22 +519,28 @@
             if (event.target.classList.contains('confirm-no-file-upload')) {
                 event.target.innerHTML = "Loading..."
                 event.target.disabled = true
+                const label = event.target.closest('.selection-row').querySelector('#traced-status-label');
 
-                const selectionId = event.target.closest('.selection-row').dataset.selectionId;
-                fetch("{{ url_for('selection.confirm_no_contour_upload') }}" + "?selection_id=" + selectionId, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
+                makeAjaxRequest(
+                    url="{{ url_for('selection.confirm_no_file_upload') }}",
+                    method="POST", 
+                    data=JSON.stringify({selection_id:event.target.closest('.selection-row').dataset.selectionId}),
+                    contentType="application/json",
+                    error_popups=true,
+                    success_popups=true,
+                    successCallback=() => {
+                        label.hidden = false;
+                        event.target.hidden = true
                     },
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const label = event.target.closest('.selection-row').querySelector('#traced-status-label');
-                            label.hidden = false;
-                            event.target.hidden = true
-                        }
-                    });
+                    errorCallback=() => {
+                        event.target.disabled = false
+                        event.target.innerHTML = "Unable to Confirm"
+                        event.target.disabled = true
+                        label.hidden = true
+                        event.target.hidden = false
+                        
+                    }
+                );
             }
         });
     });
@@ -651,38 +661,10 @@
      * @return {Promise} A Promise that resolves when the request is complete.
      */
     async function deleteSelectedRows() {
-
-        // Get the delete form and all selected checkboxes
-        var form = document.getElementById('recording-delete-form');
-        var selectedCheckboxes = document.querySelectorAll('input[name="selections-checkboxes"]:checked');
-
-        // Create an empty array to store the selected ids
-        var selectedIds = [];
-
-        // Extract the values of the selected checkboxes and store them in the selectedIds array
-        for (var i = 0; i < selectedCheckboxes.length; i++) {
-            selectedIds.push(selectedCheckboxes[i].value);
+        var selectionIds = getSelectedSelectionIds();
+        if (confirm('Are you sure you want to delete ' + selectionIds.length + ' selection(s)? This CANNOT be undone.')) {
+            makeAjaxRequest("{{url_for('recording.recording_delete_selections')}}", "DELETE", JSON.stringify({ selectionIds: selectionIds }), contentType="application/json");
         }
-        // Check first with user
-        if (!confirm('Are you sure you want to delete these ' + selectedIds.length + ' selections? This CANNOT be undone.')) {
-            return;
-        }
-
-        // Define the URL for the delete request
-        var url = "{{ url_for('recording.recording_delete_selections') }}";
-
-        // Create an XMLHttpRequest object for making the delete request
-        var xhr = new XMLHttpRequest();
-        xhr.open('DELETE', url);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-
-        // Once the request is complete, redirect to the current page
-        xhr.onload = function () {
-            window.location.href = window.location.href;
-        };
-
-        // Send the selectionIds array as JSON in the request body
-        xhr.send(JSON.stringify({ selectionIds: selectedIds }));
     }
 
 
