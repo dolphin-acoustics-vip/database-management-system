@@ -88,6 +88,16 @@ class Species(database_handler.db.Model):
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'species_name': self.species_name,
+            'genus_name': self.genus_name,
+            'common_name': self.common_name,
+            'updated_by_id': self.updated_by_id,
+        }
+
+
     def update_call(self):
         """
         Call update_call() in all Encounter objects linked to the Species object.
@@ -177,6 +187,14 @@ class RecordingPlatform(database_handler.db.Model):
     name = database_handler.db.Column(database_handler.db.String(100), unique=True, nullable=False)
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'updated_by_id': self.updated_by_id,
+        }
+
     def __repr__(self):
         return '<RecordingPlatform %r>' % self.name
     
@@ -225,7 +243,21 @@ class DataSource(database_handler.db.Model):
 
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-    
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'phone_number1': self.phone_number1,
+            'phone_number2': self.phone_number2,
+            'email1': self.email1,
+            'email2': self.email2,
+            'address': self.address,
+            'notes': self.notes,
+            'type': self.type,
+            'updated_by_id': self.updated_by_id,
+        }
+
     def __repr__(self):
         return '<DataSource %r>' % self.name
     
@@ -312,6 +344,26 @@ class Encounter(database_handler.db.Model):
         database_handler.db.UniqueConstraint('encounter_name', 'location', 'project'),
     )
     
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'encounter_name': self.encounter_name,
+            'location': self.location,
+            'species_id': self.species_id,
+            'project': self.project,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'data_source_id': self.data_source_id,
+            'recording_platform_id': self.recording_platform_id,
+            'notes': self.notes,
+            'file_timezone': self.file_timezone,
+            'local_timezone': self.local_timezone,
+            'species': self.species.to_dict() if self.species else None,
+            'data_source': self.data_source.to_dict() if self.data_source else None,
+            'recording_platform': self.recording_platform.to_dict() if self.recording_platform else None,
+            'updated_by_id': self.updated_by_id,
+        }
+
     def set_updated_by_id(self, user_id: str):
         """Set the user ID of the user who is updating the recording.
 
@@ -552,11 +604,50 @@ class File(database_handler.db.Model):
     updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
+    def get_extension(self):
+        return '' if self.extension is None else self.extension
+    
+    def get_deleted(self):
+        return self.deleted
+    
+    def get_original_filename(self):
+        return '' if self.original_filename is None else self.original_filename
+    
+    def get_updated_by_id(self):
+        return '' if self.updated_by_id is None else self.updated_by_id
 
+    def to_dict(self, attributes=None):
+        """
+        Convert the File object to a dictionary representation.
+
+        Args:
+            attributes (list[str]|None): List of attribute names to include in the dictionary representation. If None, all attributes are included.
+
+        Returns:
+            dict: A dictionary containing the File object's attributes.
+        """
+        retrievable_attributes = {
+            'path': self.get_path,
+            'filename': self.get_filename,
+            'uploaded_date': self.get_uploaded_date_utc,
+            'extension': self.get_extension,
+            'deleted': self.get_deleted,
+            'original_filename': self.get_original_filename,
+            'hash': self.get_hash,
+            'updated_by_id': self.get_updated_by_id,
+            'absolute_path': self.get_full_absolute_path
+        }
+
+        if attributes is None:
+            attributes = retrievable_attributes
+        else:
+            utils.verify_subarray_of_dict(attributes, retrievable_attributes)
+
+        return utils.serialise_object(attributes)
+    
     @classmethod
     def has_record(cls, session, file_path, deleted = False, temp = False):
-        root_path = database_handler.get_root_directory(deleted, temp) 
-        comparison_path = os.path.relpath(file_path, root_path)
+        comparison_path = file_path
         comparison_dir = os.path.dirname(comparison_path)
         comparison_file = os.path.splitext(os.path.basename(comparison_path))[0]
         comparison_ext = os.path.splitext(comparison_path)[1].replace('.', '')
@@ -905,6 +996,7 @@ class File(database_handler.db.Model):
         :raises IOError: If there is an issue reading the file.
         """
         absolute_path = self.get_full_absolute_path()
+        print(absolute_path)
         
         try:
             with open(absolute_path, 'rb') as file:
@@ -934,8 +1026,35 @@ class Recording(database_handler.db.Model):
     status_change_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
     notes = database_handler.db.Column(database_handler.db.Text)
     row_start = database_handler.db.Column(database_handler.db.DateTime(timezone=True), server_default=func.current_timestamp())
+
+    def get_selection_table_file(self):
+        return self.selection_table_file
     
-    
+    def get_updated_by_id(self):
+        return self.updated_by_id
+
+    def to_dict(self, attributes=None):
+        retrievable_attributes = {
+            'unique_name':self.get_unique_name,
+            'start_time':self.get_start_time,
+            'recording_file_id':self.get_recording_file_id,
+            'selection_table_file_id':self.get_selection_table_file,
+            'encounter_id':self.get_encounter_id,
+            'updated_by_id':self.get_updated_by_id,
+            'created_datetime':self.get_created_datetime,
+            'status':self.get_status,
+            'status_change_datetime':self.get_status_change_datetime,
+            'notes':self.get_notes,
+            'row_start':self.get_row_start
+        }
+
+        if attributes is not None:
+            utils.verify_subarray_of_dict(attributes, retrievable_attributes)
+        else:
+            attributes = retrievable_attributes
+        
+        return utils.serialise_object(attributes)
+
     __table_args__ = (
         database_handler.db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
@@ -1524,6 +1643,27 @@ class Selection(database_handler.db.Model):
         database_handler.db.UniqueConstraint('selection_number', 'recording_id', name='unique_selection_number_recording'),
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
+
+
+
+    def to_dict(self, attributes=None):
+        retrievable_attributes = {
+            'unique_name':self.get_unique_name,
+            'selection_number':self.get_selection_number,
+            'selection_file_id':self.get_selection_file_id,
+            'ctr_file_id':self.get_ctr_file_id,
+            'contour_file_id':self.get_contour_file_id,
+            'recording_id':self.get_recording_id,
+            'created_datetime':self.get_created_datetime,
+            'row_start':self.get_row_start
+        }
+
+        if attributes is not None:
+            utils.verify_subarray_of_dict(attributes, retrievable_attributes)
+        else:
+            attributes = retrievable_attributes
+        
+        return utils.serialise_object(attributes)
 
 
     def get_selection_number(self) -> int:

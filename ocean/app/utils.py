@@ -118,7 +118,26 @@ def download_files(file_objects, file_names, zip_filename):
 #             new_file_paths.append(new_file_path)
             
 #         return zip_and_download_files(new_file_paths, zip_filename)
-    
+
+def download_file_from_path(path, deleted):
+    root = database_handler.get_deleted_space() if deleted else database_handler.get_data_space()
+    full_path = os.path.join(root, path)
+    if os.path.exists(full_path):
+        binary_content = open(full_path, 'rb').read()
+        # Create an in-memory binary stream
+        file_stream = io.BytesIO(binary_content)
+
+        # Send the file stream as an attachment
+        response = flask.send_file(
+            file_stream,
+            as_attachment=True,
+            download_name=secure_filename(os.path.basename(full_path)),  # Custom download filename
+        )
+
+        return response
+    else:
+        raise exception_handler.WarningException("File not found.")
+
 def download_file(file_obj, file_name_generator=None):
     """
     Takes a file object and sends the file to the user. Before doing so,
@@ -511,5 +530,53 @@ def parse_date(date_string: str) -> datetime.datetime:
     minute = int(match.group(5))
     second = int(match.group(6))
     date = datetime.datetime(year, month, day, hour, minute, second)
-    print(date)
     return date
+
+
+def serialise_object(attributes):
+    """
+    This function takes an object and a list of its attributes and
+    creates a dictionary representation of the object. The dictionary
+    will contain the attributes specified in the list as keys, and
+    the values of those attributes as the corresponding values.
+
+    If the attribute is a datetime object, it is first converted to
+    ISO format before being added to the dictionary. If the attribute
+    is a bytes object, it is first converted to a hexadecimal string
+    before being added to the dictionary. If the attribute has a
+    'to_dict' method, it is called and the result is added to the
+    dictionary.
+
+    If the object does not have an attribute with the given name, a
+    ValueError is raised.
+
+    :param obj: the object to be serialized
+    :param attributes: a list of attributes to be included in the
+        serialized representation
+    :return: a dictionary containing the serialized object
+    """
+    def to_camel_case(snake_str):
+        components = snake_str.split('_')
+        return components[0] + ''.join(x.title() for x in components[1:])
+    
+    result = {}
+    for attr in attributes:
+        getter = attributes[attr]
+        value = getter()
+        if hasattr(value, 'to_dict'):
+            value = value.to_dict()
+        elif isinstance(value, datetime.datetime):
+            value = value.isoformat()
+        elif isinstance(value, bytes):
+            value = value.hex()
+
+        result[to_camel_case(attr)] = value
+
+    return result
+
+def verify_subarray_of_dict(sub, arr):
+    if sub is not None and arr is not None:
+        for s in sub:
+            if s not in arr:
+                raise ValueError(f"Unknown attribute: {s}")
+    raise ValueError("Subarray or dict is None")

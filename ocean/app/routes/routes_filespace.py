@@ -20,7 +20,7 @@ import os
 import shutil
 
 # Third-party imports
-from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for, session as flask_session
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_required
 
@@ -29,65 +29,63 @@ from .. import database_handler
 from .. import exception_handler
 from .. import models
 from .. import filespace_handler
+from .. import response_handler
 
 routes_filespace = Blueprint('filespace', __name__)
 
-@routes_filespace.route('/filespace/download-orphan-file', methods=['GET'])
+def process_boolean_string(value):
+    if value.lower() == 'true':
+        return True
+    elif value.lower() == 'false':
+        return False
+    else:
+        return None
+
+@routes_filespace.route('/filespace/download-orphan-file/', methods=['GET'])
 def download_orphan_file():
-    file_path = request.args.get('path')
-    with database_handler.get_session() as session:
-        return send_file(file_path, as_attachment=True)
+    from .. import utils
+    file_path = request.args.get('file_path')
+    deleted = process_boolean_string(request.args.get('deleted'))
+    return utils.download_file_from_path(file_path, deleted)
 
-@routes_filespace.route('/filespace/delete-orphan-file', methods=['GET'])
+@routes_filespace.route('/filespace/delete-orphan-file/', methods=['DELETE'])
 def delete_orphan_file():
-    file_path = request.args.get('path')
-    deleted = request.args.get('deleted')
-    with database_handler.get_session() as session:
-        filespace_handler.delete_orphan_file(file_path,deleted,False)
-    return redirect(url_for('filespace.filespace_view'))
+    response = response_handler.JSONResponse()
+    try:
+        file_path = request.args.get('file_path')
+        deleted = process_boolean_string(request.args.get('deleted'))
+        filespace_handler.delete_orphan_file(file_path, deleted, False)
+        response.add_message(f"Deleted orphan file {file_path}")
+    except (Exception, SQLAlchemyError) as e:
+        response.add_error(exception_handler.handle_exception(exception=e, show_flash=False))
+    return response.to_json()
 
-
-@routes_filespace.route('/filespace/delete/orphaned-files', methods=['POST'])
-@login_required
-@database_handler.exclude_role_2
-@database_handler.exclude_role_3
-@database_handler.exclude_role_4
-def delete_orphaned_files():
-    file_paths=[]
-    file_paths_string = request.form['file_paths[]']
-    print(file_paths_string)
-    deleted = request.form['deleted']
-    print("DELETED", deleted)
-    if deleted == "True": deleted = True
-    else: deleted = False
-    if file_paths_string != "":
-        file_paths = file_paths_string.split(",")
-    print(file_paths)
-    success_counter = 0
-    for file_path in file_paths:
-        filespace_handler.delete_orphan_file(file_path, deleted=deleted, temp=False)
-        success_counter += 1
-    flash(f"Deleted {success_counter} orphaned files.", "success")
-    return redirect(url_for('filespace.filespace_view'))
-
-
-@routes_filespace.route('/filespace/delete-file/<string:file_id>', methods=['GET'])
+@routes_filespace.route('/filespace/delete-file/<string:file_id>', methods=['DELETE'])
 @login_required
 @database_handler.exclude_role_2
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 def filespace_delete_file(file_id):
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
+        file_name = None
         try:
             file = session.query(models.File).filter(models.File.id == file_id).first()
+            if not file:
+                raise exception_handler.WarningException(f"Unknown error ocurred.")
+            file_name = file.filename
+            file_id = file.id
+
             if filespace_handler.check_file_exists_in_filespace(file):
                 raise exception_handler.WarningException("Cannot delete file record as this would orphan its file in the filespace.")
             else:
                 session.delete(file)
                 session.commit()
+                response.add_message(f"Deleted {file_name}")
         except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-    return redirect(url_for('filespace.filespace_view'))
+
+            response.add_error(exception_handler.handle_exception(exception=e, prefix=f"Error deleting {file_name}", session=session, show_flash=False))
+    return response.to_json()
 
 def get_directory_size(directory):
     total_size = 0
@@ -110,6 +108,46 @@ def format_bytes(value):
         return f"{value / 1024 ** 4:.2f} TB"
 
 
+@routes_filespace.route('/filespace/get-broken-links', methods=['GET'])
+@login_required
+@database_handler.exclude_role_2
+@database_handler.exclude_role_3
+@database_handler.exclude_role_4
+def get_broken_links():
+    response = response_handler.JSONResponse()
+
+    deleted = request.args.get('deleted')
+    if deleted.lower() == 'true': deleted = True
+    elif deleted.lower() == 'false': deleted = False
+    else:
+        response.add_error("Invalid value for 'deleted' parameter.")
+        return response.to_json()
+
+    with database_handler.get_session() as session:
+        try:
+            broken_links = filespace_handler.query_file_class(session, deleted)
+            response.data['brokenLinks'] = broken_links
+        except (Exception, SQLAlchemyError) as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
+
+@routes_filespace.route('/filespace/get-orphaned-files', methods=['GET'])
+@login_required
+@database_handler.exclude_role_2
+@database_handler.exclude_role_3
+@database_handler.exclude_role_4
+def get_orphaned_files():
+    response = response_handler.JSONResponse()
+
+    deleted = process_boolean_string(request.args.get('deleted'))
+    if deleted is None: 
+        response.add_error("Invalid value for 'deleted' parameter.")
+    print(deleted)
+    orphaned_files = filespace_handler.get_orphaned_files(deleted, False)
+    response.data["orphanedFiles"] = orphaned_files
+    print(deleted, response.data)
+    return response.to_json()
+
 @routes_filespace.route('/filespace', methods=['GET'])
 @login_required
 @database_handler.exclude_role_2
@@ -118,12 +156,6 @@ def format_bytes(value):
 def filespace_view():
     with database_handler.get_session() as session:
         filespace_handler.cleanup_temp_filespace()
-        invalid_links = filespace_handler.query_file_class(session, False)
-        invalid_deleted_links = filespace_handler.query_file_class(session, True)
-
-        orphaned_files = filespace_handler.get_orphaned_files(session, False, False)
-        orphaned_deleted_files = filespace_handler.get_orphaned_files(session, True, False)
-    
 
         def format_disk_usage(disk_usage):
             total, used, free = disk_usage
@@ -144,8 +176,7 @@ def filespace_view():
     trash_dir_size = get_directory_size(trash_dir)
     formatted_trash_dir_size = format_bytes(trash_dir_size)
 
-    return render_template('filespace/filespace.html', invalid_links=invalid_links, invalid_deleted_links=invalid_deleted_links, orphaned_files=orphaned_files, orphaned_deleted_files=orphaned_deleted_files, storage=storage, file_space_size=formatted_file_space_size, trash_dir_size=formatted_trash_dir_size)
-
+    return render_template('filespace/filespace.html', storage=storage, file_space_size=formatted_file_space_size, trash_dir_size=formatted_trash_dir_size)
 
 def trash_delete_file_helper(file_id):
     """

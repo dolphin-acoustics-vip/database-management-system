@@ -16,7 +16,7 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Standard library imports
-import os, datetime
+import os, datetime, uuid
 
 # Third-party imports
 from flask import url_for
@@ -156,7 +156,7 @@ def check_file_orphaned(session, path: str, deleted: bool, temp: bool) -> None:
     
     return not models.File.has_record(session, path, deleted=deleted, temp=temp)
 
-def get_orphaned_files(session, deleted: bool, temp: bool) -> list:
+def get_orphaned_files(deleted: bool, temp: bool) -> list:
     """Search through all files in the database and check whether all links to the filespace are valid.
     An invalid link is one where a path is defined in the database, but it does not point to a file 
     in the filespace. The function will only check all files in the database pertaining to one of the
@@ -171,13 +171,16 @@ def get_orphaned_files(session, deleted: bool, temp: bool) -> list:
     :return: a list of dictionaries of orphaned files where the key is the models.File.id and the value is the models.File object
     """
     # TODO: REMOVE ABSOLUTE PATHS FROM HERE
-    orphaned_files = []
-    root_path = database_handler.get_root_directory(deleted, temp)
-    for root, dirs, files in os.walk(root_path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            if check_file_orphaned(session, file_path, deleted, temp):
-                orphaned_files.append({'path': file_path, 'link': url_for('filespace.delete_orphan_file', path=file_path, deleted=deleted), 'download': url_for('filespace.download_orphan_file', path=file_path) , 'deleted': deleted})
+    with database_handler.get_session() as session:
+        orphaned_files = []
+        root_path = database_handler.get_root_directory(deleted, temp)
+        for root, dirs, files in os.walk(root_path):
+            for file in files:
+                file_path = os.path.relpath(os.path.join(root, file), root_path)
+
+                if check_file_orphaned(session, file_path, deleted, temp):
+                    id = uuid.uuid4()
+                    orphaned_files.append({'id':id,'path': file_path, 'link': url_for('filespace.delete_orphan_file', file_path=file_path, deleted=deleted), 'download': url_for('filespace.download_orphan_file', file_path=file_path, deleted=deleted) , 'deleted': deleted})
 
     return orphaned_files
 
@@ -189,10 +192,17 @@ def delete_orphan_file(path: str, deleted: bool, temp: bool):
     :param deleted: whether to delete in the deleted filespace or not
     :param temp: whether to delete in the temporary filespace or not
     """
+    root_dir = database_handler.get_root_directory(deleted, temp)
+    path = os.path.join(root_dir, path)
+    print(path)
     with database_handler.get_session() as session:
         if check_file_orphaned(session, path, deleted, temp):
             if os.path.exists(path):
                 os.remove(path)
+            else:
+                raise exception_handler.WarningException("File not found. It may have already been deleted.")
+        else:
+            raise exception_handler.WarningException("An unexpected error ocurred.")
 
 def query_file_class(session, deleted: bool) -> dict:
     """Query all files in the database and check whether all links to the filespace are valid.
@@ -240,7 +250,7 @@ def query_file_class(session, deleted: bool) -> dict:
                 else:
                     delete_link = url_for('filespace.filespace_delete_file', file_id=file.id)
 
-                invalid_links[file.id] = {"file": file, "parent": parent, "link": link, "delete": delete_link}
+                invalid_links[file.id] = {"file": file.to_dict() if file else None, "parent": parent.to_dict() if parent else None, "link": link, "delete": delete_link}
 
     return invalid_links
 

@@ -48,7 +48,6 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
      */
     success: async function(response) {
       var error = false;
-      console.log(response)
 
       // Ensure response is in the form of a JSON object with 'messages', 'errors', and 'redirect' keys
       if (!(response instanceof Object) || !response.hasOwnProperty('messages') || !response.hasOwnProperty('errors') || !response.hasOwnProperty('redirect')) {
