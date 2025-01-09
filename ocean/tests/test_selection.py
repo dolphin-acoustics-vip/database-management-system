@@ -39,7 +39,7 @@ def test_hasattr_other_methods(selection: models.Selection):
     assert hasattr(selection, "calculate_sampling_rate")
     assert hasattr(selection, "set_selection_file")
     assert hasattr(selection, "create_temp_plot")
-    assert hasattr(selection, "generate_ctr_file")
+    assert hasattr(selection, "calculate_and_save_ctr_data")
     assert hasattr(selection, "delete_contour_file")
     
 def test_hasattr_getters(selection: models.Selection):

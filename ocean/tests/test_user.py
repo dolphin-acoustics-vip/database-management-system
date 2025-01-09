@@ -27,7 +27,6 @@ def test_hasattr_setters(user):
     assert hasattr(user, "set_role")
     assert hasattr(user, "set_expiry")
 
-
 def test_set_role(user):
     role = factories.RoleFactory.create()
     user.set_role(role)
@@ -64,3 +63,17 @@ def test_set_role_id_wrong_type(user):
         user.set_role_id("21581739as")
     with pytest.raises(exception_handler.WarningException):
         user.set_role_id(" ")
+
+def test_get_name(user):
+    user.name = "name"
+    assert user.get_name() == "name"
+
+def test_set_name(user):
+    user.set_name("name")
+    assert user.name == "name"
+
+def test_set_name_none(user):
+    with pytest.raises(exception_handler.WarningException):
+        user.set_name(None)
+    with pytest.raises(exception_handler.WarningException):
+        user.set_name("")

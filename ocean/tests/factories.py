@@ -37,8 +37,8 @@ class FileFactory(factory.alchemy.SQLAlchemyModelFactory):
         model = models.File
         sqlalchemy_session = Session
     
-    id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
-    updated_by = None
+    # id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
+    # updated_by = None
 
 class RecordingPlatformFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
