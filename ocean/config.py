@@ -10,6 +10,7 @@ class DevelopmentConfig(Config):
     DEBUG = False
     secret_key = "not_so_secret_key"
     SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1')
 
 class TestingConfig(Config):
     TESTING = True
@@ -23,3 +24,4 @@ class ProductionConfig(Config):
     DEBUG = False
     secret_key = secrets.token_urlsafe(32)
     SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
+    SESSION_COOKIE_SECURE = True
