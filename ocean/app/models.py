@@ -2545,7 +2545,7 @@ class User(database_handler.db.Model, UserMixin):
         self.expiry = value
     
     def set_name(self, value):
-        self.name = utils.validate_string(self.name, field="Name", allow_none=True)
+        self.name = utils.validate_string(value, field="Name", allow_none=True)
     
     def get_name(self):
         return utils.validate_string(self.name, field="Name", allow_none=True)
