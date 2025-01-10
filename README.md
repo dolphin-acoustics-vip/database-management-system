@@ -21,6 +21,14 @@ The Program has been developed on and for, a Linux based system running Debian 1
 - All Python libraries in [requirements.txt](requirements.txt)
 - MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive) (restricted by production environment)
 
+Note: to install the package `mysqlclient` the following commands first need to be run.
+
+For Debian/Ubuntu:
+`sudo apt-get update
+sudo apt-get install gcc libmysqlclient-dev python3-dev`
+For Fedora:
+`sudo dnf install gcc mysql-devel python3-devel`
+
 ## Project description
 The Program was developed to store data with its metadata in a homogenised system. The following are outlined a list of some features (a more comprehensive list is to be found on the GitHub Wiki):
 - Storage of raw audio recordings (wav)
