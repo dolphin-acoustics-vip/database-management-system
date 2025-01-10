@@ -29,6 +29,7 @@ from .. import database_handler
 from .. import models
 from .. import exception_handler
 from .. import logger
+from .. import response_handler
 
 routes_admin = Blueprint('admin', __name__)
 
@@ -103,23 +104,24 @@ def admin_data_source_edit(data_source_id):
     RESTRICTIONS: Live session.
     METHODS: POST.
     """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             # Update a DataSource object with form data
             data_source = session.query(models.DataSource).filter_by(id=data_source_id).first()  
-            data_source.name = request.form['name']
-            data_source.phone_number1 = request.form['phone_number1']
-            data_source.phone_number2 = request.form['phone_number2']
-            data_source.email1 = request.form['email1']
-            data_source.email2 = request.form['email2']
-            data_source.address = request.form['address']
-            data_source.notes = request.form['notes']
-            data_source.type = request.form['source-type']
+            data_source.set_name(request.form['name'])
+            data_source.set_phone_number1(request.form['phone_number1'])
+            data_source.set_phone_number2(request.form['phone_number2'])
+            data_source.set_email1(request.form['email1'])
+            data_source.set_email2(request.form['email2'])
+            data_source.set_address(request.form['address'])
+            data_source.set_notes(request.form['notes'])
+            data_source.set_type(request.form['source-type'])
             session.commit()
-            flash('Data source updated: {}'.format(data_source.name), 'success')
+            response.add_message('Data source updated: {}'.format(data_source.name))
         except SQLAlchemyError as e:
-            exception_handler.handle_exception(exception=e, session=session)
-    return redirect(url_for('admin.admin_dashboard'))
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
 @routes_admin.route('/admin/data-source/new', methods=['GET'])
 @database_handler.exclude_role_4
