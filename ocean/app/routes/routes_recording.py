@@ -206,7 +206,6 @@ def recording_insert(encounter_id: str) -> Response:
         try:
             recording = models.Recording(encounter_id=encounter_id)
             session.add(recording)
-            session.flush()
             insert_or_update_recording(session, request, recording)
             session.commit()
             flash(f'Inserted {recording.get_unique_name()}.', 'success')

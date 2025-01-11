@@ -1362,6 +1362,7 @@ class Recording(database_handler.db.Model):
         return utils.pretty_date(self.get_start_time())
 
     def set_start_time(self, value: datetime.datetime | str):
+        print("SET START TIME", value)
         self.start_time = utils.validate_datetime(value, "Start Time")
 
     def match_start_time(self, match_datetime):

@@ -146,8 +146,8 @@ function loadOrphanedFiles(deleted, tableId) {
         <h1>Filespace</h1>
 
         <h2>Storage</h2>
-        <p>System statistics: {{storage}}</p>
-        <p>Total storage size (both data and trash): {{file_space_size}}</p>
+        <p>System: {{storage}}</p>
+        <p>Filespace: {{file_space_size}}</p>
         <p><a href="{{ url_for('filespace.trash_view') }}">Manage trash ({{trash_dir_size}})</a></p>
 
         <h2>Invalid Links</h2>
