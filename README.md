@@ -29,6 +29,8 @@ sudo apt-get install gcc libmysqlclient-dev python3-dev`
 For Fedora:
 `sudo dnf install gcc mysql-devel python3-devel`
 
+Note: if access to a local MariaDB instance is denied (even though you have provided the correct user, host and password, it may be that the root user requires administrative privileges. On linux, this may mean that you require `sudo` to be used to access the server from the client. To remove this requirement use `GRANT ALL PRIVILEGES on *.* to 'root'@'localhost' IDENTIFIED BY 'password';` where `password` is replaced by the password given during MariaDB installation. 
+
 ## Project description
 The Program was developed to store data with its metadata in a homogenised system. The following are outlined a list of some features (a more comprehensive list is to be found on the GitHub Wiki):
 - Storage of raw audio recordings (wav)
