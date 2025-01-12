@@ -212,7 +212,7 @@ def admin_recording_platform_view(recording_platform_id):
     """
     with database_handler.get_session() as session:
         try:
-            recording_platform = session.query(models.RecordingPlatform).filter_by(id=recording_platform_id).first()  
+            recording_platform = session.query(models.RecordingPlatform).filter_by(id=recording_platform_id).first()
             return render_template('admin/admin-recording-platform-view.html', recording_platform=recording_platform)
         except SQLAlchemyError as e:
             exception_handler.handle_exception(exception=e, session=session)
@@ -238,8 +238,7 @@ def admin_recording_platform_edit(recording_platform_id):
             flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
         except SQLAlchemyError as e:
             exception_handler.handle_exception(exception=e, session=session)
-        finally:
-            return redirect(url_for('admin.admin_dashboard'))
+        return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/recording-platform/new', methods=['GET'])
 @database_handler.exclude_role_4
@@ -273,9 +272,10 @@ def admin_recording_platform_insert():
             session.add(new_recording_platform)
             session.commit()
             flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
+            return redirect(url_for('admin.admin_dashboard'))
+
         except SQLAlchemyError as e:
             exception_handler.handle_exception(exception=e, session=session)
-        finally:
             return redirect(url_for('admin.admin_dashboard'))
 
 @routes_admin.route('/admin/recording-platform/<recording_platform_id>/delete', methods=['GET'])

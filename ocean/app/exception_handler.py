@@ -49,6 +49,14 @@ class WarningException(Exception):
         super().__init__(message)
 
 
+class ValidationError(WarningException):
+    """An error that is to be raised when a validation test for data
+    fails. This is typically caused by a bad request from a user.
+    """
+
+    def __init__(self, field:str, required:str, value):
+        super().__init__(f"Field '{str(field)}' is not of type {str(required)} (given '{str(value)}').")
+
 def _parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
     """Process an SQLAlchemy exception (a subclass of `sqlalchemy.exc.SQLAlchemyError`).
     In most cases SQLAlchemy exceptions are thrown because of unexpected issues with the
@@ -177,6 +185,8 @@ def _parse_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
     return_string = (prefix + ": ") if prefix else ""
     if isinstance(exception, exc.SQLAlchemyError):
         return return_string + _parse_sqlalchemy_exc(exception)
+    elif isinstance(exception, ValidationError):
+        return return_string + str(exception)
     elif isinstance(exception, WarningException):
         return return_string + str(exception)
     elif isinstance(exception, CriticalException):

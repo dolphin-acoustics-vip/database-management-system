@@ -178,26 +178,22 @@ class Species(database_handler.db.Model):
         """
         self.common_name = None if not value or str(value).strip() == "" else str(value).strip()
 
+from .interfaces.imodels import IRecordingPlatform
 
-
-class RecordingPlatform(database_handler.db.Model):
+# , UserMixin
+class RecordingPlatform(IRecordingPlatform):
     __tablename__ = 'recording_platform'
 
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    name = database_handler.db.Column(database_handler.db.String(100), unique=True, nullable=False)
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'name': self.name,
-            'updated_by_id': self.updated_by_id,
-        }
+            'updated_by_id': self.updated_by_id
+            }
 
-    def __repr__(self):
-        return '<RecordingPlatform %r>' % self.name
-    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def get_name(self):
         """Return the name of the recording platform"""
         return str(self.name) if self.name is not None else ""
@@ -996,7 +992,6 @@ class File(database_handler.db.Model):
         :raises IOError: If there is an issue reading the file.
         """
         absolute_path = self.get_full_absolute_path()
-        print(absolute_path)
         
         try:
             with open(absolute_path, 'rb') as file:
@@ -1362,7 +1357,6 @@ class Recording(database_handler.db.Model):
         return utils.pretty_date(self.get_start_time())
 
     def set_start_time(self, value: datetime.datetime | str):
-        print("SET START TIME", value)
         self.start_time = utils.validate_datetime(value, "Start Time")
 
     def match_start_time(self, match_datetime):
@@ -2503,7 +2497,8 @@ class Selection(database_handler.db.Model):
 
 
 class User(database_handler.db.Model, UserMixin):
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
+    __tablename__ = 'user'
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
     login_id = database_handler.db.Column(database_handler.db.String(100), unique=True)
     name = database_handler.db.Column(database_handler.db.String(1000))
     role_id = database_handler.db.Column(database_handler.db.Integer, database_handler.db.ForeignKey('role.id'))

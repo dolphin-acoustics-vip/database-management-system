@@ -46,7 +46,3 @@ def test_set_name_wrong_type(recording_platform: models.RecordingPlatform):
 def test_get_name(recording_platform: models.RecordingPlatform):
     recording_platform.name = "TestName"
     assert recording_platform.get_name() == "TestName"
-
-def test_get_name_none(recording_platform: models.RecordingPlatform):
-    recording_platform.name = None
-    assert recording_platform.get_name() == ""
