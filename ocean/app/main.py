@@ -39,6 +39,7 @@ from .routes.routes_datahub import routes_datahub
 from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
 
+
 def check_file_space():
     FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
 
@@ -50,18 +51,16 @@ def check_file_space():
         return f"Assigned file space '{FILE_SPACE_PATH}'"
 
 
-def create_app(config_class=None):
+def create_app(config_class):
     app = Flask(__name__)
 
     ROUTE_PREFIX = '/ocean'
 
-    if config_class is None:
-        config_class = os.getenv('FLASK_CONFIG', 'config.DevelopmentConfig')
-    app.config.from_object(config_class)
-
     # Set up a custom login manager for the web app
     login_manager = LoginManager()
     login_manager.init_app(app)
+
+    app.config.from_object(config_class)
 
     # Set up user loader for the login manager
     @login_manager.user_loader
@@ -110,7 +109,7 @@ def create_app(config_class=None):
         return redirect(url_for('general.home'))
 
     create_database_script = ''
-    if config_class == 'config.TestingConfig':
+    if config_class.__name__ == 'TestingConfig':
         create_database_script = 'create_database.sql'
     else:
         create_database_script = 'script_run.sql'

@@ -2511,9 +2511,12 @@ class User(database_handler.db.Model, UserMixin):
     expiry = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
     role=database_handler.db.relationship('Role', backref='users', lazy=True)
 
-    def set_login_id(self, value):
-        self.login_id = value
-    
+    def set_login_id(self, value: str) -> None:
+        if self.login_id == None:
+            self.login_id = utils.parse_string_notempty(value, 'Login ID')
+        elif value != self.login_id:
+            raise exception_handler.WarningException("Login ID cannot be changed.")
+        
     def get_role_id(self):
         return self.role_id
     

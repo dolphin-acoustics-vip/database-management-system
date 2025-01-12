@@ -14,6 +14,7 @@ class DevelopmentConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
+    DEBUG = True
     SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('TESTING_STADOLPHINACOUSTICS_USER')}:{os.environ.get('TESTING_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('TESTING_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('TESTING_STADOLPHINACOUSTICS_DATABASE')}"
     WTF_CSRF_ENABLED = False # Disable CSRF (ignore potential CSRF attacks when testing)
     secret_key = "not_so_secret_key"

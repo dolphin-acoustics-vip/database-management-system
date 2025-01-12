@@ -77,3 +77,101 @@ def test_set_name_none(user):
         user.set_name(None)
     with pytest.raises(exception_handler.WarningException):
         user.set_name("")
+
+from ..app.models import User
+from ..app.exception_handler import WarningException
+from unittest.mock import Mock
+from ..app.routes.routes_admin import update_or_insert_user
+
+def test_update_or_insert_user_update_user():
+    user = User(name="John Doe", role_id=1)
+    request = Mock()
+    request.form = {
+        "name": "Jane Doe",
+        "role": "2",
+        "expiry": "2022-01-01"
+    }
+    update_or_insert_user(user, request)
+    assert user.name == "Jane Doe"
+    assert user.role_id == 2
+    # assert user.expiry == "2022-01-01"
+
+def test_update_or_insert_user_insert_user():
+    user = None
+    request = Mock()
+    request.form = {
+        "name": "John Doe",
+        "role": "1",
+        "expiry": "2022-01-01"
+    }
+    with pytest.raises(WarningException):
+        update_or_insert_user(user, request)
+
+def test_update_or_insert_user_login_id():
+    user = User(name="John Doe", role_id=1)
+    request = Mock()
+    request.form = {
+        "name": "Jane Doe",
+        "role": "2",
+        "expiry": "2022-01-01",
+        "login_id": "johndoe"
+    }
+    update_or_insert_user(user, request)
+    assert user.login_id == "johndoe"
+
+# def test_update_or_insert_user_role_change_for_current_user():
+#     user = User(name="John Doe", role_id=1)
+#     request = Mock()
+#     request.form = {
+#         "name": "Jane Doe",
+#         "role": "2",
+#         "expiry": "2022-01-01"
+#     }
+#     with pytest.raises(WarningException):
+#         update_or_insert_user(user, request)
+
+# def test_update_or_insert_user_expiry_date_in_past_for_current_user():
+#     user = User(name="John Doe", role_id=1)
+#     request = Mock()
+#     request.form = {
+#         "name": "Jane Doe",
+#         "role": "1",
+#         "expiry": "2020-01-01"
+#     }
+#     with pytest.raises(WarningException):
+#         update_or_insert_user(user, request)
+
+def test_update_or_insert_user_is_active():
+    user = User(name="John Doe", role_id=1)
+    request = Mock()
+    request.form = {
+        "name": "Jane Doe",
+        "role": "2",
+        "expiry": "2022-01-01",
+        "is_active": "on"
+    }
+    update_or_insert_user(user, request)
+    assert user.is_active
+
+def test_update_or_insert_user_is_active_not_checked():
+    user = User(name="John Doe", role_id=1)
+    request = Mock()
+    request.form = {
+        "name": "Jane Doe",
+        "role": "2",
+        "expiry": "2022-01-01"
+    }
+    update_or_insert_user(user, request)
+    assert not user.is_active
+
+# def test_update_or_insert_user_is_active_for_current_user():
+#     user = User(name="John Doe", role_id=1)
+#     request = Mock()
+#     request.form = {
+#         "name": "Jane Doe",
+#         "role": "2",
+#         "expiry": "2022-01-01",
+#         "is_active": "off"
+#     }
+#     with pytest.raises(WarningException):
+#         update_or_insert_user(user, request)

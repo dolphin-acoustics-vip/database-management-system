@@ -452,46 +452,37 @@ def admin_user_view(user_id):
         roles = session.query(models.Role).all()
         return render_template('admin/admin-user-view.html', user=user, roles=roles,datetime=datetime)
     
-@database_handler.require_live_session
-def update_or_insert_user(session, user, request, login_id=None, is_temporary=False, role_id=None, editing=False):
-    """
-    Method to edit (UPDATE) or create (INSERT) a user into the User ORM class. 
-    PARAMETERS:
-    - session: the current session object.
-    - user: the user object (if INSERT the user object must already be made, but can be empty)
-    - request: the HTTP request with form data for the user, containing name, role, expiry, login_id, is_active
-    (see method for more details)
-    - login_id (default None): override the login_id of the INSERT or UPDATE operation.
-    - is_temporary (default False): to be set to True if it is a temporary user.
-    - role_id (default None): override the role_id of the INSERT or UPDATE operation.
-    RETURNS:
-    Redirect page
+
+def update_or_insert_user(user, request):
+    """ Update or insert a User object. `request.form` must contain the following information:
+    - name (text) NOT NULL
+    - role (int) NOT NULL
+    - expiry (date)
+
+    Args:
+        session (_type_): the database session
+        user (_type_): the User object (can be a newly created user if inserting)
+        request (_type_): the HTTP request (must have form data)
+
+    Returns:
+        _type_: _description_
     """
     if user:
-        # Insert new data
+        if 'login_id' in request.form:
+            user.set_login_id(request.form['login_id'])
+
         user.set_name(request.form['name'])
-        # Override the User object's role if passed as a parameter
-        if role_id:
-            user.set_role_id(role_id)
-        else:
-            if current_user == user and current_user.role_id == 1:
-                if request.form['role'] != '1':
-                    flash('Role cannot be changed for the current logged in user.', 'error')
-                    return redirect(url_for('admin.admin_user'))
-            user.set_role_id(request.form['role'])
+
+        if current_user == user and current_user.role_id == 1:
+            if request.form['role'] != '1':
+                raise exception_handler.WarningException('Role cannot be changed for the current logged in user.')
+        user.set_role_id(request.form['role'])
 
         if 'expiry' in request.form:
             if user == current_user and datetime.strptime(request.form['expiry'], '%Y-%m-%d') < datetime.now():
-                flash('Expiry date cannot be in the past for the current logged in user.', 'error')
-                return redirect(url_for('admin.admin_user'))
+                raise exception_handler.WarningException('Expiry date cannot be in the past for the current logged in user.')
             else:
                 user.set_expiry(request.form['expiry'])
-
-        if 'login_id' in request.form and editing:
-            flash('Login ID cannot be edited.', 'error')
-            return redirect(url_for('admin.admin_user'))
-        elif 'login_id' in request.form:
-            user.set_login_id(request.form['login_id'])
 
         is_active = False
         # This logic is required because is_active is a checkbox
@@ -500,15 +491,11 @@ def update_or_insert_user(session, user, request, login_id=None, is_temporary=Fa
             is_active = True
         if 'is_active' not in request.form and user == current_user:
             is_active = True
-            flash('User cannot be deactivated for the current logged in user.', 'error')
+            raise exception_handler.WarningException('User cannot be deactivated for the current logged in user.')
         
         user.activate() if is_active else user.deactivate()
-        session.commit()
-        flash('User updated: {}'.format(user.get_login_id()), 'success')
     else:
-        flash('User with ID {} not found'.format(user.id), 'error')
-        session.rollback()
-    return redirect(url_for('admin.admin_user'))
+        raise exception_handler.WarningException('Unexpected error')
     
 @routes_admin.route('/admin/user/<user_id>/update', methods=['POST'])
 @database_handler.exclude_role_4
@@ -521,9 +508,18 @@ def admin_user_update(user_id):
     RESTRICTIONS: Live session.
     METHODS: POST.
     """
-    with database_handler.get_session() as session:
-        user = session.query(models.User).filter_by(id=user_id).first()
-        return update_or_insert_user(session, user, request)
+    response = response_handler.JSONResponse()
+    try:
+        with database_handler.get_session() as session:
+            user = session.query(models.User).filter_by(id=user_id).first()
+            update_or_insert_user(user, request)
+            session.commit()
+            response.set_redirect(url_for('admin.admin_user'))
+            flash('User updated: {}'.format(user.name), 'success')
+    except Exception as e:
+        response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
+
     
 @routes_admin.route('/admin/user/new', methods=['GET'])
 @database_handler.exclude_role_4
@@ -554,68 +550,15 @@ def admin_user_insert():
     RESTRICTIONS: Live session.
     METHODS: POST.
     """
-    with database_handler.get_session() as session:
-        user = models.User()
-        session.add(user)
-        return update_or_insert_user(session, user, request)
-    
-@routes_admin.route('/admin/user/temporary/new', methods=['GET'])
-@database_handler.exclude_role_4
-@database_handler.exclude_role_3
-@database_handler.require_live_session
-def admin_temporary_user_new():
-    """
-    Route to show the page where the admin can add a new temporary user.
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: GET.
-    """
-    default_date = datetime.now() + timedelta(days=30)
-    return render_template('admin/admin-temporary-user-new.html',default_date=default_date)
-
-@routes_admin.route('/admin/user/temporary/insert', methods=['POST'])
-@database_handler.exclude_role_4
-@database_handler.exclude_role_3
-@database_handler.require_live_session
-def admin_temporary_user_insert():
-    """
-    Route to insert a new user into the database through the User class.
-    The data for the user should be given in a request. See update_or_insert_user()
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST.
-    """
-    with database_handler.get_session() as session:
-        user = models.User()
-        session.add(user)
-        return update_or_insert_user(session, user, request, login_id=uuid.uuid4(), role_id=4)
-
-@routes_admin.route('/admin/temporary-user/<user_id>/view', methods=['GET'])
-@database_handler.exclude_role_4
-@database_handler.exclude_role_3
-@database_handler.require_live_session
-def admin_temporary_user_view(user_id):
-    """
-    Route to view info on a particular User object, given its ID.
-    PERMISSIONS: Role 1, Role 2.
-    METHODS: GET.
-    """
-    with database_handler.get_session() as session:
-        user = session.query(models.User).filter_by(id=user_id).first()
-        roles = session.query(models.Role).all()
-        return render_template('admin/admin-temporary-user-view.html', user=user, roles=roles,datetime=datetime)
-
-@routes_admin.route('/admin/temporary-user/<user_id>/update', methods=['POST'])
-@database_handler.exclude_role_4
-@database_handler.exclude_role_3
-@database_handler.require_live_session
-def admin_temporary_user_update(user_id):
-    """
-    Route to update an existing temporary user. Require a form with fields - see update_or_insert_user()
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST.
-    """
-    with database_handler.get_session() as session:
-        user = session.query(models.User).filter_by(id=user_id).first()
-        return update_or_insert_user(session, user, request, login_id=user.login_id, role_id=4)
+    response = response_handler.JSONResponse()
+    try:
+        with database_handler.get_session() as session:
+            user = models.User()
+            session.add(user)
+            update_or_insert_user(user, request)
+            session.commit()
+            response.set_redirect(url_for('admin.admin_user'))
+            flash('User inserted: {}'.format(user.name), 'success')
+    except Exception as e:
+        response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
