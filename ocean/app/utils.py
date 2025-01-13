@@ -176,6 +176,19 @@ def download_file(file_obj, file_name_generator=None):
         exception_handler.handle_exception(exception=e, prefix="Error downloading file")
         return flask.redirect(flask.request.referrer)
 
+
+def validate_boolean(value: bool | str, field: str, allow_none: bool = False):
+    """
+    Parse a boolean value, returning the parsed boolean value.
+
+    :param value: The boolean value to validate.
+    :return: the parsed boolean value.
+    """
+    err = exception_handler.ValidationError(field=field, required="Boolean", value=str(value))
+    if not allow_none and value is None: raise err
+    if type(value) != bool: raise err
+    return value
+
 def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bool = False, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> datetime.datetime:
     """
     Parse a datetime (or convertable string) value, returning the parsed datetime
@@ -495,8 +508,9 @@ DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M'
 
 def pretty_date(d: datetime.datetime | None, format=DEFAULT_DATE_FORMAT):
     if not d: return None
-    if type(d) != datetime.datetime: raise ValueError("Attempting to parse datetime object but not in datetime.datetime format.")
-    return d.ctime()
+    if type(d) != datetime.datetime and type(d) != datetime.date: raise ValueError("Attempting to parse datetime object but not in datetime.datetime format.")
+    if type(d) == datetime.date: return d.strftime("%Y-%m-%d")
+    else: return d.strftime(format)
 
 
 def parse_date(date_string: str) -> datetime.datetime:

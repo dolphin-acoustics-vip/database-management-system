@@ -213,6 +213,7 @@ def admin_recording_platform_view(recording_platform_id):
     with database_handler.get_session() as session:
         try:
             recording_platform = session.query(models.RecordingPlatform).filter_by(id=recording_platform_id).first()
+            print(recording_platform.to_dict())
             return render_template('admin/admin-recording-platform-view.html', recording_platform=recording_platform)
         except SQLAlchemyError as e:
             exception_handler.handle_exception(exception=e, session=session)
@@ -512,7 +513,9 @@ def admin_user_update(user_id):
     try:
         with database_handler.get_session() as session:
             user = session.query(models.User).filter_by(id=user_id).first()
-            update_or_insert_user(user, request)
+
+            user.update(request.form, current_user)
+            # update_or_insert_user(user, request)
             session.commit()
             response.set_redirect(url_for('admin.admin_user'))
             flash('User updated: {}'.format(user.name), 'success')
@@ -555,7 +558,8 @@ def admin_user_insert():
         with database_handler.get_session() as session:
             user = models.User()
             session.add(user)
-            update_or_insert_user(user, request)
+            user.insert(request.form)
+            # update_or_insert_user(user, request)
             session.commit()
             response.set_redirect(url_for('admin.admin_user'))
             flash('User inserted: {}'.format(user.name), 'success')

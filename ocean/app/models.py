@@ -20,6 +20,7 @@ from io import StringIO
 import os
 import uuid
 import datetime
+import warnings
 
 # Third-party imports
 from flask import Response
@@ -184,11 +185,12 @@ from .interfaces.imodels import IRecordingPlatform
 class RecordingPlatform(IRecordingPlatform):
     __tablename__ = 'recording_platform'
 
-    def to_dict(self) -> dict:
+    def _to_dict(self) -> dict:
         return {
             'id': self.id,
             'name': self.name,
-            'updated_by_id': self.updated_by_id
+            'updated_by_id': self.updated_by_id,
+            'updated_by': self.updated_by
             }
 
     def __init__(self, *args, **kwargs):
@@ -196,6 +198,7 @@ class RecordingPlatform(IRecordingPlatform):
 
     def get_name(self):
         """Return the name of the recording platform"""
+        warnings.warn("RecordingPlatform.get_name() is deprecated. Use RecordingPlatform.name instead.", DeprecationWarning, stacklevel=2)
         return str(self.name) if self.name is not None else ""
     
     def set_name(self, value):
@@ -210,18 +213,20 @@ class RecordingPlatform(IRecordingPlatform):
             exception_handler.WarningException: if an empty string or null is passed
             ValueError: if a non-string is passed
         """
-        
+        warnings.warn("RecordingPlatform.set_name() is deprecated. Use RecordingPlatform.name instead.", DeprecationWarning, stacklevel=2)
         if (not value) or (value and str(value).strip() == ""): raise exception_handler.WarningException("Field 'name' for recording platform cannot be empty.")
         if type(value) != str: raise ValueError(f"Field 'name' for RecordingPlatform requires must be a string (for {type(value)}).")
         self.name = str(value)
-    
+
     def set_updated_by_id(self, user_id: uuid.UUID | str):
         """Set the user ID of the user who is updating the recording.
 
         Args:
             user_id (str): The user ID who is updating the recording.
         """
+        warnings.warn("RecordingPlatform.set_updated_by_id() is deprecated. Use RecordingPlatform.updated_by_id instead.", DeprecationWarning, stacklevel=2)
         self.updated_by_id = utils.validate_id(value=user_id, field="name")
+
 
 
 class DataSource(database_handler.db.Model):
@@ -2494,28 +2499,68 @@ class Selection(database_handler.db.Model):
         self.updated_by_id = user_id
 
 
-
-
-class User(database_handler.db.Model, UserMixin):
+from .interfaces.imodels import IUser
+import typing
+class User(IUser):
     __tablename__ = 'user'
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    login_id = database_handler.db.Column(database_handler.db.String(100), unique=True)
-    name = database_handler.db.Column(database_handler.db.String(1000))
-    role_id = database_handler.db.Column(database_handler.db.Integer, database_handler.db.ForeignKey('role.id'))
-    is_active = database_handler.db.Column(database_handler.db.Boolean, default=True)
-    expiry = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
-    role=database_handler.db.relationship('Role', backref='users', lazy=True)
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _to_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            'id': self.id,
+            'login_id': self.login_id,
+            'role_id': self.role_id,
+            'role': self.role
+        }
+    
+    def _insert_or_update(self, form, new, current_user=None):
+        required_fields = ['name', 'login_id', 'role', 'expiry']
+        missing_fields = [field for field in required_fields if field not in form]
+        if missing_fields:
+            raise AttributeError(f"Missing required fields: {', '.join(missing_fields)}")
+
+        if new:
+            
+            self.login_id = form['login_id']
+        self.name = form['name']
+
+        if self == current_user:
+            if str(form['role']) != "1":
+                raise exception_handler.WarningException("You cannot change your own role.")
+        self.role_id = form['role']
+
+        expiry_date = datetime.datetime.strptime(form['expiry'], '%Y-%m-%d')
+        if self == current_user and expiry_date < datetime.datetime.now():
+            raise exception_handler.WarningException("Expiry date cannot be in the past for the current logged in user.")
+        self.expiry = expiry_date
+
+        is_active = form.get('is_active', None)
+        if is_active is not None:
+            self.activate()
+        elif self != current_user:
+            self.deactivate()
+        else:
+            raise exception_handler.WarningException("You cannot deactivate yourself.")
+    def update(self, form: dict, current_user):
+        self._insert_or_update(form, False, current_user)
+
 
     def set_login_id(self, value: str) -> None:
+        warnings.warn("User.set_login_id() is deprecated. Use User.login_id instead.", DeprecationWarning, stacklevel=2)
         if self.login_id == None:
             self.login_id = utils.parse_string_notempty(value, 'Login ID')
         elif value != self.login_id:
             raise exception_handler.WarningException("Login ID cannot be changed.")
         
     def get_role_id(self):
+        warnings.warn("User.get_role_id() is deprecated. Use User.role_id instead.", DeprecationWarning, stacklevel=2)
         return self.role_id
     
     def get_role(self):
+        warnings.warn("User.get_role() is deprecated. Use User.role instead.", DeprecationWarning, stacklevel=2)
         return self.role
     
     def set_role_id(self, value: int | str):
@@ -2530,6 +2575,7 @@ class User(database_handler.db.Model, UserMixin):
             exception_handler.WarningException: `value` is not of the type stated above
             exception_handler.WarningException: `value` is `None`
         """
+        warnings.warn("User.set_role_id() is deprecated. Use User.role_id instead.", DeprecationWarning, stacklevel=2)
         if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Role' cannot be empty or None.")
         try:
             value = int(float(value))
@@ -2538,47 +2584,51 @@ class User(database_handler.db.Model, UserMixin):
         self.role_id = value
     
     def set_role(self, value: Role):
+        warnings.warn("User.set_role() is deprecated. Use User.role instead.", DeprecationWarning, stacklevel=2)
         self.role = utils.validate_type(value=value, target_type=Role, field="Role", allow_none=False)
     
     def set_expiry(self, value):
+        warnings.warn("User.set_expiry() is deprecated. Use User.expiry instead.", DeprecationWarning, stacklevel=2)
         self.expiry = value
     
     def set_name(self, value):
+        warnings.warn("User.set_name() is deprecated. Use User.name instead.", DeprecationWarning, stacklevel=2)
         self.name = utils.validate_string(value, field="Name", allow_none=False)
     
     def get_name(self):
+        warnings.warn("User.get_name() is deprecated. Use User.name instead.", DeprecationWarning, stacklevel=2)
         return utils.validate_string(self.name, field="Name", allow_none=True)
     
     def get_login_id(self):
+        warnings.warn("User.get_login_id() is deprecated. Use User.login_id instead.", DeprecationWarning, stacklevel=2)
         # NOTE: the login ID must never be altered or formatted
         return self.login_id
 
     def set_login_id(self, value: str):
+        warnings.warn("User.set_login_id() is deprecated. Use User.login_id instead.", DeprecationWarning, stacklevel=2)
         if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Login ID' cannot be None.")
         self.login_id = str(value)
 
     def activate(self):
-        """
-        Activate user (by setting is_active to true)
-        """
         self.is_active = True
     
     def deactivate(self):
-        """
-        Deactivate user (by setting is_active to false)
-        """
         self.is_active = False
 
     def get_is_active(self):
+        warnings.warn("User.get_is_active() is deprecated. Use User.is_active instead.", DeprecationWarning, stacklevel=2)
         return self.is_active if self.is_active else False
 
     def get_expiry(self):
+        warnings.warn("User.get_expiry() is deprecated. Use User.expiry instead.", DeprecationWarning, stacklevel=2)
         return utils.validate_datetime(value=self.expiry, field="Expiry", allow_none=True)
     
     def get_expiry_pretty(self):
+        warnings.warn("User.get_expiry_pretty() is deprecated. Use User.pretty_expiry_date instead.", DeprecationWarning, stacklevel=2)
         return utils.pretty_date(self.get_expiry())
     
     def set_expiry(self, value):
+        warnings.warn("User.set_expiry() is deprecated. Use User.expiry instead.", DeprecationWarning, stacklevel=2)
         self.expiry = utils.validate_datetime(value=value, field="Expiry", allow_none=False)
 
 
