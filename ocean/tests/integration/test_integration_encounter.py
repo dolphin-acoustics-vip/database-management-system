@@ -19,10 +19,10 @@
 #     while i < 90:
 #         encounter_object.set_latitude(str(i))
 #         db_session.commit()
-#         assert encounter_object.get_latitude() == i
+#         assert encounter_object.latitude == i
 #         encounter_object.set_latitude(i)
 #         db_session.commit()
-#         assert encounter_object.get_latitude() == i
+#         assert encounter_object.latitude == i
 #         i += 0.25
 
 #     with pytest.raises(exception_handler.WarningException) as exc:
@@ -38,10 +38,10 @@
 #     while i < 180:
 #         # encounter_object.set_longitude(str(i))
 #         # db_session.commit()
-#         # assert encounter_object.get_longitude() == i
+#         # assert encounter_object.longitude == i
 #         encounter_object.set_longitude(i)
 #         db_session.commit()
-#         assert encounter_object.get_longitude() == i
+#         assert encounter_object.longitude == i
 #         i += 0.25
     
 #     with pytest.raises(exception_handler.WarningException) as exc:
@@ -119,7 +119,7 @@
 #     assert string_error_message in str(exc).lower()
 #     encounter_object.set_encounter_name("Valid Name")
 #     db_session.commit()
-#     assert encounter_object.get_encounter_name() == "Valid Name"
+#     assert encounter_object.encounter_name == "Valid Name"
     
 
 # def test_setter_location(db_session, encounter_object: models.Encounter):
@@ -131,7 +131,7 @@
 #     assert string_error_message in str(exc).lower()
 #     encounter_object.set_location("Valid Location")
 #     db_session.commit()
-#     assert encounter_object.get_location() == "Valid Location"
+#     assert encounter_object.location == "Valid Location"
 
 # def test_setter_project(db_session, encounter_object: models.Encounter):
 #     with pytest.raises(exception_handler.WarningException) as exc:
@@ -142,7 +142,7 @@
 #     assert string_error_message in str(exc).lower()
 #     encounter_object.set_project("Valid Project")
 #     db_session.commit()
-#     assert encounter_object.get_project() == "Valid Project"
+#     assert encounter_object.project == "Valid Project"
 # """
 # def test_duplicate_encounter(app, db_session, species_object: models.Species):
 #     """

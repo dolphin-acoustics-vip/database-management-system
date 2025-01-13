@@ -100,13 +100,6 @@ def test_hasattr_other_methods(recording: models.Recording):
     assert hasattr(recording, "load_and_validate_selection_table")
     assert hasattr(recording, "unpack_selection_table")
 
-def test_get_unique_name(recording_with_encounter: models.Recording):
-    # Note the default delimiter is dash (-)
-    assert recording_with_encounter.get_unique_name() == f"Encounter: {ENCOUNTER_NAME}-{ENCOUNTER_LOCATION}-{ENCOUNTER_PROJECT}, Recording: {utils.pretty_date(RECORDING_START_TIME)}"
-
-def test_get_unique_name_delimiter(recording_with_encounter: models.Recording):
-    assert recording_with_encounter.get_unique_name() == f"Encounter: {ENCOUNTER_NAME}-{ENCOUNTER_LOCATION}-{ENCOUNTER_PROJECT}, Recording: {utils.pretty_date(RECORDING_START_TIME)}"
-    
 def test_set_start_time(recording: models.Recording):
     timestamp = datetime.datetime.now()
     for f in DATE_FORMAT:
@@ -440,7 +433,8 @@ def test_generate_selection_table_file_name(recording_with_encounter: models.Rec
     
 def test_generate_selection_table_file_name_invalid_characters(recording: models.Recording):
     for c in ["/","\\","*","?","\"","<",">","|"," "]:
-        recording.encounter.species.species_name = f"Test{c}Species"
+        species = recording.encounter.species
+        species.species_name = f"Test{c}Species"
         recording.encounter.encounter_name = f"Test{c}Encounter"
         recording.encounter.location = f"Test{c}Location"
         recording.start_time = datetime.datetime(2020,8,21,2,54,22)

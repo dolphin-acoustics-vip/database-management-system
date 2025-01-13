@@ -37,9 +37,9 @@ Variables required:
             <tbody>
                 {% for encounter in encounter_list %}
                     <tr>
-                        <td><a style="width:100%" data-encounter-id="{{ encounter.id }}" href="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">{{ encounter.get_encounter_name() }}</a></td>
-                        <td>{{ encounter.get_location() }}</td>
-                        <td>{{ encounter.get_project() }}</td>
+                        <td><a style="width:100%" data-encounter-id="{{ encounter.id }}" href="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">{{ encounter.encounter_name }}</a></td>
+                        <td>{{ encounter.location }}</td>
+                        <td>{{ encounter.project }}</td>
                         <td>{{ encounter.species.species_name }}</td>
 
 

@@ -63,7 +63,7 @@ def test_validation_error(species: models.Species, attr: str, value):
         setattr(species, attr, value)
 
 
-def test_to_dict(species: models.RecordingPlatform):
+def test_to_dict(species: models.Species):
     expected = {
             'id': species.id,
             'species_name': species.species_name,

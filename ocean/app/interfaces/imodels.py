@@ -55,6 +55,13 @@ class Serialisable(ABC):
 class TableOperations(ABC):
     
     @abstractmethod
+    def _form_dict(self) -> typing.Dict[str, bool]:
+        """Return a dictionary of all attributes that can be set (for example
+        by a form). The keys are the names of the attributes and the values
+        are booleans indicating whether the attributes are required."""
+        pass
+
+    @abstractmethod
     def _insert_or_update(self, form, new):
         """A method that inserts or updates data in the object
         based on form data. 
@@ -78,7 +85,7 @@ class TableOperations(ABC):
         """
         self._insert_or_update(form=form, new=False)
 
-    def prepare_for_delete(self):
+    def delete(self):
         """Check if the object can be deleted. Raise an exception if it
         cannot be deleted.
         
@@ -108,6 +115,20 @@ class Cascading(ABC):
         """
         pass
 
+    def _delete_children(self):
+        """Cascade delete all children of this object. The children are defined by
+        the `_get_children()` method.
+        
+        The implementation of cascading is dependent on the `delete` method of all
+        child objects.
+        """
+        for child in self._get_children():
+            if issubclass(child, TableOperations):
+                with database_handler.get_session() as session:
+                    child.delete()
+                    session.delete(child)
+                    session.commit()
+
 class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     __tablename__ = 'species'
     __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
@@ -119,6 +140,22 @@ class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     common_name = Column(String(100))
     updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    def _to_dict(self):
+        return {
+            'id': self.id,
+            'species_name': self.species_name,
+            'genus_name': self.genus_name,
+            'common_name': self.common_name,
+            'updated_by_id': self.updated_by_id,
+        }
+    
+    def _form_dict(self):
+        return {
+            'species_name': True,
+            'genus_name': True,
+            'common_name': True
+        }
 
     @validates("id")
     def _validate_id(self, key, value):
@@ -136,6 +173,13 @@ class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     def _validate_str(self, key, value):
         return utils.validate_string(value=value, field=key, allow_none=False)
 
+    @property
+    @abstractmethod
+    def folder_name(self) -> str:
+        """The folder name of the species in the filespace. Implementation must
+        be secure (for example see `from werkzeug.utils import secure_filename`)"""
+        pass
+
 class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
     """Abstract class for the SQLAlchemy table recording_platform.
     
@@ -150,6 +194,24 @@ class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
     name = Column(String(100), unique=True, nullable=False)
     updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    def _to_dict(self) -> dict:
+        return {
+            'id': self.id,
+            'name': self.name,
+            'updated_by_id': self.updated_by_id,
+            'updated_by': self.updated_by
+        }
+    
+    def _form_dict(self) -> dict:
+        return {
+            'name': True
+        }
+
+    @property
+    def unique_name(self):
+        """The recording platform name"""
+        return self.name
 
     @validates("id")
     def _validate_id(self, key, value):
@@ -166,6 +228,123 @@ class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
     @validates("updated_by")
     def _reject(self, key, value):
         raise ValueError(f"Unable to set {key} on recording_platform")
+
+class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
+    __tablename__ = 'encounter'
+    # __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
+
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
+    encounter_name = database_handler.db.Column(database_handler.db.String(100), nullable=False)
+    location = database_handler.db.Column(database_handler.db.String(100), nullable=False)
+    species_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('species.id'), nullable=False)
+    project = database_handler.db.Column(database_handler.db.String(100), nullable=False)
+    latitude = database_handler.db.Column(database_handler.db.Double)
+    longitude = database_handler.db.Column(database_handler.db.Double)
+    data_source_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('data_source.id'), nullable=False)
+    recording_platform_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording_platform.id'), nullable=False)
+    notes = database_handler.db.Column(database_handler.db.String(1000))
+    file_timezone = database_handler.db.Column(database_handler.db.Integer)
+    local_timezone = database_handler.db.Column(database_handler.db.Integer)
+    species = database_handler.db.relationship("Species")
+    data_source = database_handler.db.relationship("DataSource")
+    recording_platform = database_handler.db.relationship("RecordingPlatform")
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+    __table_args__ = (
+        database_handler.db.UniqueConstraint('encounter_name', 'location', 'project'),
+    )
+
+    def _to_dict(self):
+        return {
+            'id': self.id,
+            'encounter_name': self.encounter_name,
+            'location': self.location,
+            'species_id': self.species_id,
+            'project': self.project,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'data_source_id': self.data_source_id,
+            'recording_platform_id': self.recording_platform_id,
+            'notes': self.notes,
+            'file_timezone': self.file_timezone,
+            'local_timezone': self.local_timezone,
+            'species': self.species,
+            'data_source': self.data_source,
+            'recording_platform': self.recording_platform,
+            'updated_by_id': self.updated_by_id,
+        }
+    
+    def _form_dict(self):
+        return {
+            'encounter_name': True,
+            'location': True,
+            'project': True,
+            'species_id': True,
+            'latitude': False,
+            'longitude': False,
+            'data_source_id': False,
+            'recording_platform_id': False,
+            'notes': False,
+            'file_timezone': False,
+            'local_timezone': False
+        }
+    
+    @property
+    def unique_name(self):
+        """The encounter name"""
+        return self.encounter_name
+
+    @validates("id", "species_id")
+    def _validate_id(self, key, value):
+        return utils.validate_id(value=value, field="ID", allow_none=False)
+
+    @validates("updated_by_id", "data_source_id", "recording_platform_id")
+    def _validate_id_nullable(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=True)
+    
+    @validates("encounter_name", "location", "project")
+    def _validate_str(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=False)
+    
+    @validates("latitude", "longitude")
+    def _validate_float(self, key, value):
+        return utils.validate_float(value=value, field=key, allow_none=True)
+    
+    @validates("file_timezone", "local_timezone")
+    def _validate_int(self, key, value):
+        return utils.validate_int(value=value, field=key, allow_none=True)
+
+    @validates("notes")
+    def _validate_str_nullable(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=True)
+
+    @property
+    @abstractmethod
+    def recording_count(self) -> int:
+        """Returns the number of recordings in the encounter"""
+        pass
+
+    @property
+    @abstractmethod
+    def relative_directory(self) -> str:
+        """Returns the relative directory to the encounter in the filespace. Implementation must
+        be secure (for example see `from werkzeug.utils import secure_filename`)"""
+        pass
+
+    @property
+    @abstractmethod
+    def folder_name(self):
+        """The folder name of the encounter in the filespace. Implementation must
+        be secure (for example see `from werkzeug.utils import secure_filename`)"""
+        pass
+
+    @property
+    @abstractmethod
+    def location_folder_name(self):
+        """The folder name of the location in the filespace. Implementation must
+        be secure (for example see `from werkzeug.utils import secure_filename`)"""
+        pass
+
 
 class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     """Abstract class for the SQLAlchemy table user.
@@ -188,6 +367,27 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     is_active = Column(Boolean, default=True, nullable=False)
     expiry = Column(DateTime(timezone=True), nullable=False)
     role = database_handler.db.relationship('Role', backref='users', lazy=True)
+
+    @property
+    def unique_name(self):
+        """The login ID"""
+        return self.login_id
+
+    def _to_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            'id': self.id,
+            'login_id': self.login_id,
+            'role_id': self.role_id,
+            'role': self.role
+        }
+    
+    def _form_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            'name': True,
+            'login_id': True,
+            'role_id': True,
+            'expiry': True
+        }
 
     @validates("id")
     def validate_id(self, key, value):

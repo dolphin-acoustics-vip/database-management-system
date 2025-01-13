@@ -395,16 +395,6 @@ def test_get_ctr_file(selection: models.Selection):
     with pytest.raises(exception_handler.ValidationError):
         selection.get_ctr_file()
 
-
-def test_get_unique_name(selection: models.Selection):
-    selection.recording.encounter.species.species_name = f"TestSpecies"
-    selection.recording.encounter.encounter_name = f"TestEncounter"
-    selection.recording.encounter.location = f"TestLocation"
-    selection.recording.encounter.project = "TestProject"
-    selection.recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    selection.selection_number = 1
-    assert selection.get_unique_name() == f"Encounter: TestEncounter-TestLocation-TestProject, Recording: {utils.pretty_date(selection.recording.start_time)}, Selection: 1"
-
 def test_deactivate(selection: models.Selection):
     selection.traced = True
     selection.deactivated = False

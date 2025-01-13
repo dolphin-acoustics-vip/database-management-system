@@ -79,9 +79,8 @@ class EncounterFactory(factory.alchemy.SQLAlchemyModelFactory):
     encounter_name = factory.Faker('name')
     location = factory.Faker('city')
     project = factory.Faker('company')
-    species = factory.SubFactory(SpeciesFactory)
-    data_source = factory.SubFactory(DataSourceFactory)
-    recording_platform = factory.SubFactory(RecordingPlatformFactory)
+    species = SpeciesFactory.create()
+    species_id = species.id
     updated_by_id = None
 
 class RecordingFactory(factory.alchemy.SQLAlchemyModelFactory):

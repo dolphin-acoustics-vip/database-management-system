@@ -401,13 +401,13 @@ def validate_timezone(value: int | str, field: str, allow_none=False) -> float:
 
 import typing
 
-def parse_form(form: typing.Dict[str, typing.Any], schema: typing.List[str]):
+def parse_form(form: typing.Dict[str, typing.Any], schema: typing.Dict[str, bool]):
     """
     Extracts and returns a subset of form data based on a specified schema.
 
     Args:
         form (Dict[str, Any]): The form data as a dictionary where keys are field names and values are field values.
-        schema (List[str]): A list of keys that should be extracted from the form data.
+        schema (Dict[str, bool]): A dictionary where keys are field names and values are booleans indicating whether the field is required.
 
     Raises:
         AttributeError: if any of the keys specified in the schema do not exist in the form data.
@@ -417,10 +417,19 @@ def parse_form(form: typing.Dict[str, typing.Any], schema: typing.List[str]):
     """
     data = {}
     for k in schema:
-        if k not in form:
+        if k not in form and schema[k] == True:
             raise AttributeError(f"The submitted form does not contain the required fields.")
-        data[k] = form[k]
+        elif k in form:
+            data[k] = form[k]
     return data
+
+# Characters which need to be replaced by an underscore in paths
+INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," "]
+
+def secure_fname(s: str) -> str:
+    for c in INVALID_CHARACTERS:
+        s = s.replace(c,"_")
+    return secure_filename(s)
 
 
 def get_form_data(request, schema):

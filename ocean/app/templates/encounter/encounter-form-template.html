@@ -1,17 +1,17 @@
 <label class="bold" for="encounter_name" style="margin-bottom:5px;">Name*</label>
-<input type="text" id="encounter_name" name="encounter_name" {% if editing %}value="{{ encounter.get_encounter_name() }}"{% endif %} required>
+<input type="text" id="encounter_name" name="encounter_name" {% if editing %}value="{{ encounter.encounter_name }}"{% endif %} required>
 <label class="bold" for="location" style="margin-bottom:5px;">Location*</label>
-<input type="text" id="location" name="location" {% if editing %}value="{{ encounter.get_location() }}"{% endif %}>
+<input type="text" id="location" name="location" {% if editing %}value="{{ encounter.location }}"{% endif %}>
 <label class="bold" for="project" style="margin-bottom:5px;" required>Project*</label>
-<input type="text" id="project" name="project" {% if editing %}value="{{ encounter.get_project() }}"{% endif %}>
+<input type="text" id="project" name="project" {% if editing %}value="{{ encounter.project }}"{% endif %}>
 {% from 'partials/tz-dropdown.html' import tz_dropdown %}
 <label title="The timezone of the file metadata as a GMT offset" class="bold">File Timezone*</label>
-{{ tz_dropdown('file-timezone', encounter.file_timezone if editing else None) }}
+{{ tz_dropdown('file_timezone', encounter.file_timezone if editing else None) }}
 <label title="The local timezone of the encounter as a GMT offset" class="bold">Local Timezone*</label>
-{{ tz_dropdown('local-timezone', encounter.local_timezone if editing else None) }}
-<label class="bold" for="species" style="margin-bottom:5px;">Species</label>
+{{ tz_dropdown('local_timezone', encounter.local_timezone if editing else None) }}
+<label class="bold" for="species_id" style="margin-bottom:5px;">Species</label>
 
-<select id="species" name="species" required>
+<select id="species" name="species_id" required>
     {% for species in species_list %}
         {% if species.common_name == '' %}
             <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.species_name}}</option>
@@ -20,15 +20,15 @@
         {% endif %}
     {% endfor %}
 </select>
-<label class="bold" for="data_source" style="margin-bottom:5px;">Data source</label>
-<select id="data_source" name="data_source">
+<label class="bold" for="data_source_id" style="margin-bottom:5px;">Data source</label>
+<select id="data_source" name="data_source_id">
     <option value="">Select a data source</option>
     {% for data_source in data_sources %}
         <option value="{{data_source.id}}" {% if editing and data_source.id == encounter.data_source.id %}selected{% endif %}>{{ data_source.name + " (" + data_source.email1 + ")"}}</option>
     {% endfor %}
 </select>
-<label class="bold" for="recording_platform" style="margin-bottom:5px;">Recording platform</label>
-<select id="recording_platform" name="recording_platform">
+<label class="bold" for="recording_platform_id" style="margin-bottom:5px;">Recording platform</label>
+<select id="recording_platform" name="recording_platform_id">
     <option value="">Select a recording platform</option>
     {% for recording_platform in recording_platforms %}
         <option value="{{recording_platform.id}}" {% if editing and recording_platform.id == encounter.recording_platform.id %}selected{% endif %}>{{ recording_platform.name }}</option>
@@ -36,8 +36,8 @@
 </select>
 <label class="bold" for="coordinates-start" style="margin-bottom:5px;">Initial coordinates</label>
 <div id="coordinates-start">
-    <input type="number" placeholder="Latitude" id="latitude-start" name="latitude-start" min="-90" max="90" step="0.00000001" {% if editing %}value="{{ encounter.get_latitude() }}"{% endif %}>
-    <input type="number" placeholder="Longitude" id="longitude-start" name="longitude-start" min="-180" max="180" step="0.00000001" {% if editing %}value="{{ encounter.get_longitude() }}"{% endif %}>
+    <input type="number" placeholder="Latitude" id="latitude-start" name="latitude" min="-90" max="90" step="0.00000001" {% if editing %}value="{{ encounter.latitude }}"{% endif %}>
+    <input type="number" placeholder="Longitude" id="longitude-start" name="longitude" min="-180" max="180" step="0.00000001" {% if editing %}value="{{ encounter.longitude }}"{% endif %}>
 </div>
 <label class="bold" for="notes" style="margin-bottom:5px;">Notes</label>
 <textarea id="notes" name="notes" rows="4" cols="50"></textarea>

@@ -678,7 +678,7 @@ def download_contour_files(recording_id):
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
         file_names = [selection.generate_contour_file_name() for selection in selections if selection.contour_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name()}-{recording.encounter.encounter_name}-{recording.encounter.get_location()}-{filespace_handler.format_date_for_filespace(recording.start_time)}_contour_files.zip"
+        zip_filename = f"{recording.encounter.species.species_name()}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_contour_files.zip"
         file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
         response = utils.download_files(contour_files, file_names, zip_filename)
         return response

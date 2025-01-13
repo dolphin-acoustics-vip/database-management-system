@@ -12,26 +12,26 @@ Variables required:
 {% include 'partials/header.html' %}
 
 <head>
-  <title>{{ encounter.get_unique_name() }}</title>
+  <title>{{ encounter.unique_name }}</title>
 </head>
 
 <body>
   <div class="outer-div">
-    <h1>{{ encounter.get_unique_name() }}</h1>
+    <h1>{{ encounter.unique_name }}</h1>
 
     <!-- Encounter Summary -->
     <section id="encounter-summary">
       <div id="summary">
         <h2>Encounter Summary</h2>
-        <p>Encounter: {{ encounter.get_encounter_name() }}</p>
-        <p>Location: {{ encounter.get_location() }}</p>
-        <p>Project: {% if encounter.get_project() %}{{ encounter.get_project() }} {% else %}Not entered{% endif %}</p>
+        <p>Encounter: {{ encounter.encounter_name }}</p>
+        <p>Location: {{ encounter.location }}</p>
+        <p>Project: {% if encounter.project %}{{ encounter.project }} {% else %}Not entered{% endif %}</p>
         <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
         <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {% else %}Not
           entered{% endif %}</p>
         <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.get_name()}} {% else %}Not entered{% endif %}
         </p>
-        <p>Recording counter: {{ encounter.get_number_of_recordings() }}</p>
+        <p>Recording counter: {{ encounter.recording_count }}</p>
       </div>
     </section>
     <hr>
@@ -42,7 +42,7 @@ Variables required:
       {% if not session['snapshot_date'] %}
       <a title="Edit the encounter" class="button"
         href="{{ url_for('encounter.encounter_edit', encounter_id=encounter.id) }}">Edit Encounter: {{
-        encounter.get_unique_name() }}</a>
+        encounter.unique_name }}</a>
       {% endif %}
 
       <div class="audit-history">
@@ -129,7 +129,7 @@ Variables required:
       <button class="gray small" id="delete-encounter-button"
         title="Delete the entire encounter. All recordings in the encounter must be deleted before proceeding."
         type="button" style="margin-top: 1rem;" class="delete-button" data-encounter-id="{{ encounter.id }}"
-        delete-info="{{encounter.get_unique_name()}}">Delete Encounter</button>
+        delete-info="{{encounter.unique_name}}">Delete Encounter</button>
     </form>
     </section>
     {% endif %}

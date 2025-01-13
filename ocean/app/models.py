@@ -42,6 +42,7 @@ from . import contour_statistics
 from . import database_handler
 from . import exception_handler
 from . import utils
+
 from .interfaces import imodels
 from .logger import logger
 
@@ -87,24 +88,13 @@ class Species(ISpecies):
         super().__init__(*args, **kwargs)
 
     def _insert_or_update(self, form, new):
-        form = utils.parse_form(form, [
-            'species_name',
-            'genus_name',
-            'common_name'
-        ])
+        form = utils.parse_form(form, self._form_dict())
         self.species_name = form['species_name']
         self.genus_name = form['genus_name']
         self.common_name = form['common_name']
 
-
-    def _to_dict(self):
-        return {
-            'id': self.id,
-            'species_name': self.species_name,
-            'genus_name': self.genus_name,
-            'common_name': self.common_name,
-            'updated_by_id': self.updated_by_id,
-        }
+    def unique_name(self):
+        return self.species_name
 
     def _get_children(self):
         with database_handler.get_session() as session:
@@ -119,22 +109,21 @@ class Species(ISpecies):
             if issubclass(child, imodels.Cascading):
                 child.apply_updates()
 
+    @property
+    def folder_name(self) -> str:
+        return f"Species-{self.species_name}"
+
 from .interfaces.imodels import IRecordingPlatform
 
 # , UserMixin
 class RecordingPlatform(IRecordingPlatform):
     __tablename__ = 'recording_platform'
-
-    def _to_dict(self) -> dict:
-        return {
-            'id': self.id,
-            'name': self.name,
-            'updated_by_id': self.updated_by_id,
-            'updated_by': self.updated_by
-        }
+    
+    def unique_name(self):
+        return self.name
 
     def _insert_or_update(self, form, new):
-        if "name" not in form: raise exception_handler.FormError("name")
+        form = utils.parse_form(form, self._form_dict())
         self.name = form["name"]
 
     def __init__(self, *args, **kwargs):
@@ -233,268 +222,45 @@ class DataSource(database_handler.db.Model):
         elif value.lower() == "organisation": self.type = "organisation"
         else: raise exception_handler.WarningException("Field 'Type' must either be 'organisation' or 'person' or None.")
 
-class Encounter(database_handler.db.Model):
-    __tablename__ = 'encounter'
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
-    encounter_name = database_handler.db.Column(database_handler.db.String(100), nullable=False)
-    location = database_handler.db.Column(database_handler.db.String(100), nullable=False)
-    species_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('species.id'), nullable=False)
-    project = database_handler.db.Column(database_handler.db.String(100), nullable=False)
-    latitude = database_handler.db.Column(database_handler.db.Double)
-    longitude = database_handler.db.Column(database_handler.db.Double)
-    data_source_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('data_source.id'), nullable=False)
-    recording_platform_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording_platform.id'), nullable=False)
-    notes = database_handler.db.Column(database_handler.db.String(1000))
-    file_timezone = database_handler.db.Column(database_handler.db.Integer)
-    local_timezone = database_handler.db.Column(database_handler.db.Integer)
-    species = database_handler.db.relationship("Species")
-    data_source = database_handler.db.relationship("DataSource")
-    recording_platform = database_handler.db.relationship("RecordingPlatform")
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-    __table_args__ = (
-        database_handler.db.UniqueConstraint('encounter_name', 'location', 'project'),
-    )
+from .interfaces.imodels import IEncounter
+
+class Encounter(IEncounter):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
     
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'encounter_name': self.encounter_name,
-            'location': self.location,
-            'species_id': self.species_id,
-            'project': self.project,
-            'latitude': self.latitude,
-            'longitude': self.longitude,
-            'data_source_id': self.data_source_id,
-            'recording_platform_id': self.recording_platform_id,
-            'notes': self.notes,
-            'file_timezone': self.file_timezone,
-            'local_timezone': self.local_timezone,
-            'species': self.species.to_dict() if self.species else None,
-            'data_source': self.data_source.to_dict() if self.data_source else None,
-            'recording_platform': self.recording_platform.to_dict() if self.recording_platform else None,
-            'updated_by_id': self.updated_by_id,
-        }
+    def _insert_or_update(self, form, new):
+        form = utils.parse_form(form, self._form_dict())
+        for key, value in form.items():
+            setattr(self, key, value)
 
-    def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
-        self.updated_by_id = user_id
-
-    def get_unique_name(self):
-        return f"Encounter: {self.encounter_name}-{self.location}-{self.project}"
-
-    def get_number_of_recordings(self):
-        """
-        Calculate the number of recordings associated with the encounter and return the count
-        """
-        num_recordings = database_handler.db.session.query(Recording).filter_by(encounter_id=self.id).count()
-        return num_recordings
-
-    def generate_relative_directory(self):
-        from . import filespace_handler
-        return os.path.join(f"Species-{secure_filename(filespace_handler.validate(self.species.species_name))}",f"Location-{secure_filename(filespace_handler.validate(self.location))}",f"Encounter-{secure_filename(filespace_handler.validate(self.encounter_name))}")
-
-    def update_call(self):
-        """
-        Call update_call() in all Recording objects linked to the Encounter object.
-        This method should be called when a metadata change occurs in the Encounter
-        object that requires files (in Recording and Selection) be given a new
-        path based on that metadata.
-        """
+    def _get_children(self):
         with database_handler.get_session() as session:
-            recordings = session.query(Recording).with_for_update().filter_by(encounter_id=self.id).all()
-            for recording in recordings:
-                recording.update_call()
+            return session.query(Recording).with_for_update().filter_by(encounter_id=self.id).all()
 
-    def delete_children(self):
-        """
-        Cascade delete all recordings in the encounter. Note this method will not delete the encounter itself.
-        Ensure you call session.delete() after calling this method in the caller.
-        """
-        with database_handler.get_session() as session:
-            recordings = session.query(Recording).with_for_update().filter_by(encounter_id=self.id).all()
-            for recording in recordings:
-                recording.delete_children(keep_file_reference=True)
-                session.delete(recording)
+    def delete(self):
+        self._delete_children()
 
-    def get_latitude(self) -> float:
-        try:
-            return float(self.latitude)
-        except (TypeError,ValueError):
-            return None
+    def apply_updates(self):
+        for child in self._get_children():
+            if issubclass(type(child), imodels.Cascading):
+                child.apply_updates()
+
+    @property
+    def recording_count(self):
+        return database_handler.db.session.query(Recording).filter_by(encounter_id=self.id).count()
     
-    def set_latitude(self, value: float):
-        self.latitude = utils.validate_latitude(value, field="latitude", allow_none=True)
+    @property
+    def relative_directory(self):
+        return os.path.join(utils.secure_fname(self.species.folder_name),utils.secure_fname(self.location_folder_name),utils.secure_fname(self.folder_name))
+
+    @property
+    def folder_name(self):
+        return utils.secure_fname(f"Encounter-{self.encounter_name}")
     
-    def set_longitude(self, value: float):
-        self.longitude = utils.validate_longitude(value, field="longitude", allow_none=True)
-
-    def get_longitude(self) -> float:
-        try:
-            return float(self.longitude)
-        except (TypeError,ValueError):
-            return None
-        
-    def get_encounter_name(self) -> str:
-        return '' if self.encounter_name is None else self.encounter_name
-
-    def set_encounter_name(self, value: str):
-        """Set the encounter name of the recording. If the value is empty, raise an error.
-
-        Args:
-            value (str): _description_
-        """
-        if value is None or value.strip() == '': raise exception_handler.WarningException("Encounter name cannot be empty")
-        self.encounter_name = utils.parse_string_notempty(value, 'Encounter name')
-
-    def get_location(self) -> str:
-        return '' if self.location is None else self.location
-
-    def set_location(self, value: str):
-        self.location = utils.parse_string_notempty(value, 'Location')
-
-    def get_project(self) -> str:
-        return '' if self.project is None else self.project
-
-    def set_project(self, value: str):
-        self.project = utils.parse_string_notempty(value, 'Project')
-
-    def get_notes(self) -> str:
-        return '' if self.notes is None else self.notes
-
-    def set_notes(self, value: str) -> None:
-        """ Set the notes of the recording. If `value` is empty or `None`, set it to `None`.
-        If a non-string `value` is passed, convert it to a string.
-
-        Args:
-            value (str): the new value of notes
-        """
-        if value is not None and str(value).strip() == '': self.notes = None
-        elif value is None: self.notes = None
-        else: self.notes = str(value).strip()
-
-    def get_species(self):
-        return self.species
-
-    def set_species(self, value: Species):
-        """Set the species of the recording.
-
-        Args:
-            value (Species): The species to set.
-
-        Raises:
-            ValueError: If the value is not of type Species
-        """
-        self.species = utils.validate_type(value, Species, "species")
-
-
-    def set_species_id(self, species_id: str):
-        self.species_id = utils.validate_id(species_id, field="species")
-    
-    def set_data_source_id(self, value):
-        self.data_source_id = utils.validate_id(value, field="data_source", allow_none=True)
-
-    def set_data_source(self, value: DataSource):
-        """Set the data source of the recording.
-
-        Args:
-            value (DataSource): the new data source
-            
-        Raises:
-            ValueError: the the new value is None or not of the correct type
-        """
-        self.data_source = utils.validate_type(value, DataSource, "data_source", allow_none=True)
-
-    def set_recording_platform_id(self, recording_platform_id: str | uuid.UUID):
-        """Set the recording platform ID of the recording
-
-        Args:
-            recording_platform_id (str | uuid.UUID): the new recording platform ID (if given as a string it must be a valid UUID)
-        
-        Raises:
-            ValueError: the new value is None or not of uuid.UUID or convertable str type
-        """
-        self.recording_platform_id = utils.validate_id(recording_platform_id, field="Recording Platform", allow_none=True)
-
-    def set_recording_platform(self, value: RecordingPlatform):
-        """Set the recording platform of the recording
-
-        Args:
-            value (RecordingPlatform): the new recording platform
-            
-        Raises:
-            ValueError: the new value is None or not the correct type
-        """
-        self.recording_platform = utils.validate_type(value, RecordingPlatform, "recording_platform", allow_none=True)
-
-    def set_file_timezone(self, value: int | str):
-        """Set the timezone of the file
-
-        Args:
-            value (int | str): The new timezone. If given as a string, it must be a valid timezone string.
-        
-        Raises:
-            ValueError: the new value is None or not of int or valid timezone string type
-        """
-        self.file_timezone = utils.validate_timezone(value, field="file_timezone", allow_none=True)
-    
-    def get_file_timezone(self) -> int:
-        try:
-            return int(self.file_timezone)
-        except Exception:
-            return None
-    
-    def set_local_timezone(self, value: int | str):
-        self.local_timezone = utils.validate_timezone(value, field="local_timezone", allow_none=True)
-    
-    def get_local_timezone(self) -> int:
-        try:
-            return int(self.local_timezone)
-        except Exception:
-            return None
-
-    def get_species_id(self) -> uuid.UUID:
-        """ Get the species ID of the recording. Note that if
-        the species ID is not a valid UUID or is`None`, then `None`
-        is returned.
-
-        Returns:
-            uuid.UUID: the species ID
-        
-        Raises:
-            ValueError: when the Species ID is not Null and not in UUID format
-        """
-        return utils.validate_id(value=self.species_id, field="Species", allow_none=True)
-        
-    def get_data_source_id(self) -> uuid.UUID:
-        """ Get the species ID of the recording. Note that if
-        the species ID is not a valid UUID or is`None`, then `None`
-        is returned.
-
-        Returns:
-            uuid.UUID: the species ID
-        
-        Raises:
-            WarningException: when the Species ID is not Null and not in UUID format
-        """
-        return utils.validate_id(value=self.data_source_id, field="Data Source", allow_none=True)
-
-    def get_recording_platform_id(self) -> uuid.UUID:
-        """ Get the species ID of the recording. Note that if
-        the species ID is not a valid UUID or is`None`, then `None`
-        is returned.
-
-        Returns:
-            uuid.UUID: the species ID
-        
-        Raises:
-            WarningException: when the Species ID is not Null and not in UUID format
-        """
-        return utils.validate_id(value=self.recording_platform_id, field="Recording Platform", allow_none=True)
+    @property
+    def location_folder_name(self):
+        return utils.secure_fname(f"Location-{self.location}")
 
 
 class File(database_handler.db.Model):
@@ -972,7 +738,7 @@ class Recording(database_handler.db.Model):
 
     def get_unique_name(self) -> str:
         if self.encounter == None: raise ValueError("Unable to generate unique name as the recording does not have an encounter.")
-        return f"{self.encounter.get_unique_name()}, Recording: {self.get_start_time_pretty()}"
+        return f"{self.encounter.unique_name}, Recording: {self.get_start_time_pretty()}"
 
     def is_complete(self) -> bool:
         """Check if the recording has been reviewed or not.
@@ -1222,7 +988,7 @@ class Recording(database_handler.db.Model):
         """
         from .filespace_handler import format_date_for_filespace
         if not self.encounter or type(self.encounter) != Encounter: raise ValueError("The recording database schema is corrupt. Cannot generate relative directory")
-        return os.path.join(self.encounter.generate_relative_directory(), f"Recording-{secure_filename(format_date_for_filespace(self.get_start_time()))}")
+        return os.path.join(self.encounter.relative_directory, f"Recording-{secure_filename(format_date_for_filespace(self.get_start_time()))}")
 
     def generate_selection_table_file_name(self) -> str:
         """Generate the file name allocated to the selection table file for this
@@ -2418,24 +2184,16 @@ class User(IUser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def _to_dict(self) -> typing.Dict[str, typing.Any]:
-        return {
-            'id': self.id,
-            'login_id': self.login_id,
-            'role_id': self.role_id,
-            'role': self.role
-        }
     
+    def unique_name(self):
+        return self.login_id
+
     def _insert_or_update(self, form, new, current_user=None):
-        required_fields = ['name', 'login_id', 'role', 'expiry']
-        missing_fields = [field for field in required_fields if field not in form]
-        if missing_fields:
-            raise AttributeError(f"Missing required fields: {', '.join(missing_fields)}")
+        form = utils.parse_form(form, self._form_dict)
 
         if new:
-            
             self.login_id = form['login_id']
+
         self.name = form['name']
 
         if self == current_user:

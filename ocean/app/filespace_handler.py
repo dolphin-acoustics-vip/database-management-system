@@ -27,6 +27,8 @@ from . import database_handler
 from . import models
 from . import exception_handler
 
+from werkzeug.utils import secure_filename
+
 
 # Characters which need to be replaced by an underscore in paths
 INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," "]
@@ -37,6 +39,7 @@ def validate(s: str) -> str:
         s = s.replace(c,"_")
         
     return s
+
 
 def format_date_for_filespace(d: datetime.datetime) -> str:
     if not d or type(d) != datetime.datetime: raise exception_handler.ValueError("Date is in the incorrect format.")
