@@ -199,6 +199,7 @@ def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bo
     :param value: The datetime value to validate (or convertable string).
     :return: the parsed datetime object.
     """
+    err = exception_handler.ValidationError(field=field, required="Datetime", value=str(value))
     if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
@@ -241,13 +242,14 @@ def validate_latitude(value: float | str | int, field: str, allow_none: bool = F
     Returns:
         float: the validated latitude in float format
     """
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    err = exception_handler.ValidationError(field=field, required="Float between -90 and 90 inclusive", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     value = validate_float(value, field=field, allow_none=allow_none)
     if value is not None:
         if value < -90 or value > 90:
-            raise exception_handler.WarningException(f"Field '{field}' must be between -90 and 90.")
+            raise err
     return value
 
 
@@ -268,13 +270,14 @@ def validate_longitude(value: float | str | int, field: str, allow_none: bool = 
     Returns:
         float: the validated longitude in float format
     """
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    err = exception_handler.ValidationError(field=field, required="Float between -180 and 180 inclusive", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     value = validate_float(value, field=field, allow_none=allow_none)
     if value is not None:
         if value < -180 or value > 180:
-            raise exception_handler.WarningException(f"Field '{field}' must be between -90 and 90.")
+            raise err
     return value
 
 def validate_string(value: str, field=None, allow_none = False):
@@ -294,7 +297,8 @@ def validate_float(value: float | str, field=None, allow_none=False) -> float:
 
     :raise exception_handler.WarningException: If the float value cannot be converted to a float.
     """
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    err = exception_handler.ValidationError(field=field, required="Float", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     try:
@@ -304,13 +308,14 @@ def validate_float(value: float | str, field=None, allow_none=False) -> float:
     return float(value)
 
 def validate_int(value: int | str, field=None, allow_none=False) -> int:
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    err = exception_handler.ValidationError(field=field, required="Integer", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     try:
         value = int(float(value))
     except ValueError:
-        raise exception_handler.WarningException(f"Field '{field}' must be of type int.")
+        raise err
     return int(float(value))
 
 def validate_id(value: str | uuid.UUID, field: str, allow_none: bool=False) -> str:
@@ -328,14 +333,15 @@ def validate_id(value: str | uuid.UUID, field: str, allow_none: bool=False) -> s
     Returns:
         str: the validated UUID in str format
     """
+    err = exception_handler.ValidationError(field=field, required="UUID", value=str(value))
     if not allow_none and ((type(value) == str and value.strip() == "") or value is None):
-        raise exception_handler.WarningException(f"Field '{field}' cannot be none or empty.")
+        raise err
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None):
         return None
     try:
         uuid.UUID(str(value))
     except ValueError:
-        raise exception_handler.WarningException(f"Field '{field}' must be a valid UUID.")
+        raise err
     return uuid.UUID(str(value))
 
 def validate_type(value, target_type, field, allow_none=False):
@@ -354,9 +360,10 @@ def validate_type(value, target_type, field, allow_none=False):
     Returns:
         target_type: the validated value
     """
-    if not allow_none and not value: raise exception_handler.WarningException(f"{field} cannot be empty")
+    err = exception_handler.ValidationError(field=field, required=str(target_type), value=str(value))
+    if not allow_none and not value: raise err
     if allow_none and not value: return None
-    if not isinstance(value, target_type): raise ValueError(f"{field} must be of type {target_type}")
+    if not isinstance(value, target_type): raise err
     return value
         
 
@@ -380,16 +387,16 @@ def validate_timezone(value: int | str, field: str, allow_none=False) -> float:
         int: the validated timezone
     
     """
-
+    err = exception_handler.ValidationError(field=field, required="Integer in minutes between -720 and 840", value=str(value))
     if not allow_none and not value: raise exception_handler.WarningException(f"{field} cannot be empty")
     elif type(value) == int and value == 0: return 0
     elif allow_none and not value or str(value).strip() == "": return None
     try:
         value = int(float(value))
     except Exception:
-        raise exception_handler.WarningException(f"Field '{field}' must be a valid timezone in integer minutes.")
+        raise err
     if value is not None and (value < -720 or value > 840):
-        raise exception_handler.WarningException(f"Field '{field}' must be a timezone between -720 and +840 (inclusive).")
+        raise err
     return value
 
 

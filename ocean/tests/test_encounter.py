@@ -271,12 +271,12 @@ def test_set_species_none(encounter):
         encounter.set_species(None)
 
 def test_set_species_wrong_type(encounter):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         data_source = factories.DataSourceFactory.create()
         encounter.set_species(data_source)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         encounter.set_species(1)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         encounter.set_species("u8354")
 
 def test_set_species_id(encounter):
@@ -307,12 +307,12 @@ def test_set_data_source_none(encounter):
     assert encounter.data_source == None
 
 def test_set_data_source_wrong_type(encounter):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         data_source = factories.SpeciesFactory.create()
         encounter.set_data_source(data_source)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         encounter.set_data_source(1)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         encounter.set_data_source("u8354")
 
 def test_set_data_source_id(encounter):
@@ -343,12 +343,12 @@ def test_set_recording_platform_none(encounter):
     assert encounter.recording_platform == None
 
 def test_set_recording_platform_wrong_type(encounter):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         recording_platform = factories.SpeciesFactory.create()
         encounter.set_recording_platform(recording_platform)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         encounter.set_recording_platform(1)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         encounter.set_recording_platform("u8354")
 
 def test_set_recording_platform_id(encounter):

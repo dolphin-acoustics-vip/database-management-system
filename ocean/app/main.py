@@ -40,6 +40,21 @@ from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
 
 
+def check_interfaces():
+    """
+    Checks the database for all interfaces by instantiating an instance of each model.
+    If any interface is missing a TypeError will be raised.
+    """
+    recording_platform = models.RecordingPlatform()
+    user = models.User()
+    assignment = models.Assignment()
+    data_source = models.DataSource()
+    encounter = models.Encounter()
+    species = models.Species()
+    selection = models.Selection()
+    file = models.File()
+    role = models.Role()
+
 def check_file_space():
     FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
 
@@ -53,6 +68,8 @@ def check_file_space():
 
 def create_app(config_class):
     app = Flask(__name__)
+
+    check_interfaces()
 
     ROUTE_PREFIX = '/ocean'
 

@@ -183,7 +183,7 @@ def test_set_recording_file_none(recording: models.Recording):
         recording.set_recording_file(None)
 
 def test_set_recording_file_wrong_type(recording: models.Recording):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         recording.set_recording_file(factories.SpeciesFactory.create())
 
 def test_set_recording_file_already_exists(recording: models.Recording):
@@ -215,7 +215,7 @@ def test_set_encounter_none(recording: models.Recording):
         recording.set_encounter(None)
 
 def test_set_encounter_wrong_type(recording: models.Recording):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         recording.set_encounter(factories.SpeciesFactory.create())
 
 def test_set_status(recording: models.Recording):
@@ -315,7 +315,7 @@ def test_get_recording_file(recording: models.Recording):
     recording.recording_file = None
     assert recording.get_recording_file() == None
     recording.recording_file = factories.SpeciesFactory.create()
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         recording.get_recording_file()
 
 def test_get_encounter_id(recording: models.Recording):
@@ -338,9 +338,9 @@ def test_get_encounter(recording: models.Recording):
     recording.encounter = None
     assert recording.get_encounter() == None
     recording.encounter = factories.SpeciesFactory.create()
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         recording.get_encounter()
-        
+
 def test_get_status(recording: models.Recording):
     recording.status = "Awaiting Review"
     assert recording.get_status() == "Awaiting Review"

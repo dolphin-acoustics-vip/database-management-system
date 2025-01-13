@@ -76,7 +76,7 @@ class TableOperations(ABC):
 class Cascading(ABC):
     pass
 
-class IRecordingPlatform(AbstractModelBase, Serialisable):
+class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
     """Abstract class for the SQLAlchemy table recording_platform.
     
     Abstract class implementation is inforced using ABC. 

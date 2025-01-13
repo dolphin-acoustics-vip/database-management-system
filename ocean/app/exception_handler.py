@@ -36,6 +36,11 @@ class CriticalException(Exception):
         """
         super().__init__(message)
 
+class FormError(CriticalException):
+
+    def __init__(self, missing):
+        super().__init__("Missing " + missing + " from submitted form.")
+
 class WarningException(Exception):
     def __init__(self, message:str):
         """

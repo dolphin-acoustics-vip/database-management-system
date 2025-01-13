@@ -205,15 +205,9 @@ def admin_data_source_delete(data_source_id):
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_recording_platform_view(recording_platform_id):
-    """
-    Route to view a RecordingPlatform object, given its ID.
-    PERMISSIONS: Role 1, Role 2.
-    METHODS: GET.
-    """
     with database_handler.get_session() as session:
         try:
             recording_platform = session.query(models.RecordingPlatform).filter_by(id=recording_platform_id).first()
-            print(recording_platform.to_dict())
             return render_template('admin/admin-recording-platform-view.html', recording_platform=recording_platform)
         except SQLAlchemyError as e:
             exception_handler.handle_exception(exception=e, session=session)
@@ -224,22 +218,16 @@ def admin_recording_platform_view(recording_platform_id):
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_recording_platform_edit(recording_platform_id):
-    """
-    Route to update a RecordingPlatform object, given its ID and an HTTP form request with the following fields:
-    - name (text) NOT NULL
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording_platform = session.query(models.RecordingPlatform).filter_by(id=recording_platform_id).first()
-            recording_platform.name = request.form['name']
+            recording_platform.update(request.form)
             session.commit()
-            flash('Recording platform updated: {}'.format(recording_platform.name), 'success')
-        except SQLAlchemyError as e:
-            exception_handler.handle_exception(exception=e, session=session)
-        return redirect(url_for('admin.admin_dashboard'))
+            response.add_message('Recording platform updated: {}'.format(recording_platform.name))
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
 @routes_admin.route('/admin/recording-platform/new', methods=['GET'])
 @database_handler.exclude_role_4
@@ -259,25 +247,18 @@ def admin_recording_platform_new():
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_recording_platform_insert():
-    """
-    Route to create a new RecordingPlatform object, given an HTTP form request with the following fields:
-    - name (text) NOT NULL
-    PERMISSIONS: Role 1, Role 2.
-    METHODS: POST.
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
-            new_recording_platform = models.RecordingPlatform(
-                name=request.form['name']
-            )
+            new_recording_platform = models.RecordingPlatform()
             session.add(new_recording_platform)
+            new_recording_platform.insert(request.form)
             session.commit()
-            flash('Recording platform created: {}'.format(new_recording_platform.name), 'success')
-            return redirect(url_for('admin.admin_dashboard'))
-
-        except SQLAlchemyError as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(url_for('admin.admin_dashboard'))
+            flash(f'Recording platform created: {new_recording_platform.name}', 'success')
+            response.set_redirect(url_for('admin.admin_dashboard'))
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
 @routes_admin.route('/admin/recording-platform/<recording_platform_id>/delete', methods=['GET'])
 @database_handler.exclude_role_4

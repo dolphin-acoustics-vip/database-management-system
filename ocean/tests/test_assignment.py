@@ -76,7 +76,7 @@ def test_set_user_none(assignment: models.Assignment):
         assignment.set_user(None)
 
 def test_set_user_wrong_type(assignment: models.Assignment):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         assignment.set_user(factories.SpeciesFactory.create())
 
 def test_set_recording_id(assignment: models.Assignment):
@@ -103,5 +103,5 @@ def test_set_recording_none(assignment: models.Assignment):
         assignment.set_recording(None)
 
 def test_set_recording_wrong_type(assignment: models.Assignment):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         assignment.set_recording(factories.SpeciesFactory.create())

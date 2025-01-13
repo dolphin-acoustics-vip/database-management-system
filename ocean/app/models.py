@@ -191,43 +191,14 @@ class RecordingPlatform(IRecordingPlatform):
             'name': self.name,
             'updated_by_id': self.updated_by_id,
             'updated_by': self.updated_by
-            }
+        }
+
+    def _insert_or_update(self, form, new):
+        if "name" not in form: raise exception_handler.FormError("name")
+        self.name = form["name"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def get_name(self):
-        """Return the name of the recording platform"""
-        warnings.warn("RecordingPlatform.get_name() is deprecated. Use RecordingPlatform.name instead.", DeprecationWarning, stacklevel=2)
-        return str(self.name) if self.name is not None else ""
-    
-    def set_name(self, value):
-        """Sets the name of the recording platform. The passed value
-        cannot be an empty string or None as this would violate the
-        database primary key constraint.
-
-        Args:
-            value (str): the value to set
-
-        Raises:
-            exception_handler.WarningException: if an empty string or null is passed
-            ValueError: if a non-string is passed
-        """
-        warnings.warn("RecordingPlatform.set_name() is deprecated. Use RecordingPlatform.name instead.", DeprecationWarning, stacklevel=2)
-        if (not value) or (value and str(value).strip() == ""): raise exception_handler.WarningException("Field 'name' for recording platform cannot be empty.")
-        if type(value) != str: raise ValueError(f"Field 'name' for RecordingPlatform requires must be a string (for {type(value)}).")
-        self.name = str(value)
-
-    def set_updated_by_id(self, user_id: uuid.UUID | str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
-        warnings.warn("RecordingPlatform.set_updated_by_id() is deprecated. Use RecordingPlatform.updated_by_id instead.", DeprecationWarning, stacklevel=2)
-        self.updated_by_id = utils.validate_id(value=user_id, field="name")
-
-
 
 class DataSource(database_handler.db.Model):
     __tablename__ = 'data_source'

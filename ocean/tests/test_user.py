@@ -37,12 +37,12 @@ def test_set_role_none(user):
         user.set_role(None)
 
 def test_set_role_wrong_type(user):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         data_source = factories.DataSourceFactory.create()
         user.set_role(data_source)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         user.set_role(1)
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         user.set_role("u8354")
 
 def test_set_role_id(user):

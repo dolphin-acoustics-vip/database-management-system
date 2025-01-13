@@ -276,7 +276,7 @@ def test_set_recording_none(selection: models.Selection):
         selection.set_recording(None)
 
 def test_set_recording_wrong_type(selection: models.Selection):
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         selection.set_recording(factories.SpeciesFactory.create())
 
 
@@ -346,7 +346,7 @@ def test_get_selection_file(selection: models.Selection):
     selection.selection_file = None
     assert selection.get_selection_file() == None
     selection.selection_file = factories.SpeciesFactory.create()
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         selection.get_selection_file()
 
 def test_get_contour_file_id(selection: models.Selection):
@@ -369,7 +369,7 @@ def test_get_contour_file(selection: models.Selection):
     selection.contour_file = None
     assert selection.get_contour_file() == None
     selection.contour_file = factories.SpeciesFactory.create()
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         selection.get_contour_file()
 
 def test_get_ctr_file_id(selection: models.Selection):
@@ -392,7 +392,7 @@ def test_get_ctr_file(selection: models.Selection):
     selection.ctr_file = None
     assert selection.get_ctr_file() == None
     selection.ctr_file = factories.SpeciesFactory.create()
-    with pytest.raises(ValueError):
+    with pytest.raises(exception_handler.ValidationError):
         selection.get_ctr_file()
 
 
