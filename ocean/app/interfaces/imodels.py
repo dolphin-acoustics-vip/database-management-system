@@ -70,11 +70,71 @@ class TableOperations(ABC):
         self._insert_or_update(form=form, new=True)
 
     def update(self, form):
-        """Update the database object with form data."""
+        """Update the database object with form data.
+        
+        Warning: if the class implements `Cascading` oftentimes updates
+        will require a call to `apply_updates()` to ensure changes are
+        cascaded to all children.
+        """
         self._insert_or_update(form=form, new=False)
 
+    def prepare_for_delete(self):
+        """Check if the object can be deleted. Raise an exception if it
+        cannot be deleted.
+        
+        An exception is raised usually if the object has foreign key
+        dependencies that are not allowed to be automatically resolved.
+        This will cause an `exception_handler.WarningException` to be raised
+        """
+        pass
+
 class Cascading(ABC):
-    pass
+    
+    @abstractmethod
+    def _get_children(self):
+        """Return a list of child objects of this obejct (also known as foreign key
+        dependencies). The exact datatype of child objects will vary by implementation
+        of this method.
+        """
+        pass
+
+    @abstractmethod
+    def apply_updates(self):
+        """Apply changes to this object and invoke updates on related objects. 
+        
+        This method should be called whenever a piece of metadata changes (either in
+        this object or one of its parents). This method should ensure that any data
+        in this object that rely on its parents metadata are updated accordingly.
+        """
+        pass
+
+class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
+    __tablename__ = 'species'
+    __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
+
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+    # TODO rename to scientific_name (refactor with actual database)
+    species_name = Column(String(100), nullable=False, unique=True)
+    genus_name = Column(String(100))
+    common_name = Column(String(100))
+    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    @validates("id")
+    def _validate_id(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=False)
+    
+    @validates("updated_by_id")
+    def _validate_id_nullable(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=True)
+
+    @validates("genus_name", "common_name")
+    def _validate_str_nullable(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=True)
+    
+    @validates("species_name")
+    def _validate_str(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=False)
 
 class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
     """Abstract class for the SQLAlchemy table recording_platform.
@@ -91,13 +151,21 @@ class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
     updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
-    @validates("id", "updated_by_id")
+    @validates("id")
     def _validate_id(self, key, value):
         return utils.validate_id(value=value, field="ID", allow_none=False)
 
+    @validates("updated_by_id")
+    def _validate_id_nullable(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=True)
+
     @validates("name")
-    def _validate_name(self, key, value):
+    def _validate_str(self, key, value):
         return utils.validate_string(value=value, field="Name", allow_none=False)
+    
+    @validates("updated_by")
+    def _reject(self, key, value):
+        raise ValueError(f"Unable to set {key} on recording_platform")
 
 class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     """Abstract class for the SQLAlchemy table user.

@@ -7,7 +7,7 @@
 <body>
     <div class="outer-div">
         <h2>Add New Species</h1>
-            <form action="{{ url_for('admin.admin_species_insert') }}" method="post">
+            <form id="species-insert-form" action="{{ url_for('admin.admin_species_insert') }}" method="post">
                 <label for="species_name">Scientific name:</label>
                 <input type="text" id="species_name" name="species_name" required>
                 <label for="genus_name">Genus:</label>
@@ -16,6 +16,9 @@
                 <input type="text" id="common_name" name="common_name"><br>
                 <button class="blue" type="submit">Submit</button>
             </form>
+            <script>
+                ajaxifyForm(document.getElementById('species-insert-form'), true, true, null, null);
+            </script>
     </div>
 </body>
 </html>

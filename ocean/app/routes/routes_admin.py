@@ -306,73 +306,44 @@ def admin_species_view(species_id):
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_species_edit(species_id):
-    """
-    Route to update a Species object with new values, given a form with the following fields:
-    - species_name (text) NOT NULL
-    - genus_name (text)
-    - common_name (text)
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST.
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
-        #session.execute(sqlalchemy.text("LOCK TABLE species WRITE"))
-        species_data = session.query(models.Species).with_for_update().filter_by(id=species_id).first()
-        if species_data:
-            try:
-                species_name = request.form['species_name']
-                genus_name = request.form['genus_name']
-                common_name = request.form['common_name']
-                species_data.set_species_name(species_name)
-                species_data.set_genus_name(genus_name)
-                species_data.set_common_name(common_name)
-                session.commit()
-                species_data.update_call()
-                flash('Species updated: {}'.format(species_name), 'success')
-            except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(exception=e, session=session)
-        else:
-            flash('Species with ID {} not found'.format(species_id), 'error')
-            session.rollback()
-
-    return redirect(url_for('admin.admin_dashboard'))
-
+        try:
+            species = session.query(models.Species).with_for_update().filter_by(id=species_id).first()
+            if not species: raise exception_handler.CriticalException('Unexpected error')
+            species.update(request.form)
+            session.commit()
+            species.apply_updates()
+            response.add_message(f"Species updated: {species.species_name}")
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
 @routes_admin.route('/admin/species/<species_id>/delete', methods=['POST'])
 @database_handler.exclude_role_4
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_species_delete(species_id):
-    """
-    Route to delete a Species object, give its ID.
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST.
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             species = session.query(models.Species).filter_by(id=species_id).first()
-            species_name = species.get_species_name()
+            if not species: raise exception_handler.CriticalException('Unexpected error')
+            species_name = species.species_name
+            species.prepare_for_delete()
             session.delete(species)
             session.commit()
             flash('Species deleted: {}'.format(species_name), 'success')
-        except SQLAlchemyError as e:
-            exception_handler.handle_exception(exception=e, session=session)
-        finally:
-            return redirect(url_for('admin.admin_dashboard'))
+            response.set_redirect(request.referrer)
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
-    
 @routes_admin.route('/admin/species/new', methods=['GET'])
 @database_handler.exclude_role_4
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_species_new():
-    """
-    Route to render the new Species template.
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: GET.
-    """
     return render_template('admin/admin-species-new.html')
 
 @routes_admin.route('/admin/species/insert', methods=['POST'])
@@ -380,29 +351,18 @@ def admin_species_new():
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_species_insert():
-    """
-    Route to create a new Species object, given an HTTP form request with:
-    - species_name (text) NOT NULL
-    - genus_name (text)
-    - common_name (text)
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
-        species_name = request.form['species_name']
-        genus_name = request.form['genus_name']
-        common_name = request.form['common_name']
         try:
-            new_species = models.Species(species_name=species_name, genus_name=genus_name, common_name=common_name)
-            session.add(new_species)
+            species = models.Species()
+            species.insert(request.form)
+            session.add(species)
             session.commit()
-            flash('Species added: {}.'.format(species_name), 'success')
-        except SQLAlchemyError as e:
-            exception_handler.handle_exception(exception=e, session=session)
-    return redirect(url_for('admin.admin_dashboard'))
-
-
+            flash(f'Species inserted: {species.species_name}', 'success')
+            response.set_redirect(url_for('admin.admin_dashboard'))
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
 @routes_admin.route('/admin/user', methods=['GET'])
 @database_handler.exclude_role_4
@@ -417,8 +377,7 @@ def admin_user():
     with database_handler.get_session() as session:
         users = session.query(models.User).order_by(models.User.is_active.desc()).all()
         return render_template('admin/admin-user.html', users=users)
-    
-    
+  
 @routes_admin.route('/admin/user/<user_id>/view', methods=['GET'])
 @database_handler.exclude_role_4
 @database_handler.exclude_role_3

@@ -14,9 +14,9 @@
 <select id="species" name="species" required>
     {% for species in species_list %}
         {% if species.get_common_name() == '' %}
-            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.get_species_name()}}</option>
+            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.species_name}}</option>
         {% else %}
-            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.get_species_name() +" (" + species.get_common_name()+ ")" }}</option>
+            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.species_name +" (" + species.common_name + ")" }}</option>
         {% endif %}
     {% endfor %}
 </select>

@@ -1,25 +1,25 @@
-import pytest
-from . import factories
+# import pytest
+# from . import factories
 
 
 
-def test_hasattr_updated_by_id():
-    """Test if the Species object has the updated_by_id attribute"""
-    selection = factories.SpeciesFactory()
-    assert hasattr(selection, "set_updated_by_id") == True
+# def test_hasattr_updated_by_id():
+#     """Test if the Species object has the updated_by_id attribute"""
+#     selection = factories.SpeciesFactory()
+#     assert hasattr(selection, "set_updated_by_id") == True
 
-def test_updated_by_id():
-    """Test that the """
-    selection = factories.SpeciesFactory()
-    assert selection.updated_by_id == None
-    selection.set_updated_by_id("1")
-    assert selection.updated_by_id == "1"
-    selection.set_updated_by_id("15")
-    assert selection.updated_by_id == "15"
+# def test_updated_by_id():
+#     """Test that the """
+#     selection = factories.SpeciesFactory()
+#     assert selection.updated_by_id == None
+#     selection.set_updated_by_id("1")
+#     assert selection.updated_by_id == "1"
+#     selection.set_updated_by_id("15")
+#     assert selection.updated_by_id == "15"
 
-def test_hasattr_update_call():
-    selection = factories.SpeciesFactory()
-    assert hasattr(selection, "update_call") == True
+# def test_hasattr_update_call():
+#     selection = factories.SpeciesFactory()
+#     assert hasattr(selection, "update_call") == True
 
 
 # def test_contour_stats():

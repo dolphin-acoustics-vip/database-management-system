@@ -42,6 +42,7 @@ from . import contour_statistics
 from . import database_handler
 from . import exception_handler
 from . import utils
+from .interfaces import imodels
 from .logger import logger
 
 
@@ -79,17 +80,24 @@ def convert_from_gmt(gmt_time: datetime.datetime) -> datetime.datetime:
 
 
 
-class Species(database_handler.db.Model):
-    __tablename__ = 'species'
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
-    # TODO rename to scientific_name (refactor with actual database)
-    species_name = database_handler.db.Column(database_handler.db.String(100), nullable=False, unique=True)
-    genus_name = database_handler.db.Column(database_handler.db.String(100))
-    common_name = database_handler.db.Column(database_handler.db.String(100))
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+from .interfaces.imodels import ISpecies
+class Species(ISpecies):
 
-    def to_dict(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _insert_or_update(self, form, new):
+        form = utils.parse_form(form, [
+            'species_name',
+            'genus_name',
+            'common_name'
+        ])
+        self.species_name = form['species_name']
+        self.genus_name = form['genus_name']
+        self.common_name = form['common_name']
+
+
+    def _to_dict(self):
         return {
             'id': self.id,
             'species_name': self.species_name,
@@ -98,6 +106,18 @@ class Species(database_handler.db.Model):
             'updated_by_id': self.updated_by_id,
         }
 
+    def _get_children(self):
+        with database_handler.get_session() as session:
+            return session.query(Encounter).filter_by(species_id=self.id).all()
+
+    def prepare_for_delete(self):
+        if len(self._get_children()) > 0:
+            raise exception_handler.WarningException("Cannot delete species as it has dependencies.")
+
+    def apply_updates(self):
+        for child in self._get_children():
+            if issubclass(child, imodels.Cascading):
+                child.apply_updates()
 
     def update_call(self):
         """
@@ -106,12 +126,15 @@ class Species(database_handler.db.Model):
         object that requires files (in Recording and Selection) be given a new
         path based on that metadata.
         """
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
         with database_handler.get_session() as session:
             encounters = session.query(Encounter).with_for_update().filter_by(species_id=self.id).all()
             for encounter in encounters:
                 encounter.update_call()
     
     def set_updated_by_id(self, user_id: str):
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
+
         """Set the `updated_by_id` attribute of the Species object. This attribute is used to record
         the user who is making any changes. There should be a method in `database_handler.py` which
         calls this method automatically when changes are flushed or committed to the ORM model.
@@ -122,6 +145,8 @@ class Species(database_handler.db.Model):
         self.updated_by_id = user_id
 
     def get_species_name(self) -> str:
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
+
         """Get the `species_name` of a particular species. If the `species_name` is None, return an empty string.
 
         Returns:
@@ -140,6 +165,8 @@ class Species(database_handler.db.Model):
         Raises:
             ValueError: if `value` is None or empty
         """
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
+
         if value is None or value.strip() == '': raise ValueError("Species name cannot be empty")
         self.species_name = str(value).strip()
     
@@ -149,6 +176,8 @@ class Species(database_handler.db.Model):
         Returns:
             str: the species' genus name
         """
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
+
         return '' if self.genus_name is None else self.genus_name
     
     def set_genus_name(self, value: str | None) -> None:
@@ -159,6 +188,8 @@ class Species(database_handler.db.Model):
         Args:
             value (str): the genus name
         """
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
+
         self.genus_name = None if not value or str(value).strip() == "" else str(value).strip()
 
     def get_common_name(self) -> str:
@@ -167,6 +198,8 @@ class Species(database_handler.db.Model):
         Returns:
             str: the species' common name
         """
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
+
         return '' if self.common_name is None else self.common_name
     
     def set_common_name(self, value: str | None) -> None:
@@ -177,6 +210,8 @@ class Species(database_handler.db.Model):
         Args:
             value (str): the common name
         """
+        warnings.warn("Depracated", DeprecationWarning, stacklevel=2)
+
         self.common_name = None if not value or str(value).strip() == "" else str(value).strip()
 
 from .interfaces.imodels import IRecordingPlatform

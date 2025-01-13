@@ -26,7 +26,7 @@ Variables required:
         <p>Encounter: {{ encounter.get_encounter_name() }}</p>
         <p>Location: {{ encounter.get_location() }}</p>
         <p>Project: {% if encounter.get_project() %}{{ encounter.get_project() }} {% else %}Not entered{% endif %}</p>
-        <p>Species: {{ encounter.species.get_species_name() }} ({{ encounter.species.get_common_name() }})</p>
+        <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
         <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {% else %}Not
           entered{% endif %}</p>
         <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.get_name()}} {% else %}Not entered{% endif %}

@@ -115,9 +115,9 @@
                     <tbody>
                         {% for species in species_list %}
                         <tr>
-                            <td>{{ species.get_species_name() }}</td>
-                            <td>{{ species.get_genus_name() }}</td>
-                            <td>{{ species.get_common_name() }}</td>
+                            <td>{{ species.species_name }}</td>
+                            <td>{{ species.genus_name }}</td>
+                            <td>{{ species.common_name }}</td>
                             <td>
                                 <form id="editForm" style="margin-bottom:5px;" method="get"
                                     action="{{ url_for('admin.admin_species_view', species_id=species.id) }}">
@@ -131,6 +131,14 @@
                                     <button class="link" type="submit" style="width:100%" class="delete-link"
                                         data-species-id="{{ species.id }}">Delete</button>
                                 </form>
+                                <script>
+                                    $("#deleteForm_{{ species.id }}").submit(function (event) {
+                                        event.preventDefault();
+                                        if (confirm("Are you sure you want to delete the species?")) {
+                                            makeAjaxRequestForm(event.target);
+                                        }
+                                    });
+                                </script>
                             </td>
                         </tr>
                         {% endfor %}
@@ -145,8 +153,7 @@
         </section>
     </div>
 </body>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</script>
+
 <script>
     // function to filter the data source table
     $(document).ready(function () {

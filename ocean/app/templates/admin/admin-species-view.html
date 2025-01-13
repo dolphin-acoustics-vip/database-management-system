@@ -7,15 +7,18 @@
 <body>
     <div class="outer-div">
     <h1>Edit Species</h1>
-    <form action="{{ url_for('admin.admin_species_edit', species_id=species.id) }}" method="post">
+    <form id="species-update-form" action="{{ url_for('admin.admin_species_edit', species_id=species.id) }}" method="post">
         <label for="species_name">Scientific name:</label>
-        <input type="text" id="species_name" name="species_name" value="{{ species.get_species_name() }}" required>
+        <input type="text" id="species_name" name="species_name" value="{{ species.species_name }}" required>
         <label for="genus_name">Genus:</label>
-        <input type="text" id="genus_name" name="genus_name" value="{{ species.get_genus_name() }}">
+        <input type="text" id="genus_name" name="genus_name" value="{{ species.genus_name }}">
         <label for="common_name">Common name:</label>
-        <input type="text" id="common_name" name="common_name" value="{{ species.get_common_name() }}"><br>
+        <input type="text" id="common_name" name="common_name" value="{{ species.common_name }}"><br>
         <button class="blue" type="submit">Save Changes</button>
     </form>
+    <script>
+        ajaxifyForm(document.getElementById('species-update-form'), true, true, null, null);
+    </script>
     </div>
 </body>
 </html>

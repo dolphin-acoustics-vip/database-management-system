@@ -38,7 +38,7 @@ class FileFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = Session
     
     # id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
-    # updated_by = None
+    # updated_by_id = None
 
 class RecordingPlatformFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
@@ -46,7 +46,7 @@ class RecordingPlatformFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = Session
     id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
     name = factory.Faker('name')
-    updated_by = None
+    updated_by_id = None
 
 class DataSourceFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
@@ -59,7 +59,7 @@ class DataSourceFactory(factory.alchemy.SQLAlchemyModelFactory):
     email2 = factory.Faker('email')
     address = factory.Faker('address')
     notes = factory.Faker('text')
-    updated_by = None
+    updated_by_id = None
 
 class SpeciesFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
@@ -69,7 +69,7 @@ class SpeciesFactory(factory.alchemy.SQLAlchemyModelFactory):
     species_name = factory.Faker('name')
     genus_name = factory.Faker('name')
     common_name = factory.Faker('name')
-    updated_by = None
+    updated_by_id = None
 
 class EncounterFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
@@ -82,7 +82,7 @@ class EncounterFactory(factory.alchemy.SQLAlchemyModelFactory):
     species = factory.SubFactory(SpeciesFactory)
     data_source = factory.SubFactory(DataSourceFactory)
     recording_platform = factory.SubFactory(RecordingPlatformFactory)
-    updated_by = None
+    updated_by_id = None
 
 class RecordingFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
@@ -91,7 +91,7 @@ class RecordingFactory(factory.alchemy.SQLAlchemyModelFactory):
     id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
     start_time = factory.Faker('date_time')
     encounter = factory.SubFactory(EncounterFactory)
-    updated_by = None
+    updated_by_id = None
 
 class SelectionFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
@@ -100,7 +100,7 @@ class SelectionFactory(factory.alchemy.SQLAlchemyModelFactory):
     id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
     selection_number = factory.Faker('random_int')
     recording = factory.SubFactory(RecordingFactory)
-    updated_by = None
+    updated_by_id = None
     
 class RoleFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:

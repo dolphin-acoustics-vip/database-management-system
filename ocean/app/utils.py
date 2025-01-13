@@ -399,6 +399,28 @@ def validate_timezone(value: int | str, field: str, allow_none=False) -> float:
         raise err
     return value
 
+import typing
+
+def parse_form(form: typing.Dict[str, typing.Any], schema: typing.List[str]):
+    """
+    Extracts and returns a subset of form data based on a specified schema.
+
+    Args:
+        form (Dict[str, Any]): The form data as a dictionary where keys are field names and values are field values.
+        schema (List[str]): A list of keys that should be extracted from the form data.
+
+    Raises:
+        AttributeError: if any of the keys specified in the schema do not exist in the form data.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing only the key-value pairs from the form that match the keys specified in the schema.
+    """
+    data = {}
+    for k in schema:
+        if k not in form:
+            raise AttributeError(f"The submitted form does not contain the required fields.")
+        data[k] = form[k]
+    return data
 
 
 def get_form_data(request, schema):
