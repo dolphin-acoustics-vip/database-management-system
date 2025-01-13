@@ -55,7 +55,7 @@ def test_updated_by_id(recording_platform: models.RecordingPlatform):
 def test_set_updated_by_id_empty(recording_platform: models.RecordingPlatform, c: str):
     recording_platform.updated_by_id = c
     assert recording_platform.updated_by_id == None
-    
+
 def test_set_updated_by_id_wrong_type(recording_platform: models.RecordingPlatform):
     with pytest.raises(exception_handler.ValidationError):
         recording_platform.updated_by_id = "this-is-not-a-uuid"
