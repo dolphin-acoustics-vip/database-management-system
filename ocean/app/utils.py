@@ -432,6 +432,10 @@ def secure_fname(s: str) -> str:
     return secure_filename(s)
 
 
+def secure_datename(d: datetime.datetime) -> str:
+    if not d or type(d) != datetime.datetime: raise exception_handler.ValueError("Date is in the incorrect format.")
+    return secure_filename(d.strftime('%Y%m%dT%H%M%S'))
+
 def get_form_data(request, schema):
     """
     Retrieves form data from the current request and validates it against the provided schema.
@@ -632,3 +636,8 @@ def verify_subarray_of_dict(sub, arr):
             if s not in arr:
                 raise ValueError(f"Unknown attribute: {s}")
     raise ValueError("Subarray or dict is None")
+
+def validate_enum(value, field, enum):
+    if value not in enum:
+        raise exception_handler.ValidationError(field=field, required=",".join(enum), value=value)
+    return value

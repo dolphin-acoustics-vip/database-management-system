@@ -1,9 +1,11 @@
 # Standard library imports
+import copy
 import uuid
 import datetime
 import os
 
 # Third-party libraries
+import pandas as pd
 import pytest
 
 # Local application imports
@@ -21,432 +23,251 @@ DATE_FORMAT = common.DATE_FORMAT
 def recording():
     return factories.RecordingFactory.create()
 
+@pytest.mark.parametrize("attr, value, expected", [
+    ("status", "Unassigned", "Unassigned"),
+    ("status", "In Progress", "In Progress"),
+    ("status", "Awaiting Review", "Awaiting Review"),
+    ("status", "Reviewed", "Reviewed"),
+    ("status", "On Hold", "On Hold"),
+    ("notes", "TestName", "TestName"),
+    ("notes", " TestName\nHello\n\tThis is a new line.", "TestName\nHello\n\tThis is a new line."),
+    ("notes", "TestName\nHello\n\tThis is a new line. ", "TestName\nHello\n\tThis is a new line."),
+    ("notes", "TestName\nHello\n\tThis is a new line.", "TestName\nHello\n\tThis is a new line.")
+])
+def test_set_attribute(recording: models.Recording, attr: str, value, expected):
+    setattr(recording, attr, value)
+    assert getattr(recording, attr) == expected
 
-ENCOUNTER_NAME = "EncounterName"
-ENCOUNTER_LOCATION = "EncounterLocation"
-ENCOUNTER_PROJECT = "EncounterProject"
-RECORDING_START_TIME = datetime.datetime(2020,8,21,2,54,22)
-SPECIES_NAME = "SpeciesName"
+@pytest.mark.parametrize("attr, value", [
+    ("status", 1),
+    ("status", None),
+    ("status", ""),
+    ("status", "   "),
+    ("encounter_id", "this-is-not-a-uuid"),
+    ("encounter_id", 1),
+    ("encounter_id", None),
+    ("encounter_id", ""),
+    ("encounter_id", "   "),
+    ("recording_file_id", "this-is-not-a-uuid"),
+    ("recording_file_id", 1),
+    ("selection_table_file_id", "this-is-not-a-uuid"),
+    ("selection_table_file_id", 1),
+    ("updated_by_id", "this-is-not-a-uuid"),
+    ("updated_by_id", 1)
+])
+def test_set_attribute_validation_error(recording: models.Recording, attr: str, value):
+    common.test_set_attribute_validation_error(recording, attr, value)
 
-@pytest.fixture
-def recording_with_encounter():
-    recording = factories.RecordingFactory.create()
-    encounter = factories.EncounterFactory.create()
-    species = factories.SpeciesFactory.create()
-    species.species_name = SPECIES_NAME
-    encounter.encounter_name = ENCOUNTER_NAME
-    encounter.location = ENCOUNTER_LOCATION
-    encounter.project = ENCOUNTER_PROJECT
-    encounter.species = species
-    recording.encounter = encounter
-    recording.start_time = RECORDING_START_TIME
-    return recording
+@pytest.mark.parametrize("attr, nullable", [
+    ("encounter_id", False),
+    ("recording_file_id", True),
+    ("selection_table_file_id", True),
+    ("updated_by_id", True)
+])
+def test_uuid(recording: models.Recording, attr: str, nullable: bool):
+    common.validate_uuid(recording, attr, str(uuid.uuid4()), nullable)
 
-def test_hasattr_updated_by_id(recording: models.Recording):
-    """Test if the Encounter object has the updated_by_id attribute"""
-    assert hasattr(recording, "set_updated_by_id") == True
-    
-def test_hasattr_update_call(recording: models.Recording):
-    assert hasattr(recording, "update_call") == True
+@pytest.mark.parametrize("attr, nullable", [
+    ("start_time", False),
+    ("status_change_datetime", True)
+])
+def test_set_datetime(recording: models.Recording, attr: str, nullable: bool):
+    test_datetime = datetime.datetime(2020,8,21,2,54,22)
+    test_datetime = test_datetime - datetime.timedelta(seconds = 5)
+    test_datetime_string = test_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+    setattr(recording, attr, test_datetime)
+    assert common.equate_timestamps(getattr(recording, attr), test_datetime)
+    test_datetime = test_datetime - datetime.timedelta(seconds = 5)
+    test_datetime_string = test_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+    setattr(recording, attr, test_datetime_string)
+    assert common.equate_timestamps(getattr(recording, attr), test_datetime)
+    test_datetime = datetime.datetime(2021,8,21,2,54)
+    test_datetime_string = test_datetime.strftime("%Y-%m-%dT%H:%M")
+    setattr(recording, attr, test_datetime_string)
+    assert common.equate_timestamps(getattr(recording, attr), test_datetime)
 
-def test_hasattr_delete_children(recording: models.Recording):
-    assert hasattr(recording, "delete_children") == True    
+@pytest.mark.parametrize("attr", [
+    "row_start",
+    "created_datetime"
+])
+def test_set_reject(recording: models.Recording, attr: str):
+    with pytest.raises(exception_handler.CriticalException):
+        setattr(recording, attr, "Test")
 
-def test_hasattr_row_start(recording: models.Recording):
-    assert hasattr(recording, "row_start")
-    assert hasattr(recording, "get_row_start")
-    assert hasattr(recording, "get_row_start_pretty")
+@pytest.mark.parametrize("form", [
+    ({
+        'Irrelevant_Field': "",
+    }), ])
+def test_insert_or_update_attribute_error(recording: models.Recording, form):
+    with pytest.raises(AttributeError):
+        recording._insert_or_update(form = form, new = False)
 
-def test_hasattr_relative_directory(recording: models.Recording):
-    assert hasattr(recording, "generate_relative_directory")
+@pytest.mark.parametrize("form", [
+    ({
+        'start_time': "2020-10-08T10:15:22",
+        'status': "In Progress",
+        'notes': "",
+    }),
+    ({
+        'start_time': "2020-10-08T10:15:22",
+    }), ])
+def test_insert_or_update(recording: models.Recording, form):
+    recording_old = copy.deepcopy(recording)
+    recording._insert_or_update(form = form, new = False)
+    assert common.equate_timestamps(recording.start_time, datetime.datetime.strptime(form['start_time'], "%Y-%m-%dT%H:%M:%S"))
+    if 'status' in form: assert recording.status == form['status'] if 'status' in form else True
+    if 'notes' in form: assert common.create_assertion(recording.notes, recording_old.notes, form['notes'] if 'notes' in form else "") if 'notes' in form else True
 
-def test_hasattr_created_datetime(recording: models.Recording):
-    assert hasattr(recording, "created_datetime")
-    assert hasattr(recording, "get_created_datetime")
-    assert hasattr(recording, "get_created_datetime_pretty")
+def test_unique_name(recording: models.Recording):
+    assert recording.unique_name == recording.encounter.unique_name + ', Recording: ' + str(recording.start_time)
 
-def test_hasattr_getters(recording: models.Recording):
-    assert hasattr(recording, "get_start_time")
-    assert hasattr(recording, "get_recording_file_id")
-    assert hasattr(recording, "get_recording_file")
-    assert hasattr(recording, "get_encounter_id")
-    assert hasattr(recording, "get_encounter")
-    assert hasattr(recording, "get_status")
-    assert hasattr(recording, "get_status_change_datetime")
-    assert hasattr(recording, "get_status_change_datetime_pretty")
-    assert hasattr(recording, "get_notes")
+def test_update_status_override_unassigned(recording: models.Recording):
+    recording._update_status(override="Unassigned")
+    assert recording.is_unassigned()
 
-def test_hasattr_setters(recording: models.Recording):
-    assert hasattr(recording, "set_start_time")
-    assert hasattr(recording, "set_recording_file_id")
-    assert hasattr(recording, "set_recording_file")
-    assert hasattr(recording, "set_encounter_id")
-    assert hasattr(recording, "set_encounter")
-    assert hasattr(recording, "set_status")
-    assert hasattr(recording, "set_status_change_datetime")
-    assert hasattr(recording, "set_notes")
+def test_update_status_override_in_progress(recording: models.Recording):
+    recording._update_status(override="In Progress")
+    assert recording.is_in_progress()
+    assert recording.status_change_datetime is not None
 
-def test_hasattr_other_methods(recording: models.Recording):
-    # Testing a number of methods which cannot be unit tested.
-    # Effectively enforcing a schema.
-    # NOTE: these methods will be tested in integration testing.
-    assert hasattr(recording, "update_status")
-    assert hasattr(recording, "set_status_on_hold")
-    assert hasattr(recording, "set_status_reviewed")
-    assert hasattr(recording, "get_number_of_selections")
-    assert hasattr(recording, "get_number_of_contours")
-    assert hasattr(recording, "find_missing_selections")
-    assert hasattr(recording, "export_selection_table")
-    assert hasattr(recording, "load_and_validate_selection_table")
-    assert hasattr(recording, "unpack_selection_table")
+def test_update_status_override_awaiting_review(recording: models.Recording):
+    recording._update_status(override="Awaiting Review")
+    assert recording.is_awaiting_review()
+    assert recording.status_change_datetime is not None
 
-def test_set_start_time(recording: models.Recording):
-    timestamp = datetime.datetime.now()
-    for f in DATE_FORMAT:
-        time_string, timestamp = common.parse_timestamp(timestamp, f)
-        recording.set_start_time(timestamp)
-        
-        assert type(recording.start_time) == datetime.datetime
-        assert recording.start_time.tzinfo is not None # Check that the set value contains timezone information
-        assert common.equate_timestamps(timestamp, recording.start_time) == True
+def test_update_status_override_reviewed(recording: models.Recording):
+    recording._update_status(override="Reviewed")
+    assert recording.is_reviewed()
+    assert recording.status_change_datetime is not None
 
-def test_set_start_time_str(recording: models.Recording):
-    timestamp = datetime.datetime.now()
-    for f in DATE_FORMAT:
-        time_string, timestamp = common.parse_timestamp(timestamp, f)
-        recording.set_start_time(time_string)
-        assert type(recording.start_time) == datetime.datetime
-        assert recording.start_time.tzinfo is not None # Check that the set value contains timezone information
-        assert common.equate_timestamps(timestamp, recording.start_time) == True
-
-def test_set_start_time_str_incorrect_format(recording: models.Recording):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_start_time("this-is-not-a-date")
- 
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_start_time_empty(recording: models.Recording, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_start_time(c)
-        
-def test_remove_recording_file(recording: models.Recording):
-    recording.recording_file_id = uuid.uuid4()
-    assert recording.remove_recording_file() == None
-    assert recording.recording_file_id == None
-    assert recording.recording_file == None
-    
-    recording_file = factories.FileFactory.create()
-    recording.recording_file = recording_file
-    assert recording.remove_recording_file() == recording_file
-    assert recording.recording_file_id == None
-    assert recording.recording_file == None
-    
-    recording.recording_file_id = uuid.uuid4()
-    recording_file = factories.FileFactory.create()
-    recording.recording_file = recording_file
-    assert recording.remove_recording_file() == recording_file
-    assert recording.recording_file_id == None
-    assert recording.recording_file == None
-        
-def test_set_recording_file_id(recording: models.Recording):
-    recording_file_id = uuid.uuid4()
-    recording.set_recording_file_id(recording_file_id)
-    assert recording.recording_file_id == recording_file_id
-    
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_recording_file_id_none(recording: models.Recording, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_recording_file_id(c)
-
-def test_set_recording_file_id_wrong_type(recording: models.Recording):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_recording_file_id("this-is-not-a-uuid")
-
-def test_set_recording_file_id_already_exists(recording: models.Recording):
-    recording.set_recording_file_id(uuid.uuid4())
-    with pytest.raises(ValueError):
-        recording.set_recording_file_id(uuid.uuid4())
-
-def test_set_recording_file(recording: models.Recording):
-    recording_file = factories.FileFactory.create()
-    recording.set_recording_file(recording_file)
-    assert recording.recording_file == recording_file
-
-def test_set_recording_file_none(recording: models.Recording):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_recording_file(None)
-
-def test_set_recording_file_wrong_type(recording: models.Recording):
+def test_update_status_wrong(recording: models.Recording):
     with pytest.raises(exception_handler.ValidationError):
-        recording.set_recording_file(factories.SpeciesFactory.create())
+        recording._update_status(override="this-is-not-a-valid-status")
 
-def test_set_recording_file_already_exists(recording: models.Recording):
-    recording.set_recording_file(factories.FileFactory.create())
-    with pytest.raises(ValueError):
-        recording.set_recording_file(factories.FileFactory.create())
-
-def test_set_encounter_id(recording: models.Recording):
-    encounter_id = uuid.uuid4()
-    recording.set_encounter_id(encounter_id)
-    assert recording.encounter_id == encounter_id
-    
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_encounter_id_none(recording: models.Recording, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_encounter_id(c)
-
-def test_set_encounter_id_wrong_type(recording: models.Recording):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_encounter_id("this-is-not-a-uuid")
-
-def test_set_encounter(recording: models.Recording):
-    encounter = factories.EncounterFactory.create()
-    recording.set_encounter(encounter)
-    assert recording.encounter == encounter
-
-def test_set_encounter_none(recording: models.Recording):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_encounter(None)
-
-def test_set_encounter_wrong_type(recording: models.Recording):
-    with pytest.raises(exception_handler.ValidationError):
-        recording.set_encounter(factories.SpeciesFactory.create())
-
-def test_set_status(recording: models.Recording):
-    recording.set_status("Unassigned")
+def test_update_status_unassigned(recording: models.Recording):
+    recording._update_status(assignments=[])
     assert recording.status == "Unassigned"
-    recording.set_status("unassigned")
+    assert recording.status_change_datetime is None # Status hasn't changed from the default yet
+
+def test_update_status_unassigned_2(recording: models.Recording):
+    recording.status = "In Progress"
+    recording._update_status(assignments=[])
     assert recording.status == "Unassigned"
-    recording.set_status("In Progress")
-    assert recording.status == "In Progress"
-    recording.set_status("in progress")
-    assert recording.status == "In Progress"
-    recording.set_status("In progress")
-    assert recording.status == "In Progress"
-    recording.set_status("Awaiting Review")
-    assert recording.status == "Awaiting Review"
-    recording.set_status("awaiting review")
-    assert recording.status == "Awaiting Review"
-    recording.set_status("Awaiting review")
-    assert recording.status == "Awaiting Review"
-    recording.set_status("Reviewed")
-    assert recording.status == "Reviewed"
-    recording.set_status("reviewed")
-    assert recording.status == "Reviewed"
-    recording.set_status("On Hold")
-    assert recording.status == "On Hold"
-    recording.set_status("on hold")
-    assert recording.status == "On Hold"
-    recording.set_status("On hold")
-    assert recording.status == "On Hold"
-    
-def test_set_status_changes_datetime(recording: models.Recording):
-    for status in ["Unassigned", "In Progress", "Awaiting Review", "Reviewed", "On Hold"]:
-        recording.set_status(status)
-        assert recording.status_change_datetime is not None
-        recording.status_change_datetime = None
-        recording.status = None
-    
-def test_set_status_wrong(recording: models.Recording):
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_status("this-is-not-a-valid-status")
-    with pytest.raises(exception_handler.WarningException):
-        recording.set_status(1) # Statuses are not integers
+    assert recording.status_change_datetime is not None
 
-def test_set_status_change_datetime(recording: models.Recording):
-    timestamp = datetime.datetime.now(datetime.timezone.utc)
-    recording.set_status_change_datetime(timestamp)
-    assert recording.status_change_datetime == timestamp
-
-def test_set_status_change_datetime_str(recording: models.Recording):
-    timestamp = datetime.datetime.now()
-    for f in DATE_FORMAT:
-        time_string, timestamp = common.parse_timestamp(timestamp, f)
-        recording.set_status_change_datetime(time_string)
-        assert type(recording.status_change_datetime) == datetime.datetime
-        assert recording.status_change_datetime.tzinfo is not None # Check that the set value contains timezone information
-        assert common.equate_timestamps(timestamp, recording.status_change_datetime) == True
-
-def test_set_notes(recording: models.Recording):
-    recording.set_notes("Test")
-    assert recording.notes == "Test"
-
-def test_set_notes_whitespace(recording: models.Recording):
-    recording.set_notes("  Test \t")
-    assert recording.notes == "Test"
-
-def test_set_notes_multiple_lines(recording: models.Recording):
-    recording.set_notes("Test\nTest")
-    assert recording.notes == "Test\nTest"
-
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_notes_empty(recording: models.Recording, c: str):
-    recording.set_notes(c)
-    assert recording.notes == None
-        
-def test_get_start_time(recording: models.Recording):
-    timestamp = datetime.datetime.now(datetime.timezone.utc)
-    recording.start_time = timestamp
-    assert recording.get_start_time() == timestamp
-    
-def test_get_recording_file_id(recording: models.Recording):
-    recording_file_id = uuid.uuid4()
-    recording.recording_file_id = recording_file_id
-    assert recording.get_recording_file_id() == recording_file_id
-    recording_file_id = uuid.uuid4()
-    recording.recording_file_id = recording_file_id.hex
-    assert recording.get_recording_file_id() == recording_file_id
-    recording.recording_file_id = None
-    assert recording.get_recording_file_id() == None
-    recording.recording_file_id = "not-a-uuid"
-    with pytest.raises(exception_handler.WarningException):
-        recording.get_recording_file_id()
-
-def test_get_recording_file(recording: models.Recording):
-    recording_file = factories.FileFactory.create()
-    recording.recording_file = recording_file
-    assert recording.get_recording_file() == recording_file
-    recording.recording_file = None
-    assert recording.get_recording_file() == None
-    recording.recording_file = factories.SpeciesFactory.create()
-    with pytest.raises(exception_handler.ValidationError):
-        recording.get_recording_file()
-
-def test_get_encounter_id(recording: models.Recording):
-    encounter_id = uuid.uuid4()
-    recording.encounter_id = encounter_id
-    assert recording.get_encounter_id() == encounter_id
-    encounter_id = uuid.uuid4()
-    recording.encounter_id = encounter_id.hex
-    assert recording.get_encounter_id() == encounter_id
-    recording.encounter_id = None
-    assert recording.get_encounter_id() == None
-    recording.encounter_id = "not-a-uuid"
-    with pytest.raises(exception_handler.WarningException):
-        recording.get_encounter_id()
-
-def test_get_encounter(recording: models.Recording):
-    encounter = factories.EncounterFactory.create()
-    recording.encounter = encounter
-    assert recording.get_encounter() == encounter
-    recording.encounter = None
-    assert recording.get_encounter() == None
-    recording.encounter = factories.SpeciesFactory.create()
-    with pytest.raises(exception_handler.ValidationError):
-        recording.get_encounter()
-
-def test_get_status(recording: models.Recording):
+def test_update_status_unassigned_3(recording: models.Recording):
     recording.status = "Awaiting Review"
-    assert recording.get_status() == "Awaiting Review"
+    recording._update_status(assignments=[])
+    assert recording.status == "Unassigned"
+    assert recording.status_change_datetime is not None
 
-def test_get_status_change_datetime(recording: models.Recording):
-    timestamp = datetime.datetime.now(datetime.timezone.utc)
-    recording.status_change_datetime = timestamp
-    assert recording.get_status_change_datetime() == timestamp
-    recording.status_change_datetime = None
-    assert recording.get_status_change_datetime() == None
-    recording.status_change_datetime = "not-a-date"
-    with pytest.raises(exception_handler.WarningException):
-        recording.get_status_change_datetime()
-    
-def test_get_notes(recording: models.Recording):
-    recording.notes = "Test Notes"
-    assert recording.get_notes() == "Test Notes"
-    recording.notes = None
-    assert recording.get_notes() == ""
-    recording.notes = ""
-    assert recording.get_notes() == ""
-    
-def test_is_complete(recording: models.Recording):
-    recording.status = "Unassigned"
-    assert recording.is_complete() == False
-    recording.status = "In Progress"
-    assert recording.is_complete() == False
-    recording.status = "Awaiting Review"
-    assert recording.is_complete() == False
+def test_update_status_in_progress(recording: models.Recording):
+    recording._update_status(assignments=[factories.AssignmentFactory.create()])
+    # With one assignment incomplete
+    assert recording.status == "In Progress"
+    assert recording.status_change_datetime is not None
+
+def test_update_status_in_progress_2(recording: models.Recording):
+    assignment1 = factories.AssignmentFactory.create()
+    assignment2 = factories.AssignmentFactory.create()
+    assignment2.completed_flag = True
+    recording._update_status(assignments=[assignment1, assignment2])
+    # With one assignment complete and one not complete
+    assert recording.status == "In Progress"
+    assert recording.status_change_datetime is not None
+
+def test_update_status_awaiting_review(recording: models.Recording):
+    assignment = factories.AssignmentFactory.create()
+    assignment.completed_flag = True
+    recording._update_status(assignments=[assignment])
+    # With all assignments complete
+    assert recording.status == "Awaiting Review"
+    assert recording.status_change_datetime is not None
+
+def test_update_status_reviewed_does_not_change(recording: models.Recording):
     recording.status = "Reviewed"
-    assert recording.is_complete() == True
+    recording._update_status(assignments=[])
+    assert recording.is_reviewed()
+    assert recording.status_change_datetime is None
+
+def test_update_status_on_hold_does_not_change(recording: models.Recording):
     recording.status = "On Hold"
-    assert recording.is_complete() == False
+    recording._update_status(assignments=[])
+    assert recording.is_on_hold()
+    assert recording.status_change_datetime is None
 
-def test_is_on_hold(recording: models.Recording):
-    recording.status = "Unassigned"
-    assert recording.is_on_hold() == False
-    recording.status = "In Progress"
-    assert recording.is_on_hold() == False
-    recording.status = "Awaiting Review"
-    assert recording.is_on_hold() == False
-    recording.status = "Reviewed"
-    assert recording.is_on_hold() == False
-    recording.status = "On Hold"
-    assert recording.is_on_hold() == True
-
-def test_update_status(recording: models.Recording):
-    # TODO (WITH ASSIGNMENT TESTING)
-    pass
-
-def test_generate_relative_directory(recording: models.Recording):
+def test_relative_directory(recording: models.Recording):
+    recording.encounter = factories.EncounterFactory.create()
     recording.encounter.species.species_name = f"TestSpecies"
     recording.encounter.encounter_name = f"TestEncounter"
     recording.encounter.location = f"TestLocation"
     recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    assert recording.generate_relative_directory() == os.path.join(f"Species-TestSpecies", f"Location-TestLocation", f"Encounter-TestEncounter",f"Recording-20200821T025422")
+    assert recording.relative_directory == os.path.join(f"Species-TestSpecies", f"Location-TestLocation", f"Encounter-TestEncounter",f"Recording-20200821T025422")
 
-def test_generate_relative_directory_invalid_characters(recording: models.Recording):
-    for c in ["/","\\","*","?","\"","<",">","|"," "]:
+def test_relative_directory(recording: models.Recording):
+    for c in common.INVALID_CHARACTERS + ["_"]:
+        recording.encounter = factories.EncounterFactory.create()
         recording.encounter.species.species_name = f"Test{c}Species"
         recording.encounter.encounter_name = f"Test{c}Encounter"
         recording.encounter.location = f"Test{c}Location"
         recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-        assert recording.generate_relative_directory() == os.path.join(f"Species-Test_Species", f"Location-Test_Location", f"Encounter-Test_Encounter",f"Recording-20200821T025422")
+        assert recording.relative_directory == os.path.join(f"Species-Test_Species", f"Location-Test_Location", f"Encounter-Test_Encounter",f"Recording-20200821T025422")
 
-def test_generate_relative_directory_exception(recording: models.Recording):
+def test_relative_directory_exception(recording: models.Recording):
     recording.encounter = None
-    with pytest.raises(ValueError):
-        recording.generate_relative_directory()
+    with pytest.raises(exception_handler.CriticalException):
+        recording.relative_directory
 
-def test_generate_recording_file_name(recording: models.Recording):
-    recording.encounter.species.species_name = f"TestSpecies"
-    recording.encounter.encounter_name = f"TestEncounter"
-    recording.encounter.location = f"TestLocation"
-    recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    assert recording.generate_recording_file_name() == f"Rec-TestSpecies-TestLocation-TestEncounter-20200821T025422"
-
-def test_generate_recording_file_name_invalid_characters(recording: models.Recording):
-    for c in ["/","\\","*","?","\"","<",">","|"," "]:
+def test_recording_file_name(recording: models.Recording):
+    for c in common.INVALID_CHARACTERS + ["_"]:
         recording.encounter.species.species_name = f"Test{c}Species"
         recording.encounter.encounter_name = f"Test{c}Encounter"
         recording.encounter.location = f"Test{c}Location"
         recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-        assert recording.generate_recording_file_name() == f"Rec-Test_Species-Test_Location-Test_Encounter-20200821T025422"
+        assert recording.recording_file_name == f"Rec-Test_Species-Test_Location-Test_Encounter-20200821T025422"
 
-def test_ensure_generate_recording_file_name_has_no_invalid_characters(recording: models.Recording):
-    recording.encounter.species.species_name = f"TestSpecies"
-    recording.encounter.encounter_name = f"TestEncounter"
-    recording.encounter.location = f"TestLocation"
-    recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    for c in recording.generate_recording_file_name():
-        assert c not in ["/","\\","*","?","\"","<",">","|"," "]
-
-def test_generate_selection_table_file_name(recording_with_encounter: models.Recording):
-    recording = recording_with_encounter
-    assert recording_with_encounter.generate_selection_table_file_name() == f"SelTable-{recording.encounter.species.species_name}-{recording.encounter.location}-{recording.encounter.encounter_name}-{filespace_handler.format_date_for_filespace(recording.start_time)}"
-    
-def test_generate_selection_table_file_name_invalid_characters(recording: models.Recording):
-    for c in ["/","\\","*","?","\"","<",">","|"," "]:
+def test_selection_table_file_name(recording: models.Recording):
+    for c in common.INVALID_CHARACTERS + ["_"]:
         species = recording.encounter.species
         species.species_name = f"Test{c}Species"
         recording.encounter.encounter_name = f"Test{c}Encounter"
         recording.encounter.location = f"Test{c}Location"
         recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-        assert recording.generate_selection_table_file_name() == f"SelTable-Test_Species-Test_Location-Test_Encounter-20200821T025422"
+        assert recording.selection_table_file_name == f"SelTable-Test_Species-Test_Location-Test_Encounter-20200821T025422"
 
-def test_ensure_generate_selection_table_file_name_has_no_invalid_characters(recording: models.Recording):
-    recording.encounter.species.species_name = f"TestSpecies"
-    recording.encounter.encounter_name = f"TestEncounter"
-    recording.encounter.location = f"TestLocation"
+def test_ensure_selection_table_file_name_has_no_invalid_characters(recording: models.Recording):
+    recording.encounter.species.species_name = f"TestSpecies" + "".join(common.INVALID_CHARACTERS)
+    recording.encounter.encounter_name = f"TestEncounter" + "".join(common.INVALID_CHARACTERS)
+    recording.encounter.location = f"TestLocation" + "".join(common.INVALID_CHARACTERS)
     recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    for c in recording.generate_selection_table_file_name():
-        assert c not in ["/","\\","*","?","\"","<",">","|"," "]
+    for c in recording.selection_table_file_name:
+        assert c not in common.INVALID_CHARACTERS
 
-# METHODS STILL TO UNIT TEST
-# generate_relative_path_for_selections - THIS NEEDS TO MOVE TO THE Selection MODULE
+# NOTE: there is more rigorous testing of inserting into selection tables in the Selection module
+
+def test_selection_table_apply_empty_dataframe(recording):
+    dataframe = pd.DataFrame()
+    selections = {}
+    with pytest.raises(exception_handler.WarningException) as exc_info:
+        recording._selection_table_apply(dataframe, selections)
+
+def test_selection_table_apply_missing_selection_column(recording):
+    dataframe = pd.DataFrame({'other_column': [1, 2, 3]})
+    selections = {}
+    with pytest.raises(exception_handler.WarningException) as exc_info:
+        recording._selection_table_apply(dataframe, selections)
+
+def test_selection_table_apply_missing_other_columns(recording: models.Recording):
+    dataframe = pd.DataFrame({'Selection': [1, 2, 3]})
+    selections = {}
+    with pytest.raises(exception_handler.WarningException) as exc_info:
+        recording._selection_table_apply(dataframe, selections)
+
+def test_selection_table_apply_new_selections(recording):
+    dataframe = pd.DataFrame({'Selection': [1, 2, 3], 'View': ["1", "2", "3"], 'Channel': ["1", "2", "3"], 'Begin Time (s)': [1.1, 2.2, 3.3], 'End Time (s)': [1.1, 2.2, 3.3], 'Low Freq (Hz)': [1.1, 2.2, 3.3], 'High Freq (Hz)': [1.1, 2.2, 3.3], 'Annotation': ["Y", "N", "M"]})
+    selections = {}
+    new_selections = recording._selection_table_apply(dataframe, selections)
+    assert len(new_selections) == 3
+    for selection in new_selections:
+        assert isinstance(selection, models.Selection)
+        assert selection.recording_id == recording.id

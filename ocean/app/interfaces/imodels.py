@@ -1,6 +1,7 @@
 # INTERFACES FOR MODELS
 
 from abc import ABC, ABCMeta, abstractmethod
+import datetime
 from typing import Protocol
 from uuid import UUID
 import uuid
@@ -13,6 +14,7 @@ from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 import typing
 import warnings
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from ...app import exception_handler
 
 # Combine ABCMeta and SQLAlchemy's DeclarativeMeta
 class CombinedMeta(ABCMeta, type(database_handler.db.Model)):
@@ -93,7 +95,26 @@ class TableOperations(ABC):
         dependencies that are not allowed to be automatically resolved.
         This will cause an `exception_handler.WarningException` to be raised
         """
+        raise NotImplementedError()
+
+    @property
+    @abstractmethod
+    def unique_name(self):
+        """The unique name of the object"""
         pass
+
+    def _update_filespace(self):
+        """Go through all of this object's dependencies on the filespace (for 
+        exanple foreign key references to the `File` class) and ensure that the
+        correct metadata is stored in folder and file names. If the object has
+        no dependencies on the filespace, this method does nothing."""
+        raise NotImplementedError()
+
+    def apply_updates(self):
+        self._update_filespace()
+        for child in self._get_children():
+            if issubclass(type(child), Cascading):
+                child.apply_updates()
 
 class Cascading(ABC):
     
@@ -233,22 +254,22 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
     __tablename__ = 'encounter'
     # __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
 
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, default=uuid.uuid4)
-    encounter_name = database_handler.db.Column(database_handler.db.String(100), nullable=False)
-    location = database_handler.db.Column(database_handler.db.String(100), nullable=False)
-    species_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('species.id'), nullable=False)
-    project = database_handler.db.Column(database_handler.db.String(100), nullable=False)
-    latitude = database_handler.db.Column(database_handler.db.Double)
-    longitude = database_handler.db.Column(database_handler.db.Double)
-    data_source_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('data_source.id'), nullable=False)
-    recording_platform_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording_platform.id'), nullable=False)
-    notes = database_handler.db.Column(database_handler.db.String(1000))
-    file_timezone = database_handler.db.Column(database_handler.db.Integer)
-    local_timezone = database_handler.db.Column(database_handler.db.Integer)
+    id = Column(String(36), primary_key=True, default=uuid.uuid4)
+    encounter_name = Column(String(100), nullable=False)
+    location = Column(String(100), nullable=False)
+    species_id = Column(String(36), database_handler.db.ForeignKey('species.id'), nullable=False)
+    project = Column(String(100), nullable=False)
+    latitude = Column(database_handler.db.Double)
+    longitude = Column(database_handler.db.Double)
+    data_source_id = Column(String(36), database_handler.db.ForeignKey('data_source.id'), nullable=False)
+    recording_platform_id = Column(String(36), database_handler.db.ForeignKey('recording_platform.id'), nullable=False)
+    notes = Column(String(1000))
+    file_timezone = Column(database_handler.db.Integer)
+    local_timezone = Column(database_handler.db.Integer)
     species = database_handler.db.relationship("Species")
     data_source = database_handler.db.relationship("DataSource")
     recording_platform = database_handler.db.relationship("RecordingPlatform")
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
     __table_args__ = (
         database_handler.db.UniqueConstraint('encounter_name', 'location', 'project'),
@@ -345,6 +366,199 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
         be secure (for example see `from werkzeug.utils import secure_filename`)"""
         pass
 
+class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
+    __tablename__ = 'recording'
+
+    # identifiers
+    id = Column(String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    # parent
+    encounter_id = Column(String(36), database_handler.db.ForeignKey('encounter.id'), nullable=False)
+    encounter = database_handler.db.relationship("Encounter", foreign_keys=[encounter_id])
+    # metadata
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    status = Column(database_handler.db.Enum('Unassigned','In Progress','Awaiting Review','Reviewed','On Hold'), nullable=False, default='Unassigned')
+    status_change_datetime = Column(DateTime(timezone=True))
+    notes = Column(database_handler.db.Text)
+    # children
+    recording_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
+    recording_file = database_handler.db.relationship("File", foreign_keys=[recording_file_id])
+    selection_table_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
+    selection_table_file = database_handler.db.relationship("File", foreign_keys=[selection_table_file_id])
+    # automatic metadata
+    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+    row_start = Column(DateTime(timezone=True), server_default="current_timestamp()")
+    created_datetime = Column(DateTime(timezone=True), nullable=False, server_default="current_timestamp()")
+
+    __table_args__ = (
+        database_handler.db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
+    )
+
+    def _to_dict(self):
+        return {
+            'unique_name': self.unique_name,
+            'id': self.id,
+            'encounter_id': self.encounter_id,
+            'encounter': self.encounter,
+            'start_time': self.start_time,
+            'status': self.status,
+            'status_change_datetime': self.status_change_datetime,
+            'notes': self.notes,
+            'recording_file_id': self.recording_file_id,
+            'recording_file': self.recording_file,
+            'selection_table_file_id': self.selection_table_file_id,
+            'selection_table_file': self.selection_table_file,
+            'updated_by_id': self.updated_by_id,
+            'row_start': self.row_start,
+            'created_datetime': self.created_datetime
+        }
+
+    def _form_dict(self):
+        return {
+            'start_time': True,
+            'status': False,
+            'notes': False
+        }
+
+    @validates("id", "encounter_id")
+    def _validate_id(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=False)
+    
+    @validates("recording_file_id", "selection_table_file_id", "updated_by_id")
+    def _validate_id_nullable(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=True)
+
+    @validates("start_time")
+    def _validate_datetime(self, key, value):
+        return utils.validate_datetime(value=value, field=key, allow_none=False)
+    
+    @validates("status_change_datetime")
+    def _validate_datetime_nullable(self, key, value):
+        return utils.validate_datetime(value=value, field=key, allow_none=True)
+
+    @validates("notes")
+    def _validate_str_nullable(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=True)
+
+    @validates("status")
+    def _validate_status(self, key, value):
+        return utils.validate_enum(value=value, field=key, enum=['Unassigned','In Progress','Awaiting Review','Reviewed','On Hold'])
+
+    @validates("row_start", "created_datetime")
+    def _reject_change(self, key, value):
+        raise exception_handler.CriticalException(f"Cannot change {key}")
+    
+    @abstractmethod
+    def selection_table_apply(self):
+        """Applies the selection table to the recording. Before calling this method ensure
+        that `selection_table_file` has been set. You can also set `selection_table_file_id`
+        but that requires a flush to the session before continuing.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def selection_table_data_delete(self):
+        """Delete the data from the recording's selections that was provided by the selection table.
+        Will not delete any selections themselves."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def selection_table_export(self):
+        """Export the selection table to a CSV or TSV file."""
+
+    @property
+    @abstractmethod
+    def start_time_pretty(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def relative_directory(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def folder_name(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def recording_file_name(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def selection_table_file_name(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def selection_count(self):
+        """Returns the number of selections in the recording."""
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def selection_file_count(self):
+        """Returns the number of selection files in the recording."""
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def contour_file_count(self):
+        """Returns the number of contour files in the recording."""
+        raise NotImplementedError
+    
+    @abstractmethod
+    def is_reviewed(self):
+        """Returns True if the recording has been reviewed, otherwise False."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_on_hold(self):
+        """Returns True if the recording has been on hold, otherwise False."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_awaiting_review(self):
+        """Returns True if the recording is awaiting review, otherwise False."""
+        raise NotImplementedError
+    
+    @abstractmethod
+    def is_in_progress(self):
+        """Returns True if the recording is in progress, otherwise False."""
+        raise NotImplementedError
+    
+    @abstractmethod
+    def is_unassigned(self):
+        """Returns True if the recording is unassigned, otherwise False."""
+        raise NotImplementedError
+    
+    def _update_status(self, assignments):
+        """Helper method to `update_status`."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_status(self):
+        """Update the `status` and `status_change_datetime` of the recording based on the recording's current assignments.
+        
+        If the recording is has assignments that have not been completed the status will be set to `In Progress`.
+        If the recording has no assignments the status will be set to `Unassigned`.
+        If the recording has assignments that have all been completed the status will be set to `Awaiting Review`.
+        Regardless of any of the above conditions if the status is on `On Hold` or `Reviewed` it will not change.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def get_selections(self, session):
+        """Returns an ordered list of `Selection` objects that are associated with the recording."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_selection_traced_status(self, session):
+        """Updates the `traced` status of the `Selection` objects that are associated with the recording. 
+        Does not commit the session automatically. Does not make changes to the session."""
+        raise NotImplementedError
 
 class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     """Abstract class for the SQLAlchemy table user.

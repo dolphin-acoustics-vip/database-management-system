@@ -90,6 +90,7 @@ class RecordingFactory(factory.alchemy.SQLAlchemyModelFactory):
     id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
     start_time = factory.Faker('date_time')
     encounter = factory.SubFactory(EncounterFactory)
+    status = "Unassigned"
     updated_by_id = None
 
 class SelectionFactory(factory.alchemy.SQLAlchemyModelFactory):

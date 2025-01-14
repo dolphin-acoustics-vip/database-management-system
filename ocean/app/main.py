@@ -47,6 +47,7 @@ def check_interfaces():
     """
     recording_platform = models.RecordingPlatform()
     user = models.User()
+    recording = models.Recording()
     assignment = models.Assignment()
     data_source = models.DataSource()
     encounter = models.Encounter()

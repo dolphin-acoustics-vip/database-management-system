@@ -9,7 +9,7 @@
 <body>
     <div class="outer-div">
         
-        <h1>View Recording {{ recording.get_unique_name() }}</h1>
+        <h1>View Recording {{ recording.unique_name }}</h1>
 
         {% if current_user.role_id in [1, 2] %}
         <h2>Administration Actions</h3>
@@ -29,7 +29,7 @@
             <label>Status: {{recording.status}} {% if recording.status_change_datetime %}
                 ({{recording.status_change_datetime}}) {% endif %}</label>
             <div stype="display: flex;">
-                {% if recording.is_complete() == False %}
+                {% if recording.is_reviewed() == False %}
                 <form action="{{url_for('recording.mark_as_complete', recording_id=recording.id)}}" method="get">
                     <button style="margin-bottom:0.5rem;" class="gray" type="submit" id="mark-as-complete-button">Mark as Complete</button>
                 </form>
@@ -101,7 +101,7 @@
 
             {% endif %}
             <h2>Recording Summary</h2>
-            {% if recording.is_complete() == True %}
+            {% if recording.is_reviewed() == True %}
 
             <label>Assignment Status: REVIEWED {% if recording.status_change_datetime %}
                 ({{recording.status_change_datetime}}) {% endif %}</label>
@@ -126,11 +126,11 @@
             <label>Assignment Status: NOT ASSIGNED TO CURRENT USER</label>
             {% endif %}
             {% endif %}
-            <label>Start date: {{ recording.get_start_time_pretty() }}</label>
+            <label>Start date: {{ recording.start_time_pretty }}</label>
             <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
                 recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
-            <label>Number of selections: {{ recording.get_number_of_selections() }}</label>
-            <label>Number of contours: {{ recording.get_number_of_contours() }}</label>
+            <label>Number of selections: {{ recording.selection_count }}</label>
+            <label>Number of contours: {{ recording.contour_file_count }}</label>
 
             <form id="update-notes-form" action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
                 <label for="notes">Notes:</label>
@@ -234,13 +234,13 @@
                 {% if recording.selection_table_file %}
                 <div style="display:flex;">
                     <a class="button small"
-                        href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='txt') }}">Download
+                        href="{{ url_for('recording.selection_table_export', recording_id=recording.id, export_format='txt') }}">Download
                         TXT</a>
                     <a style="margin-left: 0.25rem" class="button small"
-                        href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.get_unique_name()}}">File
+                        href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.unique_name}}">File
                         Details</a>
                     <a style="margin-left: 0.25rem;" class="button small"
-                        href="{{ url_for('recording.export_selection_table', recording_id=recording.id, export_format='csv') }}">Download
+                        href="{{ url_for('recording.selection_table_export', recording_id=recording.id, export_format='csv') }}">Download
                         CSV</a>
                 </div>
                 {% if not session['snapshot_date'] %}
@@ -249,14 +249,15 @@
                 <div style="display:flex;" >
                 <form id="delete-selection-table-form" encounter-id="{{recording.encounter_id}}"
                     selection-table-id="{{recording.selection_table_id}}"
-                    action="{{ url_for('recording.recording_selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
+                    action="{{ url_for('recording.selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
                     method="post" style="flex : 1;">
                     <button class="gray small" style="margin-top:0.5rem; margin-right:0.25rem;"  type="submit">Delete Selection Table</button>
                 </form>
-                <form id="refresh-selection-table-form" action="{{ url_for('recording.refresh_selection_table', recording_id=recording.id)}}" method="post" style="flex : 1;">
+                <form id="refresh-selection-table-form" action="{{ url_for('recording.selection_table_refresh', recording_id=recording.id)}}" method="post" style="flex : 1;">
                     <button class="gray small" style="margin-top:0.5rem; margin-left:0.25rem;" type="submit">Refresh Selection Table Values</button>
                 </form>
                 </div>
+
                 {% endif %}
 
                 {% endif %}
@@ -266,7 +267,7 @@
                 {% if current_user.role_id in [1, 2, 3] %}
                 <form
                 id="upload-selection-table-form"    
-                action="{{ url_for('recording.recording_selection_table_add', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
+                action="{{ url_for('recording.selection_table_insert', recording_id=recording.id)}}"
                     method="post" enctype="multipart/form-data">
                     <div style="display:flex;">
                         <input class="small" type="file" name="selection-table-file" id="selection-table-file" accept=".xlsx, .csv, .txt">
@@ -282,7 +283,7 @@
 
                 {% endif %}
 
-                <h2>Selections for recording {{ recording.get_start_time_pretty() }}</h2>
+                <h2>Selections for recording {{ recording.start_time_pretty }}</h2>
                 {% if selections|length > 0 %}
                 <div class="table-responsive">
                     <table class="table-striped">
@@ -402,7 +403,7 @@
                     <input type="hidden" name="_method" value="POST">
                     <button class="link small" id="delete-recording-button" title="Delete the entire recording."
                         type="submit" style="margin-top: 1rem;" data-recording-id="{{ recording.id }}"
-                        delete-info="{{recording.get_start_time_string()}}">Delete Recording</button>
+                        delete-info="{{recording.start_time_pretty}}">Delete Recording</button>
                 </form>
                 {% endif %}
                 {% endif %}
@@ -435,8 +436,10 @@
     });
 
     $("#refresh-selection-table-form").submit(function (event) {
-        if (!confirm("This will reset the traced status of all selections. Are you sure you want to do this?")) {
-            event.preventDefault();
+        event.preventDefault();
+        form = event.target;
+        if (confirm("This will reset the traced status of all selections. Are you sure you want to do this?")) {
+            makeAjaxRequestForm(form)
         }
     });
 

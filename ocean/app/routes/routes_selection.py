@@ -265,7 +265,7 @@ def process_contour():
         date = utils.parse_date(filename)
         if not date:
             messages.append("<span style='color: orange;'>Warning: no start time.</span>")            
-        elif not recording.match_start_time(date):
+        elif not recording.start_time == date:
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
             
     return jsonify(id=selection_number,messages=messages,valid=valid)
@@ -346,7 +346,7 @@ def process_selection():
         date = utils.parse_date(filename)
         if not date:
             messages.append("<span style='color: orange;'>Warning: no start time.</span>")            
-        elif not recording.match_start_time(date):
+        elif not recording.start_time == date:
             messages.append("<span style='color: orange;'>Warning: start time mismatch.</span>")
             
 
@@ -628,7 +628,7 @@ def extract_contour_stats(recording_id):
     with database_handler.get_session() as session:
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-        return write_contour_stats(selections, filename=f"ContourStats-{recording.get_start_time_string()}.csv")
+        return write_contour_stats(selections, filename=f"ContourStats-{recording.start_time_pretty}.csv")
 
 @routes_selection.route('/encounter/<encounter_id>/extract-contour-stats-for-encounter', methods=['GET'])
 def extract_contour_stats_for_encounter(encounter_id):

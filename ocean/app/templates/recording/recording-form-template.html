@@ -3,7 +3,7 @@
 <label for="time_start" class="bold">Start Time</label>
 <input type="datetime-local" class="date-input small" id="time_start" name="time_start" step="1" required
     onchange="calculateTimeOffsets('time_start','gmt-offset-label','local-offset-label','file-time-label','{{ file_timezone }}','{{ local_timezone }}')"
-    {% if editing %}value="{{ recording.get_start_time_string() }}" {% endif %}>
+    {% if editing %}value="{{ recording.start_time_pretty }}" {% endif %}>
 <div id="time-offsets">
     <label style="display: none;" id="file-time-label"></label>
     <label style="display: none;" id="gmt-offset-label"></label>
@@ -17,7 +17,7 @@
     <a style="margin-right: 0.25rem" class="button small"
         href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a>
     <a style="margin-left: 0.25rem" class="button small"
-        href="{{ url_for('general.get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.get_unique_name()}}">File
+        href="{{ url_for('general.get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.unique_name}}">File
         Details</a>
 
     <form
@@ -34,8 +34,8 @@
     <span style="display: none; padding-right: 0.5rem;" id="recording-insert-progress-text">0%</span>
     <progress style="display: none;" id="recording-insert-progress-bar" value="0" max="100"></progress>
 </div>
-<input type="hidden" id="recording-file-id-store" name="recording_file_id" value="">
-<input type="hidden" id="recording-file-name-store" name="recording_filename" value="">
+<input type="hidden" id="recording-file-id-store" name="upload_recording_file_id" value="">
+<input type="hidden" id="recording-file-name-store" name="upload_recording_file_name" value="">
 
 <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
 
