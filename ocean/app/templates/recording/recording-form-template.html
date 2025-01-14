@@ -1,8 +1,8 @@
 {% macro recording_form(editing, file_timezone, local_timezone, recording) %}
 
-<label for="time_start" class="bold">Start Time</label>
-<input type="datetime-local" class="date-input small" id="time_start" name="time_start" step="1" required
-    onchange="calculateTimeOffsets('time_start','gmt-offset-label','local-offset-label','file-time-label','{{ file_timezone }}','{{ local_timezone }}')"
+<label for="start_time" class="bold">Start Time</label>
+<input type="datetime-local" class="date-input small" id="start-time" name="start_time" step="1" required
+    onchange="calculateTimeOffsets('start-time','gmt-offset-label','local-offset-label','file-time-label','{{ file_timezone }}','{{ local_timezone }}')"
     {% if editing %}value="{{ recording.start_time_pretty }}" {% endif %}>
 <div id="time-offsets">
     <label style="display: none;" id="file-time-label"></label>
@@ -48,7 +48,7 @@
 
 
     /**
-     * Extracts the date from a given file name and updates the time_start and seconds fields in the document.
+     * Extracts the date from a given file name and updates the start-time and seconds fields in the document.
      * The date is extracted using an HTTP request to a server-side method which determines the regex code.
      * 
      * @param {string} fileName - The name of the file to extract the date from.
@@ -68,9 +68,9 @@
                     // cut out milliseconds
                     var formattedDate = date.toISOString().slice(0, 19);
                     if ('{{editing}}' == 'False') {
-                        document.getElementById('time_start').value = formattedDate;
+                        document.getElementById('start-time').value = formattedDate;
                     }
-                    calculateTimeOffsets('time_start', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
+                    calculateTimeOffsets('start-time', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
                 }
             }
         )
@@ -79,7 +79,7 @@
 
     $(document).ready(function () {
         if ('{{editing}}' == 'True') {
-            calculateTimeOffsets('time_start', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
+            calculateTimeOffsets('start-time', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
         }
         fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-insert-form-submit'));
 

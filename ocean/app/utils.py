@@ -138,15 +138,15 @@ def download_file_from_path(path, deleted):
     else:
         raise exception_handler.WarningException("File not found.")
 
-def download_file(file_obj, file_name_generator=None):
+def download_file(file_obj, filename=None):
     """
-    Takes a file object and sends the file to the user. Before doing so,
-    uses the file_name_generator() method passed to rename the file during
-    export without copying or moving the file.
+    Takes a file object and sends the file to the user. If the file is to be downloaded
+    with a custom name, set `filename`. If the file is to be downloaded with the same
+    name as the original, set `filename` to None (default).
     """
     try:
         # Generate a custom filename for the download
-        custom_filename = file_name_generator() if file_name_generator else file_obj.filename
+        custom_filename = filename if filename else file_obj.filename
         if not custom_filename.endswith(file_obj.extension):
             custom_filename = f"{custom_filename}.{file_obj.extension}"
         
@@ -416,11 +416,13 @@ def parse_form(form: typing.Dict[str, typing.Any], schema: typing.Dict[str, bool
         Dict[str, Any]: A dictionary containing only the key-value pairs from the form that match the keys specified in the schema.
     """
     data = {}
+    missing = []
     for k in schema:
         if k not in form and schema[k] == True:
-            raise AttributeError(f"The submitted form does not contain the required fields.")
+            missing.append(k)
         elif k in form:
             data[k] = form[k]
+    if len(missing) > 0: raise AttributeError(f"The submitted form does not contain the required fields: {', '.join(missing)}")
     return data
 
 # Characters which need to be replaced by an underscore in paths

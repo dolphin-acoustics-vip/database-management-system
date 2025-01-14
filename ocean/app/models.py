@@ -96,13 +96,13 @@ class Species(ISpecies):
     def unique_name(self):
         return self.species_name
 
-    def _get_children(self):
-        with database_handler.get_session() as session:
-            return session.query(Encounter).filter_by(species_id=self.id).all()
+    def _get_children(self, session):
+        return session.query(Encounter).filter_by(species_id=self.id).all()
 
     def prepare_for_delete(self):
-        if len(self._get_children()) > 0:
-            raise exception_handler.WarningException("Cannot delete species as it has dependencies.")
+        with database_handler.get_session() as session:
+            if len(self._get_children(session)) > 0:
+                raise exception_handler.WarningException("Cannot delete species as it has dependencies.")
 
     @property
     def folder_name(self) -> str:
@@ -124,98 +124,25 @@ class RecordingPlatform(IRecordingPlatform):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-class DataSource(database_handler.db.Model):
-    __tablename__ = 'data_source'
+from .interfaces.imodels import IDataSource
 
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    name = database_handler.db.Column(database_handler.db.String(255))
-    phone_number1 = database_handler.db.Column(database_handler.db.String(20), unique=True)
-    phone_number2 = database_handler.db.Column(database_handler.db.String(20), unique=True)
-    email1 = database_handler.db.Column(database_handler.db.String(255), nullable=False, unique=True)
-    email2 = database_handler.db.Column(database_handler.db.String(255), unique=True)
-    address = database_handler.db.Column(database_handler.db.Text)
-    notes = database_handler.db.Column(database_handler.db.Text)
-    type = database_handler.db.Column(database_handler.db.Enum('person', 'organisation'))
+class DataSource(IDataSource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+    def unique_name(self):
+        return self.name
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'phone_number1': self.phone_number1,
-            'phone_number2': self.phone_number2,
-            'email1': self.email1,
-            'email2': self.email2,
-            'address': self.address,
-            'notes': self.notes,
-            'type': self.type,
-            'updated_by_id': self.updated_by_id,
-        }
-
-    def __repr__(self):
-        return '<DataSource %r>' % self.name
-    
-    def set_updated_by_id(self, user_id: uuid.UUID | str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
-        self.updated_by_id = utils.validate_id(value=user_id, field="name")
-    
-    def get_name(self) -> str:
-        return self.name if self.name else ""
-
-    def set_name(self, value: str | None):
-        self.name = utils.validate_string(value=value, field="Name", allow_none=True)
-
-    def get_phone_number1(self) -> str:
-        return self.phone_number1 if self.phone_number1 else ""
-
-    def set_phone_number1(self, value: str | None):
-        self.phone_number1 = utils.validate_string(value=value, field="Phone Number 1", allow_none=True)
-
-    def get_phone_number2(self) -> str:
-        return self.phone_number2 if self.phone_number2 else ""
-
-    def set_phone_number2(self, value: str | None):
-        self.phone_number2 = utils.validate_string(value=value, field="Phone Number 2", allow_none=True)
-
-    def get_email1(self) -> str:
-        return self.email1 if self.email1 else ""
-
-    def set_email1(self, value: str | None):
-        self.email1 = utils.validate_string(value=value, field="Email 1", allow_none=True)
-
-    def get_email2(self) -> str:
-        return self.email2 if self.email2 else ""
-
-    def set_email2(self, value: str | None):
-        self.email2 = utils.validate_string(value=value, field="Email 2", allow_none=True)
-
-    def get_address(self) -> str:
-        return self.address if self.address else ""
-
-    def set_address(self, value: str | None):
-        self.address = utils.validate_string(value=value, field="Address", allow_none=True)
-
-    def get_notes(self) -> str:
-        return self.notes if self.notes else ""
-
-    def set_notes(self, value: str | None):
-        self.notes = utils.validate_string(value=value, field="Notes", allow_none=True)
-
-    def get_type(self) -> str:
-        return self.type
-
-    def set_type(self, value: str | None):
-        value = utils.validate_string(value=value, field="Type", allow_none=True)
-        if value is None or value == "": self.type = None
-        elif value.lower() == "person": self.type = "person"
-        elif value.lower() == "organisation": self.type = "organisation"
-        else: raise exception_handler.WarningException("Field 'Type' must either be 'organisation' or 'person' or None.")
+    def _insert_or_update(self, form, new):
+        form = utils.parse_form(form, self._form_dict())
+        if "name" in form: self.name = form["name"]
+        if "phone_number1" in form: self.phone_number1 = form["phone_number1"]
+        if "phone_number2" in form: self.phone_number2 = form["phone_number2"]
+        self.email1 = form["email1"]
+        if "email2" in form: self.email2 = form["email2"]
+        if "address" in form: self.address = form["address"]
+        if "notes" in form: self.notes = form["notes"]
+        if new: self.type = form["type"]
 
 from .interfaces.imodels import IEncounter
 
@@ -229,9 +156,8 @@ class Encounter(IEncounter):
         for key, value in form.items():
             setattr(self, key, value)
 
-    def _get_children(self):
-        with database_handler.get_session() as session:
-            return session.query(Recording).with_for_update().filter_by(encounter_id=self.id).all()
+    def _get_children(self, session):
+        return session.query(Recording).with_for_update().filter_by(encounter_id=self.id).all()
 
     def delete(self):
         self._delete_children()
@@ -682,7 +608,7 @@ class Recording(IRecording):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _get_children(self):
+    def _get_children(self, session):
         """Returns a list of the child objects of this object.
         
         Children count as any reference from this object to another object in the database. Or
@@ -690,19 +616,16 @@ class Recording(IRecording):
         children are `Selection` (0 or more) and `File` ( 1`selection_table_file` and 1 
         `recording_file`) objects.
         """
-
         children = []
-        if self.recording_file is not None:
-            with database_handler.get_session() as session:
-                recording_file = session.query(File).with_for_update().get(self.recording_file_id)
-                children.append(recording_file)
+        if self.recording_file_id is not None:
+            recording_file = session.query(File).with_for_update().get(self.recording_file_id)
+            children.append(recording_file)
         if self.selection_table_file is not None:
-            with database_handler.get_session() as session:
-                selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
-                children.append(selection_table_file)
-        with database_handler.get_session() as session:
-            selections = session.query(Selection).with_for_update().filter_by(recording_id=self.id).all()
-            children.extend(selections)
+            selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
+            children.append(selection_table_file)
+        selections = session.query(Selection).with_for_update().filter_by(recording_id=self.id).all()
+        children.extend(selections)
+        return children
     
     def _insert_or_update(self, form, new):
         from .filespace_handler import get_complete_temporary_file
@@ -712,7 +635,7 @@ class Recording(IRecording):
         if 'upload_recording_file_id' in form and 'upload_recording_file_name' in form:
             self.recording_file = File()
             self.recording_file.insert_path_and_filename(
-                get_complete_temporary_file(),
+                get_complete_temporary_file(form['upload_recording_file_id'], form['upload_recording_file_name']),
                 self.relative_directory,
                 self.recording_file_name)
     
@@ -816,16 +739,16 @@ class Recording(IRecording):
         return len(database_handler.db.session.query(Selection).filter_by(recording_id=self.id).filter(Selection.contour_file != None).all())
 
     def _update_filespace(self):
-        if self.recording_file is not None:
-            with database_handler.get_session() as session:
-                recording_file = session.query(File).with_for_update().get(self.recording_file_id)
-                recording_file.move_file(self.generate_relative_directory(), self.recording_file_name)
-                session.commit()
-        if self.selection_table_file is not None:
-            with database_handler.get_session() as session:
-                selection_table_file = session.query(File).with_for_update().get(self.selection_table_file_id)
-                selection_table_file.move_file(self.generate_relative_directory(), self.selection_table_file_name)
-                session.commit()
+        if self.recording_file_id is not None:
+            with database_handler.get_session() as recording_file_session:
+                recording_file = recording_file_session.query(File).with_for_update().get(self.recording_file_id)
+                recording_file.move_file(self.relative_directory, self.recording_file_name)
+                recording_file_session.commit()
+        if self.selection_table_file_id is not None:
+            with database_handler.get_session() as selection_table_file_session:
+                selection_table_file = selection_table_file_session.query(File).with_for_update().get(self.selection_table_file_id)
+                selection_table_file.move_file(self.relative_directory, self.selection_table_file_name)
+                selection_table_file_session.commit()
 
     def _selection_table_apply(self, dataframe, selections):
         """Helper method to `selection_table_apply`.

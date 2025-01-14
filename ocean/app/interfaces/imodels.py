@@ -14,7 +14,7 @@ from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 import typing
 import warnings
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from ...app import exception_handler
+from .. import exception_handler
 
 # Combine ABCMeta and SQLAlchemy's DeclarativeMeta
 class CombinedMeta(ABCMeta, type(database_handler.db.Model)):
@@ -108,23 +108,26 @@ class TableOperations(ABC):
         exanple foreign key references to the `File` class) and ensure that the
         correct metadata is stored in folder and file names. If the object has
         no dependencies on the filespace, this method does nothing."""
-        raise NotImplementedError()
+        return
 
     def apply_updates(self):
-        self._update_filespace()
-        for child in self._get_children():
-            if issubclass(type(child), Cascading):
-                child.apply_updates()
+        with database_handler.get_session() as session:
+            self._update_filespace()
+            for child in self._get_children(session):
+                if issubclass(type(child), TableOperations):
+                    child.apply_updates()
+            session.commit()
 
 class Cascading(ABC):
     
     @abstractmethod
-    def _get_children(self):
+    def _get_children(self, session):
         """Return a list of child objects of this obejct (also known as foreign key
         dependencies). The exact datatype of child objects will vary by implementation
-        of this method.
+        of this method. All child objects will be bound to the session passed as a
+        parameter.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def apply_updates(self):
@@ -143,9 +146,9 @@ class Cascading(ABC):
         The implementation of cascading is dependent on the `delete` method of all
         child objects.
         """
-        for child in self._get_children():
-            if issubclass(child, TableOperations):
-                with database_handler.get_session() as session:
+        with database_handler.get_session() as session:
+            for child in self._get_children(session):
+                if issubclass(type(child), TableOperations):
                     child.delete()
                     session.delete(child)
                     session.commit()
@@ -646,3 +649,65 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     def deactivate(self) -> None:
         """Deactivate the user."""
         pass
+
+class IDataSource(AbstractModelBase, Serialisable, TableOperations):
+    __tablename__ = 'data_source'
+
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
+    name = database_handler.db.Column(database_handler.db.String(255))
+    phone_number1 = database_handler.db.Column(database_handler.db.String(20), unique=True)
+    phone_number2 = database_handler.db.Column(database_handler.db.String(20), unique=True)
+    email1 = database_handler.db.Column(database_handler.db.String(255), nullable=False, unique=True)
+    email2 = database_handler.db.Column(database_handler.db.String(255), unique=True)
+    address = database_handler.db.Column(database_handler.db.Text)
+    notes = database_handler.db.Column(database_handler.db.Text)
+    type = database_handler.db.Column(database_handler.db.Enum('person', 'organisation'))
+
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    def _form_dict(self):
+        return {
+            'name': False,
+            'phone_number1': False,
+            'phone_number2': False,
+            'email1': True,
+            'email2': False,
+            'address': False,
+            'notes': False,
+            'type': False
+        }
+    
+    def _to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'phone_number1': self.phone_number1,
+            'phone_number2': self.phone_number2,
+            'email1': self.email1,
+            'email2': self.email2,
+            'address': self.address,
+            'notes': self.notes,
+            'type': self.type,
+            'updated_by_id': self.updated_by_id,
+        }
+
+    @validates("id")
+    def _validate_id(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=False)
+    
+    @validates("updated_by_id")
+    def _validate_id_nullable(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=True)
+
+    @validates("email1")
+    def _validate_str(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=False)
+
+    @validates("name", "phone_number1", "phone_number2", "email2", "address", "notes")
+    def _validate_str_nullable(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=True)
+
+    @validates("type")
+    def _validate_type(self, key, value):
+        return utils.validate_enum(value=value, field=key, enum=['person', 'organisation'])

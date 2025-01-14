@@ -29,7 +29,7 @@ Variables required:
         <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
         <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {% else %}Not
           entered{% endif %}</p>
-        <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.get_name()}} {% else %}Not entered{% endif %}
+        <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{% endif %}
         </p>
         <p>Recording counter: {{ encounter.recording_count }}</p>
       </div>

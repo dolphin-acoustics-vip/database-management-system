@@ -80,11 +80,6 @@ def admin_logger_download_log():
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_data_source_view(data_source_id):
-    """
-    Route for viewing a specific data source in the admin panel.
-    PERMISSIONS: Role 1, Role 2.
-    METHODS: GET
-    """
     with database_handler.get_session() as session:
         try:
             data_source = session.query(models.DataSource).filter_by(id=data_source_id).first()  
@@ -98,28 +93,15 @@ def admin_data_source_view(data_source_id):
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_data_source_edit(data_source_id):
-    """
-    Update the data for a data source in the admin panel.
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST.
-    """
     response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             # Update a DataSource object with form data
             data_source = session.query(models.DataSource).filter_by(id=data_source_id).first()  
-            data_source.set_name(request.form['name'])
-            data_source.set_phone_number1(request.form['phone_number1'])
-            data_source.set_phone_number2(request.form['phone_number2'])
-            data_source.set_email1(request.form['email1'])
-            data_source.set_email2(request.form['email2'])
-            data_source.set_address(request.form['address'])
-            data_source.set_notes(request.form['notes'])
-            data_source.set_type(request.form['source-type'])
+            data_source.update(request.form)
             session.commit()
             response.add_message('Data source updated: {}'.format(data_source.name))
-        except SQLAlchemyError as e:
+        except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
 
@@ -128,12 +110,6 @@ def admin_data_source_edit(data_source_id):
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_data_source_new():
-    """
-    Route for the new data source page.
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: GET.
-    """
     return render_template('admin/admin-data-source-new.html', data_source_type_values = models.DataSource.type.type.enums)
 
 @routes_admin.route('/admin/data-source/insert', methods=['POST'])
@@ -141,64 +117,35 @@ def admin_data_source_new():
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_data_source_insert():
-    """
-    Route to insert a new data source into the database. 
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: POST.
-    
-    Requires a form with the following input fields (text input unless otherwise stated):
-    - name
-    - phone_number1
-    - phone_number2
-    - email1
-    - email2
-    - address
-    - notes
-    - source-type (dropdown of enum('person','organisation')); NOT NULL
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
-            # Create a new data source with form data
-            new_data_source = models.DataSource(
-                name=request.form['name'],
-                phone_number1=request.form['phone_number1'],
-                phone_number2=request.form['phone_number2'],
-                email1=request.form['email1'],
-                email2=request.form['email2'],
-                address=request.form['address'],
-                notes=request.form['notes'],
-                type=request.form['source-type']
-            )
-            session.add(new_data_source)
+            data_source = models.DataSource()
+            data_source.insert(request.form)
+            session.add(data_source)
             session.commit()
-            flash('Data source created: {}'.format(new_data_source.name), 'success')
-        except SQLAlchemyError as e:
-            exception_handler.handle_exception(exception=e, session=session)
-        finally:
-            return redirect(url_for('admin.admin_dashboard'))
+            flash('Data source created: {}'.format(data_source.name), 'success')
+            response.set_redirect(url_for('admin.admin_dashboard'))
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+        return response.to_json()
 
 @routes_admin.route('/admin/data-source/<data_source_id>/delete', methods=['GET'])
 @database_handler.exclude_role_4
 @database_handler.exclude_role_3
 @database_handler.require_live_session
 def admin_data_source_delete(data_source_id):
-    """
-    Route to delete a DataSource object given its ID. 
-    PERMISSIONS: Role 1, Role 2.
-    RESTRICTIONS: Live session.
-    METHODS: GET.
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             data_source = session.query(models.DataSource).filter_by(id=data_source_id).first()
             session.delete(data_source)
             session.commit()
             flash('Data source deleted: {}'.format(data_source.name), 'success')
-        except SQLAlchemyError as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            
-    return redirect(url_for('admin.admin_dashboard'))
+            response.set_redirect(url_for('admin.admin_dashboard'))
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
 @routes_admin.route('/admin/recording-platform/<recording_platform_id>/view', methods=['GET'])
 @database_handler.exclude_role_4
@@ -312,8 +259,8 @@ def admin_species_edit(species_id):
             species = session.query(models.Species).with_for_update().filter_by(id=species_id).first()
             if not species: raise exception_handler.CriticalException('Unexpected error')
             species.update(request.form)
+            species.apply_updates(session)
             session.commit()
-            species.apply_updates()
             response.add_message(f"Species updated: {species.species_name}")
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))

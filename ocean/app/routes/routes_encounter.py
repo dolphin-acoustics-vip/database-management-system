@@ -131,10 +131,18 @@ def encounter_update(encounter_id):
             encounter = session.query(models.Encounter).with_for_update().join(models.Species).filter(models.Encounter.id == encounter_id).first()
             encounter.update(request.form)
             session.commit()
-            encounter.apply_updates()
             response.add_message('Updated {}.'.format(encounter.unique_name))
+            response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter.id))
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session, show_flash=False))
+    
+    with database_handler.get_session() as session:
+        try:
+            encounter = session.query(models.Encounter).filter(models.Encounter.id == encounter_id).first()
+            encounter.apply_updates()
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session, show_flash=False))
+    
     return response.to_json()
 
         

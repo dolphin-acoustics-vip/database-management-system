@@ -9,7 +9,7 @@
         {% for recording in recordings %}
         <tr>
             <td>
-                <label for="start-time-{{ recording.id }}">{{ recording.get_start_time_string(long_format=True) }}</label><br>
+                <label for="start-time-{{ recording.id }}">{{ recording.start_time_pretty }}</label><br>
             </td>
             </td>
             {% if recording.recording_file != None %}

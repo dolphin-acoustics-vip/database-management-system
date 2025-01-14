@@ -33,7 +33,7 @@ routes_recording = Blueprint('recording', __name__)
 
 
 def check_editable(recording: models.Recording):
-    if recording.get_status() == "Reviewed" or recording.get_status() == "On Hold":
+    if recording.is_reviewed() or recording.is_on_hold():
         if current_user.role.id == 3 or current_user.role.id == 4:
             raise exception_handler.WarningException("You do not have permission to edit this recording.")
 
@@ -173,7 +173,8 @@ def recording_insert(encounter_id: str) -> Response:
     response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
-            recording = models.Recording(encounter_id=encounter_id)
+            recording = models.Recording()
+            recording.encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
             session.add(recording)
             recording.insert(request.form)
             session.commit()
@@ -341,7 +342,8 @@ def recording_update(recording_id: str) -> Response:
         try:
             recording_obj = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
             check_editable(recording_obj)
-            insert_or_update_recording(session, request, recording_obj)
+            recording_obj.update(request.form)
+            recording_obj.apply_updates()
             session.commit()
             flash(f'Updated {recording_obj.unique_name}.', 'success')
             recording_obj.update_call()
@@ -366,7 +368,7 @@ def recording_delete(encounter_id,recording_id):
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             if recording:
                 unique_name = recording.unique_name
-                recording.delete_children(keep_file_reference=True)
+                recording.delete()
                 session.delete(recording)
                 session.commit()
                 flash(f'Deleted {unique_name}.', 'success')
@@ -648,7 +650,7 @@ def download_contour_files(recording_id):
 def download_recording_file(recording_id):
     with database_handler.get_session() as session:
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-        return utils.download_file(recording.recording_file, recording.generate_recording_file_name)
+        return utils.download_file(recording.recording_file, filename = recording.recording_file_name)
 
     
 @routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['GET'])
