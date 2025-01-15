@@ -20,13 +20,6 @@
         href="{{ url_for('general.get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.unique_name}}">File
         Details</a>
 
-    <form
-        action="{{ url_for('recording.recording_file_delete', recording_id=recording.id, file_id=recording.recording_file.id) }}"
-        method="post">
-
-        <a style="margin-left: 0.25rem;" class="button small"
-            href="{{ url_for('recording.recording_file_delete', recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
-
 </div>
 {% else %}
 <input class="file-input small" type="file" id="recording-file-input" name="recording-file-input" onchange="extractDate(this.value);" accept=".wav">
@@ -40,7 +33,7 @@
 <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
 
 {% endif %}
-<button type="submit" class="blue" style="margin-top: 1rem;" id="recording-insert-form-submit">Submit</button>
+<button type="submit" class="blue" style="margin-top: 1rem;" id="recording-insert-form-submit">{% if editing %}Update{% else %}Submit{% endif %}</button>
 
 <script src="{{ url_for('general.serve_script', filename='time-management.js') }}"></script>
 

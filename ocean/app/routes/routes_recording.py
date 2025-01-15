@@ -32,7 +32,6 @@ from .. import response_handler
 
 routes_recording = Blueprint('recording', __name__)
 
-
 def check_editable(recording: models.Recording):
     if recording.is_reviewed() or recording.is_on_hold():
         if current_user.role.id == 3 or current_user.role.id == 4:
@@ -50,44 +49,29 @@ def check_editable_recording(recording_id):
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
 
-def insert_or_update_recording(session, request, recording: models.Recording):
-    """
-    Insert or update a recording in the database. This function should be called
-    by routes either inserting (new) Recording objects or updating (existing) 
-    Recording objects.
-
-    :param session: The database session
-    :param request: The request object
-    :param encounter_id: The id of the encounter
-    :param recording_id: The id of the recording to be updated (default is None if inserting a new recording)
-
-    :return: The Recording object that was inserted or updated
-    """
-    recording.set_start_time(request.form['time_start'])
-    session.flush()
-    # If a recording file has been given, add it to the Recording object
-    if 'recording_file_id' in request.form and request.form['recording_file_id'] != "":
-        recording_file_id = request.form['recording_file_id']
-        recording_filename = request.form['recording_filename']
-        recording_file = models.File()
-        recording_file.insert_path_and_filename(session, filespace_handler.get_complete_temporary_file(recording_file_id, recording_filename), recording.generate_relative_directory(), recording.recording_file_name)
-        filespace_handler.remove_temporary_file(recording_file_id, recording_filename)
-        if recording_file.extension != "wav": raise exception_handler.WarningException(f"Recording needs to be of type 'wav' but is '{recording_file.extension}'")
-        session.add(recording_file)
-        recording.set_recording_file(recording_file)
-    filespace_handler.clean_filespace_temp()
-    return recording
-
 @routes_recording.route('/recording/<recording_id>/selection-table/refresh', methods=['POST'])
 def selection_table_refresh(recording_id):
+    """POST route to re-apply the uploaded selection table file to the recording. Response uses
+    the `response_handler.JSONResponse()` protocol.
+    
+    Will also update the traced status of all selections in the recording based on the annotations
+    in the selection table and the contour files uploaded. If the update was successful or there
+    exists no selection table in the recording, the response will redirect to the referrer. If
+    any errors occur the response will include an error message with no redirect.
+
+    If the recording is marked as Reviewed and the user is not an admin, an error is logged.
+    """
+    
     response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            check_editable(recording)
             recording.selection_table_apply(session)
             session.flush()
             recording.update_selection_traced_status(session)
             session.commit()
+            flash(f'Updated selection table for {recording.unique_name}.', 'success')
             response.set_redirect(request.referrer)
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
@@ -98,6 +82,17 @@ def selection_table_refresh(recording_id):
 @database_handler.exclude_role_4
 @login_required
 def selection_table_insert(recording_id):
+    """Post route to add a selection table file to the recording. Response uses the
+    `response_handler.JSONResponse()` protocol.
+    
+    Will extract all necessary information from the selection table. If the datatype
+    or format of the selection table are invalid, or no selection table is provided,
+    no changes are made and error(s) included in the response. If all is valid, the
+    response includes a redirect to the referrer and flashes a success message.
+
+    If the recording is marked as Reviewed and the user is not an admin, an error is
+    logged.
+    """
     response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
@@ -122,33 +117,34 @@ def selection_table_insert(recording_id):
     return response.to_json()
  
 
-@routes_recording.route('/export-selection-table/<recording_id>/<export_format>')
+@routes_recording.route('/export-selection-table/<recording_id>/<export_format>', methods=['GET'])
 @database_handler.require_live_session
 @login_required
 def selection_table_export(recording_id, export_format):
     """
-    Export the selection table of a recording to a CSV or TSV file.
-    """
-    with database_handler.get_session() as session:
-        try:
-            recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-            return recording.selection_table_export(session, export_format)
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
-    with database_handler.get_session() as session:
-        try:
-            recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-            return recording.selection_table_export(session, export_format)
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
+    GET route to export the data of the selection table to a .csv (CSV) or .txt (TSV) file.
+    
+    Requires the `export_format` to be supplied in the route. If `export_format` is `csv` a 
+    .csv file is returned. If `export_format` is anything else a .tsv file is returned.
 
-@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
+    The route either returns the file directly or redirects to the referrer in the event of an
+    error. If an error occurs, an error message is flashed and shown to the user upon redirect.
+    """
+
+    with database_handler.get_session() as session:
+        try:
+            recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
+            return recording.selection_table_export(session, export_format)
+        except Exception as e:
+            exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
+            return redirect(request.referrer)
+
+@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['DELETE','POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_4
 @login_required
-def selection_table_delete(recording_id: str) -> Response:
+def selection_table_delete(recording_id: str):
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
@@ -159,18 +155,18 @@ def selection_table_delete(recording_id: str) -> Response:
             session.flush()
             recording.update_selection_traced_status(session)
             session.commit()
+            response.set_redirect(request.referrer)
             flash(f'Deleted selection table from {recording.unique_name}.', 'success')
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)            
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()      
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
-def recording_insert(encounter_id: str) -> Response:
+def recording_insert(encounter_id: str):
     response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
@@ -216,112 +212,90 @@ def update_notes(recording_id):
             response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating notes", session=session, show_flash=False))
         return response.to_json()
 
+def assignment_flag_change_helper(completed_flag):
+    """Helper method for `assignment_flag_as_complete` and `assignment_flag_as_incomplete`"""
+    response = response_handler.JSONResponse()
+    with database_handler.get_session() as session:
+        try:
+            form = utils.parse_form(request.form, schema={"recording_id":True, "user_id": False})
+            recording_id = form['recording_id']
+            user_id = form['user_id']
+            # Only allow the user to update someone else's assignment if they have adequate permissions.
+            # Users without permission to update someone else's assignment usually will not include `user_id` in the form
+            if 'user_id' not in form:
+                user_id = current_user.id
+            elif 'user_id' in form and current_user.role_id >= 3: raise exception_handler.WarningException('You cannot unflag an assignment for another user.')
+            else: user_id = form['user_id']
+            assignment = session.query(models.Assignment).filter_by(user_id=user_id).filter_by(recording_id=recording_id).first()
+            if not assignment: raise exception_handler.Exception(f"No assignment with user_id '{user_id}' and recording_id '{recording_id}'")
+            assignment.completed_flag = completed_flag
+            session.commit()
+            status_changed = assignment.recording.update_status(session)
+            session.commit()
+            response.set_redirect(request.referrer)
+            flash(f"Assignment {assignment.unique_name} set as {'complete' if completed_flag else 'incomplete'}.", category="success")
+            if status_changed: flash(f"Recording status updated to {assignment.recording.status}.", category="success")
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating assignment", session=session, show_flash=False))
+    return response.to_json()
 
-def flag_user_assignment(session, recording_id, user_id, completed_flag):
-    """
-    Update the completion status of a user's assignment for a recording.
-
-    This function sets the `completed_flag` for a specified user's assignment
-    associated with a given recording. It also updates the recording's status 
-    based on the current assignment flags.
-
-    Args:
-        session (Session): The database session to use for the query.
-        recording_id (str): The ID of the recording whose assignment is to be updated.
-        user_id (str): The ID of the user whose assignment is to be updated.
-        completed_flag (bool): The flag indicating whether the assignment is completed.
-    """
-    recording = session.query(models.Recording).filter_by(id=recording_id).first()
-    assignment = session.query(models.Assignment).filter_by(recording_id=recording_id).filter_by(user_id=user_id).first()
-    if assignment is not None:
-        assignment.completed_flag = completed_flag
-        session.commit()
-        recording.update_status(session)
-        session.commit()
-
-@routes_recording.route('/recording/flag-as-completed-for-user', methods=['GET'])
+@routes_recording.route('/recording/flag-as-completed-for-user', methods=['POST'])
 @database_handler.require_live_session
+@database_handler.exclude_role_4
+@login_required
+def assignment_flag_as_complete():
+    """POST route to mark an assignment as complete. The response follows the protocol
+    of `response_handler.JSONResponse`.
+
+    Requires `recording_id` in the form data. If a `user_id` is provided the assignment
+    will be of the `user_id` and `recording_id`. If a `user_id` is not provided the
+    assignment will be of the current logged in user id and `recording_id`. If the
+    combination of `user_id` and `recording_id` do not exist, or they do exist but
+    an error occurs, the error will be added to the response.
+    
+    This route will also update the overall recording status.
+    """
+    return assignment_flag_change_helper(True)
+
+@routes_recording.route('/recording/unflag-as-completed-for-user', methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_4
+@login_required
+def assignment_flag_as_incomplete():
+    """POST route to mark an assignment as incomplete. The response follows the protocol
+    of `response_handler.JSONResponse`.
+
+    Requires `recording_id` in the form data. If a `user_id` is provided the assignment
+    will be of the `user_id` and `recording_id`. If a `user_id` is not provided the
+    assignment will be of the current logged in user id and `recording_id`. If the
+    combination of `user_id` and `recording_id` do not exist, or they do exist but
+    an error occurs, the error will be added to the response.
+    
+    This route will also update the overall recording status.
+    """
+    return assignment_flag_change_helper(False)
+
+@routes_recording.route('/recording/assignment-delete', methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_4
 @database_handler.exclude_role_3
-@database_handler.exclude_role_4
 @login_required
-def flag_as_complete_for_user():
-    """
-    Given a user_id and recording_id, if an assignment exists for the user and recording,
-    flag the assignment as complete. This route will also update the provided recording
-    status - see Recording.status_update()
-
-    Args:
-        recording_id (_type_): The ID of the recording of the assignment.
-        user_id (_type_): The ID of the user of the assignment
-    """
-    recording_id = utils.extract_args('recording_id')
-    user_id = utils.extract_args('user_id')
+def assignment_delete():
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, user_id, True)
-        return jsonify({'message': 'Success'}), 200
+        try:
+            form = utils.parse_form(request.form, schema={"recording_id":True, "user_id":True})
+            assignment = session.query(models.Assignment).filter_by(user_id=form['user_id']).filter_by(recording_id=form['recording_id']).first()
+            unique_name = assignment.unique_name
+            if not assignment: raise Exception(f"No assignment with user_id '{form['user_id']}' and recording_id '{form['recording_id']}'")
+            session.delete(assignment)
+            session.commit()
+            flash(f"Assignment {unique_name} deleted.", category="success")
+            response.set_redirect(request.referrer)
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error deleting assignment", session=session, show_flash=False))
+    return response.to_json()
 
-@routes_recording.route('/recording/unflag-as-completed-for-user', methods=['GET'])
-@database_handler.require_live_session
-@database_handler.exclude_role_3
-@database_handler.exclude_role_4
-@login_required
-def unflag_as_complete_for_user():
-    """
-    Given a user_id and recording_id, if an assignment exists for the user and recording,
-    flag the assignment as incomplete. This route will also update the provided recording
-    status - see Recording.status_update()
-
-    Args:
-        recording_id (_type_): The ID of the recording of the assignment.
-        user_id (_type_): The ID of the user of the assignment
-    """
-    recording_id = utils.extract_args('recording_id')
-    user_id = utils.extract_args('user_id')
-    with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, user_id, False)
-        return jsonify({'message': 'Success'})
-
-@routes_recording.route('/recording/unflag-as-completed', methods=['POST'])
-@database_handler.require_live_session
-@database_handler.exclude_role_4
-@login_required
-def unflag_as_complete():
-    """
-    If a user assignment exists for the current logged in user and the recording passed
-    as an argument, flag it as incomplete. This route will also update the provided
-    recording status - see Recording.status_update()
-
-    Args:
-        recording_id (str): The ID of the recording to flag.
-
-    Returns:
-        : redirect to the referring page.
-    """
-    recording_id = utils.extract_args('recording_id')
-    with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, current_user.id, False)
-        return redirect(request.referrer)
-
-@routes_recording.route('/recording/flag-as-completed', methods=['POST'])
-@database_handler.require_live_session
-@database_handler.exclude_role_4
-@login_required
-def flag_as_complete():
-    """
-    If a user assignment exists for the current logged in user and the recording passed
-    as an argument, flag it as complete. This route will also update the provided
-    recording status - see Recording.status_update()
-
-    Args:
-        recording_id (str): The ID of the recording to flag.
-
-    Returns:
-        : redirect to the referring page.
-    """
-    recording_id = utils.extract_args('recording_id')
-    with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, current_user.id, True)
-        return redirect(request.referrer)
 
 @routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
 @database_handler.require_live_session
@@ -329,14 +303,6 @@ def flag_as_complete():
 @database_handler.exclude_role_4
 @login_required
 def recording_update(recording_id: str) -> Response:
-    """Updates a recording in the encounter with the specified encounter ID and recording ID.
-
-    Args:
-        recording_id (str): The ID of the recording to update.
-
-    Returns:
-        flask.Response: redirect to the referring page.
-    """
     # Create a response with redirect to the referring page
     response = response_handler.JSONResponse(redirect=request.referrer)
     with database_handler.get_session() as session:
@@ -347,61 +313,56 @@ def recording_update(recording_id: str) -> Response:
             recording_obj.apply_updates()
             session.commit()
             flash(f'Updated {recording_obj.unique_name}.', 'success')
-            recording_obj.update_call()
-            return response.to_json()
+            recording_obj.apply_updates()
         except (SQLAlchemyError,Exception) as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
-            response.set_redirect(None)
-            return response.to_json()
+    return response.to_json()
 
-@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['POST'])
+@routes_recording.route('/recording/<recording_id>/delete', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
-def recording_delete(encounter_id,recording_id):
-    """
-    Function for deleting a recording of a given ID
-    """
+def recording_delete(recording_id):
     response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             if recording:
+                encounter_id = recording.encounter_id
                 unique_name = recording.unique_name
                 recording.delete()
                 session.delete(recording)
                 session.commit()
                 flash(f'Deleted {unique_name}.', 'success')
             response.set_redirect(url_for("encounter.encounter_view", encounter_id=encounter_id))
-            return response.to_json()
         except (Exception,SQLAlchemyError) as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
-            return response.to_json()
+    return response.to_json()
 
-@routes_recording.route('/encounter/recording/<recording_id>/recording-file/<file_id>/delete',methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/recording-file-delete',methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
-def recording_file_delete(recording_id,file_id):
+def recording_file_delete(recording_id):
     """
     A function for deleting a recording file of a given ID
     """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
-            recording = session.query(models.Recording).filter_by(recording_file_id=file_id).first()
-            # Remove recording file reference from recording
-            recording.recording_file=None
-            # Delete the File object for the recording file its self
-            file = session.query(models.File).filter_by(id=file_id).first()
-            file.delete()
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            print(recording, recording.recording_file)
+            if not recording.recording_file: raise exception_handler.WarningException("Recording does not have a recording file to delete.")
+            recording.recording_file.delete()
+            recording.recording_file = None
             session.commit()
             flash(f'Deleted recording file from {recording.unique_name}.', 'success')
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            response.set_redirect(request.referrer)
         except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
         
 
 @routes_recording.route('/recording/recording_delete_selections', methods=['DELETE'])

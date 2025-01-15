@@ -71,7 +71,7 @@ def insert_or_update_selection(session, selection_number: str, file, recording_i
     new_file = models.File()
     session.add(new_file)
 
-    new_file.insert_path_and_filename(session, file, selection.generate_relative_path(), selection.generate_selection_file_name())
+    new_file.insert_path_and_filename(file, selection.generate_relative_path(), selection.generate_selection_file_name())
 
     # Try to assign the new selection file to the selection
     # The method Selection.set_selection_file() will throw an exception if the selection file is not valid
@@ -189,7 +189,7 @@ def insert_or_update_contour(session, selection: models.Selection, contour_file)
         raise exception_handler.WarningException(f"Contour file for selection {selection.selection_number} already exists.")
     new_file = models.File()
     selection.contour_file = new_file
-    new_file.insert_path_and_filename(session, contour_file, selection.generate_relative_path(), selection.generate_contour_file_name())
+    new_file.insert_path_and_filename(contour_file, selection.generate_relative_path(), selection.generate_contour_file_name())
     session.add(new_file)
     session.flush()
     # Attribute the new contour file to the selection

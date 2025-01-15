@@ -21,6 +21,19 @@
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
                                     local_timezone=recording.encounter.local_timezone, recording=recording) }}
             </form>
+            {% if recording.recording_file %}
+            <form id="recording-file-delete-form" action="{{ url_for('recording.recording_file_delete', recording_id=recording.id) }}" method="post">
+                <button id="recording-file-delete-button" style="margin-top: 0.25rem" class="gray small">Delete Recording File</button>
+            </form>
+            <script>
+                $("#recording-file-delete-form").submit(function (event) {
+                    event.preventDefault();
+                    if (confirm("Are you sure you want to delete the recording file?")) {
+                        makeAjaxRequestForm(event.target);
+                    }
+                });
+            </script>
+            {% endif %}
             <script>
                 ajaxifyForm(document.getElementById('recording-form'));
             </script>
@@ -49,21 +62,41 @@
             {% endif %}
             <div class="table-responsive">
                 <table class="table-striped">
-                    {% for assigned_user in assigned_users %}
+                    {% for assignment in assigned_users %}
                     <tr>
-                        <td style="color: gray;">{{assigned_user.user.name}} ({{assigned_user.user.login_id}})</td>
-                        <td>{% if assigned_user.completed_flag %} <button class="gray small user-row" id="user-row"
-                                style="width:100%;" data-user-id="{{assigned_user.user_id}}"
-                                data-recording-id="{{assigned_user.recording_id}}"
-                                onclick="flagAssignmentIncomplete()">Remove Completed Flag</button> {% else %} <button
-                                class="gray small user-row" id="user-row" style="width:100%;"
-                                data-user-id="{{assigned_user.user_id}}"
-                                data-recording-id="{{assigned_user.recording_id}}"
-                                onclick="flagAssignmentComplete()">Flag as Completed</button> {% endif %}</td>
-                        <td><button class="gray small user-row" id="user-row" style="width:100%;"
-                                data-user-id="{{assigned_user.user_id}}"
-                                data-recording-id="{{assigned_user.recording_id}}" onclick="removeAssignment()">Unassign
-                                User</button></td>
+                        <td style="color: gray;">{{assignment.user.name}} ({{assignment.user.login_id}})</td>
+                        <td>
+                            {% if assignment.completed_flag %} 
+                                <form id="assignment-flag-as-incomplete-{{assignment.user_id}}" method="POST" action="{{ url_for('recording.assignment_flag_as_incomplete') }}">
+                                    <button class="gray small user-row" id="user-row" style="width:100%;">Remove Completed Flag</button> 
+                                    <input type="hidden" name="user_id" value="{{assignment.user_id}}">
+                                    <input type="hidden" name="recording_id" value="{{assignment.recording_id}}">
+                                </form>
+                                <script>
+                                    ajaxifyForm(document.getElementById('assignment-flag-as-incomplete-{{assignment.user_id}}'));
+                                </script>
+                            {% else %} 
+                                <form id="assignment-flag-as-complete-{{assignment.user_id}}" method="POST" action="{{ url_for('recording.assignment_flag_as_complete') }}">
+                                    <button class="gray small user-row" id="user-row" style="width:100%;">Flag as Completed</button> 
+                                    <input type="hidden" name="user_id" value="{{assignment.user_id}}">
+                                    <input type="hidden" name="recording_id" value="{{assignment.recording_id}}">
+                                </form>
+                                <script>
+                                    ajaxifyForm(document.getElementById('assignment-flag-as-complete-{{assignment.user_id}}'));
+                                </script>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form id="assignment-delete-{{assignment.user_id}}" action="{{ url_for('recording.assignment_delete') }}" method="POST">
+                                <button class="gray small user-row" id="user-row" style="width:100%;">Unassign User</button>
+                                <input type="hidden" name="user_id" value="{{assignment.user_id}}">
+                                <input type="hidden" name="recording_id" value="{{assignment.recording_id}}">
+                            </form>
+                            <script>
+                                ajaxifyForm(document.getElementById('assignment-delete-{{assignment.user_id}}'));
+                            </script>
+                        </td>
+                            
                     </tr>
                     {% endfor %}
                 </table>
@@ -111,15 +144,16 @@
             {% if logged_in_user_assigned.completed_flag == True %}
 
             <label>Assignment Status: COMPLETE (Awaiting Review)</label>
-            <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="post">
-            <form action="{{url_for('recording.unflag_as_complete', recording_id=recording.id)}}" method="post">
+            <form action="{{url_for('recording.assignment_flag_as_incomplete', recording_id=recording.id)}}" method="post">
                 <button class="gray" type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
+                <hidden id="recording_id" name="recording_id" value={{recording.id}}></hidden>
             </form>
             {% else %}
             <label>Assignment Status: IN PROGRESS </label>
 
-            <form action="{{url_for('recording.flag_as_complete', recording_id=recording.id)}}" method="post">
+            <form action="{{url_for('recording.assignment_flag_as_complete', recording_id=recording.id)}}" method="post">
                 <button class="gray" type="submit" id="flag-as-complete-button">Flag as Complete</button>
+                <hidden id="recording_id" name="recording_id" value={{recording.id}}></hidden>
             </form>
             {% endif %}
             {% else %}
@@ -250,12 +284,23 @@
                 <form id="delete-selection-table-form" encounter-id="{{recording.encounter_id}}"
                     selection-table-id="{{recording.selection_table_id}}"
                     action="{{ url_for('recording.selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
-                    method="post" style="flex : 1;">
+                    method="POST" style="flex : 1;">
                     <button class="gray small" style="margin-top:0.5rem; margin-right:0.25rem;"  type="submit">Delete Selection Table</button>
                 </form>
+                <script>
+                    $("#delete-selection-table-form").submit(function (event) {
+                        event.preventDefault();
+                        if (confirm("Are you sure you want to delete the selection table?")) {
+                            makeAjaxRequestForm(event.target);
+                        }
+                    });
+                </script>
                 <form id="refresh-selection-table-form" action="{{ url_for('recording.selection_table_refresh', recording_id=recording.id)}}" method="post" style="flex : 1;">
                     <button class="gray small" style="margin-top:0.5rem; margin-left:0.25rem;" type="submit">Refresh Selection Table Values</button>
                 </form>
+                <script>
+                    ajaxifyForm(document.getElementById('refresh-selection-table-form'));
+                </script>
                 </div>
 
                 {% endif %}
@@ -429,12 +474,6 @@
         }
     });
 
-    $("#delete-selection-table-form").submit(function (event) {
-        if (!confirm("Are you sure you want to delete the selection table?")) {
-            event.preventDefault();
-        }
-    });
-
     $("#refresh-selection-table-form").submit(function (event) {
         event.preventDefault();
         form = event.target;
@@ -443,41 +482,6 @@
         }
     });
 
-    /**
-     * Flags a user's assignment as complete by sending a GET request to the /flag-as-completed endpoint.
-     * When the request is complete, the page is reloaded.
-     * The function is called when the user clicks the "Flag Complete" button.
-     * @param {Event} event - The click event
-     */
-    flagAssignmentComplete = function () {
-        var xhr = new XMLHttpRequest();
-        const recordingId = event.target.closest('.user-row').dataset.recordingId;
-        const userId = event.target.closest('.user-row').dataset.userId
-        xhr.open('GET', "{{ url_for('recording.flag_as_complete_for_user') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            window.location.href = window.location.href;
-        }
-        xhr.send();
-    }
-
-    /**
-     * Unflags a user's assignment as complete by sending a GET request to the /unflag-as-completed endpoint.
-     * When the request is complete, the page is reloaded.
-     * The function is called when the user clicks the "Unflag Complete" button.
-     * @param {Event} event - The click event
-     */
-    flagAssignmentIncomplete = function () {
-        var xhr = new XMLHttpRequest();
-        var recordingId = event.target.closest('.user-row').dataset.recordingId;
-        var userId = event.target.closest('.user-row').dataset.userId
-        xhr.open('GET', "{{ url_for('recording.unflag_as_complete_for_user') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            window.location.href = window.location.href;
-        }
-        xhr.send();
-    }
 
     /**
      * Removes a user assignment for a recording. The user and recording IDs are obtained
@@ -486,17 +490,17 @@
      * @listens click
      * @this {HTMLElement} The element that was clicked
      */
-    removeAssignment = function () {
-        var xhr = new XMLHttpRequest();
-        var userId = event.target.closest('.user-row').dataset.userId
-        var recordingId = event.target.closest('.user-row').dataset.recordingId
-        xhr.open('GET', "{{ url_for('recording.unassign_recording') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            window.location.href = window.location.href;
-        }
-        xhr.send();
-    }
+    // removeAssignment = function () {
+    //     var xhr = new XMLHttpRequest();
+    //     var userId = event.target.closest('.user-row').dataset.userId
+    //     var recordingId = event.target.closest('.user-row').dataset.recordingId
+    //     xhr.open('GET', "{{ url_for('recording.unassign_recording') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
+    //     xhr.setRequestHeader('Content-Type', 'application/json');
+    //     xhr.onload = function () {
+    //         window.location.href = window.location.href;
+    //     }
+    //     xhr.send();
+    // }
 
     /**
      * Assigns a user to the recording and reloads the page.

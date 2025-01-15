@@ -676,6 +676,7 @@ class Recording(imodels.IRecording):
                 if assignments is not None:
                     # If there is one or more incomplete assignments assing In Progress
                     for assignment in assignments:
+                        print(assignment.completed_flag)
                         if assignment.completed_flag is False:
                             new_status = 'In Progress'
         elif override is None:
@@ -773,8 +774,8 @@ class Recording(imodels.IRecording):
         for selection in new_selections:
             session.add(selection)
     
-    def selection_table_data_delete(self):
-        for selection in self.get_selections():
+    def selection_table_data_delete(self, session):
+        for selection in self.get_selections(session):
             selection.reset_selection_table_values()
             
     def delete(self):
@@ -785,7 +786,7 @@ class Recording(imodels.IRecording):
     def generate_relative_path_for_selections(self):
         # TODO: REMOVE
         folder_name = self.start_time.strftime("Selections-%Y%m%d%H%M%S")  # Format the start time to include year, month, day, hour, minute, second, and millisecond
-        return os.path.join(self.generate_relative_directory(), folder_name)
+        return os.path.join(self.relative_directory, folder_name)
 
     def update_selection_traced_status(self, session):
         selections = self.get_selections(session)
