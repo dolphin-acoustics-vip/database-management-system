@@ -125,5 +125,7 @@ class AssignmentFactory(factory.alchemy.SQLAlchemyModelFactory):
         model = models.Assignment
         sqlalchemy_session = Session
     
+    recording = EncounterFactory.create()
+    user = UserFactory.create()
     completed_flag = False
     

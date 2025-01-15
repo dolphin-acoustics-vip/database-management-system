@@ -13,7 +13,7 @@
  * 
  * NOTE: When using FormData, contentType is automatically set to false to avoid jQuery conflicts.
  * 
- * NOTE: This function is designed to work with JSONRequest() in request_handler.py of the OCEAN flask application.
+ * NOTE: This function is designed to work with JSONResponse() in request_handler.py of the OCEAN flask application.
  * This will ensure responses are JSON objects containing {"messages": [], "errors": [], "redirect": "", data: {}}.
  * If anything else is returned, a generic error message will be shown using the JS alert() method.
  * 

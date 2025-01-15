@@ -104,10 +104,21 @@ class TableOperations(ABC):
         pass
 
     def _update_filespace(self):
-        """Go through all of this object's dependencies on the filespace (for 
-        exanple foreign key references to the `File` class) and ensure that the
-        correct metadata is stored in folder and file names. If the object has
-        no dependencies on the filespace, this method does nothing."""
+        """Update all child objects that impact the filespace (objects of the
+        `File` class).
+        
+        This method must not be called outside of `apply_updates()`.
+        
+        Each change to the filespace is made and committed in
+        a unique session to ensure that failures are isolated. There is no
+        action needed from the caller to ensure changes are committed.
+        
+        Go through all of this object's foreign key references to the `File`
+        class and ensure that the correct directory and filenames are generated
+        and stored in accordance with this object's metadata. This method is
+        automatically called by `apply_updates` but its implementation is
+        specified by each individual class.
+        """
         return
 
     def apply_updates(self):
@@ -127,7 +138,7 @@ class Cascading(ABC):
         of this method. All child objects will be bound to the session passed as a
         parameter.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def apply_updates(self):
@@ -457,13 +468,13 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
         that `selection_table_file` has been set. You can also set `selection_table_file_id`
         but that requires a flush to the session before continuing.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def selection_table_data_delete(self):
         """Delete the data from the recording's selections that was provided by the selection table.
         Will not delete any selections themselves."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def selection_table_export(self):
@@ -472,96 +483,97 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
     @property
     @abstractmethod
     def start_time_pretty(self):
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     @abstractmethod
     def relative_directory(self):
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     @abstractmethod
     def folder_name(self):
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     @abstractmethod
     def recording_file_name(self):
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     @abstractmethod
     def selection_table_file_name(self):
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     @abstractmethod
     def selection_count(self):
         """Returns the number of selections in the recording."""
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     @abstractmethod
     def selection_file_count(self):
         """Returns the number of selection files in the recording."""
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     @abstractmethod
     def contour_file_count(self):
         """Returns the number of contour files in the recording."""
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @abstractmethod
     def is_reviewed(self):
         """Returns True if the recording has been reviewed, otherwise False."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def is_on_hold(self):
         """Returns True if the recording has been on hold, otherwise False."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def is_awaiting_review(self):
         """Returns True if the recording is awaiting review, otherwise False."""
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @abstractmethod
     def is_in_progress(self):
         """Returns True if the recording is in progress, otherwise False."""
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @abstractmethod
     def is_unassigned(self):
         """Returns True if the recording is unassigned, otherwise False."""
-        raise NotImplementedError
+        raise NotImplementedError()
     
     def _update_status(self, assignments):
         """Helper method to `update_status`."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
-    def update_status(self):
+    def update_status(self) -> bool:
         """Update the `status` and `status_change_datetime` of the recording based on the recording's current assignments.
+        Returns True if the status was changed, False otherwise.
         
         If the recording is has assignments that have not been completed the status will be set to `In Progress`.
         If the recording has no assignments the status will be set to `Unassigned`.
         If the recording has assignments that have all been completed the status will be set to `Awaiting Review`.
         Regardless of any of the above conditions if the status is on `On Hold` or `Reviewed` it will not change.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @abstractmethod
     def get_selections(self, session):
         """Returns an ordered list of `Selection` objects that are associated with the recording."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def update_selection_traced_status(self, session):
         """Updates the `traced` status of the `Selection` objects that are associated with the recording. 
         Does not commit the session automatically. Does not make changes to the session."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
 class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     """Abstract class for the SQLAlchemy table user.
@@ -601,9 +613,10 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     def _form_dict(self) -> typing.Dict[str, typing.Any]:
         return {
             'name': True,
-            'login_id': True,
+            'login_id': False,
             'role_id': True,
-            'expiry': True
+            'expiry': True,
+            'is_active': False
         }
 
     @validates("id")
@@ -711,3 +724,78 @@ class IDataSource(AbstractModelBase, Serialisable, TableOperations):
     @validates("type")
     def _validate_type(self, key, value):
         return utils.validate_enum(value=value, field=key, enum=['person', 'organisation'])
+
+class IRole(AbstractModelBase):
+    __tablename__ = 'role'
+    
+    # Identifier
+    id = database_handler.db.Column(database_handler.db.Integer, primary_key=True)
+    # Metadata
+    name = database_handler.db.Column(database_handler.db.String(100))
+    
+    @validates("id")
+    def _validate_id(self, key, value):
+        return utils.validate_int(value=value, field=key, allow_none=False)
+    
+    @validates("name")
+    def _validate_str(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=False)
+
+class IAssignment(AbstractModelBase, Serialisable, TableOperations):
+    __tablename__ = 'assignment'
+    
+    user_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'), primary_key=True, nullable=False)
+    recording_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording.id'), primary_key=True, nullable=False)
+    row_start = Column(DateTime(timezone=True), server_default="current_timestamp()")
+    user = database_handler.db.relationship("User", foreign_keys=[user_id])
+    recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])
+    created_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False, server_default="NOW()")
+    completed_flag = database_handler.db.Column(database_handler.db.Boolean, default=False)
+
+    @validates("user_id", "recording_id")
+    def _validate_id(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=False)
+    
+    @validates("created_datetime", "row_start")
+    def _validate_datetime(self, key, value):
+        raise AttributeError(f"Unable to set {key}")
+    
+    @validates("completed_flag")
+    def _validate_completed_flag(self, key, value):
+        return utils.validate_boolean(value=value, field=key, allow_none=False)
+
+    @property
+    def row_start_pretty(self):
+        return utils.pretty_date(self.row_start)
+
+    @property
+    def created_datetime_pretty(self):
+        return utils.pretty_date(self.created_datetime)
+
+    @staticmethod
+    def _form_dict():
+        return {
+            'user_id': True,
+            'recording_id': True,
+        }
+
+    def _to_dict(self):
+        return {
+            "user_id": self.user_id,
+            "user": self.user,
+            "recording_id": self.recording_id,
+            "recording": self.recording,
+            "row_start": self.row_start,
+            "completed_flag": self.completed_flag,
+            "created_datetime": self.created_datetime
+        }
+
+    @abstractmethod
+    def complete(self):
+        """Mark the assignment as completed."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def incomplete(self):
+        """Mark the assignment as incomplete."""
+        raise NotImplementedError()

@@ -16,6 +16,7 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Third-party imports
+import uuid
 from flask import Blueprint, Response, flash, jsonify, redirect, render_template, url_for, request
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_required, current_user
@@ -235,7 +236,7 @@ def flag_user_assignment(session, recording_id, user_id, completed_flag):
     if assignment is not None:
         assignment.completed_flag = completed_flag
         session.commit()
-        recording.update_status()
+        recording.update_status(session)
         session.commit()
 
 @routes_recording.route('/recording/flag-as-completed-for-user', methods=['GET'])
@@ -477,37 +478,31 @@ def extract_date():
         response.add_error(exception_handler.handle_exception(exception=e, session=None, show_flash=False))
     return response.to_json()
 
-@routes_recording.route('/assign_recording', methods=['GET'])
+@routes_recording.route('/assign_recording', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
 def assign_recording():
-    """Create an assignment between a user and a recording.
+    """POST route to assign a recording to a user. Requires `user_id` and `recording_id` to be passed as
+    arguments in the request. Returns a JSON response following the `response_handler.JSONResponse` protocol.
+    (redirect on success, error message(s) on failure)."""
 
-    Args:
-        user_id (str): The ID of the user to assign the recording to.
-        recording_id (str): The ID of the recording to assign.
-
-    Returns:
-        _type_: _description_
-    """
-    user_id = utils.extract_args('user_id')
-    recording_id = utils.extract_args('recording_id')
+    response = response_handler.JSONResponse()
+    response.set_redirect(request.referrer)
     with database_handler.get_session() as session:
         try:
-            assignment = models.Assignment(recording_id=recording_id, user_id=user_id)
+            assignment = models.Assignment()
+            assignment.insert(request.get_json())
             session.add(assignment)
             session.commit()
-            assignment = models.Assignment(recording_id=recording_id, user_id=user_id)
-            session.add(assignment)
+            flash(f'Assigned {assignment.recording.unique_name} to {assignment.user.unique_name}.', 'success')
+            changed = assignment.recording.update_status(session)
             session.commit()
-            recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            recording.update_status()
-            session.commit()      
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-
+            if changed: flash(f'Updated status to {assignment.recording.status}.', 'success')
+        except Exception as e:
+            exception_handler.handle_exception(exception=e, session=session, show_flash=False)
+    return response.to_json()
 
 @routes_recording.route('/unassign_recording', methods=['GET'])
 @database_handler.require_live_session
@@ -515,29 +510,25 @@ def assign_recording():
 @database_handler.exclude_role_4
 @login_required
 def unassign_recording():
-    """
-    Unassigns a recording from a user.
-
-    :param user_id: The ID of the user to unassign the recording from.
-    :type user_id: str
-    :param recording_id: The ID of the recording to unassign.
-    :type recording_id: str
-    :return: A JSON object with a single key, 'success', with a value of True if successful, False otherwise.
-    :rtype: dict
-    """
-    user_id = request.args.get('user_id')
-    recording_id = request.args.get('recording_id')
+    """POST route to unassign a recording from a user. Requires `user_id` and `recording_id` to be passed as
+    arguments in the request. Returns a JSON response following the `response_handler.JSONResponse` protocol.
+    (redirect on success, error messages(s) on failure)."""
+    
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
+            user_id = utils.extract_args('user_id')
+            recording_id = utils.extract_args('recording_id')
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             assignment = session.query(models.Assignment).filter_by(user_id=user_id).filter_by(recording_id=recording_id).first()
             session.delete(assignment)
+            session.flush()
+            recording.update_status(session)
             session.commit()
-            recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            recording.update_status()
-            session.commit()
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
+            response.set_redirect(response.referrer)
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
 
 

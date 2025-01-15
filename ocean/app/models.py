@@ -42,7 +42,6 @@ from . import contour_statistics
 from . import database_handler
 from . import exception_handler
 from . import utils
-
 from .interfaces import imodels
 from .logger import logger
 
@@ -79,10 +78,7 @@ def convert_from_gmt(gmt_time: datetime.datetime) -> datetime.datetime:
     system_time = gmt_time - gmt_offset
     return system_time
 
-
-
-from .interfaces.imodels import ISpecies
-class Species(ISpecies):
+class Species(imodels.ISpecies):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,10 +104,7 @@ class Species(ISpecies):
     def folder_name(self) -> str:
         return f"Species-{self.species_name}"
 
-from .interfaces.imodels import IRecordingPlatform
-
-# , UserMixin
-class RecordingPlatform(IRecordingPlatform):
+class RecordingPlatform(imodels.IRecordingPlatform):
     __tablename__ = 'recording_platform'
     
     def unique_name(self):
@@ -124,9 +117,7 @@ class RecordingPlatform(IRecordingPlatform):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-from .interfaces.imodels import IDataSource
-
-class DataSource(IDataSource):
+class DataSource(imodels.IDataSource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -144,9 +135,7 @@ class DataSource(IDataSource):
         if "notes" in form: self.notes = form["notes"]
         if new: self.type = form["type"]
 
-from .interfaces.imodels import IEncounter
-
-class Encounter(IEncounter):
+class Encounter(imodels.IEncounter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -600,11 +589,8 @@ class File(database_handler.db.Model):
             logger.error(f"File not found at {absolute_path}: {e}")
             raise exception_handler.WarningException(f"Unable to access file. This issue has been logged.")
 
-from .interfaces.imodels import IRecording
-
-class Recording(IRecording):
-    __tablename__ = "recording"
-
+class Recording(imodels.IRecording):
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -701,12 +687,15 @@ class Recording(IRecording):
         if self.status != new_status:
             self.status = new_status
             self.status_change_datetime = datetime.datetime.now()
+            return True
+        return False
 
 
-    def update_status(self, override=None):
+    def update_status(self, session, override=None) -> bool:
         """Update the recording's status. If the newly calculated or overriden status is different
-        the `status_change_datetime` is updated.
-        
+        the `status_change_datetime` is updated. The session must be committed by the caller for the
+        changes to take effect. Returns True if the status was changed, False otherwise.
+
         If the current status is `Unassigned`, `In Progress` or `Awaiting Review` the new status
         will be automatically determined based on the recording's assignments.
         - no assignments results in `Unassigned`
@@ -718,9 +707,8 @@ class Recording(IRecording):
         Using `override` with any other status will result in an error and no change to the status.
         """
 
-        with database_handler.get_session() as session:
-            assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
-            self._update_status(assignments=assignments, override=override)
+        assignments = session.query(Assignment).filter_by(recording_id=self.id).all()
+        return self._update_status(assignments=assignments, override=override)
 
     def get_selections(self, session, filters={}):
         filters["recording_id"] = self.id
@@ -845,19 +833,9 @@ class Recording(IRecording):
         
         return response
 
-class Role(database_handler.db.Model):
-    id = database_handler.db.Column(database_handler.db.Integer, primary_key=True)
-    name = database_handler.db.Column(database_handler.db.String(100))
-
-    def get_id(self):
-        if self.id is None: raise ValueError("Field 'id' of the role class must not be None.")
-        try:
-            return int(self.id)
-        except ValueError:
-            raise ValueError(f"Field 'id' of the Role class must be an integer (got {type(self.id)}).")
-    
-    def get_name(self):
-        return self.name if self.name else ""
+class Role(imodels.IRole):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 class Selection(database_handler.db.Model):
     __tablename__ = 'selection'
@@ -1814,21 +1792,17 @@ class Selection(database_handler.db.Model):
         """
         self.updated_by_id = user_id
 
-
-from .interfaces.imodels import IUser
-import typing
-class User(IUser):
-    __tablename__ = 'user'
-
+class User(imodels.IUser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
+    @property
     def unique_name(self):
         return self.login_id
 
     def _insert_or_update(self, form, new, current_user=None):
-        form = utils.parse_form(form, self._form_dict)
+        form = utils.parse_form(form, self._form_dict())
 
         if new:
             self.login_id = form['login_id']
@@ -1836,17 +1810,16 @@ class User(IUser):
         self.name = form['name']
 
         if self == current_user:
-            if str(form['role']) != "1":
+            if str(form['role_id']) != "1":
                 raise exception_handler.WarningException("You cannot change your own role.")
-        self.role_id = form['role']
+        self.role_id = form['role_id']
 
         expiry_date = datetime.datetime.strptime(form['expiry'], '%Y-%m-%d')
         if self == current_user and expiry_date < datetime.datetime.now():
             raise exception_handler.WarningException("Expiry date cannot be in the past for the current logged in user.")
         self.expiry = expiry_date
 
-        is_active = form.get('is_active', None)
-        if is_active is not None:
+        if 'is_active' in form:
             self.activate()
         elif self != current_user:
             self.deactivate()
@@ -1939,69 +1912,27 @@ class User(IUser):
         warnings.warn("User.set_expiry() is deprecated. Use User.expiry instead.", DeprecationWarning, stacklevel=2)
         self.expiry = utils.validate_datetime(value=value, field="Expiry", allow_none=False)
 
+class Assignment(imodels.IAssignment):
 
-class Assignment(database_handler.db.Model):
-    __tablename__ = 'assignment'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _insert_or_update(self, form, new):
+        form = utils.parse_form(form, self._form_dict())
+        recording_id = form['recording_id']
+        user_id = form['user_id']
+        if new:
+            self.recording_id = recording_id
+            self.user_id = user_id
+        else:
+            raise Exception("Assignment does not support update.")
     
-    user_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'), primary_key=True, nullable=False)
-    recording_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording.id'), primary_key=True, nullable=False)
-    row_start = database_handler.db.Column(database_handler.db.DateTime(timezone=True), server_default=func.current_timestamp())
-    user = database_handler.db.relationship("User", foreign_keys=[user_id])
-    recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])
-    created_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False, server_default=func.current_timestamp())
-    completed_flag = database_handler.db.Column(database_handler.db.Boolean, default=False)
-
-    def set_user_id(self, user_id: str):
-        self.user_id = user_id
-    
-    def set_recording_id(self, recording_id: str):
-        self.recording_id = recording_id
-
-    def is_reviewed(self):
-        return "Yes" if self.completed_flag else "No"
-    
-    def get_completed_flag(self):
-        return self.completed_flag
-
-    def set_complete(self):
+    def complete(self):
         self.completed_flag = True
-    
-    def set_incomplete(self):
+
+    def incomplete(self):
         self.completed_flag = False
-    
-    def get_row_start(self):
-        return self.row_start
-    
-    def get_row_start_pretty(self):
-        return utils.pretty_date(self.get_row_start())
-    
-    def get_created_datetime(self):
-        return self.created_datetime
-    
-    def get_created_datetime_pretty(self):
-        return utils.pretty_date(self.get_created_datetime())
 
-    def get_user_id(self) -> uuid.UUID:
-        return utils.validate_id(value=self.user_id, field="User", allow_none=True)
-
-    def set_user_id(self, value: str | uuid.UUID):
-        self.user_id = utils.validate_id(value=value, field="User", allow_none=False)
-    
-    def get_user(self) -> User:
-        return self.user
-    
-    def set_user(self, value: User):
-        
-        self.user = utils.validate_type(value=value, target_type=User, field="User", allow_none=False)
-
-    def get_recording_id(self) -> uuid.UUID:
-        return utils.validate_id(value=self.recording_id, field="Recording", allow_none=True)
-
-    def set_recording_id(self, value: str | uuid.UUID):
-        self.recording_id = utils.validate_id(value=value, field="Recording", allow_none=False)
-    
-    def get_recording(self) -> Recording:
-        return self.recording
-    
-    def set_recording(self, value: Recording):
-        self.recording = utils.validate_type(value=value, target_type=Recording, field="Recording", allow_none=False)
+    @property
+    def unique_name(self):
+        return f"{self.recording.unique_name}_{self.user.unique_name}"

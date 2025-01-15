@@ -503,16 +503,21 @@
      * @param {number} user_id - The ID of the user to assign.
      * @param {Object} user - The user object from the user selection dropdown.
      */
-    function onUserSelectionDropdownComplete(user_id, user) {
-        var xhr = new XMLHttpRequest();
+    function onUserSelectionDropdownComplete(userId, user) {
+        var recordingId = "{{ recording.id }}"
+        var jsonData = JSON.stringify({recording_id:recordingId, user_id:userId})
+        console.log(jsonData)
+        makeAjaxRequest(url="{{ url_for('recording.assign_recording') }}", method="POST", data=jsonData, contentType="application/json", error_popups=true, success_popups=true);
 
-        xhr.open('GET', "{{ url_for('recording.assign_recording') }}" + "?user_id=" + encodeURIComponent(user_id) + "&recording_id=" + encodeURIComponent("{{recording.id}}"), true);
+        // var xhr = new XMLHttpRequest();
 
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            window.location.href = window.location.href;
-        }
-        xhr.send();
+        // xhr.open('GET', "{{ url_for('recording.assign_recording') }}" + "?user_id=" + encodeURIComponent(user_id) + "&recording_id=" + encodeURIComponent("{{recording.id}}"), true);
+
+        // xhr.setRequestHeader('Content-Type', 'application/json');
+        // xhr.onload = function () {
+        //     window.location.href = window.location.href;
+        // }
+        // xhr.send();
     }
 
     const selectionRows = document.querySelectorAll('.selection-row');
