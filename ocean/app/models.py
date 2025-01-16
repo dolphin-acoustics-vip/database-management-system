@@ -1103,18 +1103,6 @@ class Selection(imodels.ISelection):
                     df = pd.read_excel(self.contour_file.get_full_absolute_path())
                 else:
                     raise exception_handler.WarningException(f"Unable to parse contour file as it is in the wrong format. Require CSV or XLSX")
-                # remove whitespace from headers        
-                df = df.rename(columns=lambda x: x.strip())
-                # Validate contour file
-                missing = []
-                datatype_mismatch = {}
-                for column, dtype in imodels.ISelection.contour_file_attrs().items():
-                    if column not in df.columns:
-                        missing.append(column)
-                        raise exception_handler.WarningException(f"Missing column: {column}")
-                    elif df[column].dtype != dtype:
-                        datatype_mismatch[column] = (df[column].dtype, dtype)
-                        raise exception_handler.WarningException(f"Incorrect data type for column '{column}' in the contour file for selection {self.selection_number}. This column requires {dtype}. This may be due to opening and saving the CSV in a spreadsheeting program.")
                 return df
             except FileNotFoundError as e:
                 raise exception_handler.WarningException(f"Contour file for selection {self.selection_number} no longer exists.")
@@ -1125,12 +1113,11 @@ class Selection(imodels.ISelection):
         if not self.contour_file: return None
         # Get contour file dataframe
         df = self.__contour_file_load_dataframe()
-        # Populate contour file handler with values from the dataframe
-        handler = contour_statistics.ContourFileHandler()
-        for index, row in df.iterrows():
-            contour_data_unit = contour_statistics.ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS'])
-            handler.add_contour_data_unit(contour_data_unit)
-        return handler
+        if df:
+            # Populate contour file handler with values from the dataframe
+            handler = contour_statistics.ContourFileHandler()
+            handler.insert_dataframe(df)
+            return handler
 
     def generate_contour_stats_dict(self):
         if not self.contour_statistics_calculated: return None

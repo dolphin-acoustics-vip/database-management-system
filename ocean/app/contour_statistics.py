@@ -21,6 +21,8 @@ import pandas as pd
 import os
 from enum import Enum
 
+from . import exception_handler
+
 
 def round_to_nearest_whole(num):
     """
@@ -72,8 +74,37 @@ class ContourDataUnit:
 
 class ContourFileHandler:
 
+    def contour_file_attrs(self):
+        """A dictionary of all the contour file attribute names (string) as the key and the
+        attribute data types as the value."""
+        return {
+            'time_milliseconds': (int, 'Time [ms]', False),
+            'peak_frequency': (float, 'Peak Frequency [Hz]', False),
+            'duty_cycle': (float, 'Duty Cycle', False),
+            'energy': (float, 'Energy', False),
+            'window_RMS': (float, 'WindowRMS', False)
+        }
+
+
     def __init__(self):
         self.contour_rows = []
+
+    def insert_dataframe(self, df):
+        # remove whitespace from headers        
+        df = df.rename(columns=lambda x: x.strip())
+        # Validate contour file
+        missing = []
+        datatype_mismatch = {}
+        for column, (dtype, header, nullable) in self.contour_file_attrs().items():
+            if header not in df.columns:
+                missing.append(header)
+                raise exception_handler.WarningException(f"Missing column: {header}")
+            elif df[header].dtype != dtype:
+                datatype_mismatch[header] = (df[header].dtype, dtype)
+                raise exception_handler.WarningException(f"Incorrect data type for column '{header}'. This may be due to opening and saving the CSV in a spreadsheeting program.")
+        for index, row in df.iterrows():
+            contour_data_unit = ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS'])
+            self.add_contour_data_unit(contour_data_unit)
 
     def get_ctr_data(self):
 

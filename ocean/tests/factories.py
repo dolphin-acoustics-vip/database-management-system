@@ -129,3 +129,7 @@ class AssignmentFactory(factory.alchemy.SQLAlchemyModelFactory):
     user = UserFactory.create()
     completed_flag = False
     
+from ..app import contour_statistics
+class ContourFileHandlerFactory(factory.Factory):
+    class Meta:
+        model = contour_statistics.ContourFileHandler

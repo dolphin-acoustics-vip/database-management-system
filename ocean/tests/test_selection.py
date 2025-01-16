@@ -277,12 +277,6 @@ def test_get_contour_statistics_dict_headers(selection: models.Selection):
         assert header in selection.get_contour_statistics_dict(use_headers=True)
         assert type(selection.get_contour_statistics_dict(use_headers=True)[header]) == dtype
 
-@pytest.mark.parametrize("attr", common.CONTOUR_FILE.keys())
-def test_contour_file_attrs(selection: models.Selection, attr):
-    assert attr in selection.contour_file_attrs()
-    assert common.CONTOUR_FILE[attr][0] == selection.contour_file_attrs()[attr][0]
-    assert common.CONTOUR_FILE[attr][1] == selection.contour_file_attrs()[attr][1]
-
 def test_unique_name(selection: models.Selection):
     recording = factories.RecordingFactory.create()
     selection.selection_number = 1

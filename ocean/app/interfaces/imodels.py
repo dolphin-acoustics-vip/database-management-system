@@ -946,18 +946,6 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
             "annotation": str,
         }
 
-    @staticmethod
-    def contour_file_attrs():
-        """A dictionary of all the contour file attribute names (string) as the key and the
-        attribute data types as the value."""
-        return {
-            'time_milliseconds': (int, 'Time [ms]', False),
-            'peak_frequency': (float, 'Peak Frequency [Hz]', False),
-            'duty_cycle': (float, 'Duty Cycle', False),
-            'energy': (float, 'Energy', False),
-            'window_RMS': (float, 'WindowRMS', False)
-        }
-
     @property
     @abstractmethod
     def unique_name(self):
