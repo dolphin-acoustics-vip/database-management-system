@@ -144,17 +144,24 @@
             {% if logged_in_user_assigned.completed_flag == True %}
 
             <label>Assignment Status: COMPLETE (Awaiting Review)</label>
-            <form action="{{url_for('recording.assignment_flag_as_incomplete', recording_id=recording.id)}}" method="post">
+            <form id="flag-as-incomplete-form" action="{{url_for('recording.assignment_flag_as_incomplete', recording_id=recording.id)}}" method="post">
                 <button class="gray" type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
-                <hidden id="recording_id" name="recording_id" value={{recording.id}}></hidden>
+                <input type="hidden" id="recording_id" name="recording_id" value={{recording.id}}></hidden>
             </form>
+            <script>
+                ajaxifyForm(document.getElementById('flag-as-incomplete-form'));
+            </script>
             {% else %}
             <label>Assignment Status: IN PROGRESS </label>
 
-            <form action="{{url_for('recording.assignment_flag_as_complete', recording_id=recording.id)}}" method="post">
+            <form id="flag-as-complete-form" action="{{url_for('recording.assignment_flag_as_complete', recording_id=recording.id)}}" method="post">
                 <button class="gray" type="submit" id="flag-as-complete-button">Flag as Complete</button>
-                <hidden id="recording_id" name="recording_id" value={{recording.id}}></hidden>
+                <input type="hidden" id="recording_id" name="recording_id" value={{recording.id}}></hidden>
             </form>
+            <script>
+                ajaxifyForm(document.getElementById('flag-as-complete-form'));
+            </script>
+
             {% endif %}
             {% else %}
             <label>Assignment Status: NOT ASSIGNED TO CURRENT USER</label>
@@ -193,11 +200,11 @@
                 <form action="{{url_for('selection.extract_contour_stats', recording_id=recording.id)}}" method="get">
                     <button class="link small" type="submit">Download Contour Stats</button>
                 </form>
-                <form id="recalculate-contour-statistics-form" method="post" action="{{url_for('recording.recalculate_contour_statistics_for_recording', recording_id=recording.id)}}">
+                <form id="calculate-contour-statistics-form" method="post" action="{{url_for('recording.calculate_contour_statistics_for_recording', recording_id=recording.id)}}">
                     <button class="link small" type="submit">Recalculate Contour Statistics</button>
                 </form>
                 <script>
-                    ajaxifyForm(document.getElementById('recalculate-contour-statistics-form'));
+                    ajaxifyForm(document.getElementById('calculate-contour-statistics-form'));
                 </script>
 
                 <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
@@ -228,7 +235,7 @@
                                 {% set identifier_heading = "Selection Number" %}
                                 {% set unique_id = "selection-number"%}
                                 {% set process_route = url_for('selection.process_selection') %}
-                                {% set insert_route = "selection.selection_insert" %}
+                                {% set insert_route = "selection.selection_file_insert" %}
                                 {% set accepted_extensions = ".wav" %}
                                 {% include 'recording/multi-file-upload-template.html' %}
                         </div>
@@ -238,7 +245,7 @@
                                 {% set identifier_heading = "Contour Number" %}
                                 {% set unique_id = "contour-number"%}
                                 {% set process_route = url_for('selection.process_contour') %}
-                                {% set insert_route = "selection.contour_insert" %}
+                                {% set insert_route = "selection.contour_file_insert" %}
                                 {% set accepted_extensions = ".csv" %}
                                 {% include 'recording/multi-file-upload-template.html' %}
                         </div>
@@ -384,7 +391,7 @@
                                 {% if current_user.role_id in [1, 2, 3] %}
 
                                 <form action="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}"
-                                    class="contour-delete-form" id="contour-delete-form-{{selection.id}}" method="get">
+                                    class="contour-delete-form" id="contour-delete-form-{{selection.id}}" method="POST">
                                     <button class="link" type="submit">Delete</button>
                                 </form>
                                 <script>

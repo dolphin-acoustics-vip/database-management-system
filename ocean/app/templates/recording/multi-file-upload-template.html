@@ -352,7 +352,7 @@
                         for await (const file of filesToSubmitFiltered) {
                 var formData = new FormData();
                 formData.append('file', file.file);
-                formData.append('id', file.id);
+                formData.append('selection_number', file.id);
 
                 await makeAjaxRequest(
                     "{{ url_for(insert_route, recording_id=recording.id) }}",

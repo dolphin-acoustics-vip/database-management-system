@@ -270,4 +270,4 @@ def test_selection_table_apply_new_selections(recording):
     assert len(new_selections) == 3
     for selection in new_selections:
         assert isinstance(selection, models.Selection)
-        assert selection.recording_id == recording.id
+        assert selection.recording.id == recording.id

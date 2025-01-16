@@ -36,15 +36,15 @@ def test_set_updated_by_id_wrong_type(species: models.Species):
     ("genus_name", "TestName ", "TestName"),
     ("genus_name", " Test Name ", "Test Name"),
     ("genus_name", None, None),
-    ("genus_name", "", ""),
-    ("genus_name", "  ", ""),
+    ("genus_name", "", None),
+    ("genus_name", "  ", None),
     ("common_name", "TestName", "TestName"),
     ("common_name", " TestName", "TestName"),
     ("common_name", "TestName ", "TestName"),
     ("common_name", " Test Name ", "Test Name"),
     ("common_name", None, None),
-    ("common_name", "", ""),
-    ("common_name", "  ", "")
+    ("common_name", "", None),
+    ("common_name", "  ", None)
 ])
 def test_set_attribute(species: models.Species, attr: str, value, expected):
     setattr(species, attr, value)

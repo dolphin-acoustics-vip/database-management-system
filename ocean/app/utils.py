@@ -186,6 +186,7 @@ def validate_boolean(value: bool | str, field: str, allow_none: bool = False):
     """
     err = exception_handler.ValidationError(field=field, required="Boolean", value=str(value))
     if not allow_none and value is None: raise err
+    if allow_none and value is None: return None
     if type(value) != bool: raise err
     return value
 
@@ -282,10 +283,10 @@ def validate_longitude(value: float | str | int, field: str, allow_none: bool = 
 
 def validate_string(value: str, field=None, allow_none = False):
     if not allow_none and (value is None or str(value).strip() == ""): raise exception_handler.ValidationError(field=field, required="String", value=str(value))
+    if str(value).strip() == "" and allow_none: return None
     if value is None and allow_none: return None
     if type(value) != str: raise exception_handler.ValidationError(field=field, required="String", value=str(value))
-    value = str(value).strip()
-    return value
+    return str(value).strip()
 
 def validate_float(value: float | str, field=None, allow_none=False) -> float:
     """
@@ -304,7 +305,7 @@ def validate_float(value: float | str, field=None, allow_none=False) -> float:
     try:
         value = float(value)
     except ValueError:
-        raise exception_handler.WarningException(f"Field '{field}' must be of type float.")
+        raise err
     return float(value)
 
 def validate_int(value: int | str, field=None, allow_none=False) -> int:
@@ -548,7 +549,7 @@ def parse_string_notempty(value:str, field:str) -> str:
         return str(value).strip()
 
 
-DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M'
+DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 def pretty_date(d: datetime.datetime | None, format=DEFAULT_DATE_FORMAT):
     if not d: return None
@@ -639,7 +640,9 @@ def verify_subarray_of_dict(sub, arr):
                 raise ValueError(f"Unknown attribute: {s}")
     raise ValueError("Subarray or dict is None")
 
-def validate_enum(value, field, enum):
+def validate_enum(value, field, enum, prepare=None, allow_none=False):
+    if allow_none and (value is None or str(value).strip() == ""): return None
+    if prepare is not None: value = prepare(str(value))
     if value not in enum:
         raise exception_handler.ValidationError(field=field, required=",".join(enum), value=value)
     return value

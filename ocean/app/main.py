@@ -52,7 +52,7 @@ def check_interfaces():
     data_source = models.DataSource()
     encounter = models.Encounter()
     species = models.Species()
-    selection = models.Selection()
+    selection = models.Selection(recording)
     file = models.File()
     role = models.Role()
     

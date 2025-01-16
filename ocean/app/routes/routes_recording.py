@@ -174,6 +174,8 @@ def recording_insert(encounter_id: str):
             recording.encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
             session.add(recording)
             recording.insert(request.form)
+            if 'upload_recording_file_id' in request.form and 'upload_recording_file_name' in request.form and request.form['upload_recording_file_id'] and request.form['upload_recording_file_name']:
+                recording.recording_file_insert(session, filespace_handler.get_complete_temporary_file(request.form['upload_recording_file_id'], request.form['upload_recording_file_name']))
             session.commit()
             flash(f'Inserted {recording.unique_name}.', 'success')
             response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
@@ -219,7 +221,6 @@ def assignment_flag_change_helper(completed_flag):
         try:
             form = utils.parse_form(request.form, schema={"recording_id":True, "user_id": False})
             recording_id = form['recording_id']
-            user_id = form['user_id']
             # Only allow the user to update someone else's assignment if they have adequate permissions.
             # Users without permission to update someone else's assignment usually will not include `user_id` in the form
             if 'user_id' not in form:
@@ -310,6 +311,9 @@ def recording_update(recording_id: str) -> Response:
             recording_obj = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
             check_editable(recording_obj)
             recording_obj.update(request.form)
+            if 'upload_recording_file_id' in request.form and 'upload_recording_file_name' in request.form and request.form['upload_recording_file_id'] and request.form['upload_recording_file_name']:
+                print(request.form['upload_recording_file_id'], request.form['upload_recording_file_name'])
+                recording_obj.recording_file_insert(session, filespace_handler.get_complete_temporary_file(request.form['upload_recording_file_id'], request.form['upload_recording_file_name']))
             recording_obj.apply_updates()
             session.commit()
             flash(f'Updated {recording_obj.unique_name}.', 'success')
@@ -497,7 +501,7 @@ def unassign_recording():
 @login_required
 @database_handler.exclude_role_4
 @database_handler.require_live_session
-def recalculate_contour_statistics_for_recording(recording_id: str):
+def calculate_contour_statistics_for_recording(recording_id: str):
     """Recalculates the contour statistics for all selections associated with the recording specified by recording_id.
     Any errors processing contours will not halt the recalculation - it will merely be skipped and an error message added
     to the response (see response_handler.JSONResponse).
@@ -530,11 +534,11 @@ def recalculate_contour_statistics_for_recording(recording_id: str):
                 check_editable(recording)
                 from .routes_selection import generate_ctr_file
                 generate_ctr_file(session, selection.id)
-                selection.recalculate_contour_statistics()
+                selection.calculate_contour_statistics()
                 session.commit()
                 count += 1
             except (Exception, SQLAlchemyError) as e:
-                # A ValueError from Selection.recalculate_contour_statistics() occurs when the contour file is missing
+                # A ValueError from Selection.calculate_contour_statistics() occurs when the contour file is missing
                 if type(e) == ValueError: e = exception_handler.WarningException(e.args[0])
                 response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     

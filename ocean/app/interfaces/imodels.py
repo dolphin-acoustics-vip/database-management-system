@@ -13,7 +13,7 @@ from .. import utils
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 import typing
 import warnings
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text
 from .. import exception_handler
 
 # Combine ABCMeta and SQLAlchemy's DeclarativeMeta
@@ -87,6 +87,7 @@ class TableOperations(ABC):
         """
         self._insert_or_update(form=form, new=False)
 
+    @abstractmethod
     def delete(self):
         """Check if the object can be deleted. Raise an exception if it
         cannot be deleted.
@@ -124,9 +125,10 @@ class TableOperations(ABC):
     def apply_updates(self):
         with database_handler.get_session() as session:
             self._update_filespace()
-            for child in self._get_children(session):
-                if issubclass(type(child), TableOperations):
-                    child.apply_updates()
+            if issubclass(type(self), Cascading):
+                for child in self._get_children(session):
+                    if issubclass(type(child), TableOperations):
+                        child.apply_updates()
             session.commit()
 
 class Cascading(ABC):
@@ -278,8 +280,8 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
     data_source_id = Column(String(36), database_handler.db.ForeignKey('data_source.id'), nullable=False)
     recording_platform_id = Column(String(36), database_handler.db.ForeignKey('recording_platform.id'), nullable=False)
     notes = Column(String(1000))
-    file_timezone = Column(database_handler.db.Integer)
-    local_timezone = Column(database_handler.db.Integer)
+    file_timezone = Column(Integer)
+    local_timezone = Column(Integer)
     species = database_handler.db.relationship("Species")
     data_source = database_handler.db.relationship("DataSource")
     recording_platform = database_handler.db.relationship("RecordingPlatform")
@@ -392,7 +394,7 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
     start_time = Column(DateTime(timezone=True), nullable=False)
     status = Column(database_handler.db.Enum('Unassigned','In Progress','Awaiting Review','Reviewed','On Hold'), nullable=False, default='Unassigned')
     status_change_datetime = Column(DateTime(timezone=True))
-    notes = Column(database_handler.db.Text)
+    notes = Column(Text)
     # children
     recording_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
     recording_file = database_handler.db.relationship("File", foreign_keys=[recording_file_id])
@@ -456,7 +458,7 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
 
     @validates("status")
     def _validate_status(self, key, value):
-        return utils.validate_enum(value=value, field=key, enum=['Unassigned','In Progress','Awaiting Review','Reviewed','On Hold'])
+        return utils.validate_enum(value=value, field=key, enum=['Unassigned','In Progress','Awaiting Review','Reviewed','On Hold'], allow_none = False)
 
     @validates("row_start", "created_datetime")
     def _reject_change(self, key, value):
@@ -575,6 +577,500 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
         Does not commit the session automatically. Does not make changes to the session."""
         raise NotImplementedError()
 
+class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
+    __tablename__ = 'selection'
+
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+    selection_number = Column(Integer, nullable=False)
+    selection_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'), nullable=False)
+    recording_id = Column(String(36), database_handler.db.ForeignKey('recording.id'), nullable=False)
+    contour_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
+    ctr_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
+    sampling_rate = Column(Float)
+    traced = Column(Boolean, nullable=True, default=None)
+    deactivated = Column(Boolean, nullable=True, default=False)
+    row_start = Column(DateTime(timezone=True), server_default="current_timestamp()")
+    default_fft_size = Column(Integer)
+    default_hop_size = Column(Integer)
+    created_datetime = Column(DateTime(timezone=True), nullable=False, server_default="current_timestamp()")
+
+    ### Selection Table data ###
+    view = Column(Text)
+    channel = Column(Integer)
+    begin_time = Column(Float)
+    end_time = Column(Float)
+    low_frequency = Column(Float)
+    high_frequency = Column(Float)
+    delta_time = Column(Float)
+    delta_frequency = Column(Float)
+    average_power = Column(Float)
+    annotation = Column(Text)
+
+    ### Contour Statistics data ###
+    freq_max = Column(Float, nullable=True, default=None)
+    freq_min = Column(Float, nullable=True, default=None)
+    duration = Column(Float, nullable=True, default=None)
+    freq_begin = Column(Float, nullable=True, default=None)
+    freq_end = Column(Float, nullable=True, default=None)
+    freq_range = Column(Float, nullable=True, default=None)
+    dc_mean = Column(Float, nullable=True, default=None)
+    dc_standarddeviation = Column(Float, nullable=True, default=None)
+    freq_mean = Column(Float, nullable=True, default=None)
+    freq_standarddeviation = Column(Float, nullable=True, default=None)
+    freq_median = Column(Float, nullable=True, default=None)
+    freq_center = Column(Float, nullable=True, default=None)
+    freq_relbw = Column(Float, nullable=True, default=None)
+    freq_maxminratio = Column(Float, nullable=True, default=None)
+    freq_begendratio = Column(Float, nullable=True, default=None)
+    freq_quarter1 = Column(Float, nullable=True, default=None)
+    freq_quarter2 = Column(Float, nullable=True, default=None)
+    freq_quarter3 = Column(Float, nullable=True, default=None)
+    freq_spread = Column(Float, nullable=True, default=None)
+    dc_quarter1mean = Column(Float, nullable=True, default=None)
+    dc_quarter2mean = Column(Float, nullable=True, default=None)
+    dc_quarter3mean = Column(Float, nullable=True, default=None)
+    dc_quarter4mean = Column(Float, nullable=True, default=None)
+    freq_cofm = Column(Float, nullable=True, default=None)
+    freq_stepup = Column(Integer, nullable=True, default=None)
+    freq_stepdown = Column(Integer, nullable=True, default=None)
+    freq_numsteps = Column(Integer, nullable=True, default=None)
+    freq_slopemean = Column(Float, nullable=True, default=None)
+    freq_absslopemean = Column(Float, nullable=True, default=None)
+    freq_posslopemean = Column(Float, nullable=True, default=None)
+    freq_negslopemean = Column(Float, nullable=True, default=None)
+    freq_sloperatio = Column(Float, nullable=True, default=None)
+    freq_begsweep = Column(Integer, nullable=True, default=None)
+    freq_begup = Column(Integer, nullable=True, default=None)
+    freq_begdown = Column(Integer, nullable=True, default=None)
+    freq_endsweep = Column(Integer, nullable=True, default=None)
+    freq_endup = Column(Integer, nullable=True, default=None)
+    freq_enddown = Column(Integer, nullable=True, default=None)
+    num_sweepsupdown = Column(Integer, nullable=True, default=None)
+    num_sweepsdownup = Column(Integer, nullable=True, default=None)
+    num_sweepsupflat = Column(Integer, nullable=True, default=None)
+    num_sweepsdownflat = Column(Integer, nullable=True, default=None)
+    num_sweepsflatup = Column(Integer, nullable=True, default=None)
+    num_sweepsflatdown = Column(Integer, nullable=True, default=None)
+    freq_sweepuppercent = Column(Float, nullable=True, default=None)
+    freq_sweepdownpercent = Column(Float, nullable=True, default=None)
+    freq_sweepflatpercent = Column(Float, nullable=True, default=None)
+    num_inflections = Column(Integer, nullable=True, default=None)
+    inflection_maxdelta = Column(Float, nullable=True, default=None)
+    inflection_mindelta = Column(Float, nullable=True, default=None)
+    inflection_maxmindelta = Column(Float, nullable=True, default=None)
+    inflection_mediandelta = Column(Float, nullable=True, default=None)
+    inflection_meandelta = Column(Float, nullable=True, default=None)
+    inflection_standarddeviationdelta = Column(Float, nullable=True, default=None)
+    inflection_duration = Column(Float, nullable=True, default=None)
+    step_duration = Column(Float, nullable=True, default=None)
+    
+    contour_file = database_handler.db.relationship("File", foreign_keys=[contour_file_id])
+    selection_file = database_handler.db.relationship("File", foreign_keys=[selection_file_id])
+    recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])
+    ctr_file = database_handler.db.relationship("File", foreign_keys=[ctr_file_id])
+    
+    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    __table_args__ = (
+        database_handler.db.UniqueConstraint('selection_number', 'recording_id', name='unique_selection_number_recording'),
+        {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
+    )
+
+    @validates('selection_number')
+    def _validate_int(self, key, value):
+        return utils.validate_int(value, field=key, allow_none=False)
+    
+    @validates(
+        'default_fft_size',
+        'default_hop_size',
+        'channel',
+        'freq_stepup',
+        'freq_stepdown',
+        'freq_numsteps',
+        'freq_begsweep',
+        'freq_begup',
+        'freq_begdown',
+        'freq_endsweep',
+        'freq_endup',
+        'freq_enddown',
+        'num_sweepsupdown',
+        'num_sweepsdownup',
+        'num_sweepsupflat',
+        'num_sweepsdownflat',
+        'num_sweepsflatup',
+        'num_sweepsflatdown',
+        'num_inflections',
+        )
+    def _validate_int_nullable(self, key, value):
+        return utils.validate_int(value, field=key, allow_none=True)
+
+    @validates('recording_id', 'selection_file_id')
+    def _validate_uuid(self, key, value):
+        return utils.validate_id(value, field=key, allow_none=False)
+
+    @validates('selection_table_file_id', 'ctr_file_id', 'updated_by_id')
+    def _validate_uuid_nullable(self, key, value):
+        return utils.validate_id(value, field=key, allow_none=True)
+
+    @validates(
+        'sampling_rate',
+        'begin_time',
+        'end_time',
+        'low_frequency',
+        'high_frequency',
+        'delta_time',
+        'delta_frequency',
+        'average_power',
+        'freq_max',
+        'freq_min',
+        'duration',
+        'freq_begin',
+        'freq_end',
+        'freq_range',
+        'dc_mean',
+        'dc_standarddeviation',
+        'freq_mean',
+        'freq_standarddeviation',
+        'freq_median',
+        'freq_center',
+        'freq_relbw',
+        'freq_maxminratio',
+        'freq_begendratio',
+        'freq_quarter1',
+        'freq_quarter2',
+        'freq_quarter3',
+        'freq_spread',
+        'dc_quarter1mean',
+        'dc_quarter2mean',
+        'dc_quarter3mean',
+        'dc_quarter4mean',
+        'freq_cofm',
+        'freq_slopemean',
+        'freq_absslopemean',
+        'freq_posslopemean',
+        'freq_negslopemean',
+        'freq_sloperatio',
+        'freq_sweepuppercent',
+        'freq_sweepdownpercent',
+        'freq_sweepflatpercent',
+        'inflection_maxdelta',
+        'inflection_mindelta',
+        'inflection_maxmindelta',
+        'inflection_mediandelta',
+        'inflection_meandelta',
+        'inflection_standarddeviationdelta',
+        'inflection_duration',
+        'step_duration',
+    )
+    def _validate_float_nullable(self, key, value):
+        return utils.validate_float(value=value, field=key, allow_none=True)
+
+    @validates("view")
+    def _validate_str_nullable(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=True)
+
+    @validates("annotation")
+    def _validate_annotation(self, key, value):
+        def prepare(string):
+            if string is None: return None
+            return str(string).upper()
+        return utils.validate_enum(value=value, field=key, enum=["Y","M","N"], prepare=prepare, allow_none=True)
+
+    @validates('deactivated')
+    def _validate_bool(self, key, value):
+        return utils.validate_boolean(value=value, field=key, allow_none=False)
+    
+    @validates('traced')
+    def _validate_bool_nullable(self, key, value):
+        return utils.validate_boolean(value=value, field=key, allow_none=True)
+
+    @property
+    def row_start_pretty(self):
+        return utils.pretty_date(self.row_start)
+
+    @property
+    def created_datetime_pretty(self):
+        return utils.pretty_date(self.created_datetime)
+
+    def _to_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            'unique_name':self.unique_name,
+            'selection_number':self.selection_number,
+            'selection_file':self.selection_file,
+            'selection_file_id':self.selection_file_id,
+            'ctr_file':self.ctr_file,
+            'ctr_file_id':self.ctr_file_id,
+            'contour_file':self.contour_file,
+            'contour_file_id':self.contour_file,
+            'recording_id':self.recording_id,
+            'created_datetime':self.created_datetime,
+            'row_start':self.row_start
+        }
+    
+    def _form_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            'selection_number':True,
+        }
+
+    @staticmethod
+    def get_contour_statistics_attrs() -> typing.Dict[str,type]:
+        """A dictionary of all the contour statistics attribute names (string) as the key and
+        a tuple of the the attribute data type and the column name and a boolean as the value.
+        The boolean is meant to indicate whether the attribute should be included on the selection
+        table or not.
+        """
+        return {
+            "freq_max": (float, "FREQMAX", True),
+            "freq_min": (float, "FREQMIN", True),
+            "duration": (float, "DURATION", True),
+            "freq_begin": (float, "FREQBEG", True),
+            "freq_end": (float, "FREQEND", True),
+            "freq_range": (float, "FREQRANGE", True),
+            "dc_mean": (float, "DCMEAN", True),
+            "dc_standarddeviation": (float, "DCSTDDEV", True),
+            "freq_mean": (float, "FREQMEAN", True),
+            "freq_standarddeviation": (float, "FREQSTDDEV", True),
+            "freq_median": (float, "FREQMEDIAN", True),
+            "freq_center": (float, "FREQCENTER", True),
+            "freq_relbw": (float, "FREQRELBW", True),
+            "freq_maxminratio": (float, "FREQMAXMINRATIO", True),
+            "freq_begendratio": (float, "FREQBEGENDRATIO", True),
+            "freq_quarter1": (float, "FREQQUARTER1", True),
+            "freq_quarter2": (float, "FREQQUARTER2", True),
+            "freq_quarter3": (float, "FREQQUARTER3", True),
+            "freq_spread": (float, "FREQSPREAD", True),
+            "dc_quarter1mean": (float, "DCQUARTER1MEAN", True),
+            "dc_quarter2mean": (float, "DCQUARTER2MEAN", True),
+            "dc_quarter3mean": (float, "DCQUARTER3MEAN", True),
+            "dc_quarter4mean": (float, "DCQUARTER4MEAN", True),
+            "freq_cofm": (float, "FREQCOFM", True),
+            "freq_stepup": (int, "FREQSTEPUP", True),
+            "freq_stepdown": (int, "FREQSTEPDOWN", True),
+            "freq_numsteps": (int, "FREQNUMSTEPS", True),
+            "freq_slopemean": (float, "FREQSLOPEMEAN", True),
+            "freq_absslopemean": (float, "FREQABSSLOPEMEAN", True),
+            "freq_posslopemean": (float, "FREQPOSSLOPEMEAN", True),
+            "freq_negslopemean": (float, "FREQNEGSLOPEMEAN", True),
+            "freq_sloperatio": (float, "FREQSLOPERATIO", True),
+            "freq_begsweep": (int, "FREQBEGSWEEP", True),
+            "freq_begup": (int, "FREQBEGUP", True),
+            "freq_begdown": (int, "FREQBEGDWN", True),
+            "freq_endsweep": (int, "FREQENDSWEEP", True),
+            "freq_endup": (int, "FREQENDUP", True),
+            "freq_enddown": (int, "FREQENDDWN", True),
+            "num_sweepsupdown": (int, "NUMSWEEPSUPDWN", True),
+            "num_sweepsdownup": (int, "NUMSWEEPSDWNUP", True),
+            "num_sweepsupflat": (int, "NUMSWEEPSUPFLAT", True),
+            "num_sweepsdownflat": (int, "NUMSWEEPSDWNFLAT", True),
+            "num_sweepsflatup": (int, "NUMSWEEPSFLATUP", True),
+            "num_sweepsflatdown": (int, "NUMSWEEPSFLATDWN", True),
+            "freq_sweepuppercent": (float, "FREQSWEEPUPPERCENT", True),
+            "freq_sweepdownpercent": (float, "FREQSWEEPDWNPERCENT", True),
+            "freq_sweepflatpercent": (float, "FREQSWEEPFLATPERCENT", True),
+            "num_inflections": (int, "NUMINFLECTIONS", True),
+            "inflection_maxdelta": (float, "INFLMAXDELTA", True),
+            "inflection_mindelta": (float, "INFLMINDELTA", True),
+            "inflection_maxmindelta": (float, "INFLMAXMINDELTA", True),
+            "inflection_mediandelta": (float, "INFLMEDIANDELTA", True),
+            "inflection_meandelta": (float, "INFLMEANDELTA", True),
+            "inflection_standarddeviationdelta": (float, "INFLSTDDEVDELTA", True),
+            "inflection_duration": (float, "INFLDUR", True),
+            "step_duration": (float, "STEPDUR", True),
+        }
+
+    @abstractmethod
+    def selection_file_delete(self):
+        """Delete the selection file associated with the selection. The session used to call
+        this method needs to be committed by the caller."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def selection_file_insert(self, session, stream):
+        """Insert a file (given as a stream) into `selection_file`. If it is already populated
+        raise `exception_handler.WarningException`. If not, insert it. Note that the session used
+        to call this method needs to be committed by the caller. The new file will be automatically
+        added to the provided session, but not comitted."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def contour_file_insert(self, session, stream):
+        """Insert a file (given as a stream) into `contour_file`. If it is already populated
+        raise `exception_handler.WarningException`. If not, insert it. Note that the session used
+        to call this method needs to be committed by the caller. The new file will be automatically
+        added to the provided session, but not comitted."""
+        raise NotImplementedError
+    
+    @abstractmethod
+    def ctr_file_delete(self):
+        """Delete the CTR file associated with the selection. The session used to call
+        this method needs to be committed by the caller."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def ctr_file_generate(self):
+        """Generate a file made of the data in `contour_file`. If it is already populated
+        raise `exception_handler.WarningException`. If not, generate it. Note that the session used
+        to call this method needs to be committed by the caller. If a CTR file already exists, it
+        is first deleted before being regenerated. The new file will be automatically
+        added to the provided session, but not comitted."""
+        raise NotImplementedError
+
+    def get_contour_statistics_dict(self, use_headers=False) -> typing.Dict[str, typing.Any]:
+        """A dictionary of all the contour statistics attribute names (string) as the key and the
+        attribute data types as the value. This does not include `selection_number` as this
+        attribute pertains to the entire `Selection` object. If `use_headers` is True, the
+        attribute names will be the header names in the CSV file. If `use_headers` is False,
+        the attribute names will be the attribute names of the object."""
+        d = {}
+        for k, v in ISelection.get_contour_statistics_attrs().items():
+            if v[2] and not use_headers: d[k] = getattr(self, k)
+            elif v[2] and use_headers: d[v[1]] = getattr(self, k)
+        return d
+
+    @property
+    def selection_table_attrs(self) -> typing.Dict[str, type]:
+        """A dictionary of all the selection table attribute names (string) as the key and the
+        attribute data types as the value. This does not include `selection_number` as this
+        attribute pertains to the entire `Selection` object."""
+        return {
+            "view": str,
+            "channel": int,
+            "begin_time": float,
+            "end_time": float,
+            "low_frequency": float,
+            "high_frequency": float,
+            "delta_time": float,
+            "delta_frequency": float,
+            "average_power": float,
+            "annotation": str,
+        }
+
+    @staticmethod
+    def contour_file_attrs():
+        """A dictionary of all the contour file attribute names (string) as the key and the
+        attribute data types as the value."""
+        return {
+            'Time [ms]': int,
+            'Peak Frequency [Hz]': float,
+            'Duty Cycle': float,
+            'Energy': float,
+            'WindowRMS': float
+        }
+
+    @property
+    @abstractmethod
+    def unique_name(self):
+        raise NotImplementedError()
+    
+    @property
+    @abstractmethod
+    def relative_directory(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def selection_file_name(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def contour_file_name(self):
+        raise NotImplementedError
+
+    @property
+    def plot_file_name(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def contour_file_insert(self, session, file_stream):
+        """Insert a file (given as a stream) into `contour_file`. If it is already populated
+        raise `exception_handler.WarningException`. If not, insert it. The new file will already
+        be added to the session, but not comitted. This method automatically generates the CTR
+        file."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def contour_file_delete(self, session):
+        """Delete the contour file associated with the selection. The session used to call
+        this method needs to be committed by the caller. This will also remove any associated
+        CTR file."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def ctr_file_name(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def contour_statistics_reset(self):
+        """Reset all the contour statistics (by setting them to None). Note that this does not
+        impact the `contour_file` file itself."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def contour_statistics_calculate(self):
+        """Calculate contour statistics. Raises `ValueError` in the event of an error."""
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def clear_contour_statistics_attrs(self):
+        """Clear all the contour statistics (by setting them to None). Note that this does not
+        impact the `contour_file` file itself."""
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def _calculate_sampling_rate(self):
+        """Calculate the sampling rate of the `selection_file` associated with the object.
+        If there is no `selection_file` raise `exception_handler.WarningException`."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def deactivate(self):
+        """Deactivate the selection. This involves resetting the value of `traced` to `None`."""
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def reactivate(self):
+        """Reactivate the selection. This involves resetting the value of `traced` to `None`."""
+
+    @abstractmethod
+    def clear_selection_table_attrs(self) -> None:
+        """Clear all the selection table attributes (by setting them to `None`). Note that this
+        does not impact the `selection_table_file` file itself."""
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def update_traced(self):
+        """Determine and set the value of `traced` based on the `contour_file` and `annotation`.
+        'traced' is an attribute that tracks whether the selection has DEFINITELY been traced
+        (`traced = True`) or DEFINITELY NOT been traced (`traced = False`). If the traced status
+        of the selection is UNDETERMINED then `traced = None`.
+
+
+        - `True` if there is a `contour_file` and `annotation` is `Y` or `M`.
+        - `False` if there is not a `contour_file` and `annotation` is `N`.
+        - `None` otherwise or if `annotation` has no value.
+        """
+        raise NotImplementedError()
+
+    # TODO: create interface for ContourFileHandler
+    from ..contour_statistics import ContourFileHandler
+
+    @abstractmethod
+    def get_contour_file_handler(self) -> ContourFileHandler:
+        """If the `contour_file` exists then read the contents into a `contour_statistics.ContourFileHandler` object.
+        Data validation errors (such as formatting of the contour file) are raised as `exception_handler.WarningException`
+        exceptions. If the contour file does not exist the the function returns `None`."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def generate_contour_stats_dict(self):
+        """Generate a dictionary of the object's contour statistics. Returns `None` if the contour
+        file does not exist. The dictionary contains all the headers of `self.contour_statistics_attrs`
+        as the header and values as the value."""
+        raise NotImplementedError()
+
 class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     """Abstract class for the SQLAlchemy table user.
     
@@ -656,27 +1152,27 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     @abstractmethod
     def activate(self) -> None:
         """Activate the user."""
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def deactivate(self) -> None:
         """Deactivate the user."""
-        pass
+        raise NotImplementedError()
 
 class IDataSource(AbstractModelBase, Serialisable, TableOperations):
     __tablename__ = 'data_source'
 
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="UUID()")
-    name = database_handler.db.Column(database_handler.db.String(255))
-    phone_number1 = database_handler.db.Column(database_handler.db.String(20), unique=True)
-    phone_number2 = database_handler.db.Column(database_handler.db.String(20), unique=True)
-    email1 = database_handler.db.Column(database_handler.db.String(255), nullable=False, unique=True)
-    email2 = database_handler.db.Column(database_handler.db.String(255), unique=True)
-    address = database_handler.db.Column(database_handler.db.Text)
-    notes = database_handler.db.Column(database_handler.db.Text)
-    type = database_handler.db.Column(database_handler.db.Enum('person', 'organisation'))
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+    name = Column(String(255))
+    phone_number1 = Column(String(20), unique=True)
+    phone_number2 = Column(String(20), unique=True)
+    email1 = Column(String(255), nullable=False, unique=True)
+    email2 = Column(String(255), unique=True)
+    address = Column(Text)
+    notes = Column(Text)
+    type = Column(database_handler.db.Enum('person', 'organisation'))
 
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
     def _form_dict(self):
@@ -729,9 +1225,9 @@ class IRole(AbstractModelBase):
     __tablename__ = 'role'
     
     # Identifier
-    id = database_handler.db.Column(database_handler.db.Integer, primary_key=True)
+    id = Column(Integer, primary_key=True)
     # Metadata
-    name = database_handler.db.Column(database_handler.db.String(100))
+    name = Column(String(100))
     
     @validates("id")
     def _validate_id(self, key, value):
@@ -744,13 +1240,13 @@ class IRole(AbstractModelBase):
 class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     __tablename__ = 'assignment'
     
-    user_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'), primary_key=True, nullable=False)
-    recording_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('recording.id'), primary_key=True, nullable=False)
+    user_id = Column(String(36), database_handler.db.ForeignKey('user.id'), primary_key=True, nullable=False)
+    recording_id = Column(String(36), database_handler.db.ForeignKey('recording.id'), primary_key=True, nullable=False)
     row_start = Column(DateTime(timezone=True), server_default="current_timestamp()")
     user = database_handler.db.relationship("User", foreign_keys=[user_id])
     recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])
-    created_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True), nullable=False, server_default="NOW()")
-    completed_flag = database_handler.db.Column(database_handler.db.Boolean, default=False)
+    created_datetime = Column(DateTime(timezone=True), nullable=False, server_default="NOW()")
+    completed_flag = Column(Boolean, default=False)
 
     @validates("user_id", "recording_id")
     def _validate_id(self, key, value):

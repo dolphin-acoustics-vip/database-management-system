@@ -86,7 +86,7 @@
                 href="{{url_for('selection.download_selection_file', selection_id = selection.id )}}">Download
                 Selection File</a>
             <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name() }}&redirect_link={{ request.referrer }}">See
+                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.unique_name }}&redirect_link={{ request.referrer }}">See
                 Selection File Details</a>
             {% else %}
             <p style="margin-right:10px;">This selection has no selection file.</p>
@@ -96,10 +96,20 @@
                 href="{{url_for('selection.download_contour_file', selection_id = selection.id )}}">Download
                 Contour File</a>
             <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name()}}">See
+                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.unique_name}}">See
                 Contour File Details</a>
-
-            <form id="recalculate-contour-statistics-form" method="post" action="{{url_for('selection.regenerate_contour_calculations', selection_id=selection.id)}}">
+            {% if selection.ctr_file %}
+            <a class="button small"
+                href="{{url_for('selection.download_ctr_file', selection_id = selection.id )}}">Download
+                CTR File</a>
+            <a class="button small"
+                href="{{ url_for('general.get_file_details', file_id=selection.ctr_file_id) }}?file_details=Contour File for {{selection.unique_name}}">See
+                CTR File Details</a>
+            {% else %}
+            <p>There was an issue generating the CTR file. Try recalculating the contour statistics.</p>
+            {% endif %}
+            
+            <form id="recalculate-contour-statistics-form" method="post" action="{{url_for('selection.calculate_contour_statistics', selection_id=selection.id)}}">
                 <button class="link small" type="submit">Recalculate Contour Statistics</button>
             </form>
             <script>
@@ -179,7 +189,7 @@
                 {% for attr_name, attr_value in selection_dict.items() %}
                 <tr>
                     <td>{{ attr_name }}</td>
-                    <td>{{ selection.get_rounded_value(attr_value) }}</td>
+                    <td>{{ attr_value }}</td>
                 </tr>
                 {% endfor %}
             </table>
@@ -188,7 +198,6 @@
 
 </body>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     document.getElementById("plot-form").addEventListener("submit", function (event) {
         document.getElementById("plot-image").style.display = "none";
