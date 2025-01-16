@@ -137,21 +137,6 @@ def test_annotation_invalid(selection: models.Selection, value):
     with pytest.raises(exception_handler.ValidationError):
         setattr(selection, "annotation", value)
 
-# @pytest.mark.parametrize("attr, value", [
-#     (attr, value)
-#     for attr, (dtype, _, _) in CONTOUR_STATISTICS.items()
-#     for value in [
-#         "not-a-number",
-#         "0d\n",
-#         "0d\t",
-#         "1.5s3"
-#     ]
-#     if dtype in [int, float]
-# ])
-# def test_set_contour_statistics_invalid_float(selection: models.Selection, attr: str, value):
-#     with pytest.raises(exception_handler.ValidationError):
-#         setattr(selection, attr, value)
-
 # @pytest.mark.parametrize("value", [True, False, None])
 # def test_get_traced(selection: models.Selection, value: bool):
 #     selection.traced = value

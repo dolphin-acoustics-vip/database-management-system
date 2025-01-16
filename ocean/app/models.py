@@ -41,12 +41,12 @@ import matplotlib.pyplot as plt
 from werkzeug.utils import secure_filename
 
 # Local application imports
-from . import contour_statistics
-from . import database_handler
-from . import exception_handler
-from . import utils
-from .interfaces import imodels
-from .logger import logger
+from ocean.app import contour_statistics
+from ocean.app import database_handler
+from ocean.app import exception_handler
+from ocean.app import utils
+from ocean.app.interfaces import imodels
+from ocean.app.logger import logger
 
 
 
