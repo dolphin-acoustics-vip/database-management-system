@@ -185,9 +185,12 @@ def validate_boolean(value: bool | str, field: str, allow_none: bool = False):
     :return: the parsed boolean value.
     """
     err = exception_handler.ValidationError(field=field, required="Boolean", value=str(value))
-    if not allow_none and value is None: raise err
-    if allow_none and value is None: return None
-    if type(value) != bool: raise err
+    if not allow_none and (value is None or str(value).strip() == ""): raise err
+    if allow_none and (value is None or str(value).strip() == ""): return None
+    if type(value) != bool:
+        if str(value) == "false" or str(value) == "False": return False
+        elif str(value) == "true" or str(value) == "True": return True
+        else: raise err
     return value
 
 def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bool = False, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> datetime.datetime:

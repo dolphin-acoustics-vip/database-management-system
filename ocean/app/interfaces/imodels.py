@@ -588,7 +588,7 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
     ctr_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
     sampling_rate = Column(Float)
     traced = Column(Boolean, nullable=True, default=None)
-    deactivated = Column(Boolean, nullable=True, default=False)
+    deactivated = Column(Boolean, nullable=False, default=False)
     row_start = Column(DateTime(timezone=True), server_default="current_timestamp()")
     default_fft_size = Column(Integer)
     default_hop_size = Column(Integer)
@@ -705,11 +705,11 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
     def _validate_int_nullable(self, key, value):
         return utils.validate_int(value, field=key, allow_none=True)
 
-    @validates('recording_id', 'selection_file_id')
+    @validates('recording_id')
     def _validate_uuid(self, key, value):
         return utils.validate_id(value, field=key, allow_none=False)
 
-    @validates('selection_table_file_id', 'ctr_file_id', 'updated_by_id')
+    @validates('selection_file_id', 'contour_file_id', 'ctr_file_id', 'updated_by_id')
     def _validate_uuid_nullable(self, key, value):
         return utils.validate_id(value, field=key, allow_none=True)
 
@@ -951,11 +951,11 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
         """A dictionary of all the contour file attribute names (string) as the key and the
         attribute data types as the value."""
         return {
-            'Time [ms]': int,
-            'Peak Frequency [Hz]': float,
-            'Duty Cycle': float,
-            'Energy': float,
-            'WindowRMS': float
+            'time_milliseconds': (int, 'Time [ms]', False),
+            'peak_frequency': (float, 'Peak Frequency [Hz]', False),
+            'duty_cycle': (float, 'Duty Cycle', False),
+            'energy': (float, 'Energy', False),
+            'window_RMS': (float, 'WindowRMS', False)
         }
 
     @property
@@ -979,6 +979,11 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
         raise NotImplementedError
 
     @property
+    @abstractmethod
+    def ctr_file_name(self):
+        raise NotImplementedError
+
+    @property
     def plot_file_name(self):
         raise NotImplementedError
 
@@ -995,17 +1000,6 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
         """Delete the contour file associated with the selection. The session used to call
         this method needs to be committed by the caller. This will also remove any associated
         CTR file."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def ctr_file_name(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def contour_statistics_reset(self):
-        """Reset all the contour statistics (by setting them to None). Note that this does not
-        impact the `contour_file` file itself."""
         raise NotImplementedError
 
     @abstractmethod

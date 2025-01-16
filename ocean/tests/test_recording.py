@@ -197,14 +197,6 @@ def test_update_status_on_hold_does_not_change(recording: models.Recording):
     assert recording.status_change_datetime is None
 
 def test_relative_directory(recording: models.Recording):
-    recording.encounter = factories.EncounterFactory.create()
-    recording.encounter.species.species_name = f"TestSpecies"
-    recording.encounter.encounter_name = f"TestEncounter"
-    recording.encounter.location = f"TestLocation"
-    recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    assert recording.relative_directory == os.path.join(f"Species-TestSpecies", f"Location-TestLocation", f"Encounter-TestEncounter",f"Recording-20200821T025422")
-
-def test_relative_directory(recording: models.Recording):
     for c in common.INVALID_CHARACTERS + ["_"]:
         recording.encounter = factories.EncounterFactory.create()
         recording.encounter.species.species_name = f"Test{c}Species"

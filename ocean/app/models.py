@@ -41,13 +41,12 @@ import matplotlib.pyplot as plt
 from werkzeug.utils import secure_filename
 
 # Local application imports
-from ocean.app import contour_statistics
-from ocean.app import database_handler
-from ocean.app import exception_handler
-from ocean.app import utils
-from ocean.app.interfaces import imodels
-from ocean.app.logger import logger
-
+from . import contour_statistics
+from . import database_handler
+from . import exception_handler
+from . import utils
+from .interfaces import imodels
+from .logger import logger
 
 
 
@@ -913,7 +912,7 @@ class Selection(imodels.ISelection):
             self.contour_file = None
         self.ctr_file_delete()
         self.update_traced()
-        self.contour_statistics_reset()
+        self.clear_contour_statistics_attrs()
 
     def selection_file_delete(self):
         if self.selection_file:
@@ -1133,10 +1132,6 @@ class Selection(imodels.ISelection):
             handler.add_contour_data_unit(contour_data_unit)
         return handler
 
-    def contour_statistics_reset(self):
-        for attr in imodels.ISelection.get_contour_statistics_attrs():
-            setattr(self, attr, None)
-
     def generate_contour_stats_dict(self):
         if not self.contour_statistics_calculated: return None
         headers = ['Encounter', 'Location', 'Project', 'Recording', 'Species', 'SamplingRate', 'SELECTIONNUMBER']
@@ -1149,7 +1144,7 @@ class Selection(imodels.ISelection):
         return dict(zip(headers, values))
 
     def contour_statistics_calculate(self):
-        self.contour_statistics_reset()
+        self.clear_contour_statistics_attrs()
         contour_file_handler = self.get_contour_file_handler()
         contour_file_handler.calculate_statistics(self)
 
@@ -1215,17 +1210,17 @@ class Selection(imodels.ISelection):
         if self.selection_file is not None:
             with database_handler.get_session() as session:
                 selection_file = session.query(File).with_for_update().get(self.selection_file_id)
-                selection_file.move_file(self.relative_path,self.selection_file_name)
+                selection_file.move_file(self.relative_directory,self.selection_file_name)
                 session.commit()
         if self.contour_file is not None:
             with database_handler.get_session() as session:
                 contour_file = session.query(File).with_for_update().get(self.contour_file_id)
-                contour_file.move_file(self.relative_path,self.contour_file_name)
+                contour_file.move_file(self.relative_directory,self.contour_file_name)
                 session.commit()
         if self.ctr_file is not None:
             with database_handler.get_session() as session:
                 ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
-                ctr_file.move_file(self.relative_path,self.ctr_file_name)
+                ctr_file.move_file(self.relative_directory,self.ctr_file_name)
                 session.commit()
 
     @property
