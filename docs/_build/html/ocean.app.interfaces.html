@@ -1,0 +1,1649 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ocean.app.interfaces package &mdash; OCEAN v1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=76e2d817"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ocean.app.routes package" href="ocean.app.routes.html" />
+    <link rel="prev" title="ocean.app package" href="ocean.app.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            OCEAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">ocean</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ocean.html">ocean package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ocean.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ocean.app.html">ocean.app package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html">ocean.tests package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.html#module-ocean.config">ocean.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.html#ocean-run-module">ocean.run module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.html#ocean-wsgi-module">ocean.wsgi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.html#module-ocean">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">OCEAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ocean</a></li>
+          <li class="breadcrumb-item"><a href="ocean.html">ocean package</a></li>
+          <li class="breadcrumb-item"><a href="ocean.app.html">ocean.app package</a></li>
+      <li class="breadcrumb-item active">ocean.app.interfaces package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ocean.app.interfaces.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ocean-app-interfaces-package">
+<h1>ocean.app.interfaces package<a class="headerlink" href="#ocean-app-interfaces-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ocean.app.interfaces.imodels">
+<span id="ocean-app-interfaces-imodels-module"></span><h2>ocean.app.interfaces.imodels module<a class="headerlink" href="#module-ocean.app.interfaces.imodels" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.AbstractModelBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">AbstractModelBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.AbstractModelBase.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.AbstractModelBase.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.Cascading">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">Cascading</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.Cascading" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.Cascading.apply_updates">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">apply_updates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.Cascading.apply_updates" title="Link to this definition"></a></dt>
+<dd><p>Apply changes to this object and invoke updates on related objects.</p>
+<p>This method should be called whenever a piece of metadata changes (either in
+this object or one of its parents). This method should ensure that any data
+in this object that rely on its parents metadata are updated accordingly.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.CombinedMeta">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">CombinedMeta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bases</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namespace</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.CombinedMeta" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABCMeta</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">DefaultMeta</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">IAssignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.complete">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">complete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.complete" title="Link to this definition"></a></dt>
+<dd><p>Mark the assignment as completed.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.completed_flag">
+<span class="sig-name descname"><span class="pre">completed_flag</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.completed_flag" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.created_datetime">
+<span class="sig-name descname"><span class="pre">created_datetime</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.created_datetime" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.created_datetime_pretty">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">created_datetime_pretty</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.created_datetime_pretty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.incomplete">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">incomplete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.incomplete" title="Link to this definition"></a></dt>
+<dd><p>Mark the assignment as incomplete.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.recording">
+<span class="sig-name descname"><span class="pre">recording</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.recording" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.recording_id">
+<span class="sig-name descname"><span class="pre">recording_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.recording_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.row_start">
+<span class="sig-name descname"><span class="pre">row_start</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.row_start" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.row_start_pretty">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">row_start_pretty</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.row_start_pretty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.user">
+<span class="sig-name descname"><span class="pre">user</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.user" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IAssignment.user_id">
+<span class="sig-name descname"><span class="pre">user_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IAssignment.user_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">IDataSource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.address">
+<span class="sig-name descname"><span class="pre">address</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.address" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.email1">
+<span class="sig-name descname"><span class="pre">email1</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.email1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.email2">
+<span class="sig-name descname"><span class="pre">email2</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.email2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.notes">
+<span class="sig-name descname"><span class="pre">notes</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.notes" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.phone_number1">
+<span class="sig-name descname"><span class="pre">phone_number1</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.phone_number1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.phone_number2">
+<span class="sig-name descname"><span class="pre">phone_number2</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.phone_number2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.type">
+<span class="sig-name descname"><span class="pre">type</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.updated_by">
+<span class="sig-name descname"><span class="pre">updated_by</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.updated_by" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IDataSource.updated_by_id">
+<span class="sig-name descname"><span class="pre">updated_by_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IDataSource.updated_by_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">IEncounter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Cascading" title="ocean.app.interfaces.imodels.Cascading"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cascading</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.data_source">
+<span class="sig-name descname"><span class="pre">data_source</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.data_source" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.data_source_id">
+<span class="sig-name descname"><span class="pre">data_source_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.data_source_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.encounter_name">
+<span class="sig-name descname"><span class="pre">encounter_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.encounter_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.file_timezone">
+<span class="sig-name descname"><span class="pre">file_timezone</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.file_timezone" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.folder_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">folder_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.folder_name" title="Link to this definition"></a></dt>
+<dd><p>The folder name of the encounter in the filespace. Implementation must
+be secure (for example see <cite>from werkzeug.utils import secure_filename</cite>)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.latitude">
+<span class="sig-name descname"><span class="pre">latitude</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.latitude" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.local_timezone">
+<span class="sig-name descname"><span class="pre">local_timezone</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.local_timezone" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.location">
+<span class="sig-name descname"><span class="pre">location</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.location" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.location_folder_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">location_folder_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.location_folder_name" title="Link to this definition"></a></dt>
+<dd><p>The folder name of the location in the filespace. Implementation must
+be secure (for example see <cite>from werkzeug.utils import secure_filename</cite>)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.longitude">
+<span class="sig-name descname"><span class="pre">longitude</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.longitude" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.notes">
+<span class="sig-name descname"><span class="pre">notes</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.notes" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.project">
+<span class="sig-name descname"><span class="pre">project</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.project" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.recording_count">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">recording_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.recording_count" title="Link to this definition"></a></dt>
+<dd><p>Returns the number of recordings in the encounter</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.recording_platform">
+<span class="sig-name descname"><span class="pre">recording_platform</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.recording_platform" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.recording_platform_id">
+<span class="sig-name descname"><span class="pre">recording_platform_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.recording_platform_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.relative_directory">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">relative_directory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.relative_directory" title="Link to this definition"></a></dt>
+<dd><p>Returns the relative directory to the encounter in the filespace. Implementation must
+be secure (for example see <cite>from werkzeug.utils import secure_filename</cite>)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.species">
+<span class="sig-name descname"><span class="pre">species</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.species" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.species_id">
+<span class="sig-name descname"><span class="pre">species_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.species_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.unique_name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unique_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.unique_name" title="Link to this definition"></a></dt>
+<dd><p>The encounter name</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.updated_by">
+<span class="sig-name descname"><span class="pre">updated_by</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.updated_by" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IEncounter.updated_by_id">
+<span class="sig-name descname"><span class="pre">updated_by_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IEncounter.updated_by_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">IRecording</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Cascading" title="ocean.app.interfaces.imodels.Cascading"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cascading</span></code></a></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.contour_file_count">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contour_file_count</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.contour_file_count" title="Link to this definition"></a></dt>
+<dd><p>Returns the number of contour files in the recording.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.created_datetime">
+<span class="sig-name descname"><span class="pre">created_datetime</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.created_datetime" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.encounter">
+<span class="sig-name descname"><span class="pre">encounter</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.encounter" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.encounter_id">
+<span class="sig-name descname"><span class="pre">encounter_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.encounter_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.folder_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">folder_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.folder_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.get_selections">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_selections</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.get_selections" title="Link to this definition"></a></dt>
+<dd><p>Returns an ordered list of <cite>Selection</cite> objects that are associated with the recording.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.is_awaiting_review">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_awaiting_review</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.is_awaiting_review" title="Link to this definition"></a></dt>
+<dd><p>Returns True if the recording is awaiting review, otherwise False.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.is_in_progress">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_in_progress</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.is_in_progress" title="Link to this definition"></a></dt>
+<dd><p>Returns True if the recording is in progress, otherwise False.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.is_on_hold">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_on_hold</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.is_on_hold" title="Link to this definition"></a></dt>
+<dd><p>Returns True if the recording has been on hold, otherwise False.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.is_reviewed">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_reviewed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.is_reviewed" title="Link to this definition"></a></dt>
+<dd><p>Returns True if the recording has been reviewed, otherwise False.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.is_unassigned">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_unassigned</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.is_unassigned" title="Link to this definition"></a></dt>
+<dd><p>Returns True if the recording is unassigned, otherwise False.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.notes">
+<span class="sig-name descname"><span class="pre">notes</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.notes" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.recording_file">
+<span class="sig-name descname"><span class="pre">recording_file</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.recording_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.recording_file_id">
+<span class="sig-name descname"><span class="pre">recording_file_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.recording_file_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.recording_file_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">recording_file_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.recording_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.relative_directory">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">relative_directory</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.relative_directory" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.row_start">
+<span class="sig-name descname"><span class="pre">row_start</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.row_start" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_count">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_count</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_count" title="Link to this definition"></a></dt>
+<dd><p>Returns the number of selections in the recording.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_file_count">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_file_count</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_file_count" title="Link to this definition"></a></dt>
+<dd><p>Returns the number of selection files in the recording.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_table_apply">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_table_apply</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_table_apply" title="Link to this definition"></a></dt>
+<dd><p>Applies the selection table to the recording. Before calling this method ensure
+that <cite>selection_table_file</cite> has been set. You can also set <cite>selection_table_file_id</cite>
+but that requires a flush to the session before continuing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_table_data_delete">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_table_data_delete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_table_data_delete" title="Link to this definition"></a></dt>
+<dd><p>Delete the data from the recording’s selections that was provided by the selection table.
+Will not delete any selections themselves.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_table_export">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_table_export</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_table_export" title="Link to this definition"></a></dt>
+<dd><p>Export the selection table to a CSV or TSV file.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_table_file">
+<span class="sig-name descname"><span class="pre">selection_table_file</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_table_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_table_file_id">
+<span class="sig-name descname"><span class="pre">selection_table_file_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_table_file_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.selection_table_file_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_table_file_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.selection_table_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.start_time">
+<span class="sig-name descname"><span class="pre">start_time</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.start_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.start_time_pretty">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">start_time_pretty</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.start_time_pretty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.status">
+<span class="sig-name descname"><span class="pre">status</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.status" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.status_change_datetime">
+<span class="sig-name descname"><span class="pre">status_change_datetime</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.status_change_datetime" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.update_selection_traced_status">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_selection_traced_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.update_selection_traced_status" title="Link to this definition"></a></dt>
+<dd><p>Updates the <cite>traced</cite> status of the <cite>Selection</cite> objects that are associated with the recording. 
+Does not commit the session automatically. Does not make changes to the session.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.update_status">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.update_status" title="Link to this definition"></a></dt>
+<dd><p>Update the <cite>status</cite> and <cite>status_change_datetime</cite> of the recording based on the recording’s current assignments.
+Returns True if the status was changed, False otherwise.</p>
+<p>If the recording is has assignments that have not been completed the status will be set to <cite>In Progress</cite>.
+If the recording has no assignments the status will be set to <cite>Unassigned</cite>.
+If the recording has assignments that have all been completed the status will be set to <cite>Awaiting Review</cite>.
+Regardless of any of the above conditions if the status is on <cite>On Hold</cite> or <cite>Reviewed</cite> it will not change.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.updated_by">
+<span class="sig-name descname"><span class="pre">updated_by</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.updated_by" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecording.updated_by_id">
+<span class="sig-name descname"><span class="pre">updated_by_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecording.updated_by_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecordingPlatform">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">IRecordingPlatform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecordingPlatform" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a></p>
+<p>Abstract class for the SQLAlchemy table recording_platform.</p>
+<p>Abstract class implementation is inforced using ABC. 
+Inherits from <cite>Serialisable</cite>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecordingPlatform.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecordingPlatform.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecordingPlatform.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecordingPlatform.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecordingPlatform.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecordingPlatform.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecordingPlatform.unique_name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unique_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecordingPlatform.unique_name" title="Link to this definition"></a></dt>
+<dd><p>The recording platform name</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecordingPlatform.updated_by">
+<span class="sig-name descname"><span class="pre">updated_by</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecordingPlatform.updated_by" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRecordingPlatform.updated_by_id">
+<span class="sig-name descname"><span class="pre">updated_by_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRecordingPlatform.updated_by_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRole">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">IRole</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRole" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRole.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRole.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRole.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IRole.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IRole.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IRole.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">ISelection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Cascading" title="ocean.app.interfaces.imodels.Cascading"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cascading</span></code></a></p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ContourFileHandler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ContourFileHandler</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ContourFileHandler" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ContourFileHandler.add_contour_data_unit">
+<span class="sig-name descname"><span class="pre">add_contour_data_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourDataUnit" title="ocean.app.contour_statistics.ContourDataUnit"><span class="pre">ContourDataUnit</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ContourFileHandler.add_contour_data_unit" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ContourFileHandler.calculate_statistics">
+<span class="sig-name descname"><span class="pre">calculate_statistics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selection</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ContourFileHandler.calculate_statistics" title="Link to this definition"></a></dt>
+<dd><p>Calculate contour statistics using the data in contour_rows. The contour stats
+are stored in the selection object (in the Database).</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>selection (Selection): The selection object to store the contour statistics in.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ContourFileHandler.get_ctr_data">
+<span class="sig-name descname"><span class="pre">get_ctr_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ContourFileHandler.get_ctr_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ContourFileHandler.get_dataframe">
+<span class="sig-name descname"><span class="pre">get_dataframe</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ContourFileHandler.get_dataframe" title="Link to this definition"></a></dt>
+<dd><p>Method to return a pandas dataframe of the contour data (taken from the contour file
+provided in the constructor)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.annotation">
+<span class="sig-name descname"><span class="pre">annotation</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.annotation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.average_power">
+<span class="sig-name descname"><span class="pre">average_power</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.average_power" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.begin_time">
+<span class="sig-name descname"><span class="pre">begin_time</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.begin_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.channel">
+<span class="sig-name descname"><span class="pre">channel</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.channel" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.clear_contour_statistics_attrs">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">clear_contour_statistics_attrs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.clear_contour_statistics_attrs" title="Link to this definition"></a></dt>
+<dd><p>Clear all the contour statistics (by setting them to None). Note that this does not
+impact the <cite>contour_file</cite> file itself.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.clear_selection_table_attrs">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">clear_selection_table_attrs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.clear_selection_table_attrs" title="Link to this definition"></a></dt>
+<dd><p>Clear all the selection table attributes (by setting them to <cite>None</cite>). Note that this
+does not impact the <cite>selection_table_file</cite> file itself.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_file">
+<span class="sig-name descname"><span class="pre">contour_file</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_file_attrs">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contour_file_attrs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_file_attrs" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of all the contour file attribute names (string) as the key and the
+attribute data types as the value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_file_delete">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contour_file_delete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_file_delete" title="Link to this definition"></a></dt>
+<dd><p>Delete the contour file associated with the selection. The session used to call
+this method needs to be committed by the caller. This will also remove any associated
+CTR file.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_file_id">
+<span class="sig-name descname"><span class="pre">contour_file_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_file_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_file_insert">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contour_file_insert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_stream</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_file_insert" title="Link to this definition"></a></dt>
+<dd><p>Insert a file (given as a stream) into <cite>contour_file</cite>. If it is already populated
+raise <cite>exception_handler.WarningException</cite>. If not, insert it. The new file will already
+be added to the session, but not comitted. This method automatically generates the CTR
+file.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_file_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contour_file_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_statistics_calculate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contour_statistics_calculate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_statistics_calculate" title="Link to this definition"></a></dt>
+<dd><p>Calculate contour statistics. Raises <cite>ValueError</cite> in the event of an error.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.contour_statistics_reset">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contour_statistics_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.contour_statistics_reset" title="Link to this definition"></a></dt>
+<dd><p>Reset all the contour statistics (by setting them to None). Note that this does not
+impact the <cite>contour_file</cite> file itself.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.created_datetime">
+<span class="sig-name descname"><span class="pre">created_datetime</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.created_datetime" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.created_datetime_pretty">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">created_datetime_pretty</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.created_datetime_pretty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ctr_file">
+<span class="sig-name descname"><span class="pre">ctr_file</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ctr_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ctr_file_delete">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ctr_file_delete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ctr_file_delete" title="Link to this definition"></a></dt>
+<dd><p>Delete the CTR file associated with the selection. The session used to call
+this method needs to be committed by the caller.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ctr_file_generate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ctr_file_generate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ctr_file_generate" title="Link to this definition"></a></dt>
+<dd><p>Generate a file made of the data in <cite>contour_file</cite>. If it is already populated
+raise <cite>exception_handler.WarningException</cite>. If not, generate it. Note that the session used
+to call this method needs to be committed by the caller. If a CTR file already exists, it
+is first deleted before being regenerated. The new file will be automatically
+added to the provided session, but not comitted.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ctr_file_id">
+<span class="sig-name descname"><span class="pre">ctr_file_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ctr_file_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.ctr_file_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ctr_file_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.ctr_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.dc_mean">
+<span class="sig-name descname"><span class="pre">dc_mean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.dc_mean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.dc_quarter1mean">
+<span class="sig-name descname"><span class="pre">dc_quarter1mean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.dc_quarter1mean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.dc_quarter2mean">
+<span class="sig-name descname"><span class="pre">dc_quarter2mean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.dc_quarter2mean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.dc_quarter3mean">
+<span class="sig-name descname"><span class="pre">dc_quarter3mean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.dc_quarter3mean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.dc_quarter4mean">
+<span class="sig-name descname"><span class="pre">dc_quarter4mean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.dc_quarter4mean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.dc_standarddeviation">
+<span class="sig-name descname"><span class="pre">dc_standarddeviation</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.dc_standarddeviation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.deactivate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">deactivate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.deactivate" title="Link to this definition"></a></dt>
+<dd><p>Deactivate the selection. This involves resetting the value of <cite>traced</cite> to <cite>None</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.deactivated">
+<span class="sig-name descname"><span class="pre">deactivated</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.deactivated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.default_fft_size">
+<span class="sig-name descname"><span class="pre">default_fft_size</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.default_fft_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.default_hop_size">
+<span class="sig-name descname"><span class="pre">default_hop_size</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.default_hop_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.delta_frequency">
+<span class="sig-name descname"><span class="pre">delta_frequency</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.delta_frequency" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.delta_time">
+<span class="sig-name descname"><span class="pre">delta_time</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.delta_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.duration">
+<span class="sig-name descname"><span class="pre">duration</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.duration" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.end_time">
+<span class="sig-name descname"><span class="pre">end_time</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.end_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_absslopemean">
+<span class="sig-name descname"><span class="pre">freq_absslopemean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_absslopemean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_begdown">
+<span class="sig-name descname"><span class="pre">freq_begdown</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_begdown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_begendratio">
+<span class="sig-name descname"><span class="pre">freq_begendratio</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_begendratio" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_begin">
+<span class="sig-name descname"><span class="pre">freq_begin</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_begin" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_begsweep">
+<span class="sig-name descname"><span class="pre">freq_begsweep</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_begsweep" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_begup">
+<span class="sig-name descname"><span class="pre">freq_begup</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_begup" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_center">
+<span class="sig-name descname"><span class="pre">freq_center</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_center" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_cofm">
+<span class="sig-name descname"><span class="pre">freq_cofm</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_cofm" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_end">
+<span class="sig-name descname"><span class="pre">freq_end</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_end" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_enddown">
+<span class="sig-name descname"><span class="pre">freq_enddown</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_enddown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_endsweep">
+<span class="sig-name descname"><span class="pre">freq_endsweep</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_endsweep" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_endup">
+<span class="sig-name descname"><span class="pre">freq_endup</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_endup" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_max">
+<span class="sig-name descname"><span class="pre">freq_max</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_max" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_maxminratio">
+<span class="sig-name descname"><span class="pre">freq_maxminratio</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_maxminratio" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_mean">
+<span class="sig-name descname"><span class="pre">freq_mean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_mean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_median">
+<span class="sig-name descname"><span class="pre">freq_median</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_median" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_min">
+<span class="sig-name descname"><span class="pre">freq_min</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_min" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_negslopemean">
+<span class="sig-name descname"><span class="pre">freq_negslopemean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_negslopemean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_numsteps">
+<span class="sig-name descname"><span class="pre">freq_numsteps</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_numsteps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_posslopemean">
+<span class="sig-name descname"><span class="pre">freq_posslopemean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_posslopemean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_quarter1">
+<span class="sig-name descname"><span class="pre">freq_quarter1</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_quarter1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_quarter2">
+<span class="sig-name descname"><span class="pre">freq_quarter2</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_quarter2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_quarter3">
+<span class="sig-name descname"><span class="pre">freq_quarter3</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_quarter3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_range">
+<span class="sig-name descname"><span class="pre">freq_range</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_range" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_relbw">
+<span class="sig-name descname"><span class="pre">freq_relbw</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_relbw" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_slopemean">
+<span class="sig-name descname"><span class="pre">freq_slopemean</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_slopemean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_sloperatio">
+<span class="sig-name descname"><span class="pre">freq_sloperatio</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_sloperatio" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_spread">
+<span class="sig-name descname"><span class="pre">freq_spread</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_spread" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_standarddeviation">
+<span class="sig-name descname"><span class="pre">freq_standarddeviation</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_standarddeviation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_stepdown">
+<span class="sig-name descname"><span class="pre">freq_stepdown</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_stepdown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_stepup">
+<span class="sig-name descname"><span class="pre">freq_stepup</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_stepup" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_sweepdownpercent">
+<span class="sig-name descname"><span class="pre">freq_sweepdownpercent</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_sweepdownpercent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_sweepflatpercent">
+<span class="sig-name descname"><span class="pre">freq_sweepflatpercent</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_sweepflatpercent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.freq_sweepuppercent">
+<span class="sig-name descname"><span class="pre">freq_sweepuppercent</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.freq_sweepuppercent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.generate_contour_stats_dict">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_contour_stats_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.generate_contour_stats_dict" title="Link to this definition"></a></dt>
+<dd><p>Generate a dictionary of the object’s contour statistics. Returns <cite>None</cite> if the contour
+file does not exist. The dictionary contains all the headers of <cite>self.contour_statistics_attrs</cite>
+as the header and values as the value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.get_contour_file_handler">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_contour_file_handler</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourFileHandler" title="ocean.app.contour_statistics.ContourFileHandler"><span class="pre">ContourFileHandler</span></a></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.get_contour_file_handler" title="Link to this definition"></a></dt>
+<dd><p>If the <cite>contour_file</cite> exists then read the contents into a <cite>contour_statistics.ContourFileHandler</cite> object.
+Data validation errors (such as formatting of the contour file) are raised as <cite>exception_handler.WarningException</cite>
+exceptions. If the contour file does not exist the the function returns <cite>None</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.get_contour_statistics_attrs">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_contour_statistics_attrs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">type</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.get_contour_statistics_attrs" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of all the contour statistics attribute names (string) as the key and
+a tuple of the the attribute data type and the column name and a boolean as the value.
+The boolean is meant to indicate whether the attribute should be included on the selection
+table or not.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.get_contour_statistics_dict">
+<span class="sig-name descname"><span class="pre">get_contour_statistics_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.get_contour_statistics_dict" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of all the contour statistics attribute names (string) as the key and the
+attribute data types as the value. This does not include <cite>selection_number</cite> as this
+attribute pertains to the entire <cite>Selection</cite> object. If <cite>use_headers</cite> is True, the
+attribute names will be the header names in the CSV file. If <cite>use_headers</cite> is False,
+the attribute names will be the attribute names of the object.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.high_frequency">
+<span class="sig-name descname"><span class="pre">high_frequency</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.high_frequency" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.inflection_duration">
+<span class="sig-name descname"><span class="pre">inflection_duration</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.inflection_duration" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.inflection_maxdelta">
+<span class="sig-name descname"><span class="pre">inflection_maxdelta</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.inflection_maxdelta" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.inflection_maxmindelta">
+<span class="sig-name descname"><span class="pre">inflection_maxmindelta</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.inflection_maxmindelta" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.inflection_meandelta">
+<span class="sig-name descname"><span class="pre">inflection_meandelta</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.inflection_meandelta" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.inflection_mediandelta">
+<span class="sig-name descname"><span class="pre">inflection_mediandelta</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.inflection_mediandelta" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.inflection_mindelta">
+<span class="sig-name descname"><span class="pre">inflection_mindelta</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.inflection_mindelta" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.inflection_standarddeviationdelta">
+<span class="sig-name descname"><span class="pre">inflection_standarddeviationdelta</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.inflection_standarddeviationdelta" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.low_frequency">
+<span class="sig-name descname"><span class="pre">low_frequency</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.low_frequency" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.num_inflections">
+<span class="sig-name descname"><span class="pre">num_inflections</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.num_inflections" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.num_sweepsdownflat">
+<span class="sig-name descname"><span class="pre">num_sweepsdownflat</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.num_sweepsdownflat" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.num_sweepsdownup">
+<span class="sig-name descname"><span class="pre">num_sweepsdownup</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.num_sweepsdownup" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.num_sweepsflatdown">
+<span class="sig-name descname"><span class="pre">num_sweepsflatdown</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.num_sweepsflatdown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.num_sweepsflatup">
+<span class="sig-name descname"><span class="pre">num_sweepsflatup</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.num_sweepsflatup" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.num_sweepsupdown">
+<span class="sig-name descname"><span class="pre">num_sweepsupdown</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.num_sweepsupdown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.num_sweepsupflat">
+<span class="sig-name descname"><span class="pre">num_sweepsupflat</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.num_sweepsupflat" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.plot_file_name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plot_file_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.plot_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.reactivate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reactivate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.reactivate" title="Link to this definition"></a></dt>
+<dd><p>Reactivate the selection. This involves resetting the value of <cite>traced</cite> to <cite>None</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.recording">
+<span class="sig-name descname"><span class="pre">recording</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.recording" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.recording_id">
+<span class="sig-name descname"><span class="pre">recording_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.recording_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.relative_directory">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">relative_directory</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.relative_directory" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.row_start">
+<span class="sig-name descname"><span class="pre">row_start</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.row_start" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.row_start_pretty">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">row_start_pretty</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.row_start_pretty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.sampling_rate">
+<span class="sig-name descname"><span class="pre">sampling_rate</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.sampling_rate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.selection_file">
+<span class="sig-name descname"><span class="pre">selection_file</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.selection_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.selection_file_delete">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_file_delete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.selection_file_delete" title="Link to this definition"></a></dt>
+<dd><p>Delete the selection file associated with the selection. The session used to call
+this method needs to be committed by the caller.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.selection_file_id">
+<span class="sig-name descname"><span class="pre">selection_file_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.selection_file_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.selection_file_insert">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_file_insert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.selection_file_insert" title="Link to this definition"></a></dt>
+<dd><p>Insert a file (given as a stream) into <cite>selection_file</cite>. If it is already populated
+raise <cite>exception_handler.WarningException</cite>. If not, insert it. Note that the session used
+to call this method needs to be committed by the caller. The new file will be automatically
+added to the provided session, but not comitted.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.selection_file_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_file_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.selection_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.selection_number">
+<span class="sig-name descname"><span class="pre">selection_number</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.selection_number" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.selection_table_attrs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">selection_table_attrs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">type</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.selection_table_attrs" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of all the selection table attribute names (string) as the key and the
+attribute data types as the value. This does not include <cite>selection_number</cite> as this
+attribute pertains to the entire <cite>Selection</cite> object.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.step_duration">
+<span class="sig-name descname"><span class="pre">step_duration</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.step_duration" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.traced">
+<span class="sig-name descname"><span class="pre">traced</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.traced" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.unique_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unique_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.unique_name" title="Link to this definition"></a></dt>
+<dd><p>The unique name of the object</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.update_traced">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_traced</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.update_traced" title="Link to this definition"></a></dt>
+<dd><p>Determine and set the value of <cite>traced</cite> based on the <cite>contour_file</cite> and <cite>annotation</cite>.
+‘traced’ is an attribute that tracks whether the selection has DEFINITELY been traced
+(<cite>traced = True</cite>) or DEFINITELY NOT been traced (<cite>traced = False</cite>). If the traced status
+of the selection is UNDETERMINED then <cite>traced = None</cite>.</p>
+<ul class="simple">
+<li><p><cite>True</cite> if there is a <cite>contour_file</cite> and <cite>annotation</cite> is <cite>Y</cite> or <cite>M</cite>.</p></li>
+<li><p><cite>False</cite> if there is not a <cite>contour_file</cite> and <cite>annotation</cite> is <cite>N</cite>.</p></li>
+<li><p><cite>None</cite> otherwise or if <cite>annotation</cite> has no value.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.updated_by">
+<span class="sig-name descname"><span class="pre">updated_by</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.updated_by" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.updated_by_id">
+<span class="sig-name descname"><span class="pre">updated_by_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.updated_by_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISelection.view">
+<span class="sig-name descname"><span class="pre">view</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISelection.view" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">ISpecies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Cascading" title="ocean.app.interfaces.imodels.Cascading"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cascading</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.common_name">
+<span class="sig-name descname"><span class="pre">common_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.common_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.folder_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">folder_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.folder_name" title="Link to this definition"></a></dt>
+<dd><p>The folder name of the species in the filespace. Implementation must
+be secure (for example see <cite>from werkzeug.utils import secure_filename</cite>)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.genus_name">
+<span class="sig-name descname"><span class="pre">genus_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.genus_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.species_name">
+<span class="sig-name descname"><span class="pre">species_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.species_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.updated_by">
+<span class="sig-name descname"><span class="pre">updated_by</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.updated_by" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.ISpecies.updated_by_id">
+<span class="sig-name descname"><span class="pre">updated_by_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.ISpecies.updated_by_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">IUser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.app.interfaces.imodels.AbstractModelBase" title="ocean.app.interfaces.imodels.AbstractModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractModelBase</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.Serialisable" title="ocean.app.interfaces.imodels.Serialisable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Serialisable</span></code></a>, <a class="reference internal" href="#ocean.app.interfaces.imodels.TableOperations" title="ocean.app.interfaces.imodels.TableOperations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableOperations</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">UserMixin</span></code></p>
+<p>Abstract class for the SQLAlchemy table user.</p>
+<p>Abstract class implementation is inforced using ABC. 
+Inherits from <cite>Serialisable</cite> and <cite>UserMixin</cite>.</p>
+<p>Implementation for the following is required:
+- <cite>activate()</cite>
+- <cite>deactivate()</cite></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.activate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">activate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.activate" title="Link to this definition"></a></dt>
+<dd><p>Activate the user.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.deactivate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">deactivate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.deactivate" title="Link to this definition"></a></dt>
+<dd><p>Deactivate the user.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.expiry">
+<span class="sig-name descname"><span class="pre">expiry</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.expiry" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.is_active">
+<span class="sig-name descname"><span class="pre">is_active</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.is_active" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.login_id">
+<span class="sig-name descname"><span class="pre">login_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.login_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.pretty_expiry">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pretty_expiry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.pretty_expiry" title="Link to this definition"></a></dt>
+<dd><p>Get the expiry date in a human readable format.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">t.ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Query</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.query" title="Link to this definition"></a></dt>
+<dd><p>A SQLAlchemy query for a model. Equivalent to <code class="docutils literal notranslate"><span class="pre">db.session.query(Model)</span></code>. Can be
+customized per-model by overriding <code class="xref py py-attr docutils literal notranslate"><span class="pre">query_class</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The query interface is considered legacy in SQLAlchemy. Prefer using
+<code class="docutils literal notranslate"><span class="pre">session.execute(select())</span></code> instead.</p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.role">
+<span class="sig-name descname"><span class="pre">role</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.role" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.role_id">
+<span class="sig-name descname"><span class="pre">role_id</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.role_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.unique_name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unique_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.unique_name" title="Link to this definition"></a></dt>
+<dd><p>The login ID</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.validate_expiry">
+<span class="sig-name descname"><span class="pre">validate_expiry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.validate_expiry" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.validate_id">
+<span class="sig-name descname"><span class="pre">validate_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.validate_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.validate_is_active">
+<span class="sig-name descname"><span class="pre">validate_is_active</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.validate_is_active" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.validate_login_id">
+<span class="sig-name descname"><span class="pre">validate_login_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.validate_login_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.validate_name">
+<span class="sig-name descname"><span class="pre">validate_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.validate_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.validate_role">
+<span class="sig-name descname"><span class="pre">validate_role</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.validate_role" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.IUser.validate_role_id">
+<span class="sig-name descname"><span class="pre">validate_role_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.IUser.validate_role_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.Serialisable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">Serialisable</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.Serialisable" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>An abstract class for serialisable objects.</p>
+<p>All serialisable objects must implement the private <cite>_to_dict()</cite> method.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.Serialisable.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.Serialisable.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert the object to a dictionary representation.</p>
+<p>The dictionary contains all publicly accessible attributes of
+the object as if relations in the database were keys and their
+values, values. Where an attribute implements the <cite>Serialisable</cite>
+interface, its value is recursively converted to a dictionary.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.TableOperations">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.app.interfaces.imodels.</span></span><span class="sig-name descname"><span class="pre">TableOperations</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.TableOperations" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.TableOperations.apply_updates">
+<span class="sig-name descname"><span class="pre">apply_updates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.TableOperations.apply_updates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.TableOperations.delete">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.TableOperations.delete" title="Link to this definition"></a></dt>
+<dd><p>Check if the object can be deleted. Raise an exception if it
+cannot be deleted.</p>
+<p>An exception is raised usually if the object has foreign key
+dependencies that are not allowed to be automatically resolved.
+This will cause an <cite>exception_handler.WarningException</cite> to be raised</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.TableOperations.insert">
+<span class="sig-name descname"><span class="pre">insert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">form</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.TableOperations.insert" title="Link to this definition"></a></dt>
+<dd><p>Insert form data into the database object.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.TableOperations.unique_name">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unique_name</span></span><a class="headerlink" href="#ocean.app.interfaces.imodels.TableOperations.unique_name" title="Link to this definition"></a></dt>
+<dd><p>The unique name of the object</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ocean.app.interfaces.imodels.TableOperations.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">form</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ocean.app.interfaces.imodels.TableOperations.update" title="Link to this definition"></a></dt>
+<dd><p>Update the database object with form data.</p>
+<p>Warning: if the class implements <cite>Cascading</cite> oftentimes updates
+will require a call to <cite>apply_updates()</cite> to ensure changes are
+cascaded to all children.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ocean.app.interfaces">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ocean.app.interfaces" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ocean.app.html" class="btn btn-neutral float-left" title="ocean.app package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ocean.app.routes.html" class="btn btn-neutral float-right" title="ocean.app.routes package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, James Sullivan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,3 @@
+To re-build the documentation run the following commands from the docs directory:
+sphinx-apidoc -o . ../ocean
+make html

@@ -1,0 +1,1020 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ocean package &mdash; OCEAN v1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=76e2d817"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ocean.app package" href="ocean.app.html" />
+    <link rel="prev" title="ocean" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            OCEAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">ocean</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ocean package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html">ocean.app package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html">ocean.tests package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-ocean.config">ocean.config module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ocean.config.Config"><code class="docutils literal notranslate"><span class="pre">ocean.config.Config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ocean.config.DevelopmentConfig"><code class="docutils literal notranslate"><span class="pre">ocean.config.DevelopmentConfig</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ocean.config.ProductionConfig"><code class="docutils literal notranslate"><span class="pre">ocean.config.ProductionConfig</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ocean.config.TestingConfig"><code class="docutils literal notranslate"><span class="pre">ocean.config.TestingConfig</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#ocean-run-module">ocean.run module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ocean-wsgi-module">ocean.wsgi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-ocean">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">OCEAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ocean</a></li>
+      <li class="breadcrumb-item active">ocean package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ocean.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ocean-package">
+<h1>ocean package<a class="headerlink" href="#ocean-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ocean.app.html">ocean.app package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.interfaces.html">ocean.app.interfaces package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.interfaces.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.interfaces.html#module-ocean.app.interfaces.imodels">ocean.app.interfaces.imodels module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.interfaces.html#module-ocean.app.interfaces">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.routes.html">ocean.app.routes package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_admin">ocean.app.routes.routes_admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_datahub">ocean.app.routes.routes_datahub module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_encounter">ocean.app.routes.routes_encounter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_filespace">ocean.app.routes.routes_filespace module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_general">ocean.app.routes.routes_general module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_healthcentre">ocean.app.routes.routes_healthcentre module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_recording">ocean.app.routes.routes_recording module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes.routes_selection">ocean.app.routes.routes_selection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.routes.html#module-ocean.app.routes">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.contour_statistics">ocean.app.contour_statistics module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourDataUnit"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourDataUnit</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourDataUnit.set_slope"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourDataUnit.set_slope()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourDataUnit.set_sweep"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourDataUnit.set_sweep()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourDataUnit.time_seconds"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourDataUnit.time_seconds()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourFileHandler"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourFileHandler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourFileHandler.add_contour_data_unit"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourFileHandler.add_contour_data_unit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourFileHandler.calculate_statistics"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourFileHandler.calculate_statistics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourFileHandler.get_ctr_data"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourFileHandler.get_ctr_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.ContourFileHandler.get_dataframe"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.ContourFileHandler.get_dataframe()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Slope"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Slope</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Slope.DOWN"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Slope.DOWN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Slope.FLAT"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Slope.FLAT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Slope.UP"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Slope.UP</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Step"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Step</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Step.DOWN"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Step.DOWN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Step.FLAT"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Step.FLAT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Step.UP"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Step.UP</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Sweep"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Sweep</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Sweep.DOWN"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Sweep.DOWN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Sweep.FLAT"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Sweep.FLAT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.Sweep.UP"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.Sweep.UP</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.contour_statistics.round_to_nearest_whole"><code class="docutils literal notranslate"><span class="pre">ocean.app.contour_statistics.round_to_nearest_whole()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.database_handler">ocean.app.database_handler module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.Session"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.Session()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.create_all_time_request"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.create_all_time_request()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.create_system_time_request"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.create_system_time_request()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.exclude_role_1"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.exclude_role_1()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.exclude_role_2"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.exclude_role_2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.exclude_role_3"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.exclude_role_3()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.exclude_role_4"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.exclude_role_4()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_data_space"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_data_space()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_deleted_space"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_deleted_space()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_engine"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_engine()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_file_space"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_file_space()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_file_space_path"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_file_space_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_operation_lock"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_operation_lock()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_root_directory"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_root_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_session"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_session()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_snapshot_date_from_session"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_snapshot_date_from_session()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_system_time_request_recording"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_system_time_request_recording()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_system_time_request_selection"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_system_time_request_selection()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_temp_space"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_temp_space()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_tempdir"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_tempdir()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.get_trash_path"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.get_trash_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.init_db"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.init_db()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.parse_date"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.parse_date()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.parse_snapshot_date"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.parse_snapshot_date()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.parse_value"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.parse_value()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.require_live_session"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.require_live_session()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.database_handler.save_snapshot_date_to_session"><code class="docutils literal notranslate"><span class="pre">ocean.app.database_handler.save_snapshot_date_to_session()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.exception_handler">ocean.app.exception_handler module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.exception_handler.CriticalException"><code class="docutils literal notranslate"><span class="pre">ocean.app.exception_handler.CriticalException</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.exception_handler.FormError"><code class="docutils literal notranslate"><span class="pre">ocean.app.exception_handler.FormError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.exception_handler.ValidationError"><code class="docutils literal notranslate"><span class="pre">ocean.app.exception_handler.ValidationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.exception_handler.WarningException"><code class="docutils literal notranslate"><span class="pre">ocean.app.exception_handler.WarningException</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.exception_handler.handle_exception"><code class="docutils literal notranslate"><span class="pre">ocean.app.exception_handler.handle_exception()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.filespace_handler">ocean.app.filespace_handler module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.check_file_exists_in_filespace"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.check_file_exists_in_filespace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.check_file_orphaned"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.check_file_orphaned()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.clean_directory"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.clean_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.clean_filespace_temp"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.clean_filespace_temp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.cleanup_temp_filespace"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.cleanup_temp_filespace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.delete_orphan_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.delete_orphan_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.format_date_for_filespace"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.format_date_for_filespace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.get_complete_temporary_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.get_complete_temporary_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.get_orphaned_files"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.get_orphaned_files()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.get_path_to_temporary_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.get_path_to_temporary_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.query_file_class"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.query_file_class()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.remove_temporary_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.remove_temporary_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.filespace_handler.validate"><code class="docutils literal notranslate"><span class="pre">ocean.app.filespace_handler.validate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.logger">ocean.app.logger module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.logger.CustomRotatingFileHandler"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.CustomRotatingFileHandler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.logger.CustomRotatingFileHandler.clear_logs"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.CustomRotatingFileHandler.clear_logs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.logger.CustomRotatingFileHandler.getFiles"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.CustomRotatingFileHandler.getFiles()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.logger.CustomRotatingFileHandler.get_log"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.CustomRotatingFileHandler.get_log()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.logger.TimezoneFormatter"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.TimezoneFormatter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.logger.TimezoneFormatter.format"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.TimezoneFormatter.format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.logger.TimezoneFormatter.formatTime"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.TimezoneFormatter.formatTime()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.logger.delete_files"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.delete_files()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.logger.get_log"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.get_log()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.logger.send_log_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.logger.send_log_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.main">ocean.app.main module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.main.check_file_space"><code class="docutils literal notranslate"><span class="pre">ocean.app.main.check_file_space()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.main.check_interfaces"><code class="docutils literal notranslate"><span class="pre">ocean.app.main.check_interfaces()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.main.create_app"><code class="docutils literal notranslate"><span class="pre">ocean.app.main.create_app()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.main.get_snapshot_date_from_session"><code class="docutils literal notranslate"><span class="pre">ocean.app.main.get_snapshot_date_from_session()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.main.save_snapshot_date_to_session"><code class="docutils literal notranslate"><span class="pre">ocean.app.main.save_snapshot_date_to_session()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.maintenance">ocean.app.maintenance module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.maintenance.maintenance_page"><code class="docutils literal notranslate"><span class="pre">ocean.app.maintenance.maintenance_page()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.maintenance.page_not_found"><code class="docutils literal notranslate"><span class="pre">ocean.app.maintenance.page_not_found()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.models">ocean.app.models module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.complete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.complete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.completed_flag"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.completed_flag</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.created_datetime"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.created_datetime</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.incomplete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.incomplete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.recording"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.recording</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.recording_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.recording_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.row_start"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.row_start</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.unique_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.user"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.user</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Assignment.user_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Assignment.user_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.address"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.email1"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.email1</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.email2"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.email2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.notes"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.notes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.phone_number1"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.phone_number1</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.phone_number2"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.phone_number2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.type"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.unique_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.updated_by"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.updated_by</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.DataSource.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.DataSource.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.data_source"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.data_source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.data_source_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.data_source_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.encounter_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.encounter_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.file_timezone"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.file_timezone</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.folder_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.folder_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.latitude"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.latitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.local_timezone"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.local_timezone</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.location"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.location_folder_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.location_folder_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.longitude"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.longitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.notes"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.notes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.project"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.project</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.recording_count"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.recording_count</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.recording_platform"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.recording_platform</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.recording_platform_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.recording_platform_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.relative_directory"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.relative_directory</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.species"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.species</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.species_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.species_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.updated_by"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.updated_by</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Encounter.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Encounter.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.File"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.append_chunk"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.append_chunk()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.calculate_hash"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.calculate_hash()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.delete_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.delete_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.deleted"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.deleted</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.duration"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.duration</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.extension"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.extension</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.filename"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.filename</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_binary"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_binary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_deleted"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_deleted()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_directory"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_directory()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_extension"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_extension()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_filename"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_filename()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_full_absolute_path"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_full_absolute_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_full_relative_path"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_full_relative_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_hash"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_hash()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_original_filename"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_original_filename()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_path"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_updated_by_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.get_uploaded_date_utc"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.get_uploaded_date_utc()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.has_record"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.has_record()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.hash"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.hash</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.insert_path_and_filename"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.insert_path_and_filename()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.insert_path_and_filename_file_already_in_place"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.insert_path_and_filename_file_already_in_place()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.move_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.move_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.move_to_trash"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.move_to_trash()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.original_filename"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.original_filename</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.path"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.rename_loose_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.rename_loose_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.rollback"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.rollback()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.save_permanently"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.save_permanently()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.set_updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.set_updated_by_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.temp"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.temp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.to_dict"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.update_call"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.update_call()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.updated_by"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.updated_by</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.updated_by_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.upload_datetime"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.upload_datetime</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.uploaded_date"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.uploaded_date</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.File.verify_hash"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.File.verify_hash()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.contour_file_count"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.contour_file_count</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.created_datetime"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.created_datetime</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.encounter"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.encounter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.encounter_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.encounter_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.folder_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.folder_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.generate_relative_path_for_selections"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.generate_relative_path_for_selections()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.get_selections"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.get_selections()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.is_awaiting_review"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.is_awaiting_review()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.is_in_progress"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.is_in_progress()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.is_on_hold"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.is_on_hold()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.is_reviewed"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.is_reviewed()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.is_unassigned"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.is_unassigned()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.notes"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.notes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.recording_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.recording_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.recording_file_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.recording_file_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.recording_file_insert"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.recording_file_insert()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.recording_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.recording_file_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.relative_directory"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.relative_directory</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.row_start"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.row_start</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_count"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_count</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_file_count"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_file_count</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_table_apply"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_table_apply()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_table_data_delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_table_data_delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_table_export"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_table_export()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_table_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_table_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_table_file_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_table_file_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.selection_table_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.selection_table_file_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.start_time"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.start_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.start_time_pretty"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.start_time_pretty</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.status"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.status</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.status_change_datetime"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.status_change_datetime</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.unique_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.update_selection_traced_status"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.update_selection_traced_status()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.update_status"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.update_status()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.updated_by"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.updated_by</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Recording.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Recording.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform.name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform.unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform.unique_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform.updated_by"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform.updated_by</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.RecordingPlatform.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.RecordingPlatform.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.Role"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Role</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Role.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Role.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Role.name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Role.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Role.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Role.query</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.annotation"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.annotation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.average_power"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.average_power</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.begin_time"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.begin_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.channel"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.channel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.clear_contour_statistics_attrs"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.clear_contour_statistics_attrs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.clear_selection_table_attrs"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.clear_selection_table_attrs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.contour_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.contour_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.contour_file_delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.contour_file_delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.contour_file_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.contour_file_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.contour_file_insert"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.contour_file_insert()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.contour_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.contour_file_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.contour_statistics_calculate"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.contour_statistics_calculate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.contour_statistics_reset"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.contour_statistics_reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.create_temp_plot"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.create_temp_plot()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.created_datetime"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.created_datetime</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.ctr_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.ctr_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.ctr_file_delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.ctr_file_delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.ctr_file_generate"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.ctr_file_generate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.ctr_file_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.ctr_file_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.ctr_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.ctr_file_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.dc_mean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.dc_mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.dc_quarter1mean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.dc_quarter1mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.dc_quarter2mean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.dc_quarter2mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.dc_quarter3mean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.dc_quarter3mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.dc_quarter4mean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.dc_quarter4mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.dc_standarddeviation"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.dc_standarddeviation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.deactivate"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.deactivate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.deactivated"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.deactivated</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.default_fft_size"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.default_fft_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.default_hop_size"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.default_hop_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.delta_frequency"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.delta_frequency</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.delta_time"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.delta_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.duration"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.duration</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.end_time"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.end_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_absslopemean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_absslopemean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_begdown"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_begdown</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_begendratio"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_begendratio</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_begin"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_begin</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_begsweep"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_begsweep</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_begup"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_begup</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_center"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_center</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_cofm"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_cofm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_end"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_end</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_enddown"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_enddown</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_endsweep"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_endsweep</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_endup"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_endup</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_max"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_max</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_maxminratio"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_maxminratio</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_mean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_median"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_median</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_min"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_min</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_negslopemean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_negslopemean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_numsteps"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_numsteps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_posslopemean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_posslopemean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_quarter1"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_quarter1</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_quarter2"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_quarter2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_quarter3"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_quarter3</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_range"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_range</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_relbw"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_relbw</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_slopemean"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_slopemean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_sloperatio"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_sloperatio</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_spread"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_spread</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_standarddeviation"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_standarddeviation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_stepdown"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_stepdown</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_stepup"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_stepup</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_sweepdownpercent"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_sweepdownpercent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_sweepflatpercent"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_sweepflatpercent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.freq_sweepuppercent"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.freq_sweepuppercent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.generate_contour_stats_dict"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.generate_contour_stats_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.get_contour_file_handler"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.get_contour_file_handler()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.high_frequency"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.high_frequency</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.inflection_duration"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.inflection_duration</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.inflection_maxdelta"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.inflection_maxdelta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.inflection_maxmindelta"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.inflection_maxmindelta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.inflection_meandelta"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.inflection_meandelta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.inflection_mediandelta"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.inflection_mediandelta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.inflection_mindelta"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.inflection_mindelta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.inflection_standarddeviationdelta"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.inflection_standarddeviationdelta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.low_frequency"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.low_frequency</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.num_inflections"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.num_inflections</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.num_sweepsdownflat"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.num_sweepsdownflat</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.num_sweepsdownup"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.num_sweepsdownup</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.num_sweepsflatdown"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.num_sweepsflatdown</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.num_sweepsflatup"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.num_sweepsflatup</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.num_sweepsupdown"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.num_sweepsupdown</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.num_sweepsupflat"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.num_sweepsupflat</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.plot_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.plot_file_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.reactivate"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.reactivate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.recording"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.recording</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.recording_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.recording_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.relative_directory"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.relative_directory</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.row_start"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.row_start</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.sampling_rate"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.sampling_rate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.selection_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.selection_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.selection_file_delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.selection_file_delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.selection_file_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.selection_file_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.selection_file_insert"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.selection_file_insert()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.selection_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.selection_file_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.selection_number"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.selection_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.step_duration"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.step_duration</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.traced"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.traced</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.unique_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.update_traced"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.update_traced()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.updated_by"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.updated_by</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.updated_by_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.upload_selection_table_data"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.upload_selection_table_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Selection.view"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Selection.view</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.common_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.common_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.folder_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.folder_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.genus_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.genus_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.prepare_for_delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.prepare_for_delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.species_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.species_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.unique_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.updated_by"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.updated_by</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.Species.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.Species.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.User"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.activate"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.activate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.deactivate"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.deactivate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.delete"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.delete()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.expiry"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.expiry</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.get_expiry"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.get_expiry()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.get_expiry_pretty"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.get_expiry_pretty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.get_is_active"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.get_is_active()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.get_login_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.get_login_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.get_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.get_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.get_role"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.get_role()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.get_role_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.get_role_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.is_active"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.is_active</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.login_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.login_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.query"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.role"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.role</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.role_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.role_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.set_expiry"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.set_expiry()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.set_login_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.set_login_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.set_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.set_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.set_role"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.set_role()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.set_role_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.set_role_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.unique_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.models.User.update"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.User.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.convert_from_gmt"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.convert_from_gmt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.models.convert_to_gmt_time"><code class="docutils literal notranslate"><span class="pre">ocean.app.models.convert_to_gmt_time()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.response_handler">ocean.app.response_handler module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.response_handler.JSONResponse"><code class="docutils literal notranslate"><span class="pre">ocean.app.response_handler.JSONResponse</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.response_handler.JSONResponse.add_error"><code class="docutils literal notranslate"><span class="pre">ocean.app.response_handler.JSONResponse.add_error()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.response_handler.JSONResponse.add_message"><code class="docutils literal notranslate"><span class="pre">ocean.app.response_handler.JSONResponse.add_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.response_handler.JSONResponse.set_redirect"><code class="docutils literal notranslate"><span class="pre">ocean.app.response_handler.JSONResponse.set_redirect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.app.html#ocean.app.response_handler.JSONResponse.to_json"><code class="docutils literal notranslate"><span class="pre">ocean.app.response_handler.JSONResponse.to_json()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app.utils">ocean.app.utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.download_file"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.download_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.download_file_from_path"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.download_file_from_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.download_files"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.download_files()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.extract_args"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.extract_args()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.extract_to_dataframe"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.extract_to_dataframe()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.get_form_data"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.get_form_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.parse_date"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.parse_date()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.parse_form"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.parse_form()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.parse_string_notempty"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.parse_string_notempty()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.pretty_date"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.pretty_date()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.secure_datename"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.secure_datename()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.secure_fname"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.secure_fname()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.serialise_object"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.serialise_object()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_boolean"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_boolean()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_datetime"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_datetime()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_enum"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_enum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_float"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_float()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_id"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_int"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_int()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_latitude"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_latitude()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_longitude"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_longitude()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_string"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_string()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_timezone"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_timezone()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.validate_type"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.validate_type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.app.html#ocean.app.utils.verify_subarray_of_dict"><code class="docutils literal notranslate"><span class="pre">ocean.app.utils.verify_subarray_of_dict()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.app.html#module-ocean.app">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ocean.tests.html">ocean.tests package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.integration.html">ocean.tests.integration package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.integration.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.integration.html#module-ocean.tests.integration.conftest">ocean.tests.integration.conftest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.integration.html#module-ocean.tests.integration.test_integration_encounter">ocean.tests.integration.test_integration_encounter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.integration.html#module-ocean.tests.integration">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.common">ocean.tests.common module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.common.create_assertion"><code class="docutils literal notranslate"><span class="pre">ocean.tests.common.create_assertion()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.common.equate_timestamps"><code class="docutils literal notranslate"><span class="pre">ocean.tests.common.equate_timestamps()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.common.parse_timestamp"><code class="docutils literal notranslate"><span class="pre">ocean.tests.common.parse_timestamp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.common.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.common.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.common.test_set_attribute_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.common.test_set_attribute_validation_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.common.validate_uuid"><code class="docutils literal notranslate"><span class="pre">ocean.tests.common.validate_uuid()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.factories">ocean.tests.factories module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.AssignmentFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.AssignmentFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.AssignmentFactory.completed_flag"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.AssignmentFactory.completed_flag</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.AssignmentFactory.recording"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.AssignmentFactory.recording</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.AssignmentFactory.user"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.AssignmentFactory.user</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory.address"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory.address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory.email1"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory.email1</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory.email2"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory.email2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory.name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory.notes"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory.notes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.DataSourceFactory.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.DataSourceFactory.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory.encounter_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory.encounter_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory.location"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory.location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory.project"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory.project</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory.species"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory.species</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory.species_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory.species_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.EncounterFactory.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.EncounterFactory.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.FileFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.FileFactory</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingFactory.encounter"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingFactory.encounter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingFactory.start_time"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingFactory.start_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingFactory.status"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingFactory.status</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingFactory.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingFactory.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingPlatformFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingPlatformFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingPlatformFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingPlatformFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingPlatformFactory.name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingPlatformFactory.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RecordingPlatformFactory.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RecordingPlatformFactory.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RoleFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RoleFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RoleFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RoleFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.RoleFactory.name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.RoleFactory.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SelectionFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SelectionFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SelectionFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SelectionFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SelectionFactory.recording"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SelectionFactory.recording</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SelectionFactory.selection_number"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SelectionFactory.selection_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SelectionFactory.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SelectionFactory.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SpeciesFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SpeciesFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SpeciesFactory.common_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SpeciesFactory.common_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SpeciesFactory.genus_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SpeciesFactory.genus_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SpeciesFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SpeciesFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SpeciesFactory.species_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SpeciesFactory.species_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.SpeciesFactory.updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.SpeciesFactory.updated_by_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.UserFactory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.UserFactory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.UserFactory.id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.UserFactory.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.UserFactory.is_active"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.UserFactory.is_active</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.UserFactory.login_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.UserFactory.login_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.UserFactory.name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.UserFactory.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.clear_database"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.clear_database()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.factories.session"><code class="docutils literal notranslate"><span class="pre">ocean.tests.factories.session()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_assignment">ocean.tests.test_assignment module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.assignment"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.assignment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_complete"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_complete()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_incomplete"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_incomplete()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_insert_or_update"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_insert_or_update()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_insert_or_update_attribute_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_insert_or_update_attribute_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_set_attribute_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_set_attribute_validation_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_unique_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_assignment.test_uuid"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_assignment.test_uuid()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_contour_stats">ocean.tests.test_contour_stats module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_data_source">ocean.tests.test_data_source module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_data_source.data_source"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_data_source.data_source()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_data_source.test_insert_or_update"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_data_source.test_insert_or_update()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_data_source.test_insert_or_update_attribute_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_data_source.test_insert_or_update_attribute_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_data_source.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_data_source.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_data_source.test_set_attribute_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_data_source.test_set_attribute_validation_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_data_source.test_uuid"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_data_source.test_uuid()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_encounter">ocean.tests.test_encounter module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.encounter"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.encounter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_folder_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_folder_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_folder_name_invalid_characters"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_folder_name_invalid_characters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_insert_or_update"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_insert_or_update()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_insert_or_update_attribute_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_insert_or_update_attribute_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_location_folder_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_location_folder_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_location_folder_name_invalid_characters"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_location_folder_name_invalid_characters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_relative_directory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_relative_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_relative_directory_invalid_characters"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_relative_directory_invalid_characters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_set_attribute_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_set_attribute_validation_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_encounter.test_uuid"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_encounter.test_uuid()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_exception_handler">ocean.tests.test_exception_handler module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.factory_CriticalException"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.factory_CriticalException()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.factory_WarningException"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.factory_WarningException()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.factory_integrity_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.factory_integrity_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.factory_invalid_request_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.factory_invalid_request_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.factory_programming_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.factory_programming_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_critical_exception"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_critical_exception()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_data_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_data_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_database_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_database_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_dbapi_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_dbapi_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_disconnection_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_disconnection_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_empty_warning_exception"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_empty_warning_exception()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_handle_exception_duplicate_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_handle_exception_duplicate_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_handle_exception_invalid_request_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_handle_exception_invalid_request_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_handle_exception_programming_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_handle_exception_programming_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_integrity_error_duplicate_with_prefix"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_integrity_error_duplicate_with_prefix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_interface_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_interface_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_invalid_request_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_invalid_request_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_multiple_results_found"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_multiple_results_found()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_no_reference_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_no_reference_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_no_result_found"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_no_result_found()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_other_errors"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_other_errors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_pending_rollback_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_pending_rollback_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_resource_closed_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_resource_closed_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_timeout_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_timeout_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_unbound_execution_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_unbound_execution_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_warning_exception"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_warning_exception()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_exception_handler.test_warning_exception_with_prefix"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_exception_handler.test_warning_exception_with_prefix()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_recording">ocean.tests.test_recording module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.recording"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.recording()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_ensure_selection_table_file_name_has_no_invalid_characters"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_ensure_selection_table_file_name_has_no_invalid_characters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_insert_or_update"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_insert_or_update()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_insert_or_update_attribute_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_insert_or_update_attribute_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_recording_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_recording_file_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_relative_directory"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_relative_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_relative_directory_exception"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_relative_directory_exception()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_selection_table_apply_empty_dataframe"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_selection_table_apply_empty_dataframe()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_selection_table_apply_missing_other_columns"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_selection_table_apply_missing_other_columns()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_selection_table_apply_missing_selection_column"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_selection_table_apply_missing_selection_column()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_selection_table_apply_new_selections"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_selection_table_apply_new_selections()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_selection_table_file_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_selection_table_file_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_set_attribute_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_set_attribute_validation_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_set_datetime"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_set_datetime()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_set_reject"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_set_reject()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_unique_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_unique_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_awaiting_review"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_awaiting_review()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_in_progress"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_in_progress()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_in_progress_2"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_in_progress_2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_on_hold_does_not_change"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_on_hold_does_not_change()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_override_awaiting_review"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_override_awaiting_review()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_override_in_progress"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_override_in_progress()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_override_reviewed"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_override_reviewed()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_override_unassigned"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_override_unassigned()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_reviewed_does_not_change"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_reviewed_does_not_change()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_unassigned"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_unassigned()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_unassigned_2"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_unassigned_2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_unassigned_3"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_unassigned_3()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_update_status_wrong"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_update_status_wrong()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording.test_uuid"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording.test_uuid()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_recording_platform">ocean.tests.test_recording_platform module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.recording_platform"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.recording_platform()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.test_insert_or_update"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.test_insert_or_update()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.test_set_updated_by_id_empty"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.test_set_updated_by_id_empty()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.test_set_updated_by_id_wrong_type"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.test_set_updated_by_id_wrong_type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.test_to_dict"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.test_to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.test_updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.test_updated_by_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_recording_platform.test_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_recording_platform.test_validation_error()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_role">ocean.tests.test_role module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_role.role"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_role.role()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_role.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_role.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_role.test_set_attribute_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_role.test_set_attribute_validation_error()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_selection">ocean.tests.test_selection module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_selection.selection"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_selection.selection()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_selection.test_annotation"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_selection.test_annotation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_selection.test_annotation_invalid"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_selection.test_annotation_invalid()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_selection.test_set_contour_statistics"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_selection.test_set_contour_statistics()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_species">ocean.tests.test_species module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_species.species"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_species.species()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_species.test_set_attribute"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_species.test_set_attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_species.test_set_updated_by_id_empty"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_species.test_set_updated_by_id_empty()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_species.test_set_updated_by_id_wrong_type"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_species.test_set_updated_by_id_wrong_type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_species.test_to_dict"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_species.test_to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_species.test_updated_by_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_species.test_updated_by_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_species.test_validation_error"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_species.test_validation_error()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_user">ocean.tests.test_user module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_get_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_get_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_hasattr_getters"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_hasattr_getters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_hasattr_setters"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_hasattr_setters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_name"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_name_none"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_name_none()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_role"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_role()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_role_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_role_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_role_id_none"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_role_id_none()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_role_id_wrong_type"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_role_id_wrong_type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_role_none"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_role_none()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_set_role_wrong_type"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_set_role_wrong_type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_update_or_insert_user_insert_user"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_update_or_insert_user_insert_user()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_update_or_insert_user_is_active"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_update_or_insert_user_is_active()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_update_or_insert_user_is_active_not_checked"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_update_or_insert_user_is_active_not_checked()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_update_or_insert_user_login_id"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_update_or_insert_user_login_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.test_update_or_insert_user_update_user"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.test_update_or_insert_user_update_user()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ocean.tests.html#ocean.tests.test_user.user"><code class="docutils literal notranslate"><span class="pre">ocean.tests.test_user.user()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests.test_utils">ocean.tests.test_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ocean.tests.html#module-ocean.tests">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ocean.config">
+<span id="ocean-config-module"></span><h2>ocean.config module<a class="headerlink" href="#module-ocean.config" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.config.Config">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.config.</span></span><span class="sig-name descname"><span class="pre">Config</span></span><a class="headerlink" href="#ocean.config.Config" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.Config.SQLALCHEMY_TRACK_MODIFICATIONS">
+<span class="sig-name descname"><span class="pre">SQLALCHEMY_TRACK_MODIFICATIONS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ocean.config.Config.SQLALCHEMY_TRACK_MODIFICATIONS" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.config.DevelopmentConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.config.</span></span><span class="sig-name descname"><span class="pre">DevelopmentConfig</span></span><a class="headerlink" href="#ocean.config.DevelopmentConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.config.Config" title="ocean.config.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.DevelopmentConfig.DEBUG">
+<span class="sig-name descname"><span class="pre">DEBUG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#ocean.config.DevelopmentConfig.DEBUG" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.DevelopmentConfig.SECRET_KEY">
+<span class="sig-name descname"><span class="pre">SECRET_KEY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'not_so_secret_key'</span></em><a class="headerlink" href="#ocean.config.DevelopmentConfig.SECRET_KEY" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.DevelopmentConfig.SESSION_COOKIE_SECURE">
+<span class="sig-name descname"><span class="pre">SESSION_COOKIE_SECURE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ocean.config.DevelopmentConfig.SESSION_COOKIE_SECURE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.DevelopmentConfig.SQLALCHEMY_DATABASE_URI">
+<span class="sig-name descname"><span class="pre">SQLALCHEMY_DATABASE_URI</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'mysql+mysqldb://root:test123&#64;localhost/ocean'</span></em><a class="headerlink" href="#ocean.config.DevelopmentConfig.SQLALCHEMY_DATABASE_URI" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.DevelopmentConfig.secret_key">
+<span class="sig-name descname"><span class="pre">secret_key</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'not_so_secret_key'</span></em><a class="headerlink" href="#ocean.config.DevelopmentConfig.secret_key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.config.ProductionConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.config.</span></span><span class="sig-name descname"><span class="pre">ProductionConfig</span></span><a class="headerlink" href="#ocean.config.ProductionConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.config.Config" title="ocean.config.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.ProductionConfig.DEBUG">
+<span class="sig-name descname"><span class="pre">DEBUG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ocean.config.ProductionConfig.DEBUG" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.ProductionConfig.SECRET_KEY">
+<span class="sig-name descname"><span class="pre">SECRET_KEY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'e4kpFlFac1ItJMgGwHRacFqMGd2tdzLAbkY_jOxZM2s'</span></em><a class="headerlink" href="#ocean.config.ProductionConfig.SECRET_KEY" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.ProductionConfig.SESSION_COOKIE_SECURE">
+<span class="sig-name descname"><span class="pre">SESSION_COOKIE_SECURE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#ocean.config.ProductionConfig.SESSION_COOKIE_SECURE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.ProductionConfig.SQLALCHEMY_DATABASE_URI">
+<span class="sig-name descname"><span class="pre">SQLALCHEMY_DATABASE_URI</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'mysql+mysqldb://None:None&#64;None/None'</span></em><a class="headerlink" href="#ocean.config.ProductionConfig.SQLALCHEMY_DATABASE_URI" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.ProductionConfig.secret_key">
+<span class="sig-name descname"><span class="pre">secret_key</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'e4kpFlFac1ItJMgGwHRacFqMGd2tdzLAbkY_jOxZM2s'</span></em><a class="headerlink" href="#ocean.config.ProductionConfig.secret_key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ocean.config.TestingConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ocean.config.</span></span><span class="sig-name descname"><span class="pre">TestingConfig</span></span><a class="headerlink" href="#ocean.config.TestingConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ocean.config.Config" title="ocean.config.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.TestingConfig.DEBUG">
+<span class="sig-name descname"><span class="pre">DEBUG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#ocean.config.TestingConfig.DEBUG" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.TestingConfig.SECRET_KEY">
+<span class="sig-name descname"><span class="pre">SECRET_KEY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'not_so_secret_key'</span></em><a class="headerlink" href="#ocean.config.TestingConfig.SECRET_KEY" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.TestingConfig.SQLALCHEMY_DATABASE_URI">
+<span class="sig-name descname"><span class="pre">SQLALCHEMY_DATABASE_URI</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'mysql+mysqldb://root:test123&#64;localhost/ocean_test'</span></em><a class="headerlink" href="#ocean.config.TestingConfig.SQLALCHEMY_DATABASE_URI" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.TestingConfig.TESTING">
+<span class="sig-name descname"><span class="pre">TESTING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#ocean.config.TestingConfig.TESTING" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.TestingConfig.WTF_CSRF_ENABLED">
+<span class="sig-name descname"><span class="pre">WTF_CSRF_ENABLED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ocean.config.TestingConfig.WTF_CSRF_ENABLED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ocean.config.TestingConfig.secret_key">
+<span class="sig-name descname"><span class="pre">secret_key</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'not_so_secret_key'</span></em><a class="headerlink" href="#ocean.config.TestingConfig.secret_key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="ocean-run-module">
+<h2>ocean.run module<a class="headerlink" href="#ocean-run-module" title="Link to this heading"></a></h2>
+</section>
+<section id="ocean-wsgi-module">
+<h2>ocean.wsgi module<a class="headerlink" href="#ocean-wsgi-module" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ocean">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ocean" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="ocean" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ocean.app.html" class="btn btn-neutral float-right" title="ocean.app package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, James Sullivan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
