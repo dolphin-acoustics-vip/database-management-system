@@ -173,9 +173,15 @@ def create_app(config_class):
     def handle_mysql_error(ex):
         return "Database not functional."
     
+
+    @app.errorhandler(exception_handler.DoesNotExistError)
+    def handle_dne_error(ex):
+        return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
+
+
     @app.errorhandler(exception_handler.CriticalException)
     def handle_critical_error(ex):
-        return str(ex)
+        return render_template('general-error.html', error_code=404, error_message="Internal server error", current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
 
     @app.errorhandler(Exception)
     def handle_error(ex):
@@ -198,7 +204,7 @@ def create_app(config_class):
     @app.errorhandler(500)
     def internal_server_error(e):
         logger.critical('Internal server error: ' + str(e))
-        return "Internal server error. Please try again later.", 500
+        return "Internal server error(s). Please try again later.", 500
 
     # 502 Error Handler
     @app.errorhandler(502)

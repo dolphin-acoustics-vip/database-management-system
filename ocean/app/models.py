@@ -179,24 +179,223 @@ class Encounter(imodels.IEncounter):
         return utils.secure_fname(f"Location-{self.location}")
 
 
-class File(database_handler.db.Model):
-    __tablename__ = 'file'
+class File(imodels.IFile):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
-    path = database_handler.db.Column(database_handler.db.String(255), nullable=False)
-    filename = database_handler.db.Column(database_handler.db.String(255), nullable=False)
-    uploaded_date = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
-    upload_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
+    @property
+    def filename_with_extension(self):
+        if not self.extension: raise exception_handler.CriticalException("File has no extension")
+        if not self.filename: raise exception_handler.CriticalException("File has no filename")
+        return f"{self.filename}.{self.extension}"
 
-    extension = database_handler.db.Column(database_handler.db.String(10), nullable=False)
-    duration = database_handler.db.Column(database_handler.db.Integer)
-    deleted = database_handler.db.Column(database_handler.db.Boolean, default=False)
-    original_filename = database_handler.db.Column(database_handler.db.String(255))
-    temp = database_handler.db.Column(database_handler.db.Boolean, default=False)
-    hash = database_handler.db.Column(database_handler.db.LargeBinary)
+    @property
+    def path(self):
+        return os.path.join(self.directory, self.filename_with_extension)
+    
+    @property
+    def __path_with_root(self):
+        """Return the full path of the file, including the filespace root directory"""
+        if self.deleted: return os.path.join(database_handler.get_trash_path(), self.path)
+        else: return os.path.join(database_handler.get_data_space(), self.path)
 
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    def move_file(self, new_directory, new_filename, move_to_trash=False, override_extension=None):
+        """
+        Move a file to a new location with the provided session.
+
+        Parameters:
+        - session: The session object to use for the database transaction
+        - new_relative_file_path: The new relative file path to move the file to
+        - return: False if the file already exists at the new location, None otherwise
+        
+        """
+        
+        new_relative_file_path = os.path.join(new_directory, secure_filename(new_filename))
+            
+        current_relative_file_path = self.get_full_absolute_path()
+        
+        if move_to_trash: 
+            root_path = database_handler.get_trash_path()
+            self.deleted = True
+        else: root_path = database_handler.get_file_space_path()
+
+        new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
+        
+
+
+        if override_extension:
+            self.extension = override_extension
+            new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
+        else:
+            new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
+        
+
+        # make the directory of the new_relative_file_path_with_root
+        if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
+            os.makedirs( os.path.dirname(new_relative_file_path_with_root))
+            logger.info(f"Created directory: {os.path.dirname(new_relative_file_path_with_root)}")
+
+        # if the new and current file paths are not the same
+        if new_relative_file_path_with_root != current_relative_file_path:
+            self.directory = os.path.dirname(new_relative_file_path)
+            self.filename = secure_filename(os.path.basename(new_relative_file_path).split(".")[0])
+            self.rename_loose_file(self.directory, self.filename, self.extension)
+            if os.path.exists(current_relative_file_path):
+                os.rename(current_relative_file_path, new_relative_file_path_with_root)
+                logger.info(f"Moved file from {current_relative_file_path} to {new_relative_file_path_with_root}")
+            else:
+                logger.warning(f"Attempted to move file from {current_relative_file_path} to {new_relative_file_path_with_root} but file does not exist")
+ 
+            
+            parent_dir = os.path.dirname(current_relative_file_path)
+
+            if os.path.exists(parent_dir):
+                while parent_dir != root_path and not os.listdir(parent_dir):
+                    os.rmdir(parent_dir)
+                    parent_dir = os.path.dirname(parent_dir)
+                
+        else:
+            pass
+            return False
+
+    def __prepare_destination(self, directory: str = None, filename: str = None):
+        """Prepare the destination path for moving the file. Will automatically update
+        values of `self.directory` and `self.filename`. When using this function, you
+        may assume that the value returned is the path of the file based on the arguments
+        passed, and that the directory of this path exists (or has been created and is empty).
+        
+        This function will also validate the value of `self.extension`.
+        """
+        if not directory and not filename: return
+        self.directory = directory
+        self.filename = utils.secure_fname(filename)
+        # Validate extension
+        self.extension = self.extension
+        dst = self.__path_with_root
+        if not os.path.exists(os.path.dirname(dst)):
+            os.makedirs(os.path.dirname(dst))
+        return dst
+
+    def __move(self, directory: str = None, filename: str = None):
+        """Move the file to the new directory and filename provided. Will automatically
+        update values of `self.directory` and `self.filename`. The hash of the file will
+        not change as the file is simply being moved. The argument `filename` MUST NOT
+        contain an extension - if it does, there will be more than one extension."""
+        src = self.__path_with_root
+        dst = self.__prepare_destination(directory = directory, filename = filename)
+        if src != dst:
+            if os.path.exists(src):
+                os.rename(src, dst)
+
+    def __save(self, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
+        """Helper method for `insert()`."""
+        if isinstance(file, str):  # If `file` is a file path string
+            if not os.path.exists(file): raise exception_handler.CriticalException("File with given path does not exist.")
+            self.filename, self.extension = utils.parse_filename(os.path.basename(file))
+            file_stream = open(file, 'rb')  # Open the file stream
+        elif hasattr(file, 'stream'):
+            file_stream = file.stream
+            f, e = utils.parse_filename(file.filename)
+            if not e and not extension: raise exception_handler.CriticalException("No extension provided.")
+            elif not extension: self.extension = e
+            elif not e: self.extension = extension
+            if not f and not original_filename: self.original_filename = "Automatically generated"
+            elif not f: self.original_filename = original_filename
+            elif not original_filename: self.original_filename = f
+        # If `file` is a stream, set the extension and original_filename from the method parameters
+        elif hasattr(file, 'read'):
+            file_stream = file
+            if not extension: raise exception_handler.CriticalException("No extension provided.")
+            else: self.extension = extension
+            if not original_filename: self.original_filename = "Automatically generated"
+            else: self.original_filename = original_filename
+        else: raise exception_handler.CriticalException(f"File is not a file-like object (must contain `read()` or `stream`). Got {type(file)}.")
+
+        if not directory: raise exception_handler.CriticalException("No directory provided.")
+        if not filename: raise exception_handler.CriticalException("No filename provided.")
+    
+        dst = self.__prepare_destination(directory = directory, filename = filename)
+        chunk_size = 1024 * 1024  # 1MB chunks
+        with open(dst, 'wb') as dest_file:
+            while True:
+                chunk = file_stream.read(chunk_size)
+                if chunk:
+                    dest_file.write(chunk)
+                else:
+                    break
+        self.hash = self.calculate_hash()
+
+    def insert(self, session, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
+        self.__save(file, directory, filename, original_filename = original_filename, extension = extension)
+        session.add(self)
+        session.commit()
+
+    def update(self, session, directory: str, filename: str):
+        self.__move(directory = directory, filename = filename)
+        session.commit()
+
+    # TODO: find the datatype of file
+    # TODO: remove root_path requirement as it is automatically generated in the method
+    def insert_path_and_filename(self, file, new_directory:str, new_filename:str, override_extension:str=None, root_path=None):
+        """
+        Insert a file into the filespace. Automatically save the file on the server and
+        store (and commit) its directory, filename and extension in the database. If 
+        successful write an informational message to the logger.
+
+        :param session: the SQLAlchemy session
+        :param file: TBD
+        :param new_directory: the relative directory in which to store the file
+        :param new_filename: the full filename (including extension) to rename the file to
+        """
+
+
+        root_path = database_handler.get_file_space_path() if root_path is None else root_path
+        # Extract filename and stream depending on whether `file` is a path or a file-like object
+        if isinstance(file, str):  # If `file` is a file path string
+            file_path = file
+            file_basename = os.path.basename(file_path)
+            file_extension = file_basename.split('.')[-1]
+            file_stream = open(file_path, 'rb')  # Open the file stream
+        elif hasattr(file, 'stream'):  # If `file` is a file-like object with `.stream` (Flask file)
+            file_stream = file.stream
+            file_basename = file.filename
+            file_extension = file.filename.split('.')[-1]
+        elif hasattr(file, 'read'):  # If [file](cci:1://file:///home/sulli/code/database-management-system/ocean/app/interfaces/imodels.py:887:4-892:33) is a file-like object
+            file_stream = file
+            file_basename = "automatically generated"
+            if not override_extension: raise ValueError("When passing a stream, an override_extension must be provided.")
+        else:
+            raise ValueError("The `file` parameter must be either a file path or a file-like object with a `stream`.")
+
+        self.directory = new_directory
+        self.filename = secure_filename(new_filename)  # filename without extension
+        self.original_filename = file_basename
+        self.extension = override_extension if override_extension else file_extension
+        
+        destination_path = os.path.join(root_path, self.get_full_relative_path())
+        self.rename_loose_file(self.directory, self.filename, self.extension)
+        os.makedirs(os.path.join(root_path, self.directory), exist_ok=True)
+
+        # Save the file to the destination in chunks
+        chunk_size = 1024 * 1024  # 1MB chunks
+        with open(destination_path, 'wb') as dest_file:
+            while True:
+                chunk = file_stream.read(chunk_size)
+                if chunk:
+                    dest_file.write(chunk)
+                else:
+                    break
+        self.hash = self.calculate_hash()
+        logger.info(f"Saved file to {destination_path} with hash {self.get_hash()}.")
+        
+        from .filespace_handler import clean_filespace_temp
+        clean_filespace_temp()
+
+
+    def _insert_or_update(self):
+        pass
 
     def get_extension(self):
         return '' if self.extension is None else self.extension
@@ -210,35 +409,7 @@ class File(database_handler.db.Model):
     def get_updated_by_id(self):
         return '' if self.updated_by_id is None else self.updated_by_id
 
-    def to_dict(self, attributes=None):
-        """
-        Convert the File object to a dictionary representation.
-
-        Args:
-            attributes (list[str]|None): List of attribute names to include in the dictionary representation. If None, all attributes are included.
-
-        Returns:
-            dict: A dictionary containing the File object's attributes.
-        """
-        retrievable_attributes = {
-            'path': self.get_path,
-            'filename': self.get_filename,
-            'uploaded_date': self.get_uploaded_date_utc,
-            'extension': self.get_extension,
-            'deleted': self.get_deleted,
-            'original_filename': self.get_original_filename,
-            'hash': self.get_hash,
-            'updated_by_id': self.get_updated_by_id,
-            'absolute_path': self.get_full_absolute_path
-        }
-
-        if attributes is None:
-            attributes = retrievable_attributes
-        else:
-            utils.verify_subarray_of_dict(attributes, retrievable_attributes)
-
-        return utils.serialise_object(attributes)
-    
+   
     @classmethod
     def has_record(cls, session, file_path, deleted = False, temp = False):
         comparison_path = file_path
@@ -247,15 +418,12 @@ class File(database_handler.db.Model):
         comparison_ext = os.path.splitext(comparison_path)[1].replace('.', '')
 
         return session.query(cls).filter(
-            cls.path == comparison_dir,
+            cls.directory == comparison_dir,
             cls.filename == comparison_file,
             cls.extension == comparison_ext,
             cls.deleted == deleted,
-            cls.temp == temp
         ).first() is not None
 
-    def __init__(self, filename=None):
-        self.filename, self.extension = os.path.splitext(filename) if filename != None else (None, None)
 
     def get_hash(self):
         if self.hash == None:
@@ -339,7 +507,7 @@ class File(database_handler.db.Model):
         :return: the folder directory (without filename or extension) in which the file
         represented by the object lies
         """
-        return self.path  
+        return self.directory  
 
     def get_path(self):
         """
@@ -352,7 +520,7 @@ class File(database_handler.db.Model):
         :return: the full path in the filespace, including the directory, filename and
         extension of the file represented by the object
         """
-        return os.path.join(self.path, f"{self.filename}.{self.extension}")
+        return os.path.join(self.directory, f"{self.filename}.{self.extension}")
     
     
     def set_updated_by_id(self, user_id: str):
@@ -371,14 +539,9 @@ class File(database_handler.db.Model):
         """
         if self.deleted:
             root = database_handler.get_trash_path()
-        elif self.temp:
-            root = database_handler.get_tempdir()
         else:
             root = database_handler.get_file_space_path()
         return os.path.join(root, self.get_full_relative_path())
-    
-    # def get_absolute_directory(self):
-    #     return os.path.join(database_handler.get_file_space_path(), self.path)
 
     def insert_path_and_filename_file_already_in_place(self, session, new_directory:str, new_filename:str, new_extension:str):
         """
@@ -391,12 +554,12 @@ class File(database_handler.db.Model):
         :param new_filename: the filename (without extension)
         :param new_extension: the file's extension (without a '.')
         """
-        self.path=new_directory
+        self.directory=new_directory
         self.filename=new_filename
         self.extension=new_extension
         self.hash = self.calculate_hash()
         session.flush()
-        logger.info(f"Inserted directory and filename for {self.path} with hash {self.get_hash()}.")
+        logger.info(f"Inserted directory and filename for {self.directory} with hash {self.get_hash()}.")
 
 
     def rename_loose_file(self,loose_file_directory:str, loose_file_name:str, loose_file_extension:str) -> None:
@@ -443,64 +606,6 @@ class File(database_handler.db.Model):
             with open(chunk_path, 'ab') as f:
                 f.write(chunk.read())
 
-
-    # TODO: find the datatype of file
-    # TODO: remove root_path requirement as it is automatically generated in the method
-    def insert_path_and_filename(self, file, new_directory:str, new_filename:str, override_extension:str=None, root_path=None):
-        """
-        Insert a file into the filespace. Automatically save the file on the server and
-        store (and commit) its directory, filename and extension in the database. If 
-        successful write an informational message to the logger.
-
-        :param session: the SQLAlchemy session
-        :param file: TBD
-        :param new_directory: the relative directory in which to store the file
-        :param new_filename: the full filename (including extension) to rename the file to
-        """
-
-
-        root_path = database_handler.get_file_space_path() if root_path is None else root_path
-        # Extract filename and stream depending on whether `file` is a path or a file-like object
-        if isinstance(file, str):  # If `file` is a file path string
-            file_path = file
-            file_basename = os.path.basename(file_path)
-            file_extension = file_basename.split('.')[-1]
-            file_stream = open(file_path, 'rb')  # Open the file stream
-        elif hasattr(file, 'stream'):  # If `file` is a file-like object with `.stream` (Flask file)
-            file_stream = file.stream
-            file_basename = file.filename
-            file_extension = file.filename.split('.')[-1]
-        elif hasattr(file, 'read'):  # If [file](cci:1://file:///home/sulli/code/database-management-system/ocean/app/interfaces/imodels.py:887:4-892:33) is a file-like object
-            file_stream = file
-            file_basename = "automatically generated"
-            if not override_extension: raise ValueError("When passing a stream, an override_extension must be provided.")
-        else:
-            raise ValueError("The `file` parameter must be either a file path or a file-like object with a `stream`.")
-
-        self.path = new_directory
-        self.filename = secure_filename(new_filename)  # filename without extension
-        self.original_filename = file_basename
-        self.extension = override_extension if override_extension else file_extension
-        
-        destination_path = os.path.join(root_path, self.get_full_relative_path())
-        self.rename_loose_file(self.path, self.filename, self.extension)
-        os.makedirs(os.path.join(root_path, self.path), exist_ok=True)
-
-        # Save the file to the destination in chunks
-        chunk_size = 1024 * 1024  # 1MB chunks
-        with open(destination_path, 'wb') as dest_file:
-            while True:
-                chunk = file_stream.read(chunk_size)
-                if chunk:
-                    dest_file.write(chunk)
-                else:
-                    break
-        self.hash = self.calculate_hash()
-        logger.info(f"Saved file to {destination_path} with hash {self.get_hash()}.")
-        
-        from .filespace_handler import clean_filespace_temp
-        clean_filespace_temp()
-
     def move_to_trash(self):
         """
         Moves the file to the trash folder.
@@ -517,73 +622,6 @@ class File(database_handler.db.Model):
         if os.path.exists(self.get_full_absolute_path()):
             logger.info(f"Parmanently deleted file {self.get_full_absolute_path()}.")
             os.remove(self.get_full_absolute_path())
-
-    def save_permanently(self, new_directory, new_filename):
-        if (self.temp == True and os.path.exists(self.get_full_absolute_path())):
-            self.move_file(new_directory, new_filename)
-            self.temp = False
-        else:
-            raise exception_handler.WarningException(f"An unexpected error ocurred while trying to save the file.")
-
-    def move_file(self, new_directory, new_filename, move_to_trash=False, override_extension=None):
-        """
-        Move a file to a new location with the provided session.
-
-        Parameters:
-        - session: The session object to use for the database transaction
-        - new_relative_file_path: The new relative file path to move the file to
-        - return: False if the file already exists at the new location, None otherwise
-        
-        """
-        
-        new_relative_file_path = os.path.join(new_directory, secure_filename(new_filename))
-            
-        current_relative_file_path = self.get_full_absolute_path()
-        
-        if move_to_trash: 
-            root_path = database_handler.get_trash_path()
-            self.deleted = True
-        else: root_path = database_handler.get_file_space_path()
-
-        new_relative_file_path_with_root = os.path.join(root_path, new_relative_file_path) # add the root path to the relative path
-        
-
-
-        if override_extension:
-            self.extension = override_extension
-            new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
-        else:
-            new_relative_file_path_with_root = new_relative_file_path_with_root + '.' + self.extension
-        
-
-        # make the directory of the new_relative_file_path_with_root
-        if not os.path.exists(os.path.dirname(new_relative_file_path_with_root)):
-            os.makedirs( os.path.dirname(new_relative_file_path_with_root))
-            logger.info(f"Created directory: {os.path.dirname(new_relative_file_path_with_root)}")
-
-        # if the new and current file paths are not the same
-        if new_relative_file_path_with_root != current_relative_file_path:
-            self.path = os.path.dirname(new_relative_file_path)
-            self.filename = secure_filename(os.path.basename(new_relative_file_path).split(".")[0])
-            self.rename_loose_file(self.path, self.filename, self.extension)
-            if os.path.exists(current_relative_file_path):
-                os.rename(current_relative_file_path, new_relative_file_path_with_root)
-                logger.info(f"Moved file from {current_relative_file_path} to {new_relative_file_path_with_root}")
-                self.temp = False
-            else:
-                logger.warning(f"Attempted to move file from {current_relative_file_path} to {new_relative_file_path_with_root} but file does not exist")
- 
-            
-            parent_dir = os.path.dirname(current_relative_file_path)
-
-            if os.path.exists(parent_dir):
-                while parent_dir != root_path and not os.listdir(parent_dir):
-                    os.rmdir(parent_dir)
-                    parent_dir = os.path.dirname(parent_dir)
-                
-        else:
-            pass
-            return False
 
     def get_binary(self):
         """
@@ -637,14 +675,43 @@ class Recording(imodels.IRecording):
         for key, value in attr_form.items():
             setattr(self, key, value)
 
+    def recording_file_delete(self, session):
+        if self.recording_file:
+            self.recording_file.move_to_trash()
+            self.recording_file = None
+            session.commit()
     
-    def recording_file_insert(self, session, stream):
+    def recording_file_insert(self, session, file_stream):
         if self.recording_file: raise exception_handler.CriticalException("Recording already has a recording file")
-        file = File()
-        file.insert_path_and_filename(stream, self.relative_directory, self.recording_file_name)
-        session.add(file)
-        self.recording_file = file
+        try:
+            file = File()
+            file.insert(session=session, file=file_stream, directory=self.relative_directory, filename=self.recording_file_name)
+            session.add(file)
+            self.recording_file = file
+        except Exception as e:
+            file.delete_file()
+            self.recording_file = None
+            session.delete(file)
+            raise e
 
+    def selection_table_file_delete(self, session):
+        if self.selection_table_file:
+            self.selection_table_file.move_to_trash()
+            self.selection_table_file = None
+            session.commit()
+
+    def selection_table_file_insert(self, session, file_stream):
+        if self.selection_table_file: raise exception_handler.CriticalException("Recording already has a selection table file")
+        try:
+            file = File()
+            file.insert(session=session, file=file_stream, directory=self.relative_directory, filename=self.selection_table_file_name)
+            session.add(file)
+            self.selection_table_file = file
+        except Exception as e:
+            file.delete_file()
+            self.selection_table_file = None
+            session.delete(file)
+            raise e
 
     @property
     def start_time_pretty(self):
@@ -797,7 +864,7 @@ class Recording(imodels.IRecording):
     
     def selection_table_data_delete(self, session):
         for selection in self.get_selections(session):
-            selection.reset_selection_table_values()
+            selection.clear_selection_table_attrs()
             
     def delete(self):
         self._delete_children()
@@ -890,10 +957,10 @@ class Selection(imodels.ISelection):
     def ctr_file_name(self):
         return utils.secure_fname(f"CTR-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}")
 
-    def selection_file_insert(self, session, stream):
+    def selection_file_insert(self, session, form_file):
         if self.selection_file: raise exception_handler.WarningException(f"Selection file for selection {self.selection_number} already exists.")
         file = File()
-        file.insert_path_and_filename(stream, self.relative_directory, self.selection_file_name)
+        file.insert(session, form_file, self.relative_directory, self.selection_file_name)
         session.add(file)
         self.selection_file = file
     
@@ -951,8 +1018,10 @@ class Selection(imodels.ISelection):
         `recording_file`) objects.
         """
         children = []
-        if self.selection_file is not None: children.append(self.selection_file)
-        if self.contour_file is not None: children.append(self.contour_file)
+        selection_file = session.query(File).filter(File.id == self.selection_file_id).first()
+        contour_file = session.query(File).filter(File.id == self.contour_file_id).first()
+        if selection_file is not None: children.append(selection_file)
+        if contour_file is not None: children.append(contour_file)
         return children
 
     def _insert_or_update(self, form, new):
@@ -1113,7 +1182,7 @@ class Selection(imodels.ISelection):
         if not self.contour_file: return None
         # Get contour file dataframe
         df = self.__contour_file_load_dataframe()
-        if df:
+        if not df.empty:
             # Populate contour file handler with values from the dataframe
             handler = contour_statistics.ContourFileHandler()
             handler.insert_dataframe(df)
@@ -1197,17 +1266,17 @@ class Selection(imodels.ISelection):
         if self.selection_file is not None:
             with database_handler.get_session() as session:
                 selection_file = session.query(File).with_for_update().get(self.selection_file_id)
-                selection_file.move_file(self.relative_directory,self.selection_file_name)
+                selection_file.update(session, self.relative_directory,self.selection_file_name)
                 session.commit()
         if self.contour_file is not None:
             with database_handler.get_session() as session:
                 contour_file = session.query(File).with_for_update().get(self.contour_file_id)
-                contour_file.move_file(self.relative_directory,self.contour_file_name)
+                contour_file.update(session, self.relative_directory,self.contour_file_name)
                 session.commit()
         if self.ctr_file is not None:
             with database_handler.get_session() as session:
                 ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
-                ctr_file.move_file(self.relative_directory,self.ctr_file_name)
+                ctr_file.update(session, self.relative_directory,self.ctr_file_name)
                 session.commit()
 
     @property

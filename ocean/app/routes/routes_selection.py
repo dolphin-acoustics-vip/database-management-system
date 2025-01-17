@@ -293,14 +293,17 @@ def selection_file_insert(recording_id):
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             check_editable(recording)
-            selection = session.query(models.Selection).filter(database_handler.db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=id, recording_id=recording_id).first()
+            selection_number = request.form.get('selection_number')
+            # Check if selection number already exists
+            selection = session.query(models.Selection).filter(database_handler.db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
             if not selection:
                 selection = models.Selection(recording = recording)
                 selection.insert(request.form)
                 session.add(selection)
                 session.flush()
+            # Add the selection file to the selection
             if 'file' in request.files and request.files['file'].filename != '':
-                selection.selection_file_insert(session = session, stream = request.files['file'])
+                selection.selection_file_insert(session = session, form_file = request.files['file'])
                 session.commit()      
             else:
                 raise exception_handler.WarningException(f"Bad file in request.")

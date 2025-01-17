@@ -36,6 +36,11 @@ class CriticalException(Exception):
         """
         super().__init__(message)
 
+class DoesNotExistError(Exception):
+
+    def __init__(self, missing):
+        super().__init__("Missing " + missing + " from database.")
+
 class FormError(CriticalException):
 
     def __init__(self, missing):
@@ -197,6 +202,8 @@ def _parse_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
     elif isinstance(exception, CriticalException):
         logger.exception(str(exception))
         raise CriticalException(str(exception))
+    elif isinstance(exception, DoesNotExistError):
+        raise exception
     else:
         logger.exception(str(exception))
         raise CriticalException("An unexpected error ocurred. It has been logged. Please notify your administrator and try again later.")

@@ -29,6 +29,14 @@ from . import exception_handler
 from . import database_handler
 
 
+def parse_filename(filename: str):
+    """
+    Parse a filename into a tuple of (name, extension). If no extension is
+    found, the extension will be of type None.
+    """
+    name, extension = os.path.splitext(filename)
+    return name, extension
+
 def download_files(file_objects, file_names, zip_filename):
     """
     Creates and streams a zip file from the given list of file paths.
@@ -486,7 +494,7 @@ def extract_to_dataframe(path:str) -> pd.DataFrame:
         raise FileNotFoundError("Path is not a string")
     
     if path is None or path == "":
-        raise ValueError("File is invalid")
+        raise exception_handler.WarningException("File is invalid")
 
     if not os.path.exists(path):
         raise FileNotFoundError("File does not exist")
@@ -499,20 +507,20 @@ def extract_to_dataframe(path:str) -> pd.DataFrame:
         try:
             df = pd.read_csv(path)
         except pd.errors.EmptyDataError as e:
-            raise ValueError("File is empty")
+            raise exception_handler.WarningException("File is empty")
     elif file_extension == '.txt':
         # Read the text file into a pandas DataFrame
         try:
             df = pd.read_csv(path, sep='\t')
         except pd.errors.EmptyDataError as e:
-            raise ValueError("File is empty")
+            raise exception_handler.WarningException("File is empty")
     elif file_extension == '.xlsx' or file_extension == '.xls':
         # Read the Excel file into a pandas DataFrame
         df = pd.read_excel(path)
         if len(df) == 0:
-            raise ValueError("File is empty")
+            raise exception_handler.WarningException("File is empty")
     else:
-        raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file")
+        raise exception_handler.WarningException("File must be a .csv, .txt or .xlsx file")
 
     return df
 

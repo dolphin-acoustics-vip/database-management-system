@@ -89,8 +89,7 @@ def encounter_view(encounter_id):
     with database_handler.get_session() as session:
         try:
             encounter = database_handler.create_system_time_request(session, models.Encounter, {"id":encounter_id}, one_result=True)
-            if not encounter:
-                raise exception_handler.CriticalException(f"Encounter not found.")
+            if not encounter: raise exception_handler.DoesNotExistError("encounter")            
             recordings = database_handler.create_system_time_request(session, models.Recording, {"encounter_id":encounter_id})
             encounter_history = database_handler.create_all_time_request(session, models.Encounter, {"id":encounter_id}, "row_start")
             assignments = database_handler.create_system_time_request(session, models.Assignment, {"user_id":current_user.id})

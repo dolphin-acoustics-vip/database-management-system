@@ -2,6 +2,7 @@
 
 from abc import ABC, ABCMeta, abstractmethod
 import datetime
+import io
 from typing import Protocol
 from uuid import UUID
 import uuid
@@ -52,6 +53,10 @@ class Serialisable(ABC):
         for k, v in d.items():
             if isinstance(v, Serialisable):
                 d[k] = v.to_dict()
+            elif isinstance(v, (str, int, float, bool, type(None), list, dict)):
+                pass
+            else:
+                d[k] = str(v)
         return d
 
 class TableOperations(ABC):
@@ -161,7 +166,7 @@ class Cascading(ABC):
         """
         with database_handler.get_session() as session:
             for child in self._get_children(session):
-                if issubclass(type(child), TableOperations):
+                if issubclass(type(child), Cascading):
                     child.delete()
                     session.delete(child)
                     session.commit()
@@ -475,7 +480,8 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
     @abstractmethod
     def selection_table_data_delete(self):
         """Delete the data from the recording's selections that was provided by the selection table.
-        Will not delete any selections themselves."""
+        Will not delete any selections themselves. The provided session must be comitted by the caller
+        to persist the changes."""
         raise NotImplementedError()
 
     @abstractmethod
@@ -576,6 +582,32 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
         """Updates the `traced` status of the `Selection` objects that are associated with the recording. 
         Does not commit the session automatically. Does not make changes to the session."""
         raise NotImplementedError()
+
+    def recording_file_delete(self, session):
+        """Soft-delete the recording file and remove it from the recording object. Changes will be made and
+        committed to the provided session to ensure atomicity with the filespace."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def recording_file_insert(self, session, file):
+        """Insert and validate the recording file. This method will automatically commit the changes to the provided
+        session to maintain atomicity. `ValidationError` or `CriticalException` are raised in the event of validation
+        and critical errors respectively. If an exception is raised that means that the recording file has not been
+        inserted into the database or filespace."""
+        raise NotImplementedError
+    
+    def selection_table_file_selete(self, session):
+        """Soft-delete the selection table file and remove it from the recording object. Changes will be made and
+        committed to the provided session to ensure atomicity with the filespace."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def selection_table_file_insert(self, session, file):
+        """Insert and validate the selection table file. This method will automatically commit the changes to the provided
+        session to maintain atomicity. `ValidationError` or `CriticalException` are raised in the event of validation
+        and critical errors respectively. If an exception is raised that means that the selection table file has not been
+        inserted into the database or filespace."""
+        raise NotImplementedError
 
 class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
     __tablename__ = 'selection'
@@ -1277,3 +1309,97 @@ class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     def incomplete(self):
         """Mark the assignment as incomplete."""
         raise NotImplementedError()
+    
+
+class IFile(AbstractModelBase, Serialisable, TableOperations):
+    __tablename__ = 'file'
+
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    directory = database_handler.db.Column(database_handler.db.String(255), nullable=False)
+    filename = database_handler.db.Column(database_handler.db.String(255), nullable=False)
+    uploaded_date = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
+    upload_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
+
+    extension = database_handler.db.Column(database_handler.db.String(10), nullable=False)
+    duration = database_handler.db.Column(database_handler.db.Integer)
+    deleted = database_handler.db.Column(database_handler.db.Boolean, default=False)
+    original_filename = database_handler.db.Column(database_handler.db.String(255))
+    hash = database_handler.db.Column(database_handler.db.LargeBinary)
+
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    # @validates("filename")
+    # def _validate_filename(self, key, value):
+    #     return utils.secure_fname(utils.validate_string(value=value, field=key, allow_none=False))
+    
+    @validates("directory")
+    def _validate_directory(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none = True)
+    
+    @validates("extension")
+    def _validate_extension(self, key, value):
+        value = utils.validate_string(value=value, field=key, allow_none = False)
+        if value.startswith("."): return value[1:]
+        return value
+
+    @validates("Uploaded_date", "uploaded_datetime")
+    def _validate_datetime(self, key, value):
+        return utils.validate_datetime(value=value, field=key, allow_none=False)
+    
+    # @validates("hash")
+    # def _validate_hash(self, key, value):
+    #     return utils.validate_string(value=value, field=key, allow_none=False)
+
+
+    def _to_dict(self):
+        return {
+            "id": self.id,
+            "directory": self.directory,
+            "filename": self.filename,
+            "uploaded_date": self.uploaded_date,
+            "extension": self.extension,
+            "deleted": self.deleted,
+            "original_filename": self.original_filename,
+            "hash": self.hash,
+            "updated_by_id": self.updated_by_id
+        }
+    
+    def _form_dict(self):
+        raise NotImplementedError
+    
+    @property
+    def unique_name(self):
+        return f"{self.filename}.{self.extension}, {str(self.hash)[:6]}"
+    
+    def insert(self, session, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
+        """Insert a file into the filespace. This method will save the argument `file` to the filespace with the given
+        `directory` and `filename`. If `file` is a file-like object, and does not contain a `filename` attribute, the
+        `original_filename` and `extension` are implied. If `file` is a stream, the `original_filename` and `extension`
+        must be provided (failure to do so raises `CriticalException`).
+
+        This method will automatically commit the changes to the provided `session` for atomicity. Any issues that occur
+        during the insertion process will revert all changes to the provided session. It is recommended to call this
+        method with a fresh or recently committed session to avoid unexpected issues.
+        """
+        raise NotImplementedError
+    
+    def update(self, directory: str = None, filename: str = None):
+        """Move the file to the new directory and filename provided. Will automatically
+        update values of `self.directory` and `self.filename`. The hash of the file will
+        not change as the file is simply being moved. The argument `filename` MUST NOT
+        contain an extension - if it does, there will be more than one extension.
+        """
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def filename_with_extension(self):
+        """Return the filename with extension."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def path(self):
+        """Return the path to the file in the object. This path does not include the filespace root directory."""
+        raise NotImplementedError

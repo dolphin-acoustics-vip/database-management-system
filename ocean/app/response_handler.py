@@ -16,6 +16,8 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 from flask import jsonify
+from urllib.parse import quote
+
 
 class JSONResponse:
     """This class acts as a protocol for responses to HTTP requests in OCEAN.
@@ -46,6 +48,24 @@ class JSONResponse:
         self.data = data or {}
         self.redirect = redirect
 
+    def encode_url(self, url):
+        return quote(url, safe=':/?=&')
+
+    def custom_encode(self, data):
+        if isinstance(data, dict):
+            return {key: self.custom_encode(value) for key, value in data.items()}
+        elif isinstance(data, list):
+            return [self.custom_encode(item) for item in data]
+        elif isinstance(data, str):
+            if data.startswith('/'):
+                return self.encode_url(data)
+            else:
+                return data
+        elif isinstance(data, bytes):
+            return str(data)
+        else:
+            return data
+
     def add_error(self, error):
         self.errors.append(error)
 
@@ -56,10 +76,12 @@ class JSONResponse:
         self.redirect = redirect
 
     def to_json(self):
-        data = {
+        self.data = self.custom_encode(self.data)
+        print(self.data)
+        d = {
             'messages': self.messages,
             'errors': self.errors,
             'redirect': self.redirect,
             'data': self.data
         }
-        return jsonify(data)
+        return jsonify(d)

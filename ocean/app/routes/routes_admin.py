@@ -259,8 +259,9 @@ def admin_species_edit(species_id):
             species = session.query(models.Species).with_for_update().filter_by(id=species_id).first()
             if not species: raise exception_handler.CriticalException('Unexpected error')
             species.update(request.form)
-            species.apply_updates(session)
             session.commit()
+            species.apply_updates()
+            
             response.add_message(f"Species updated: {species.species_name}")
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))

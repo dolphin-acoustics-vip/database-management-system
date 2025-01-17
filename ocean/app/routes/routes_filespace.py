@@ -142,10 +142,8 @@ def get_orphaned_files():
     deleted = process_boolean_string(request.args.get('deleted'))
     if deleted is None: 
         response.add_error("Invalid value for 'deleted' parameter.")
-    print(deleted)
     orphaned_files = filespace_handler.get_orphaned_files(deleted, False)
     response.data["orphanedFiles"] = orphaned_files
-    print(deleted, response.data)
     return response.to_json()
 
 @routes_filespace.route('/filespace', methods=['GET'])

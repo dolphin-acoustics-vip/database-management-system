@@ -442,6 +442,18 @@ def create_system_time_request(session: sessionmaker, db_object, filters:dict=No
         except Exception as e:
             return None
 
+    # When calling this method in archive mode, it can be that parent objects have been deleted. In this case, we need to query the parent objects and add them to the queried object
+    # manually as the SQLAlchemy lazy-load of the parents doesn't work.
+    from .models import Recording, Encounter, Species, DataSource, RecordingPlatform, Selection
+    if type(queried_db_object) == Selection:
+        if not queried_db_object.recording and queried_db_object.recording_id: queried_db_object.recording = create_system_time_request(session, Recording, {'id':queried_db_object.recording_id}, one_result=True)
+    if type(queried_db_object) == Recording:
+        if not queried_db_object.encounter and queried_db_object.encounter_id: queried_db_object.encounter = create_system_time_request(session, Encounter, {'id':queried_db_object.encounter_id}, one_result=True)
+    if type(queried_db_object) == Encounter:
+        if not queried_db_object.species and queried_db_object.species_id: queried_db_object.species = create_system_time_request(session, Species, {'id':queried_db_object.species_id}, one_result=True)
+        if not queried_db_object.data_source and queried_db_object.data_source_id: queried_db_object.data_source = create_system_time_request(session, DataSource, {'id':queried_db_object.data_source_id}, one_result=True)
+        if not queried_db_object.recording_platform and queried_db_object.recording_platform_id: queried_db_object.recording_platform = create_system_time_request(session, RecordingPlatform, {'id':queried_db_object.recording_platform_id}, one_result=True)
+
     return queried_db_object
 
 def parse_value(key, value, prev_value):

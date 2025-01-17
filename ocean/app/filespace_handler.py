@@ -182,7 +182,7 @@ def get_orphaned_files(deleted: bool, temp: bool) -> list:
                 file_path = os.path.relpath(os.path.join(root, file), root_path)
 
                 if check_file_orphaned(session, file_path, deleted, temp):
-                    id = uuid.uuid4()
+                    id = ""
                     orphaned_files.append({'id':id,'path': file_path, 'link': url_for('filespace.delete_orphan_file', file_path=file_path, deleted=deleted), 'download': url_for('filespace.download_orphan_file', file_path=file_path, deleted=deleted) , 'deleted': deleted})
 
     return orphaned_files
@@ -197,7 +197,6 @@ def delete_orphan_file(path: str, deleted: bool, temp: bool):
     """
     root_dir = database_handler.get_root_directory(deleted, temp)
     path = os.path.join(root_dir, path)
-    print(path)
     with database_handler.get_session() as session:
         if check_file_orphaned(session, path, deleted, temp):
             if os.path.exists(path):

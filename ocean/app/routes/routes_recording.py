@@ -99,26 +99,30 @@ def selection_table_insert(recording_id):
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             check_editable(recording)
             if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
-                new_file = models.File()
-                new_file.insert_path_and_filename(request.files['selection-table-file'], recording.relative_directory, recording.selection_table_file_name)
-                session.add(new_file)
-                recording.selection_table_file = new_file 
-                session.flush()
-                recording.selection_table_apply(session)
-                session.flush()
-                recording.update_selection_traced_status(session)
-                session.commit()
-                flash("Selection table uploaded successfully", "success")
-                response.set_redirect(request.referrer)
+                recording.selection_table_file_insert(session, request.files['selection-table-file'])
             else:
                 response.add_error("The form did not send a selection table file.")
+            
+            recording.selection_table_apply(session)
+            session.flush()
+            recording.update_selection_traced_status(session)
+            session.commit()
+            flash("Selection table uploaded successfully", "success")
+            response.set_redirect(request.referrer)
         except Exception as e:
+            
             response.add_error(exception_handler.handle_exception(exception=e, prefix="Unable to upload selection table", session=session, show_flash=False))
+            
+            with database_handler.get_session() as revert_session:
+                recording = revert_session.query(models.Recording).filter_by(id=recording_id).first()
+                if recording.selection_table_file:
+                    recording.selection_table_file.move_to_trash()
+                    recording.selection_table_file = None
+                    revert_session.commit()
     return response.to_json()
  
 
 @routes_recording.route('/export-selection-table/<recording_id>/<export_format>', methods=['GET'])
-@database_handler.require_live_session
 @login_required
 def selection_table_export(recording_id, export_format):
     """
@@ -148,11 +152,8 @@ def selection_table_delete(recording_id: str):
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            file = session.query(models.File).filter_by(id=recording.selection_table_file_id).first()
+            recording.selection_table_file_delete(session)
             recording.selection_table_data_delete(session)
-            file.move_to_trash()
-            recording.selection_table_file = None
-            session.flush()
             recording.update_selection_traced_status(session)
             session.commit()
             response.set_redirect(request.referrer)
@@ -188,6 +189,7 @@ def recording_insert(encounter_id: str):
 def recording_view(recording_id: str) -> Response:
     with database_handler.get_session() as session:
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
+        if not recording: raise exception_handler.DoesNotExistError("recording")
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id}, order_by="selection_number")
         assigned_users = database_handler.create_system_time_request(session, models.Assignment, {"recording_id":recording_id})
         logged_in_user_assigned = database_handler.create_system_time_request(session, models.Assignment, {"user_id":current_user.id,"recording_id":recording_id})
@@ -357,14 +359,11 @@ def recording_file_delete(recording_id):
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            print(recording, recording.recording_file)
-            if not recording.recording_file: raise exception_handler.WarningException("Recording does not have a recording file to delete.")
-            recording.recording_file.delete()
-            recording.recording_file = None
+            recording.recording_file_delete(session)
             session.commit()
             flash(f'Deleted recording file from {recording.unique_name}.', 'success')
             response.set_redirect(request.referrer)
-        except (Exception,SQLAlchemyError) as e:
+        except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
         
@@ -405,7 +404,7 @@ def recording_delete_selections():
                 selection = session.query(models.Selection).filter_by(id=selection_id).first()
                 recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
                 check_editable(recording)
-                selection.delete_children()
+                selection.delete()
                 session.delete(selection)
                 session.commit()
                 counter += 1
