@@ -22,7 +22,6 @@ from sqlalchemy import orm
 
 # Local application imports
 from .logger import logger
-from .response_handler import JSONResponse
 
 class CriticalException(Exception):
     def __init__(self, message:str):
@@ -237,12 +236,12 @@ def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
         str: The parsed error message (note that when `CriticalException` or `Exception` are re-raised nothing will be returned)
     """
 
-    
 
     if session:
+        uncommitted_objects = [obj for obj in session.identity_map.values() if obj not in session.new and obj not in session.dirty]
         # Rollback any newly created File objects
         from .models import File
-        for file_object in [obj for obj in session.new if isinstance(obj, File)]:
+        for file_object in [obj for obj in session.dirty if isinstance(obj, File)]:
             if hasattr(file_object, 'rollback'): file_object.rollback(session)
         # Rollback the ORM session
         session.rollback()

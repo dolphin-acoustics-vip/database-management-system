@@ -151,7 +151,6 @@
         } else {
             $('#health-score-value').text(healthScore + "%")
             $('#health-score-container').show()
-            console.log(result)
             if (result['assigned_user_name'] != null) {
                 $('#health-score-title').text("Health Score for " + result['assigned_user_name'] + " (" + result['assigned_user_login_id'] + "), since " + startDateTime)
             } else {
@@ -159,7 +158,6 @@
             }
 
             // Apply color based on the score
-            console.log(healthScore, healthScore >= 90, healthScore >= 10)
             if (healthScore >= 90) {
                 $('#health-score-value').removeClass('health-score-red');
                 $('#health-score-value').removeClass('health-score-yellow');

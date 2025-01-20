@@ -36,6 +36,8 @@ def encounter():
     """GET route to show the page with a list of all encounters."""
     
     with database_handler.get_session() as session:
+        from ..models import File
+        File.get_abandoned_files(session)
         try:
             encounter_list = database_handler.create_system_time_request(session, models.Encounter, {}, order_by="row_start DESC")
             return render_template('encounter/encounter.html', encounter_list=encounter_list)
@@ -157,8 +159,7 @@ def encounter_delete(encounter_id):
         encounter = session.query(models.Encounter).with_for_update().filter_by(id=encounter_id).first()
         try:
             unique_name = encounter.unique_name
-            encounter.delete()
-            session.delete(encounter)
+            encounter.delete(session)
             session.commit()
             flash(f'Deleted {unique_name}.', 'success')
             response.set_redirect(url_for('encounter.encounter'))

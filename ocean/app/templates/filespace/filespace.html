@@ -108,9 +108,10 @@ function loadOrphanedFiles(deleted, tableId) {
                 row.append($('<td>').html('<button class="gray small" onclick="deleteBrokenLink(\'' + link.delete + '\', this.closest(\'tr\'), this)">Resolve</button>'))
                 row.append($('<td>').html('Resolve by deleting the file reference directly.'));
               } else {
+                row.append($('<td>').text('N/A'));
                 row.append($('<td>').text('This issue is not resolvable. Please contact the developer.'));
               }
-              row.append($('<td>').text(link.file.absolutePath));
+              row.append($('<td>').text(link.file.path));
               tableBody.append(row);
             });
           }

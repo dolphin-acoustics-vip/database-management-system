@@ -62,8 +62,7 @@ def download_files(file_objects, file_names, zip_filename):
                     zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
                     continue
                 binary = file_object.get_binary()
-                file_hash = hashlib.sha256(binary).hexdigest()
-                if file_hash != None and file_hash != file_object.get_hash():
+                if not file_object.verify_hash():
                     # If the hash does not match, create a text entry explaining the mismatch
                     error_message = f"The hash for {file_name} does not match."
                     zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
@@ -162,11 +161,8 @@ def download_file(file_obj, filename=None):
         binary_content = file_obj.get_binary()
 
         # Calculate the SHA-256 hash of the file content
-        file_hash = hashlib.sha256(binary_content).hexdigest()
-
-        if file_obj.get_hash() != None:
-            if file_hash != file_obj.get_hash():
-                raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
+        if not file_obj.verify_hash():
+            raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
 
         # Create an in-memory binary stream
         file_stream = io.BytesIO(binary_content)
@@ -585,13 +581,15 @@ def parse_date(date_string: str) -> datetime.datetime:
     date = None
     match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
     if not match:
-        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
+        match = re.search(r'(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})', date_string)
         if not match:
-            match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+            match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
             if not match:
-                match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
                 if not match:
-                    return None
+                    match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                    if not match:
+                        return None
     if len(match.group(1)) == 2: year = int("20" + match.group(1))
     else: year = int(match.group(1))
     month = int(match.group(2))

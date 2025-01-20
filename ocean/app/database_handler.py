@@ -174,7 +174,6 @@ def init_db(app: Flask, run_script: str=None):
         session_instance = sessionmaker(bind=engine, autoflush=False)
         if run_script:
             with db.engine.connect() as conn:
-                print(run_script)
                 if not os.path.exists(run_script):
                     logger.info("No database script found. Assuming that no changes are required to the database.")
                 else:
@@ -199,8 +198,7 @@ def init_db(app: Flask, run_script: str=None):
                 if type(obj) != models.File:
                     if hasattr(obj, 'updated_by_id'):
                         try:
-                            if hasattr(obj, 'set_updated_by_id'):
-                                obj.set_updated_by_id(current_user.id)
+                            obj.updated_by_id = current_user.id
                         except Exception as e:
                             pass
                 else:
@@ -294,6 +292,8 @@ def exclude_role_4(func):
         else:
             abort(403)
     return wrapper 
+
+    
 
 def require_live_session(func):
     """
@@ -436,23 +436,25 @@ def create_system_time_request(session: sessionmaker, db_object, filters:dict=No
 
     query = db.text(query_str)
     queried_db_object = session.query(db_object).from_statement(query).all()
+    
+    for obj in queried_db_object:
+        # When calling this method in archive mode, it can be that parent objects have been deleted. In this case, we need to query the parent objects and add them to the queried object
+        # manually as the SQLAlchemy lazy-load of the parents doesn't work.
+        from .models import Recording, Encounter, Species, DataSource, RecordingPlatform, Selection
+        if type(obj) == Selection:
+            if not obj.recording and obj.recording_id: obj.recording = create_system_time_request(session, Recording, {'id':obj.recording_id}, one_result=True)
+        if type(obj) == Recording:
+            if not obj.encounter and obj.encounter_id: obj.encounter = create_system_time_request(session, Encounter, {'id':obj.encounter_id}, one_result=True)
+        if type(obj) == Encounter:
+            if not obj.species and obj.species_id: obj.species = create_system_time_request(session, Species, {'id':obj.species_id}, one_result=True)
+            if not obj.data_source and obj.data_source_id: obj.data_source = create_system_time_request(session, DataSource, {'id':obj.data_source_id}, one_result=True)
+            if not obj.recording_platform and obj.recording_platform_id: obj.recording_platform = create_system_time_request(session, RecordingPlatform, {'id':obj.recording_platform_id}, one_result=True)
+
     if one_result:
         try:
             queried_db_object = queried_db_object[0]
         except Exception as e:
             return None
-
-    # When calling this method in archive mode, it can be that parent objects have been deleted. In this case, we need to query the parent objects and add them to the queried object
-    # manually as the SQLAlchemy lazy-load of the parents doesn't work.
-    from .models import Recording, Encounter, Species, DataSource, RecordingPlatform, Selection
-    if type(queried_db_object) == Selection:
-        if not queried_db_object.recording and queried_db_object.recording_id: queried_db_object.recording = create_system_time_request(session, Recording, {'id':queried_db_object.recording_id}, one_result=True)
-    if type(queried_db_object) == Recording:
-        if not queried_db_object.encounter and queried_db_object.encounter_id: queried_db_object.encounter = create_system_time_request(session, Encounter, {'id':queried_db_object.encounter_id}, one_result=True)
-    if type(queried_db_object) == Encounter:
-        if not queried_db_object.species and queried_db_object.species_id: queried_db_object.species = create_system_time_request(session, Species, {'id':queried_db_object.species_id}, one_result=True)
-        if not queried_db_object.data_source and queried_db_object.data_source_id: queried_db_object.data_source = create_system_time_request(session, DataSource, {'id':queried_db_object.data_source_id}, one_result=True)
-        if not queried_db_object.recording_platform and queried_db_object.recording_platform_id: queried_db_object.recording_platform = create_system_time_request(session, RecordingPlatform, {'id':queried_db_object.recording_platform_id}, one_result=True)
 
     return queried_db_object
 
@@ -607,7 +609,6 @@ def parse_date(date_string: str) -> datetime:
     hour = match.group(4)
     minute = match.group(5)
     second = match.group(6)
-    date_string = f"{day}/{month}/{year} {hour}:{minute}:{second}"
-    date = datetime.strptime(date_string, '%d/%m/%y %H:%M:%S')
+    date = datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
 
     return date

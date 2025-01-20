@@ -16,6 +16,7 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Standard library imports
+from functools import wraps
 import os
 import re
 import tempfile
@@ -32,6 +33,7 @@ from .. import exception_handler
 from .. import utils
 from .. import filespace_handler
 from .. import response_handler
+from .. import transaction_handler
 from .routes_recording import check_editable
 
 routes_selection = Blueprint('selection', __name__)
@@ -41,21 +43,16 @@ routes_selection = Blueprint('selection', __name__)
 @database_handler.exclude_role_4
 @database_handler.require_live_session
 def calculate_contour_statistics(selection_id):
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
+            selection = session.query(models.Selection).filter_by(id=selection_id).first()
             recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
             check_editable(recording)
-            selection = session.query(models.Selection).filter_by(id=selection_id).first()
-            selection.ctr_file_generate(session)
+            selection.ctr_file_generate(transaction.create_tracked_file())
             selection.contour_statistics_calculate()
-            session.commit()
-            flash(f"Contour statistics for {selection.get_unique_name()} have been recalculated.", "success")
+            flash(f"Contour statistics for {selection.unique_name} have been recalculated.", "success")
             response.set_redirect(request.referrer)
-        except (Exception, SQLAlchemyError) as e:
-            # A ValueError from Selection.calculate_contour_statistics() occurs when the contour file is missing
-            if type(e) == ValueError: e = exception_handler.WarningException(e.args[0])
-            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error refreshing contour statistics", session=session, show_flash=False))
     return response.to_json()
 
 @routes_selection.route('/contour_file_delete/<selection_id>', methods=["POST"])
@@ -63,21 +60,16 @@ def calculate_contour_statistics(selection_id):
 @login_required
 @database_handler.exclude_role_4
 def contour_file_delete(selection_id: str):
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
-            selection_obj = session.query(models.Selection).filter_by(id=selection_id).first()
-            if selection_obj:
-                recording_obj = session.query(models.Recording).filter_by(id=selection_obj.recording_id).first()
-                check_editable(recording_obj)
-                selection_obj.contour_file_delete()
-                session.commit()
-                response.set_redirect(request.referrer)
-            else:
-                response.add_error(f"Unable to delete contour file due to internal error.")
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error deleting contour file", session=session, show_flash=False))
-        return response.to_json()
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            selection = session.query(models.Selection).filter_by(id=selection_id).first()
+            if not selection: raise exception_handler.WarningException("Unable to delete contour file due to internal error.")
+            recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
+            check_editable(recording)
+            selection.contour_file_delete()
+            flash(f"Deleted contour file from {selection.unique_name}.", "success")
+            response.set_redirect(request.referrer)
+    return response.to_json()
 
 @routes_selection.route('/process_contour', methods=["GET"])
 @database_handler.require_live_session
@@ -236,21 +228,9 @@ def process_selection():
             
     return jsonify(id=selection_number,messages=messages,valid=valid)
 
-@routes_selection.route('/serve_plot/<selection_id>')
+@routes_selection.route('/serve-plot/<selection_id>')
 @login_required
-@database_handler.require_live_session
 def serve_plot(selection_id: str):
-    """
-    A function that serves a spectrogram plot of a selection.
-
-    :param selection_id: the id of the selection
-    :type selection_id: str
-    :param fft_size: the FFT size to use for the spectrogram
-    :type fft_size: int (HTTP argument), default None
-    :param hop_size: the hop size to use for the spectrogram
-    :type hop_size: int (HTTP argument), default None
-    :return: a PNG image of the spectrogram
-    """
     with database_handler.get_operation_lock() as operation_lock:
         fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
         hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
@@ -267,30 +247,31 @@ def serve_plot(selection_id: str):
 @login_required
 @database_handler.exclude_role_4
 def contour_file_insert(recording_id):
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
             if 'file' in request.files and request.files['file'].filename != '':
+                contour_file = transaction.create_tracked_file()
+                ctr_file = transaction.create_tracked_file()
                 file_stream = request.files.get('file')
                 selection_number = request.form.get('selection_number')
                 selection = session.query(models.Selection).filter(database_handler.db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
                 if not selection: raise exception_handler.WarningException(f"Could not find corresponding selection with selection number {selection_number}.")
-                selection.contour_file_insert(session, file_stream)
-                session.commit()
+                contour_file.insert(file_stream, selection.relative_directory, selection.contour_file_name)
+                selection.contour_file_insert(contour_file = contour_file, ctr_file = ctr_file)
             else:
                 raise exception_handler.WarningException("No contour file provided.")
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=True))
     return response.to_json()
+
 
 @routes_selection.route('/recording/<recording_id>/selection-insert', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_4
 @login_required
 def selection_file_insert(recording_id):
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             check_editable(recording)
             selection_number = request.form.get('selection_number')
@@ -300,16 +281,13 @@ def selection_file_insert(recording_id):
                 selection = models.Selection(recording = recording)
                 selection.insert(request.form)
                 session.add(selection)
-                session.flush()
             # Add the selection file to the selection
             if 'file' in request.files and request.files['file'].filename != '':
-                selection.selection_file_insert(session = session, form_file = request.files['file'])
-                session.commit()      
-            else:
-                raise exception_handler.WarningException(f"Bad file in request.")
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session,show_flash=False))
-        return response.to_json()
+                selection_file = transaction.create_tracked_file()
+                selection_file.insert(request.files['file'], selection.relative_directory, selection.selection_file_name)
+                selection.selection_file_insert(file = selection_file)
+            else: raise exception_handler.WarningException(f"Bad file in request.")
+    return response.to_json()
 
 @routes_selection.route('/selection/<selection_id>/download-ctr', methods=['GET'])
 def download_ctr_file(selection_id):
@@ -389,12 +367,12 @@ def write_contour_stats(selections, filename):
     required_attrs = []
 
     header = ['Encounter','Location','Project','Recording','Species','SamplingRate','SELECTIONNUMBER']
-    for k, v in models.Selection.contour_statistics_attrs.items():
+    for k, v in models.Selection.get_contour_statistics_attrs().items():
         required_attrs.append(k)
         header.append(v[1])
     writer.writerow(header)
-
     for selection in selections:
+        print(selection.traced)
         if selection.traced:
             row = [
                 selection.recording.encounter.encounter_name,

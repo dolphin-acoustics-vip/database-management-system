@@ -4,7 +4,6 @@ app = Flask(__name__)
 
 @app.route('/')
 def maintenance_page():
-    print("The OCEAN server is currently undergoing routine maintenance. Please come back later or contact your administrator for more information.")
     return "The OCEAN server is currently undergoing routine maintenance. Please come back later or contact your administrator for more information."
 
 @app.errorhandler(404)

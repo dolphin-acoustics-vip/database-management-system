@@ -127,6 +127,7 @@ def get_broken_links():
         try:
             broken_links = filespace_handler.query_file_class(session, deleted)
             response.data['brokenLinks'] = broken_links
+            print(broken_links)
         except (Exception, SQLAlchemyError) as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()

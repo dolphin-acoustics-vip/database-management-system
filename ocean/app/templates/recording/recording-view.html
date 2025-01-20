@@ -201,10 +201,10 @@
                     <button class="link small" type="submit">Download Contour Stats</button>
                 </form>
                 <form id="calculate-contour-statistics-form" method="post" action="{{url_for('recording.calculate_contour_statistics_for_recording', recording_id=recording.id)}}">
-                    <button class="link small" type="submit">Recalculate Contour Statistics</button>
+                    <button id="calculate-contour-statistics-button" class="link small" type="submit">Recalculate Contour Statistics</button>
                 </form>
                 <script>
-                    ajaxifyForm(document.getElementById('calculate-contour-statistics-form'));
+                    ajaxifyForm(document.getElementById('calculate-contour-statistics-form'), undefined, undefined, undefined, undefined, button = document.getElementById('calculate-contour-statistics-button'), message = "Recalculating contour statistics... This may take some time, depending on the number of selections.");
                 </script>
 
                 <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
@@ -412,17 +412,19 @@
                                 <div class="selection-row" data-selection-id="{{selection.id}}">
 
                                     {% if selection.traced == None %}
-                                    {% if selection.contour_file %}
-                                    {% else %}
-                                    {% if not session['snapshot_date'] and current_user.role_id in [1,2,3] %}
-                                    <button class="gray small confirm-no-file-upload" style="width: 100%">Confirm No File
-                                        Upload</button>
-                                        {% endif %}
-                                    {% endif %}
-                                    <p id="traced-status-label" hidden>Confirmed</label>
+                                        {% if selection.contour_file %}
+                                        
                                         {% else %}
-                                    <p id="traced-status-label">Confirmed</label>
-                                        {% endif %}
+                                        
+                                            {% if not session['snapshot_date'] and current_user.role_id in [1,2,3] %}
+                                                <button class="gray small confirm-no-file-upload" style="width: 100%">Confirm No File Upload</button>
+                                            {% endif %}
+                                        
+                                            {% endif %}
+                                        <p id="traced-status-label" hidden>Confirmed</label>
+                                    {% else %}
+                                        <p id="traced-status-label">Confirmed</label>
+                                    {% endif %}
                                 </div>
 
 
@@ -517,7 +519,6 @@
     function onUserSelectionDropdownComplete(userId, user) {
         var recordingId = "{{ recording.id }}"
         var jsonData = JSON.stringify({recording_id:recordingId, user_id:userId})
-        console.log(jsonData)
         makeAjaxRequest(url="{{ url_for('recording.assign_recording') }}", method="POST", data=jsonData, contentType="application/json", error_popups=true, success_popups=true);
 
         // var xhr = new XMLHttpRequest();

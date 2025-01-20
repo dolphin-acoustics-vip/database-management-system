@@ -40,6 +40,18 @@ def validate(s: str) -> str:
         
     return s
 
+def action_to_be_deleted(session):
+    """Any files marked to be deleted will be deleted. Ensure that changes to the database have been
+    committed before calling this method."""
+    session.flush()
+    to_be_deleted_files = session.query(models.File).filter_by(to_be_deleted=True).all()
+    for file in to_be_deleted_files:
+        try:
+            file.delete(session)
+            session.commit()
+        except Exception as e:
+            from .logger import logger
+            logger.error(f"Error deleting file {file.id}: {e}")
 
 def format_date_for_filespace(d: datetime.datetime) -> str:
     if not d or type(d) != datetime.datetime: raise exception_handler.ValueError("Date is in the incorrect format.")
@@ -141,14 +153,13 @@ def clean_filespace_temp() -> None:
 # Legacy
 cleanup_temp_filespace = clean_filespace_temp
 
-def check_file_orphaned(session, path: str, deleted: bool, temp: bool) -> None:
+def check_file_orphaned(session, path: str, deleted: bool) -> None:
     """Check whether a file (identified by the path) is an orphaned file or not. The location of a file depends on
     whether they are in the deleted, temporary, or data filespace. The variables deleted and temp determine this.
     An orphaned file is a file which exists in the filespace but is not referenced by any File object.
 
     If deleted and temp are false, this function will check if the file exists in the data filespace.
     If deleted and temp are false, this function will check if the file exists in the deleted filespace.
-    If temp is true, this function will check if the file exists in the temporary filespace.
 
     :param session: the SQLAlchemy session
     :param path: the path of the file to check (note that this path is relative (and should not include any context about the trash, temp, or data filespace))
@@ -157,7 +168,7 @@ def check_file_orphaned(session, path: str, deleted: bool, temp: bool) -> None:
     :return: True if the file is an orphaned file, False otherwise
     """
     
-    return not models.File.has_record(session, path, deleted=deleted, temp=temp)
+    return not models.File.has_record(session, path, deleted=deleted)
 
 def get_orphaned_files(deleted: bool, temp: bool) -> list:
     """Search through all files in the database and check whether all links to the filespace are valid.
@@ -181,7 +192,7 @@ def get_orphaned_files(deleted: bool, temp: bool) -> list:
             for file in files:
                 file_path = os.path.relpath(os.path.join(root, file), root_path)
 
-                if check_file_orphaned(session, file_path, deleted, temp):
+                if check_file_orphaned(session, file_path, deleted):
                     id = ""
                     orphaned_files.append({'id':id,'path': file_path, 'link': url_for('filespace.delete_orphan_file', file_path=file_path, deleted=deleted), 'download': url_for('filespace.download_orphan_file', file_path=file_path, deleted=deleted) , 'deleted': deleted})
 
@@ -198,7 +209,7 @@ def delete_orphan_file(path: str, deleted: bool, temp: bool):
     root_dir = database_handler.get_root_directory(deleted, temp)
     path = os.path.join(root_dir, path)
     with database_handler.get_session() as session:
-        if check_file_orphaned(session, path, deleted, temp):
+        if check_file_orphaned(session, path, deleted):
             if os.path.exists(path):
                 os.remove(path)
             else:

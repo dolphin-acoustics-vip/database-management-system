@@ -223,7 +223,9 @@ def test_reactivate(selection: models.Selection):
 
 def test_update_traced_annotation_Y_contour(selection: models.Selection):
     selection.annotation = "Y"
-    selection.contour_file = factories.FileFactory.create()
+
+    selection.contour_file = factories.FileFactory.create(extension = "csv")
+    selection.contour_file
     selection.update_traced()
     assert selection.traced == True
     
@@ -235,7 +237,7 @@ def test_update_traced_annotation_Y_no_contour(selection: models.Selection):
     
 def test_update_traced_annotation_M_contour(selection: models.Selection):
     selection.annotation = "M"
-    selection.contour_file = factories.FileFactory.create()
+    selection.contour_file = factories.FileFactory.create(extension = "csv")
     selection.update_traced()
     assert selection.traced == True
 
@@ -247,9 +249,9 @@ def test_update_traced_annotation_M_no_contour(selection: models.Selection):
     
 def test_update_traced_annotation_N_contour(selection: models.Selection):
     selection.annotation = "N"
-    selection.contour_file = factories.FileFactory.create()
+    selection.contour_file = factories.FileFactory.create(extension = "csv")
     selection.update_traced()
-    assert selection.traced == None
+    assert selection.traced == True
     
 def test_update_traced_annotation_N_no_contour(selection: models.Selection):
     selection.annotation = "N"

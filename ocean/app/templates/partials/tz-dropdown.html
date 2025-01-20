@@ -43,12 +43,10 @@
         }
         button.innerHTML = "See More Timezones";
       }
-      console.log(default_timezone, 'DEFAULT')
       if (default_timezone == 'None') {
         select.value=null
         
       } else {
-      console.log(found, complexTimezone)
       if (!found) {
         if (!complexTimezone) {
           complexTimezone = !complexTimezone;

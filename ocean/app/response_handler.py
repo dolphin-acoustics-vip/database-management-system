@@ -17,6 +17,8 @@
 
 from flask import jsonify
 from urllib.parse import quote
+from .exception_handler import handle_exception
+import contextlib
 
 
 class JSONResponse:
@@ -77,7 +79,6 @@ class JSONResponse:
 
     def to_json(self):
         self.data = self.custom_encode(self.data)
-        print(self.data)
         d = {
             'messages': self.messages,
             'errors': self.errors,
@@ -85,3 +86,31 @@ class JSONResponse:
             'data': self.data
         }
         return jsonify(d)
+
+def response_context():
+    try:
+        yield
+    except Exception as e:
+        handle_exception(exception=e, prefix="An error occurred", show_flash=True)
+
+@contextlib.contextmanager
+def json_response_context():
+    """A context manager to use with any routes that involve the `JSONResponse` protocol.
+
+    Usage (within a Flask route where the response is returned as a JSON object)::
+        
+        with response_context() as response
+            # do something
+            response.add_message("some message")
+        return response.to_json()
+
+    Any errors that occur inside the context will be handled using `exception_handler.handle_exception()`
+    and the result of which added to the response. If an exception occurs that propagates beyond this
+    exception_handler, it will need to be caught by the context caller. This is completely dependent on
+    the code that is executed in the `with` statement.
+    """
+    response = JSONResponse()
+    try:
+        yield response
+    except Exception as e:
+        response.add_error(handle_exception(exception=e, prefix="An error occurred", show_flash=False))

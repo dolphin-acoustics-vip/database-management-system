@@ -359,8 +359,8 @@
                     "POST",
                     formData,
                     undefined,
-                    false,
-                    false,
+                    true,
+                    true,
                     successCallback = async (response) => {
                         counter = counter + 1;
                         successCounter = successCounter + 1
@@ -371,14 +371,12 @@
                         }
                     },
                     errorCallback = async (response) => {
-                        console.log("ERROR CALLBACK")
                         counter = counter + 1
                         await errors.push(file.file.name + " - " + response.errors);
                         await updateProgress(Math.round((counter / numberOfFilesToSubmit) * 100));
                         if (counter >= numberOfFilesToSubmit) {
                             if (errors.length > 0) {
                                 clearBulkUpload(undefined)
-                                alert(successCounter + " file(s) uploaded successfully.\n\n " + errors.length + " error(s) ocurred.");
                             }
                             if (successCounter > 0) {
                                     window.location.reload();

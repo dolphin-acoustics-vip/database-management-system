@@ -16,7 +16,8 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Third-party imports
-import uuid
+from functools import wraps
+import typing
 from flask import Blueprint, Response, flash, jsonify, redirect, render_template, url_for, request
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_required, current_user
@@ -29,8 +30,10 @@ from .. import exception_handler
 from .. import utils
 from .. import contour_statistics
 from .. import response_handler
+from .. import transaction_handler
 
 routes_recording = Blueprint('recording', __name__)
+
 
 def check_editable(recording: models.Recording):
     if recording.is_reviewed() or recording.is_on_hold():
@@ -61,20 +64,16 @@ def selection_table_refresh(recording_id):
 
     If the recording is marked as Reviewed and the user is not an admin, an error is logged.
     """
-    
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             check_editable(recording)
-            recording.selection_table_apply(session)
-            session.flush()
-            recording.update_selection_traced_status(session)
-            session.commit()
+            new_selections = recording.selection_table_apply()
+            for new_selection in new_selections:
+                session.add(new_selection)
+            recording.update_selection_traced_status()
             flash(f'Updated selection table for {recording.unique_name}.', 'success')
             response.set_redirect(request.referrer)
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
 
 @routes_recording.route('/recording/<recording_id>/selection-table/insert', methods=['POST'])
@@ -82,63 +81,30 @@ def selection_table_refresh(recording_id):
 @database_handler.exclude_role_4
 @login_required
 def selection_table_insert(recording_id):
-    """Post route to add a selection table file to the recording. Response uses the
-    `response_handler.JSONResponse()` protocol.
-    
-    Will extract all necessary information from the selection table. If the datatype
-    or format of the selection table are invalid, or no selection table is provided,
-    no changes are made and error(s) included in the response. If all is valid, the
-    response includes a redirect to the referrer and flashes a success message.
-
-    If the recording is marked as Reviewed and the user is not an admin, an error is
-    logged.
-    """
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    check_editable_recording(recording_id)       
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
+            selection_table_file = transaction.create_tracked_file()
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            check_editable(recording)
             if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
-                recording.selection_table_file_insert(session, request.files['selection-table-file'])
-            else:
-                response.add_error("The form did not send a selection table file.")
-            
-            recording.selection_table_apply(session)
-            session.flush()
-            recording.update_selection_traced_status(session)
-            session.commit()
-            flash("Selection table uploaded successfully", "success")
-            response.set_redirect(request.referrer)
-        except Exception as e:
-            
-            response.add_error(exception_handler.handle_exception(exception=e, prefix="Unable to upload selection table", session=session, show_flash=False))
-            
-            with database_handler.get_session() as revert_session:
-                recording = revert_session.query(models.Recording).filter_by(id=recording_id).first()
-                if recording.selection_table_file:
-                    recording.selection_table_file.move_to_trash()
-                    recording.selection_table_file = None
-                    revert_session.commit()
+                selection_table_file.insert(request.files['selection-table-file'], recording.relative_directory, recording.selection_table_file_name)
+                new_selections = recording.selection_table_file_insert(selection_table_file)
+                for new_selection in new_selections:
+                    session.add(new_selection)
+            else: raise exception_handler.WarningException("The form did not send a selection table file.")
+        flash("Selection table uploaded successfully", "success")
+        response.set_redirect(request.referrer)
     return response.to_json()
- 
 
 @routes_recording.route('/export-selection-table/<recording_id>/<export_format>', methods=['GET'])
 @login_required
-def selection_table_export(recording_id, export_format):
-    """
-    GET route to export the data of the selection table to a .csv (CSV) or .txt (TSV) file.
+def selection_table_export(recording_id: str, export_format: typing.Literal["csv", "txt"]):
     
-    Requires the `export_format` to be supplied in the route. If `export_format` is `csv` a 
-    .csv file is returned. If `export_format` is anything else a .tsv file is returned.
-
-    The route either returns the file directly or redirects to the referrer in the event of an
-    error. If an error occurs, an error message is flashed and shown to the user upon redirect.
-    """
-
     with database_handler.get_session() as session:
         try:
             recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-            return recording.selection_table_export(session, export_format)
+            return recording.selection_table_export(export_format)
         except Exception as e:
             exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
             return redirect(request.referrer)
@@ -148,19 +114,26 @@ def selection_table_export(recording_id, export_format):
 @database_handler.exclude_role_4
 @login_required
 def selection_table_delete(recording_id: str):
+    from .. import transaction_handler
     response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as (transaction_proxy):
+            session = transaction_proxy.session
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            recording.selection_table_file_delete(session)
-            recording.selection_table_data_delete(session)
-            recording.update_selection_traced_status(session)
-            session.commit()
+            transaction_proxy.track_file(recording.selection_table_file)
+            recording.selection_table_file_delete()
+            recording.update_selection_traced_status()
+            filespace_handler.action_to_be_deleted(session)
             response.set_redirect(request.referrer)
             flash(f'Deleted selection table from {recording.unique_name}.', 'success')
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+            
     return response.to_json()      
+
+def recording_file_insert_helper(recording, transaction, form):
+    if 'upload_recording_file_id' in form and 'upload_recording_file_name' in form and form['upload_recording_file_id'] and form['upload_recording_file_name']:
+        recording_file = transaction.create_tracked_file()
+        recording_file.insert(file=filespace_handler.get_complete_temporary_file(form['upload_recording_file_id'], form['upload_recording_file_name']), directory=recording.relative_directory, filename=recording.recording_file_name)
+        recording.recording_file_insert(recording_file)
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @database_handler.require_live_session
@@ -168,20 +141,35 @@ def selection_table_delete(recording_id: str):
 @database_handler.exclude_role_4
 @login_required
 def recording_insert(encounter_id: str):
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
-            recording = models.Recording()
-            recording.encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
+            encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
+            recording = models.Recording(encounter = encounter)
             session.add(recording)
             recording.insert(request.form)
-            if 'upload_recording_file_id' in request.form and 'upload_recording_file_name' in request.form and request.form['upload_recording_file_id'] and request.form['upload_recording_file_name']:
-                recording.recording_file_insert(session, filespace_handler.get_complete_temporary_file(request.form['upload_recording_file_id'], request.form['upload_recording_file_name']))
-            session.commit()
+            recording_file_insert_helper(recording, transaction, request.form)
             flash(f'Inserted {recording.unique_name}.', 'success')
             response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error inserting recording", session=session, show_flash=False))
+    return response.to_json()
+
+@routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_3
+@database_handler.exclude_role_4
+@login_required
+def recording_update(recording_id: str) -> Response:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
+            recording = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
+            if not recording: raise exception_handler.DoesNotExistError("recording")
+            check_editable(recording)
+            recording.update(request.form)
+            session.add(recording)
+            recording_file_insert_helper(recording, transaction, request.form)
+            flash(f'Updated {recording.unique_name}.', 'success')
+        response.set_redirect(request.referrer)
     return response.to_json()
 
 @routes_recording.route('/recording/<recording_id>/view', methods=['GET'])
@@ -300,50 +288,21 @@ def assignment_delete():
     return response.to_json()
 
 
-@routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
-@database_handler.require_live_session
-@database_handler.exclude_role_3
-@database_handler.exclude_role_4
-@login_required
-def recording_update(recording_id: str) -> Response:
-    # Create a response with redirect to the referring page
-    response = response_handler.JSONResponse(redirect=request.referrer)
-    with database_handler.get_session() as session:
-        try:
-            recording_obj = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
-            check_editable(recording_obj)
-            recording_obj.update(request.form)
-            if 'upload_recording_file_id' in request.form and 'upload_recording_file_name' in request.form and request.form['upload_recording_file_id'] and request.form['upload_recording_file_name']:
-                print(request.form['upload_recording_file_id'], request.form['upload_recording_file_name'])
-                recording_obj.recording_file_insert(session, filespace_handler.get_complete_temporary_file(request.form['upload_recording_file_id'], request.form['upload_recording_file_name']))
-            recording_obj.apply_updates()
-            session.commit()
-            flash(f'Updated {recording_obj.unique_name}.', 'success')
-            recording_obj.apply_updates()
-        except (SQLAlchemyError,Exception) as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
-    return response.to_json()
-
 @routes_recording.route('/recording/<recording_id>/delete', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
 def recording_delete(recording_id):
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             if recording:
                 encounter_id = recording.encounter_id
                 unique_name = recording.unique_name
-                recording.delete()
-                session.delete(recording)
-                session.commit()
+                recording.delete(session)
                 flash(f'Deleted {unique_name}.', 'success')
             response.set_redirect(url_for("encounter.encounter_view", encounter_id=encounter_id))
-        except (Exception,SQLAlchemyError) as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
 
 @routes_recording.route('/recording/<recording_id>/recording-file-delete',methods=['POST'])
@@ -352,21 +311,14 @@ def recording_delete(recording_id):
 @database_handler.exclude_role_4
 @login_required
 def recording_file_delete(recording_id):
-    """
-    A function for deleting a recording file of a given ID
-    """
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            recording.recording_file_delete(session)
+            recording.recording_file_delete()
             session.commit()
             flash(f'Deleted recording file from {recording.unique_name}.', 'success')
             response.set_redirect(request.referrer)
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
-        
 
 @routes_recording.route('/recording/recording_delete_selections', methods=['DELETE'])
 @database_handler.require_live_session
@@ -387,10 +339,7 @@ def recording_delete_selections():
         flask.Response: the response object (see response_handler.JSONResponse)
     """
     response = response_handler.JSONResponse()
-
-
     data = request.get_json()
-
     selection_ids = data.get('selectionIds', [])
     if selection_ids == None or len(selection_ids) == 0:
         response.add_error('No selections selected for deletion.')
@@ -404,8 +353,7 @@ def recording_delete_selections():
                 selection = session.query(models.Selection).filter_by(id=selection_id).first()
                 recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
                 check_editable(recording)
-                selection.delete()
-                session.delete(selection)
+                selection.delete(session)
                 session.commit()
                 counter += 1
             except (SQLAlchemyError,Exception) as e:
@@ -432,7 +380,7 @@ def extract_date():
     response = response_handler.JSONResponse()
     try:
         filename = request.form.get('filename')
-        date = database_handler.parse_date(filename)
+        date = utils.parse_date(filename)
         if not date:
             response.add_error('No date found in filename.')
         else:
@@ -501,47 +449,17 @@ def unassign_recording():
 @database_handler.exclude_role_4
 @database_handler.require_live_session
 def calculate_contour_statistics_for_recording(recording_id: str):
-    """Recalculates the contour statistics for all selections associated with the recording specified by recording_id.
-    Any errors processing contours will not halt the recalculation - it will merely be skipped and an error message added
-    to the response (see response_handler.JSONResponse).
-
-    Args:
-        recording_id (str): The ID of the recording to recalculate contour statistics for.
-
-    Returns:
-        flask.Response: A JSON response containing the updated recording and any errors that occurred.
-    """
-    response = response_handler.JSONResponse()
-
-    # First collect all the selections in the recording
-    with database_handler.get_session() as session:
-        # Preamble - checking the user has permissions to edit the recording and collecting
-        # all selections of the recording
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction_proxy:
+            session = transaction_proxy.session
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             check_editable(recording)
-            selections = session.query(models.Selection).filter_by(recording_id=recording_id).all()
-        except (Exception, SQLAlchemyError) as e:
-            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
-            return response.to_json()
-        
-        count = 0
-        for selection in selections:
-            try:
-                # Check if the user has permission to edit the selection
-                recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
-                check_editable(recording)
-                from .routes_selection import generate_ctr_file
-                generate_ctr_file(session, selection.id)
-                selection.calculate_contour_statistics()
-                session.commit()
-                count += 1
-            except (Exception, SQLAlchemyError) as e:
-                # A ValueError from Selection.calculate_contour_statistics() occurs when the contour file is missing
-                if type(e) == ValueError: e = exception_handler.WarningException(e.args[0])
-                response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
-    
-    response.add_message(f"{count} contour statistic(s) and CTR file(s) were regenerated.")
+            count = 0
+            for selection in recording.selections:
+                if selection.contour_file: selection.ctr_file_generate(transaction_proxy.create_tracked_file())
+                selection.contour_statistics_calculate()
+                if selection.contour_file: count += 1
+        response.add_message(f"{count} contour statistic(s) and CTR file(s) were regenerated.")
     return response.to_json()
     
 
@@ -552,7 +470,7 @@ def download_ctr_files(recording_id):
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
-        file_names = [selection.generate_ctr_file_name() for selection in selections if selection.ctr_file is not None]
+        file_names = [selection.ctr_file_name for selection in selections if selection.ctr_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_ctr_files.zip"
         file_paths = [ctr_file.get_full_absolute_path() for ctr_file in ctr_files]
         response = utils.download_files(ctr_files, file_names, zip_filename)
@@ -574,7 +492,7 @@ def download_selection_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
-        file_names = [selection.generate_selection_file_name() for selection in selections if selection.selection_file is not None]
+        file_names = [selection.selection_file_name for selection in selections if selection.selection_file is not None]
         zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_selection_files.zip"
         file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
         response = utils.download_files(selection_files, file_names, zip_filename)
@@ -594,9 +512,8 @@ def download_contour_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
-        file_names = [selection.generate_contour_file_name() for selection in selections if selection.contour_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name()}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_contour_files.zip"
-        file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
+        file_names = [selection.contour_file_name for selection in selections if selection.contour_file is not None]
+        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_contour_files.zip"
         response = utils.download_files(contour_files, file_names, zip_filename)
         return response
     

@@ -110,10 +110,10 @@
             {% endif %}
             
             <form id="recalculate-contour-statistics-form" method="post" action="{{url_for('selection.calculate_contour_statistics', selection_id=selection.id)}}">
-                <button class="link small" type="submit">Recalculate Contour Statistics</button>
+                <button id="recalculate-contour-statistics-button" class="link small" type="submit">Recalculate Contour Statistics</button>
             </form>
             <script>
-                ajaxifyForm(document.getElementById('recalculate-contour-statistics-form'));
+                ajaxifyForm(document.getElementById('recalculate-contour-statistics-form'), undefined, undefined, undefined, undefined, button = document.getElementById("recalculate-contour-statistics-button"), message = "Recalculating contour statistics...");
             </script>
 
             {% else %}

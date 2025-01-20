@@ -28,7 +28,18 @@
  * NOTE: for the error and message popups, the default JS alert() method is used if a redirect link is provided. Otherwise the method assumes the
  * page will not be refreshed making it safe to use the JQuery toast library.
  */
-async function makeAjaxRequest(url, method, data, contentType = "application/x-www-form-urlencoded; charset=UTF-8", error_popups = true, message_popups = true, successCallback = null, errorCallback = null) {
+async function makeAjaxRequest(url, method, data, contentType = "application/x-www-form-urlencoded; charset=UTF-8", error_popups = true, message_popups = true, successCallback = null, errorCallback = null, button = null, message = null) {
+  if (message != null) {
+    await $.toast({
+      heading: message,
+      icon: 'info',
+      hideAfter: 5000,
+      preventDuplicates: true,
+      showHideTransition: 'slide',
+      position: 'top-right',
+    });   
+  }
+  
   var ajaxSettings = await {
     url: url,
     method: method,
@@ -48,7 +59,7 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
      */
     success: async function(response) {
       var error = false;
-
+      if (button != null) button.disabled = false;
       // Ensure response is in the form of a JSON object with 'messages', 'errors', and 'redirect' keys
       if (!(response instanceof Object) || !response.hasOwnProperty('messages') || !response.hasOwnProperty('errors') || !response.hasOwnProperty('redirect')) {
         await $.toast({
@@ -142,16 +153,17 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
   await $.ajax(ajaxSettings);
 }
 
-  function makeAjaxRequestForm(form, error_popups = true, message_popups = true, successCallback = null, errorCallback = null) {
+  function makeAjaxRequestForm(form, error_popups = true, message_popups = true, successCallback = null, errorCallback = null, button = null, message = null) {
     var url = form.action;
     var method = form.method;
     var data = new FormData(form);
-    makeAjaxRequest(url=url, method=method, data=data, contentType=undefined, error_popups=error_popups, message_popups=message_popups, successCallback=successCallback, errorCallback=errorCallback);
+    makeAjaxRequest(url=url, method=method, data=data, contentType=undefined, error_popups=error_popups, message_popups=message_popups, successCallback=successCallback, errorCallback=errorCallback, button = button, message = message);
   }
 
-  function ajaxifyForm(form, error_popups = true, message_popups = true, successCallback = null, errorCallback = null) {
+  function ajaxifyForm(form, error_popups = true, message_popups = true, successCallback = null, errorCallback = null, button = null, message = null) {
     form.addEventListener('submit', function(event) {
       event.preventDefault();
-      makeAjaxRequestForm(form, error_popups, message_popups, successCallback, errorCallback);
+      if (button != null) button.disabled = true;
+      makeAjaxRequestForm(form, error_popups, message_popups, successCallback, errorCallback, button, message);
     });
   }

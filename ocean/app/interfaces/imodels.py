@@ -3,7 +3,7 @@
 from abc import ABC, ABCMeta, abstractmethod
 import datetime
 import io
-from typing import Protocol
+from typing import Protocol, final
 from uuid import UUID
 import uuid
 from sqlalchemy.ext.declarative import declared_attr
@@ -41,6 +41,7 @@ class Serialisable(ABC):
         """
         pass
 
+    @final
     def to_dict(self) -> typing.Dict[str, typing.Any]:
         """Convert the object to a dictionary representation.
         
@@ -71,11 +72,7 @@ class TableOperations(ABC):
     @abstractmethod
     def _insert_or_update(self, form, new):
         """A method that inserts or updates data in the object
-        based on form data. 
-        
-        Raises:
-            AttributeError: if the form is missing data
-            exception_handler.ValidationError: if the form data is invalid
+        based on form data.
         """
         pass
 
@@ -92,15 +89,7 @@ class TableOperations(ABC):
         """
         self._insert_or_update(form=form, new=False)
 
-    @abstractmethod
-    def delete(self):
-        """Check if the object can be deleted. Raise an exception if it
-        cannot be deleted.
-        
-        An exception is raised usually if the object has foreign key
-        dependencies that are not allowed to be automatically resolved.
-        This will cause an `exception_handler.WarningException` to be raised
-        """
+    def _delete(self):
         raise NotImplementedError()
 
     @property
@@ -109,6 +98,144 @@ class TableOperations(ABC):
         """The unique name of the object"""
         pass
 
+    @final
+    def apply_updates(self):
+        with database_handler.get_session() as session:
+            if issubclass(type(self), FileSpaceDependency):
+                self._update_filespace()
+            if issubclass(type(self), Cascading):
+                for child in self._get_children():
+                    if issubclass(type(child), TableOperations):
+                        child.apply_updates()
+            session.commit()
+
+class IFile(AbstractModelBase, Serialisable, TableOperations):
+    __tablename__ = 'file'
+
+    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    directory = database_handler.db.Column(database_handler.db.String(255), nullable=False)
+    filename = database_handler.db.Column(database_handler.db.String(255), nullable=False)
+    uploaded_date = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
+    upload_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
+
+    extension = database_handler.db.Column(database_handler.db.String(10), nullable=False)
+    duration = database_handler.db.Column(database_handler.db.Integer)
+    deleted = database_handler.db.Column(database_handler.db.Boolean, default=False)
+    original_filename = database_handler.db.Column(database_handler.db.String(255))
+    hash = database_handler.db.Column(database_handler.db.LargeBinary)
+    to_be_deleted = Column(Boolean, nullable=False, default=False)
+
+    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    # @validates("filename")
+    # def _validate_filename(self, key, value):
+    #     return utils.secure_fname(utils.validate_string(value=value, field=key, allow_none=False))
+    
+
+    @validates("directory")
+    def _validate_directory(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none = True)
+    
+    @validates("extension")
+    def _validate_extension(self, key, value):
+        value = utils.validate_string(value=value, field=key, allow_none = False)
+        if value.startswith("."): return value[1:]
+        return value
+
+    @validates("Uploaded_date", "uploaded_datetime")
+    def _validate_datetime(self, key, value):
+        return utils.validate_datetime(value=value, field=key, allow_none=False)
+    
+    # @validates("hash")
+    # def _validate_hash(self, key, value):
+    #     return utils.validate_string(value=value, field=key, allow_none=False)
+
+    def _to_dict(self):
+        return {
+            "id": self.id,
+            "directory": self.directory,
+            "filename": self.filename,
+            "uploaded_date": self.uploaded_date,
+            "extension": self.extension,
+            "deleted": self.deleted,
+            "original_filename": self.original_filename,
+            "hash": self.hash,
+            "updated_by_id": self.updated_by_id,
+            "path": self.path
+        }
+    
+    def _form_dict(self):
+        raise NotImplementedError
+    
+    @property
+    def unique_name(self):
+        return f"{self.filename}.{self.extension}, {str(self.hash)[:6]}"
+    
+    @classmethod
+    def has_record(self, session, path: str, deleted: bool = False) -> bool:
+        """Search through all `File` objects in the database to find all those with a particular `path`. If `deleted` is
+        true, the search will include only `File` objects marked as deleted (soft-delete), otherwise the search will find
+        all `File` objects not marked as deleted. As each path is unique, there is only one `File` object that could possibly
+        be returned. The `path` should include the directory and filename of the file, not including the filespace root
+        directory.
+
+        The search will be completed on the provided `session`. The method returns `True` if a match was found, `False` otherwise.
+        """
+        raise NotImplementedError
+
+    def insert(self, session, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
+        """Insert a file into the filespace. This method will save the argument `file` to the filespace with the given
+        `directory` and `filename`. If `file` is a file-like object, and does not contain a `filename` attribute, the
+        `original_filename` and `extension` are implied. If `file` is a stream, the `original_filename` and `extension`
+        must be provided (failure to do so raises `CriticalException`).
+
+        WARNING: DO NOT add the `file` object to the `session` before calling this method. DO NOT assign this object to
+        any attribute in another model before calling this method. 
+
+        THIS METHOD SAVES THE FILE, AND COMMITS THE PROVIDED SESSION. THIS SHOULD BE THE LAST METHOD CALLED AS ANY ROLLBACK
+        WILL NOT APPLY TO ANY CHANGES MADE BEFORE CALLING THIS METHOD.
+
+        This method will automatically commit the changes to the provided `session` for atomicity. Any issues that occur
+        during the insertion process will revert all changes to the provided session. It is recommended to call this
+        method with a fresh or recently committed session to avoid unexpected issues.
+        """
+        raise NotImplementedError
+    
+    def update(self, directory: str = None, filename: str = None):
+        """Move the file to the new directory and filename provided. Will automatically
+        update values of `self.directory` and `self.filename`. The hash of the file will
+        not change as the file is simply being moved. The argument `filename` MUST NOT
+        contain an extension - if it does, there will be more than one extension.
+        """
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def filename_with_extension(self):
+        """Return the filename with extension."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def path(self):
+        """Return the path to the file in the object. This path does not include the filespace root directory."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def mark_for_deletion(self):
+        """Mark the file object for deletion. Changes need to be comitted by the caller."""
+        raise NotImplementedError
+
+class FileSpaceDependency(ABC):
+    """A superclass that should be used on any models with dependency on the filespace."""
+
+    @abstractmethod
+    def _get_filespace_children(self):
+        """Mark dependencies of the object on the filespace for deletion."""
+        raise NotImplementedError
+
+    @abstractmethod
     def _update_filespace(self):
         """Update all child objects that impact the filespace (objects of the
         `File` class).
@@ -127,19 +254,34 @@ class TableOperations(ABC):
         """
         return
 
-    def apply_updates(self):
-        with database_handler.get_session() as session:
-            self._update_filespace()
-            if issubclass(type(self), Cascading):
-                for child in self._get_children(session):
-                    if issubclass(type(child), TableOperations):
-                        child.apply_updates()
-            session.commit()
+    @final
+    def _set_file(self, obj_attr, new_file_obj: IFile, nullable = False, overridable = True, dtypes = None):
+        # Validate all attributes
+        if not hasattr(self, obj_attr):
+            if new_file_obj: new_file_obj.rollback()
+            raise exception_handler.CriticalException(f"Object has no attribute {obj_attr}.")
+        if not nullable and not new_file_obj: 
+            if new_file_obj: new_file_obj.rollback()
+            raise exception_handler.CriticalException(f"File object cannot be None for {obj_attr}.")
+        if nullable and not new_file_obj: return None
+        if not isinstance(new_file_obj, IFile): 
+            if new_file_obj: new_file_obj.rollback()
+            raise exception_handler.CriticalException(f"File object must be of subclass IFile for {obj_attr}.")
+        if dtypes:
+            if not new_file_obj.extension or (new_file_obj.extension and new_file_obj.extension.lower() not in dtypes):
+                if new_file_obj: new_file_obj.rollback()
+                raise exception_handler.WarningException(f"File extension must be one of {', '.join(dtypes)} for {obj_attr}.")
+        file_obj = getattr(self, obj_attr)
+        # If there already exists a file object and overridable is False then raise an exception
+        if file_obj and not overridable: raise exception_handler.WarningException(f"Object already has a file object.")
+        elif file_obj and overridable: file_obj.mark_for_deletion()
+
+        return new_file_obj
 
 class Cascading(ABC):
     
     @abstractmethod
-    def _get_children(self, session):
+    def _get_children(self):
         """Return a list of child objects of this obejct (also known as foreign key
         dependencies). The exact datatype of child objects will vary by implementation
         of this method. All child objects will be bound to the session passed as a
@@ -157,19 +299,35 @@ class Cascading(ABC):
         """
         pass
 
-    def _delete_children(self):
+    @final
+    def _delete_children(self, session):
         """Cascade delete all children of this object. The children are defined by
         the `_get_children()` method.
         
         The implementation of cascading is dependent on the `delete` method of all
         child objects.
         """
-        with database_handler.get_session() as session:
-            for child in self._get_children(session):
-                if issubclass(type(child), Cascading):
-                    child.delete()
-                    session.delete(child)
-                    session.commit()
+        # If this object is Cascading (i.e. it can children who need deletion first)
+        # then delete them first
+        for child in self._get_children():
+            if issubclass(type(child), Cascading):
+                if issubclass(type(child), IFile):
+                    raise Exception(f"Cannot cascade delete a file {str(child)}.")
+                child._delete_children(session)
+            session.delete(child)
+
+        # Ensure any filespace dependencies are marked for deletion
+        if issubclass(type(self), FileSpaceDependency):
+            for child in self._get_filespace_children():
+                if child: child.mark_for_deletion()
+
+        session.delete(self)
+
+    @final
+    def delete(self, session):
+        self._delete_children(session)
+        from ..filespace_handler import action_to_be_deleted
+        action_to_be_deleted(session)
 
 class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     __tablename__ = 'species'
@@ -182,6 +340,9 @@ class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     common_name = Column(String(100))
     updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
+    def _get_children(self):
+        return self.encounters
 
     def _to_dict(self):
         return {
@@ -292,9 +453,14 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
     recording_platform = database_handler.db.relationship("RecordingPlatform")
     updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
+
     __table_args__ = (
         database_handler.db.UniqueConstraint('encounter_name', 'location', 'project'),
     )
+
+    def _get_children(self):
+        return self.recordings
+
 
     def _to_dict(self):
         return {
@@ -387,7 +553,7 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
         be secure (for example see `from werkzeug.utils import secure_filename`)"""
         pass
 
-class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
+class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading, FileSpaceDependency):
     __tablename__ = 'recording'
 
     # identifiers
@@ -414,6 +580,19 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
     __table_args__ = (
         database_handler.db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
+
+    def _get_children(self):
+        """Returns a list of the child objects of this object.
+        
+        Children count as any reference from this object to another object in the database. Or
+        any foreign key reference from another object in the database to this object. For `Recording`
+        children are `Selection` (0 or more) and `File` ( 1`selection_table_file` and 1 
+        `recording_file`) objects.
+        """
+        children = []
+        children.extend(self.selections)
+        children.extend(self.assignments)
+        return children
 
     def _to_dict(self):
         return {
@@ -448,6 +627,14 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
     @validates("recording_file_id", "selection_table_file_id", "updated_by_id")
     def _validate_id_nullable(self, key, value):
         return utils.validate_id(value=value, field=key, allow_none=True)
+
+    @validates("recording_file")
+    def _validate_recording_file(self, key, value):
+        return self._set_file(key, value, nullable = True, overridable = False, dtypes = ["wav"])
+
+    @validates("selection_table_file")
+    def _validate_selection_table_file(self, key, value):
+        return self._set_file(key, value, nullable = True, overridable = False, dtypes = ["csv", "txt", "xlsx"])
 
     @validates("start_time")
     def _validate_datetime(self, key, value):
@@ -571,21 +758,18 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
         Regardless of any of the above conditions if the status is on `On Hold` or `Reviewed` it will not change.
         """
         raise NotImplementedError()
-    
-    @abstractmethod
-    def get_selections(self, session):
-        """Returns an ordered list of `Selection` objects that are associated with the recording."""
-        raise NotImplementedError()
 
     @abstractmethod
-    def update_selection_traced_status(self, session):
+    def update_selection_traced_status(self):
         """Updates the `traced` status of the `Selection` objects that are associated with the recording. 
         Does not commit the session automatically. Does not make changes to the session."""
         raise NotImplementedError()
 
+    @abstractmethod
     def recording_file_delete(self, session):
-        """Soft-delete the recording file and remove it from the recording object. Changes will be made and
-        committed to the provided session to ensure atomicity with the filespace."""
+        """Soft-delete the recording file and remove it from the recording object. The changes will be comitted
+        by this method to the given `session`. It is recommended to call this method with a fresh
+        session."""
         raise NotImplementedError()
 
     @abstractmethod
@@ -596,9 +780,9 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
         inserted into the database or filespace."""
         raise NotImplementedError
     
-    def selection_table_file_selete(self, session):
-        """Soft-delete the selection table file and remove it from the recording object. Changes will be made and
-        committed to the provided session to ensure atomicity with the filespace."""
+    @abstractmethod
+    def selection_table_file_delete(self):
+        """Soft-delete the selection table file and remove it from the recording object."""
         raise NotImplementedError
 
     @abstractmethod
@@ -609,7 +793,7 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading):
         inserted into the database or filespace."""
         raise NotImplementedError
 
-class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
+class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, FileSpaceDependency):
     __tablename__ = 'selection'
 
     id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
@@ -709,31 +893,92 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
         {"mysql_engine": "InnoDB", "mysql_charset": "latin1", "mysql_collate": "latin1_swedish_ci"}
     )
 
+    DATA_TYPES = {
+        "selection_file": ["wav"],
+        "contour_file": ["csv", "xlsx", "txt"],
+        "ctr_file": ["ctr"]
+    }
+
+    def _get_children(self):
+        return []
+
+    @final
+    @staticmethod
+    def get_contour_statistics_attrs() -> typing.Dict[str,type]:
+        """A dictionary of all the contour statistics attribute names (string) as the key and
+        a tuple of the the attribute data type and the column name and a boolean as the value.
+        The boolean is meant to indicate whether the attribute should be included on the selection
+        table or not.
+        """
+        return {
+            "freq_max": (float, "FREQMAX", True),
+            "freq_min": (float, "FREQMIN", True),
+            "duration": (float, "DURATION", True),
+            "freq_begin": (float, "FREQBEG", True),
+            "freq_end": (float, "FREQEND", True),
+            "freq_range": (float, "FREQRANGE", True),
+            "dc_mean": (float, "DCMEAN", True),
+            "dc_standarddeviation": (float, "DCSTDDEV", True),
+            "freq_mean": (float, "FREQMEAN", True),
+            "freq_standarddeviation": (float, "FREQSTDDEV", True),
+            "freq_median": (float, "FREQMEDIAN", True),
+            "freq_center": (float, "FREQCENTER", True),
+            "freq_relbw": (float, "FREQRELBW", True),
+            "freq_maxminratio": (float, "FREQMAXMINRATIO", True),
+            "freq_begendratio": (float, "FREQBEGENDRATIO", True),
+            "freq_quarter1": (float, "FREQQUARTER1", True),
+            "freq_quarter2": (float, "FREQQUARTER2", True),
+            "freq_quarter3": (float, "FREQQUARTER3", True),
+            "freq_spread": (float, "FREQSPREAD", True),
+            "dc_quarter1mean": (float, "DCQUARTER1MEAN", True),
+            "dc_quarter2mean": (float, "DCQUARTER2MEAN", True),
+            "dc_quarter3mean": (float, "DCQUARTER3MEAN", True),
+            "dc_quarter4mean": (float, "DCQUARTER4MEAN", True),
+            "freq_cofm": (float, "FREQCOFM", True),
+            "freq_stepup": (int, "FREQSTEPUP", True),
+            "freq_stepdown": (int, "FREQSTEPDOWN", True),
+            "freq_numsteps": (int, "FREQNUMSTEPS", True),
+            "freq_slopemean": (float, "FREQSLOPEMEAN", True),
+            "freq_absslopemean": (float, "FREQABSSLOPEMEAN", True),
+            "freq_posslopemean": (float, "FREQPOSSLOPEMEAN", True),
+            "freq_negslopemean": (float, "FREQNEGSLOPEMEAN", True),
+            "freq_sloperatio": (float, "FREQSLOPERATIO", True),
+            "freq_begsweep": (int, "FREQBEGSWEEP", True),
+            "freq_begup": (int, "FREQBEGUP", True),
+            "freq_begdown": (int, "FREQBEGDWN", True),
+            "freq_endsweep": (int, "FREQENDSWEEP", True),
+            "freq_endup": (int, "FREQENDUP", True),
+            "freq_enddown": (int, "FREQENDDWN", True),
+            "num_sweepsupdown": (int, "NUMSWEEPSUPDWN", True),
+            "num_sweepsdownup": (int, "NUMSWEEPSDWNUP", True),
+            "num_sweepsupflat": (int, "NUMSWEEPSUPFLAT", True),
+            "num_sweepsdownflat": (int, "NUMSWEEPSDWNFLAT", True),
+            "num_sweepsflatup": (int, "NUMSWEEPSFLATUP", True),
+            "num_sweepsflatdown": (int, "NUMSWEEPSFLATDWN", True),
+            "freq_sweepuppercent": (float, "FREQSWEEPUPPERCENT", True),
+            "freq_sweepdownpercent": (float, "FREQSWEEPDWNPERCENT", True),
+            "freq_sweepflatpercent": (float, "FREQSWEEPFLATPERCENT", True),
+            "num_inflections": (int, "NUMINFLECTIONS", True),
+            "inflection_maxdelta": (float, "INFLMAXDELTA", True),
+            "inflection_mindelta": (float, "INFLMINDELTA", True),
+            "inflection_maxmindelta": (float, "INFLMAXMINDELTA", True),
+            "inflection_mediandelta": (float, "INFLMEDIANDELTA", True),
+            "inflection_meandelta": (float, "INFLMEANDELTA", True),
+            "inflection_standarddeviationdelta": (float, "INFLSTDDEVDELTA", True),
+            "inflection_duration": (float, "INFLDUR", True),
+            "step_duration": (float, "STEPDUR", True),
+        }
+
     @validates('selection_number')
     def _validate_int(self, key, value):
         return utils.validate_int(value, field=key, allow_none=False)
     
-    @validates(
+    @validates(*[
         'default_fft_size',
         'default_hop_size',
         'channel',
-        'freq_stepup',
-        'freq_stepdown',
-        'freq_numsteps',
-        'freq_begsweep',
-        'freq_begup',
-        'freq_begdown',
-        'freq_endsweep',
-        'freq_endup',
-        'freq_enddown',
-        'num_sweepsupdown',
-        'num_sweepsdownup',
-        'num_sweepsupflat',
-        'num_sweepsdownflat',
-        'num_sweepsflatup',
-        'num_sweepsflatdown',
-        'num_inflections',
-        )
+        *[attr for attr, (dtype, _, _) in get_contour_statistics_attrs().items() if dtype is int]
+    ])
     def _validate_int_nullable(self, key, value):
         return utils.validate_int(value, field=key, allow_none=True)
 
@@ -741,9 +986,21 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
     def _validate_uuid(self, key, value):
         return utils.validate_id(value, field=key, allow_none=False)
 
-    @validates('selection_file_id', 'contour_file_id', 'ctr_file_id', 'updated_by_id')
+    @validates('updated_by_id', 'selection_file_id', 'contour_file_id', 'ctr_file_id')
     def _validate_uuid_nullable(self, key, value):
         return utils.validate_id(value, field=key, allow_none=True)
+    
+    @validates("selection_file")
+    def _validate_selection_file(self, key, value):
+        return self._set_file(key, value, nullable = True, overridable = False, dtypes = ["wav"])
+
+    @validates("contour_file")
+    def _validate_contour_file(self, key, value):
+        return self._set_file(key, value, nullable = True, overridable = False, dtypes = ["csv"])
+
+    @validates("ctr_file")
+    def _validate_ctr_file(self, key, value):
+        return self._set_file(key, value, nullable = True, overridable = True, dtypes = ["ctr"])
 
     @validates(
         'sampling_rate',
@@ -845,76 +1102,11 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
             'selection_number':True,
         }
 
-    @staticmethod
-    def get_contour_statistics_attrs() -> typing.Dict[str,type]:
-        """A dictionary of all the contour statistics attribute names (string) as the key and
-        a tuple of the the attribute data type and the column name and a boolean as the value.
-        The boolean is meant to indicate whether the attribute should be included on the selection
-        table or not.
-        """
-        return {
-            "freq_max": (float, "FREQMAX", True),
-            "freq_min": (float, "FREQMIN", True),
-            "duration": (float, "DURATION", True),
-            "freq_begin": (float, "FREQBEG", True),
-            "freq_end": (float, "FREQEND", True),
-            "freq_range": (float, "FREQRANGE", True),
-            "dc_mean": (float, "DCMEAN", True),
-            "dc_standarddeviation": (float, "DCSTDDEV", True),
-            "freq_mean": (float, "FREQMEAN", True),
-            "freq_standarddeviation": (float, "FREQSTDDEV", True),
-            "freq_median": (float, "FREQMEDIAN", True),
-            "freq_center": (float, "FREQCENTER", True),
-            "freq_relbw": (float, "FREQRELBW", True),
-            "freq_maxminratio": (float, "FREQMAXMINRATIO", True),
-            "freq_begendratio": (float, "FREQBEGENDRATIO", True),
-            "freq_quarter1": (float, "FREQQUARTER1", True),
-            "freq_quarter2": (float, "FREQQUARTER2", True),
-            "freq_quarter3": (float, "FREQQUARTER3", True),
-            "freq_spread": (float, "FREQSPREAD", True),
-            "dc_quarter1mean": (float, "DCQUARTER1MEAN", True),
-            "dc_quarter2mean": (float, "DCQUARTER2MEAN", True),
-            "dc_quarter3mean": (float, "DCQUARTER3MEAN", True),
-            "dc_quarter4mean": (float, "DCQUARTER4MEAN", True),
-            "freq_cofm": (float, "FREQCOFM", True),
-            "freq_stepup": (int, "FREQSTEPUP", True),
-            "freq_stepdown": (int, "FREQSTEPDOWN", True),
-            "freq_numsteps": (int, "FREQNUMSTEPS", True),
-            "freq_slopemean": (float, "FREQSLOPEMEAN", True),
-            "freq_absslopemean": (float, "FREQABSSLOPEMEAN", True),
-            "freq_posslopemean": (float, "FREQPOSSLOPEMEAN", True),
-            "freq_negslopemean": (float, "FREQNEGSLOPEMEAN", True),
-            "freq_sloperatio": (float, "FREQSLOPERATIO", True),
-            "freq_begsweep": (int, "FREQBEGSWEEP", True),
-            "freq_begup": (int, "FREQBEGUP", True),
-            "freq_begdown": (int, "FREQBEGDWN", True),
-            "freq_endsweep": (int, "FREQENDSWEEP", True),
-            "freq_endup": (int, "FREQENDUP", True),
-            "freq_enddown": (int, "FREQENDDWN", True),
-            "num_sweepsupdown": (int, "NUMSWEEPSUPDWN", True),
-            "num_sweepsdownup": (int, "NUMSWEEPSDWNUP", True),
-            "num_sweepsupflat": (int, "NUMSWEEPSUPFLAT", True),
-            "num_sweepsdownflat": (int, "NUMSWEEPSDWNFLAT", True),
-            "num_sweepsflatup": (int, "NUMSWEEPSFLATUP", True),
-            "num_sweepsflatdown": (int, "NUMSWEEPSFLATDWN", True),
-            "freq_sweepuppercent": (float, "FREQSWEEPUPPERCENT", True),
-            "freq_sweepdownpercent": (float, "FREQSWEEPDWNPERCENT", True),
-            "freq_sweepflatpercent": (float, "FREQSWEEPFLATPERCENT", True),
-            "num_inflections": (int, "NUMINFLECTIONS", True),
-            "inflection_maxdelta": (float, "INFLMAXDELTA", True),
-            "inflection_mindelta": (float, "INFLMINDELTA", True),
-            "inflection_maxmindelta": (float, "INFLMAXMINDELTA", True),
-            "inflection_mediandelta": (float, "INFLMEDIANDELTA", True),
-            "inflection_meandelta": (float, "INFLMEANDELTA", True),
-            "inflection_standarddeviationdelta": (float, "INFLSTDDEVDELTA", True),
-            "inflection_duration": (float, "INFLDUR", True),
-            "step_duration": (float, "STEPDUR", True),
-        }
-
     @abstractmethod
-    def selection_file_delete(self):
-        """Delete the selection file associated with the selection. The session used to call
-        this method needs to be committed by the caller."""
+    def selection_file_delete(self, session):
+        """Delete the selection file associated with the selection. The changes will be comitted
+        by this method to the given `session`. It is recommended to call this method with a fresh
+        session."""
         raise NotImplementedError
 
     @abstractmethod
@@ -934,9 +1126,10 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
         raise NotImplementedError
     
     @abstractmethod
-    def ctr_file_delete(self):
-        """Delete the CTR file associated with the selection. The session used to call
-        this method needs to be committed by the caller."""
+    def ctr_file_delete(self, session):
+        """Delete the CTR file associated with the selection. The changes will be comitted
+        by this method to the given `session`. It is recommended to call this method with a fresh
+        session."""
         raise NotImplementedError
 
     @abstractmethod
@@ -1017,9 +1210,10 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading):
 
     @abstractmethod
     def contour_file_delete(self, session):
-        """Delete the contour file associated with the selection. The session used to call
-        this method needs to be committed by the caller. This will also remove any associated
-        CTR file."""
+        """Delete the contour file associated with the selection. The changes will be comitted
+        by this method to the given `session`. It is recommended to call this method with a fresh
+        session. This method will also remove any associates calculations of contour statistics
+        and CTR files."""
         raise NotImplementedError
 
     @abstractmethod
@@ -1309,97 +1503,4 @@ class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     def incomplete(self):
         """Mark the assignment as incomplete."""
         raise NotImplementedError()
-    
 
-class IFile(AbstractModelBase, Serialisable, TableOperations):
-    __tablename__ = 'file'
-
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
-    directory = database_handler.db.Column(database_handler.db.String(255), nullable=False)
-    filename = database_handler.db.Column(database_handler.db.String(255), nullable=False)
-    uploaded_date = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
-    upload_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
-
-    extension = database_handler.db.Column(database_handler.db.String(10), nullable=False)
-    duration = database_handler.db.Column(database_handler.db.Integer)
-    deleted = database_handler.db.Column(database_handler.db.Boolean, default=False)
-    original_filename = database_handler.db.Column(database_handler.db.String(255))
-    hash = database_handler.db.Column(database_handler.db.LargeBinary)
-
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
-    updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
-
-    # @validates("filename")
-    # def _validate_filename(self, key, value):
-    #     return utils.secure_fname(utils.validate_string(value=value, field=key, allow_none=False))
-    
-    @validates("directory")
-    def _validate_directory(self, key, value):
-        return utils.validate_string(value=value, field=key, allow_none = True)
-    
-    @validates("extension")
-    def _validate_extension(self, key, value):
-        value = utils.validate_string(value=value, field=key, allow_none = False)
-        if value.startswith("."): return value[1:]
-        return value
-
-    @validates("Uploaded_date", "uploaded_datetime")
-    def _validate_datetime(self, key, value):
-        return utils.validate_datetime(value=value, field=key, allow_none=False)
-    
-    # @validates("hash")
-    # def _validate_hash(self, key, value):
-    #     return utils.validate_string(value=value, field=key, allow_none=False)
-
-
-    def _to_dict(self):
-        return {
-            "id": self.id,
-            "directory": self.directory,
-            "filename": self.filename,
-            "uploaded_date": self.uploaded_date,
-            "extension": self.extension,
-            "deleted": self.deleted,
-            "original_filename": self.original_filename,
-            "hash": self.hash,
-            "updated_by_id": self.updated_by_id
-        }
-    
-    def _form_dict(self):
-        raise NotImplementedError
-    
-    @property
-    def unique_name(self):
-        return f"{self.filename}.{self.extension}, {str(self.hash)[:6]}"
-    
-    def insert(self, session, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
-        """Insert a file into the filespace. This method will save the argument `file` to the filespace with the given
-        `directory` and `filename`. If `file` is a file-like object, and does not contain a `filename` attribute, the
-        `original_filename` and `extension` are implied. If `file` is a stream, the `original_filename` and `extension`
-        must be provided (failure to do so raises `CriticalException`).
-
-        This method will automatically commit the changes to the provided `session` for atomicity. Any issues that occur
-        during the insertion process will revert all changes to the provided session. It is recommended to call this
-        method with a fresh or recently committed session to avoid unexpected issues.
-        """
-        raise NotImplementedError
-    
-    def update(self, directory: str = None, filename: str = None):
-        """Move the file to the new directory and filename provided. Will automatically
-        update values of `self.directory` and `self.filename`. The hash of the file will
-        not change as the file is simply being moved. The argument `filename` MUST NOT
-        contain an extension - if it does, there will be more than one extension.
-        """
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def filename_with_extension(self):
-        """Return the filename with extension."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def path(self):
-        """Return the path to the file in the object. This path does not include the filespace root directory."""
-        raise NotImplementedError

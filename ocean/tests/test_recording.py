@@ -241,24 +241,24 @@ def test_selection_table_apply_empty_dataframe(recording):
     dataframe = pd.DataFrame()
     selections = {}
     with pytest.raises(exception_handler.WarningException) as exc_info:
-        recording._selection_table_apply(dataframe, selections)
+        recording._selection_table_apply(dataframe)
 
 def test_selection_table_apply_missing_selection_column(recording):
     dataframe = pd.DataFrame({'other_column': [1, 2, 3]})
     selections = {}
     with pytest.raises(exception_handler.WarningException) as exc_info:
-        recording._selection_table_apply(dataframe, selections)
+        recording._selection_table_apply(dataframe)
 
 def test_selection_table_apply_missing_other_columns(recording: models.Recording):
     dataframe = pd.DataFrame({'Selection': [1, 2, 3]})
     selections = {}
     with pytest.raises(exception_handler.WarningException) as exc_info:
-        recording._selection_table_apply(dataframe, selections)
+        recording._selection_table_apply(dataframe)
 
 def test_selection_table_apply_new_selections(recording):
     dataframe = pd.DataFrame({'Selection': [1, 2, 3], 'View': ["1", "2", "3"], 'Channel': ["1", "2", "3"], 'Begin Time (s)': [1.1, 2.2, 3.3], 'End Time (s)': [1.1, 2.2, 3.3], 'Low Freq (Hz)': [1.1, 2.2, 3.3], 'High Freq (Hz)': [1.1, 2.2, 3.3], 'Annotation': ["Y", "N", "M"]})
     selections = {}
-    new_selections = recording._selection_table_apply(dataframe, selections)
+    new_selections = recording._selection_table_apply(dataframe)
     assert len(new_selections) == 3
     for selection in new_selections:
         assert isinstance(selection, models.Selection)

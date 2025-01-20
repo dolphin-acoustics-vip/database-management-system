@@ -191,7 +191,6 @@ function fileUploadHandler(fileInput, progressBar, fileIdStore, fileNameStore, s
       var pingInterval = setInterval(function() {
         var pingXhr = new XMLHttpRequest();
         pingXhr.open('GET', '/ocean/ping', true);
-        console.log("PING")
         pingXhr.send();
       }, 2000); // Send a ping every 2 seconds
 
@@ -286,7 +285,6 @@ function fileUploadHandler(fileInput, progressBar, fileIdStore, fileNameStore, s
       var pingInterval = setInterval(function() {
         var pingXhr = new XMLHttpRequest();
         pingXhr.open('GET', '/ocean/ping', true);
-        console.log("PING")
         pingXhr.send();
       }, 2000); // Send a ping every 2 seconds
 
