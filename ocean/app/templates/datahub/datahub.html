@@ -437,7 +437,7 @@
         tbody = recordingsTable.find('tbody')
         for (recording in recording_list) {
             recording_link = "<a href='" + recording_list[recording]['recordingRoute'] + "'>" + recording_list[recording]['start_time'] + "</a>"
-            addStatisticsTableRow(tbody, [recording_list[recording]['sp_species_name'], recording_list[recording]['enc_encounter_name'], recording_link, recording_list[recording]['created_datetime'], recording_list[recording]['status'], recording_list[recording]['traced_count'], recording_list[recording]['untraced_count'], recording_list[recording]['deactivated_count']])
+            addStatisticsTableRow(tbody, [recording_list[recording]['sp_scientific_name'], recording_list[recording]['enc_encounter_name'], recording_link, recording_list[recording]['created_datetime'], recording_list[recording]['status'], recording_list[recording]['traced_count'], recording_list[recording]['untraced_count'], recording_list[recording]['deactivated_count']])
         }
         return recordingsTable
     }

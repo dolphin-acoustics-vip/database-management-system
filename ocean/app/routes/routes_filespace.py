@@ -188,7 +188,7 @@ def trash_delete_file_helper(file_id):
         try:
             file = session.query(models.File).filter(models.File.id == file_id).first()
             if file:
-                file.delete_file()
+                file._delete_permanent()
                 session.delete(file)
             session.commit()
         except (Exception, SQLAlchemyError) as e:
@@ -247,7 +247,7 @@ def trash_delete_file():
 def trash_send_file(file_id):
     with database_handler.get_session() as session:
         file = session.query(models.File).filter(models.File.id == file_id).first()
-        return send_file(file.get_full_absolute_path(), as_attachment=True)
+        return send_file(file._path_with_root, as_attachment=True)
 
 @routes_filespace.route('/filespace/trash', methods=['GET'])
 def trash_view():

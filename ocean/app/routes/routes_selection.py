@@ -379,7 +379,7 @@ def write_contour_stats(selections, filename):
                 selection.recording.encounter.location,
                 selection.recording.encounter.project,
                 selection.recording.start_time,
-                selection.recording.encounter.species.species_name,
+                selection.recording.encounter.species.scientific_name,
                 selection.sampling_rate,
                 selection.selection_number
             ]
@@ -430,75 +430,45 @@ def extract_contour_stats_for_encounter(encounter_id):
 @login_required
 @database_handler.exclude_role_4
 def deactivate_selections():
-    """
-    Deactivate selections in the database.
-
-    Expects a JSON payload with a list of selection IDs under the key "selectionIds".
-    Returns a JSON response with a message indicating success or failure.
-    """
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        selection_ids = request.json.get('selection_ids', [])
-        if not selection_ids:
-            response.add_error('No selection IDs provided')
-            return response.to_json()
-
-        selections = session.query(models.Selection).filter(models.Selection.id.in_(selection_ids)).all()
-        success_counter = 0
-        for selection in selections:
-            try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            selection_ids = request.json.get('selection_ids', [])
+            if not selection_ids: raise exception_handler.WarningException("No selections selected.")
+            selections = session.query(models.Selection).filter(models.Selection.id.in_(selection_ids)).all()
+            success_counter = 0
+            for selection in selections:
                 check_editable(selection.recording)
-            except Exception as e:
-                response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
-                return response.to_json()
-            try:
-                selection.deactivate()
-                success_counter += 1
-            except Exception as e:
-                response.add_error("Error deactivating selection " + str(selection.selection_number))
-        session.commit()
-        if success_counter > 0:
-            flash(f'{success_counter} selections deactivated successfully', 'success')
-            response.set_redirect(request.referrer)
-        if success_counter == 0:
-            response.add_error('No selections deactivated')
-        return response.to_json()
+                try:
+                    selection.deactivate()
+                    success_counter += 1
+                except Exception:
+                    response.add_error("Error deactivating selection " + str(selection.selection_number))
+        flash(f'{success_counter} selections deactivated successfully', 'success')
+        response.set_redirect(request.referrer)
+    return response.to_json()
     
 @routes_selection.route('/selection/reactivate', methods=['POST'])
 @database_handler.require_live_session
 @login_required
 @database_handler.exclude_role_4
 def reactivate_selections():
-    """
-    reactivate selections in the database.
-
-    Expects a JSON payload with a list of selection IDs under the key "selectionIds".
-    Returns a JSON response with a message indicating success or failure.
-    """
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        selection_ids = request.json.get('selection_ids', [])
-        if not selection_ids:
-            response.add_error('No selection IDs provided')
-            return response.to_json()
-
-        selections = session.query(models.Selection).filter(models.Selection.id.in_(selection_ids)).all()
-        success_counter = 0
-        for selection in selections:
-            try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            selection_ids = request.json.get('selection_ids', [])
+            if not selection_ids: raise exception_handler.WarningException('No selections selected.')
+            selections = session.query(models.Selection).filter(models.Selection.id.in_(selection_ids)).all()
+            success_counter = 0
+            for selection in selections:
                 check_editable(selection.recording)
-            except Exception as e:
-                response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
-                return response.to_json()
-            try:
-                selection.reactivate()
-                success_counter += 1
-            except Exception as e:
-                response.add_error("Error deactivating selection " + str(selection.selection_number))
-        session.commit()
-        if success_counter > 0:
-            flash(f'{success_counter} selections reactivated successfully', 'success')
-            response.set_redirect(request.referrer)
-        if success_counter == 0:
-            response.add_error('No selections reactivated')
+                try:
+                    selection.reactivate()
+                    success_counter += 1
+                except Exception as e:
+                    response.add_error("Error deactivating selection " + str(selection.selection_number))
+            session.commit()
+            if success_counter > 0:
+                flash(f'{success_counter} selections reactivated successfully', 'success')
+                response.set_redirect(request.referrer)
+            if success_counter == 0:
+                response.add_error('No selections reactivated')
         return response.to_json()

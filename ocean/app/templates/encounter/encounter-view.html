@@ -26,7 +26,7 @@ Variables required:
         <p>Encounter: {{ encounter.encounter_name }}</p>
         <p>Location: {{ encounter.location }}</p>
         <p>Project: {% if encounter.project %}{{ encounter.project }} {% else %}Not entered{% endif %}</p>
-        <p>Species: {{ encounter.species.species_name }} ({{ encounter.species.common_name }})</p>
+        <p>Species: {{ encounter.species.scientific_name }} ({{ encounter.species.common_name }})</p>
         <p>Recording platform: {% if encounter.recording_platform %}{{ encounter.recording_platform.name}} {% else %}Not
           entered{% endif %}</p>
         <p>Data source: {% if encounter.data_source %}{{ encounter.data_source.name}} {% else %}Not entered{% endif %}
@@ -82,10 +82,10 @@ Variables required:
         recording=None) }}
         <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
         <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
-
+        <button id="insert-recording-button" class="blue" type="submit" title="Create a new recording with provided data.">Submit</button>
       </form>
       <script>
-        ajaxifyForm(document.getElementById('recording-insert-form'));
+        ajaxifyForm(document.getElementById('recording-insert-form'), undefined, undefined, undefined, undefined, button = document.getElementById("insert-recording-button"), message="Inserting recording.");
     </script>
       {% endif %}
     </section>

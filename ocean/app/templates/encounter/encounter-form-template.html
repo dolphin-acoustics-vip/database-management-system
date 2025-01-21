@@ -14,9 +14,9 @@
 <select id="species" name="species_id" required>
     {% for species in species_list %}
         {% if species.common_name == '' %}
-            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.species_name}}</option>
+            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.scientific_name}}</option>
         {% else %}
-            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.species_name +" (" + species.common_name + ")" }}</option>
+            <option value="{{ species.id }}" {% if editing and species.id == encounter.species.id %}selected{% endif %}>{{ species.scientific_name +" (" + species.common_name + ")" }}</option>
         {% endif %}
     {% endfor %}
 </select>
@@ -41,7 +41,3 @@
 </div>
 <label class="bold" for="notes" style="margin-bottom:5px;">Notes</label>
 <textarea id="notes" name="notes" rows="4" cols="50"></textarea>
-
-
-
-<button class="blue" type="submit" title="{% if editing %}Update encounter with changed data.{% else %}Create a new encounter with provided data.{% endif %}">{% if editing %}Update{% else %}Submit{% endif %}</button>

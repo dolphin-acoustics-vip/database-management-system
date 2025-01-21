@@ -72,8 +72,10 @@ def selection_table_refresh(recording_id):
             for new_selection in new_selections:
                 session.add(new_selection)
             recording.update_selection_traced_status()
-            flash(f'Updated selection table for {recording.unique_name}.', 'success')
-            response.set_redirect(request.referrer)
+            print("I GOT HERE")
+            flash_message = f'Updated selection table for {recording.unique_name}.'
+        flash(flash_message, 'success')
+        response.set_redirect(request.referrer)
     return response.to_json()
 
 @routes_recording.route('/recording/<recording_id>/selection-table/insert', methods=['POST'])
@@ -146,11 +148,12 @@ def recording_insert(encounter_id: str):
             session = transaction.session
             encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
             recording = models.Recording(encounter = encounter)
+            success_message = f'Inserted {recording.unique_name}.'
             session.add(recording)
             recording.insert(request.form)
             recording_file_insert_helper(recording, transaction, request.form)
-            flash(f'Inserted {recording.unique_name}.', 'success')
-            response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+        flash(success_message)
+        response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
     return response.to_json()
 
 @routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
@@ -471,8 +474,8 @@ def download_ctr_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
         file_names = [selection.ctr_file_name for selection in selections if selection.ctr_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_ctr_files.zip"
-        file_paths = [ctr_file.get_full_absolute_path() for ctr_file in ctr_files]
+        zip_filename = f"{recording.encounter.species.scientific_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_ctr_files.zip"
+        file_paths = [ctr_file._path_with_root for ctr_file in ctr_files]
         response = utils.download_files(ctr_files, file_names, zip_filename)
         
         return response
@@ -493,8 +496,8 @@ def download_selection_files(recording_id):
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
         file_names = [selection.selection_file_name for selection in selections if selection.selection_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_selection_files.zip"
-        file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
+        zip_filename = f"{recording.encounter.species.scientific_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_selection_files.zip"
+        file_paths = [selection_file._path_with_root for selection_file in selection_files]
         response = utils.download_files(selection_files, file_names, zip_filename)
         return response
 
@@ -513,7 +516,7 @@ def download_contour_files(recording_id):
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
         file_names = [selection.contour_file_name for selection in selections if selection.contour_file is not None]
-        zip_filename = f"{recording.encounter.species.species_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_contour_files.zip"
+        zip_filename = f"{recording.encounter.species.scientific_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_contour_files.zip"
         response = utils.download_files(contour_files, file_names, zip_filename)
         return response
     

@@ -66,7 +66,7 @@ class SpeciesFactory(factory.alchemy.SQLAlchemyModelFactory):
         model = models.Species
         sqlalchemy_session = Session
     id = factory.LazyAttribute(lambda x: uuid.uuid4().hex)
-    species_name = factory.Faker('name')
+    scientific_name = factory.Faker('name')
     genus_name = factory.Faker('name')
     common_name = factory.Faker('name')
     updated_by_id = None

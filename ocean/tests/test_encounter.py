@@ -185,14 +185,14 @@ def test_insert_or_update_attribute_error(encounter: models.Encounter, form):
 
 
 def test_relative_directory(encounter: models.Encounter):
-    encounter.species.species_name = "TestSpecies"
+    encounter.species.scientific_name = "TestSpecies"
     encounter.encounter_name = "TestEncounter"
     encounter.location = "TestLocation"
     assert encounter.relative_directory == os.path.join("Species-TestSpecies", "Location-TestLocation", "Encounter-TestEncounter")
 
 def test_relative_directory_invalid_characters(encounter: models.Encounter):
     for c in common.INVALID_CHARACTERS:
-        encounter.species.species_name = f"Test{c}Species"
+        encounter.species.scientific_name = f"Test{c}Species"
         encounter.encounter_name = f"Test{c}Encounter"
         encounter.location = f"Test{c}Location"
         assert encounter.relative_directory == os.path.join(f"Species-Test_Species", f"Location-Test_Location", f"Encounter-Test_Encounter")

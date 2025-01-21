@@ -29,7 +29,7 @@
                         <td>
                             <input type="checkbox" name="selections-checkboxes" value="{{ file.id }}">
                         </td>
-                        <td><label>{{ file.get_filename() }}</label></td>
+                        <td><label>{{ file.filename }}</label></td>
                         <td><a href="{{url_for('filespace.trash_send_file', file_id=file.id)}}">Download</a></td>
                         <td><a href="{{url_for('filespace.trash_delete_file', file_id=file.id)}}">Delete</a></td>
                     </tr>

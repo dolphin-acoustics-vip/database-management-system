@@ -73,7 +73,7 @@ def species(app, db_session):
         for i in range(3):
             s = models.Species()
             # s.id = uuid.uuid4()
-            s.set_species_name('Test Species{}'.format(i))
+            s.set_scientific_name('Test Species{}'.format(i))
             db_session.add(s)
             species.append(s)
 
@@ -172,7 +172,7 @@ def test_species(app, logged_in_client, db_session):
     with app.app_context():
         species = models.Species()
         species.id = str(uuid.uuid4())
-        species.set_species_name('Test Species')
+        species.set_scientific_name('Test Species')
         db_session.add(species)
         db_session.commit()
 

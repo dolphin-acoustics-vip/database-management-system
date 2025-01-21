@@ -81,28 +81,28 @@ def convert_from_gmt(gmt_time: datetime.datetime) -> datetime.datetime:
     return system_time
 
 class Species(imodels.ISpecies):
-
-    encounters = database_handler.db.relationship("Encounter", primaryjoin="Encounter.species_id == Species.id", lazy="dynamic", back_populates="species")
+    encounters = database_handler.db.relationship("Encounter", primaryjoin="Encounter.species_id == Species.id", lazy="joined", back_populates="species")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def _insert_or_update(self, form, new):
         form = utils.parse_form(form, self._form_dict())
-        self.species_name = form['species_name']
-        self.genus_name = form['genus_name']
-        self.common_name = form['common_name']
+        self.scientific_name = form['scientific_name']
+        if 'genus_name' in form: self.genus_name = form['genus_name']
+        if 'common_name' in form: self.common_name = form['common_name']
+
     def unique_name(self):
-        return self.species_name
+        return self.scientific_name
     
     def prepare_for_delete(self):
-        with database_handler.get_session() as session:
-            if len(self._get_children()) > 0:
-                raise exception_handler.WarningException("Cannot delete species as it has dependencies.")
+        print(self.encounters)
+        if len(self.encounters) > 0:
+            raise exception_handler.WarningException("Cannot delete species as it has dependencies.")
 
     @property
     def folder_name(self) -> str:
-        return f"Species-{self.species_name}"
+        return f"Species-{self.scientific_name}"
 
 class RecordingPlatform(imodels.IRecordingPlatform):
     __tablename__ = 'recording_platform'
@@ -137,7 +137,7 @@ class DataSource(imodels.IDataSource):
 
 class Encounter(imodels.IEncounter):
 
-    recordings = database_handler.db.relationship("Recording", primaryjoin="Recording.encounter_id == IEncounter.id", lazy="dynamic", back_populates="encounter")
+    recordings = database_handler.db.relationship("Recording", primaryjoin="Recording.encounter_id == IEncounter.id", lazy="joined", back_populates="encounter")
 
 
     def __init__(self, *args, **kwargs):
@@ -198,7 +198,7 @@ class File(imodels.IFile):
         return os.path.join(self.directory, self.filename_with_extension)
     
     @property
-    def __path_with_root(self):
+    def _path_with_root(self):
         """Return the full path of the file, including the filespace root directory"""
         if self.deleted: return os.path.join(database_handler.get_trash_path(), self.path)
         else: return os.path.join(database_handler.get_data_space(), self.path)
@@ -223,18 +223,18 @@ class File(imodels.IFile):
         self.filename = utils.secure_fname(filename)
         # Validate extension
         self.extension = self.extension
-        dst = self.__path_with_root
+        dst = self._path_with_root
         if not os.path.exists(os.path.dirname(dst)):
             os.makedirs(os.path.dirname(dst))
         i = 1
         basename = self.filename
         while os.path.exists(dst):
             self.filename = utils.secure_fname(f"{basename}-({i})")
-            dst = self.__path_with_root
+            dst = self._path_with_root
             i += 1
         return dst
 
-    def __move(self, directory: str = None, filename: str = None, delete: bool = False):
+    def _move(self, directory: str = None, filename: str = None, delete: bool = False):
         """Move the file to the new directory and filename provided. Will automatically
         update values of `self.directory` and `self.filename`. The hash of the file will
         not change as the file is simply being moved. The argument `filename` MUST NOT
@@ -243,7 +243,7 @@ class File(imodels.IFile):
         If `delete` is set to `True` the file will be moved from its current location to
         the trash folder (soft-delete). The `self.deleted` flag will be set to `True`.
         """
-        src = self.__path_with_root
+        src = self._path_with_root
         if delete:
             self.deleted = True
             filename = f"{self.filename}-{uuid.uuid4()}"
@@ -252,14 +252,14 @@ class File(imodels.IFile):
             if os.path.exists(src):
                 os.rename(src, dst)
 
-    def __save(self, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
-        """Helper method for `insert()`."""
+    def insert(self, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
         if isinstance(file, str):  # If `file` is a file path string
             if not os.path.exists(file): raise exception_handler.CriticalException("File with given path does not exist.")
             self.filename, self.extension = utils.parse_filename(os.path.basename(file))
-            self.file_stream = open(file, 'rb')  # Open the file stream
+            file_stream = open(file, 'rb')  # Open the file stream
+        
         elif hasattr(file, 'stream'):
-            self.file_stream = file.stream
+            file_stream = file.stream
             f, e = utils.parse_filename(file.filename)
             if not e and not extension: raise exception_handler.CriticalException("No extension provided.")
             elif not extension: self.extension = e
@@ -267,9 +267,10 @@ class File(imodels.IFile):
             if not f and not original_filename: self.original_filename = "Automatically generated"
             elif not f: self.original_filename = original_filename
             elif not original_filename: self.original_filename = f
+        
         # If `file` is a stream, set the extension and original_filename from the method parameters
         elif hasattr(file, 'read'):
-            self.file_stream = file
+            file_stream = file
             if not extension: raise exception_handler.CriticalException("No extension provided.")
             else: self.extension = extension
             if not original_filename: self.original_filename = "Automatically generated"
@@ -281,34 +282,22 @@ class File(imodels.IFile):
         self.directory = directory
         self.filename = filename
 
-        self.ready_to_save = True
-
-    def save(self):
-        if not hasattr(self, 'ready_to_save'): raise exception_handler.CriticalException("Call File.insert() before calling File.save().")
         dst = self.__prepare_destination(directory = self.directory, filename = self.filename)
         chunk_size = 1024 * 1024  # 1MB chunks
         with open(dst, 'wb') as dest_file:
             while True:
-                chunk = self.file_stream.read(chunk_size)
+                print(file_stream)
+                chunk = file_stream.read(chunk_size)
+                print(chunk)
                 if chunk:
                     dest_file.write(chunk)
                 else:
                     break
         self.inserted = True
         self.hash = self.calculate_hash()
-   
-    def insert(self, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
-        self.just_inserted = True
-        self.__save(file, directory, filename, original_filename = original_filename, extension = extension)
-        self.save()
 
-
-
-
-    def update(self, session, directory: str, filename: str):
-        session.flush()
-        self.__move(directory = directory, filename = filename)
-        session.commit()
+    def update(self, directory: str, filename: str):
+        self._move(directory = directory, filename = filename)
 
     def _insert_or_update(self):
         raise NotImplementedError("Please use `insert()` or `update()` instead depending on your use case.")
@@ -329,10 +318,10 @@ class File(imodels.IFile):
 
     def calculate_hash(self):
         import hashlib
-
-        if os.path.exists(self.get_full_absolute_path()) == False:
+        print("Calculate hash", self._path_with_root)
+        if os.path.exists(self._path_with_root) == False:
             return None
-        with open(self.get_full_absolute_path(), 'rb') as file:
+        with open(self._path_with_root, 'rb') as file:
             hash_value = hashlib.sha256(file.read()).digest()
         return hash_value
     
@@ -356,6 +345,9 @@ class File(imodels.IFile):
             
         return None
     
+    def _delete_permanent(self):
+        os.remove(self._path_with_root)
+
     def rollback(self, session = None):
         """
         If the current File object has not been committed to the database yet,
@@ -369,7 +361,7 @@ class File(imodels.IFile):
         """
         try:
             if self in session.new or (hasattr(self, 'just_inserted') and self.just_inserted == True):
-                os.remove(self.get_full_absolute_path())
+                self._delete_permanent()
                 session.delete(self)
         except Exception as e:
             pass
@@ -377,7 +369,7 @@ class File(imodels.IFile):
     def _delete(self) -> str:
         """Helper method for `delete()`."""
         if not self.deleted:
-            self.__move(self.directory, self.filename, delete=True)
+            self._move(self.directory, self.filename, delete=True)
 
     def delete(self, session):
         """Move the file represented by the object to the trash (soft-delete). This method will set
@@ -391,129 +383,6 @@ class File(imodels.IFile):
         self._delete()
         session.commit()
 
-    
-    def update_call(self):
-        """
-        No other classes have dependencies on File so this method merely exists as
-        a placeholder in case one of File's dependencies call it.
-        """
-        pass
-
-    def get_filename(self):
-        """
-        :return: the filename (without extension) of the file represented by the object
-        """
-        return self.filename
-    
-    def get_directory(self):
-        """
-        :return: the folder directory (without filename or extension) in which the file
-        represented by the object lies
-        """
-        return self.directory  
-
-    def get_path(self):
-        """
-        DEPRACATED. Use self.get_directory()
-        """
-        return self.get_directory()
-    
-    def get_full_relative_path(self):
-        """
-        :return: the full path in the filespace, including the directory, filename and
-        extension of the file represented by the object
-        """
-        return os.path.join(self.directory, f"{self.filename}.{self.extension}")
-    
-    
-    def set_updated_by_id(self, user_id: str):
-        """Set the user ID of the user who is updating the recording.
-
-        Args:
-            user_id (str): The user ID who is updating the recording.
-        """
-        self.updated_by_id = user_id
-
-
-    def get_full_absolute_path(self):
-        """
-        :return: the full absolute path of the filespace joined with the directory, 
-        filename and extension of the file represented by the object
-        """
-        if self.deleted:
-            root = database_handler.get_trash_path()
-        else:
-            root = database_handler.get_file_space_path()
-        return os.path.join(root, self.get_full_relative_path())
-
-    def insert_path_and_filename_file_already_in_place(self, session, new_directory:str, new_filename:str, new_extension:str):
-        """
-        Store a path, filename and extension. This assumes the file is already in place.
-        It is recommended unless absolutely necessary to use insert_path_and_filename()
-        to let this class handle the movement of files within the file space.
-
-        :param session: the SQLAlchemy session
-        :param new_directory: the directory (no filename)
-        :param new_filename: the filename (without extension)
-        :param new_extension: the file's extension (without a '.')
-        """
-        self.directory=new_directory
-        self.filename=new_filename
-        self.extension=new_extension
-        self.hash = self.calculate_hash()
-        session.flush()
-        logger.info(f"Inserted directory and filename for {self.directory} with hash {self.hash}.")
-
-
-    def rename_loose_file(self,loose_file_directory:str, loose_file_name:str, loose_file_extension:str) -> None:
-        """
-        In the event that a file needs to be saved in a path in which a file already exists,
-        give the existing file (the 'loose file') a new name in the same directory. This 
-        method will create an error in the logger as the cause of this error is usually 
-        manual manipulation of the filespace. 
-
-        A file is renamed by adding 'Dupl#_' to the start of the name (where # is the lowest
-        available integer in the directory to ensure no duplicate file names).
-
-        :param loose_file_directory: the relative directory (folder) in which the loose file
-        exists
-        :param loose_file_name: the name of the loose file that is contested and needs to be
-        renamed (without extension)
-        :param loose_file_extension: the extension (without '.') of the loose file
-        """
-        import re
-        loose_file_path = os.path.join(database_handler.get_file_space_path(),loose_file_directory, loose_file_name + '.' + loose_file_extension)
-        if os.path.exists(loose_file_path):
-            # Find the highest counter integer in the existing filenames
-            counter_regex = re.compile(r'Dupl(\d+)_{}\.{}'.format(re.escape(loose_file_name), re.escape(loose_file_extension)))
-            highest_counter = 0
-            for existing_file in os.listdir(os.path.dirname(loose_file_path)):
-                match = counter_regex.search(existing_file)
-                if match:
-                    counter = int(match.group(1))
-                    highest_counter = max(highest_counter, counter)
-            
-            # Increment the counter and generate a new filename
-            new_counter = highest_counter + 1
-            new_filename = f"Dupl{new_counter}_{loose_file_name}"
-            new_path = os.path.join(os.path.dirname(loose_file_path), new_filename + '.' + loose_file_extension)
-            os.rename(loose_file_path, new_path)
-            logger.error(f"Attempting to save file in the following path, but a file already exists: {loose_file_path}. Renamed existing file to {new_path}")
-
-
-    def append_chunk(self, chunk):
-        # Save the chunk to a temporary file
-        chunk_path = self.get_full_absolute_path()
-
-        if os.path.exists(chunk_path):
-            with open(chunk_path, 'ab') as f:
-                f.write(chunk.read())
-
-    def delete_file(self):
-        if os.path.exists(self.get_full_absolute_path()):
-            logger.info(f"Parmanently deleted file {self.get_full_absolute_path()}.")
-            os.remove(self.get_full_absolute_path())
-
     def get_binary(self):
         """
         Reads and returns the binary content of the file represented by this object.
@@ -522,7 +391,7 @@ class File(imodels.IFile):
         :raises FileNotFoundError: If the file does not exist.
         :raises IOError: If there is an issue reading the file.
         """
-        absolute_path = self.get_full_absolute_path()
+        absolute_path = self._path_with_root
         
         try:
             with open(absolute_path, 'rb') as file:
@@ -545,6 +414,12 @@ class Recording(imodels.IRecording):
     def _get_filespace_children(self):
         return [self.recording_file, self.selection_table_file]
     
+    def get_selections_count(self, traced = (None, True, False)):
+        if traced is not None and None in traced and True in traced and False in traced: return len(self.selections)
+        count = 0
+        for selection in self.selections: count = count + 1 if selection.traced in traced else count
+        return count
+
     def _insert_or_update(self, form, new):
         from .filespace_handler import get_complete_temporary_file
         attr_form = utils.parse_form(form, self._form_dict())
@@ -582,11 +457,11 @@ class Recording(imodels.IRecording):
 
     @property
     def recording_file_name(self):
-        return utils.secure_fname(f"Rec-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{utils.secure_datename(self.start_time)}")
+        return utils.secure_fname(f"Rec-{self.encounter.species.scientific_name}-{self.encounter.location}-{self.encounter.encounter_name}-{utils.secure_datename(self.start_time)}")
 
     @property
     def selection_table_file_name(self):
-        return utils.secure_fname(f"SelTable-{self.encounter.species.species_name}-{self.encounter.location}-{self.encounter.encounter_name}-{utils.secure_datename(self.start_time)}")
+        return utils.secure_fname(f"SelTable-{self.encounter.species.scientific_name}-{self.encounter.location}-{self.encounter.encounter_name}-{utils.secure_datename(self.start_time)}")
 
     @property
     def relative_directory(self):
@@ -658,7 +533,7 @@ class Recording(imodels.IRecording):
         return self._update_status(assignments=assignments, override=override)
 
     @property
-    def selection_count(self):
+    def selections_count(self):
         return len(self.selections)
 
     @property
@@ -673,12 +548,12 @@ class Recording(imodels.IRecording):
         if self.recording_file is not None:
             with database_handler.get_session() as recording_file_session:
                 recording_file = recording_file_session.query(File).with_for_update().get(self.recording_file.id)
-                recording_file.update(recording_file_session, self.relative_directory, self.recording_file_name)
+                recording_file.update(self.relative_directory, self.recording_file_name)
                 recording_file_session.commit()
         if self.selection_table_file is not None:
             with database_handler.get_session() as selection_table_file_session:
                 selection_table_file = selection_table_file_session.query(File).with_for_update().get(self.selection_table_file.id)
-                selection_table_file.update(selection_table_file_session, self.relative_directory, self.selection_table_file_name)
+                selection_table_file.update(self.relative_directory, self.selection_table_file_name)
                 selection_table_file_session.commit()
 
     def _selection_table_apply(self, dataframe):
@@ -712,7 +587,7 @@ class Recording(imodels.IRecording):
         return new_selections
 
     def selection_table_apply(self):
-        selection_table_df = utils.extract_to_dataframe(path=self.selection_table_file.get_full_absolute_path())
+        selection_table_df = utils.extract_to_dataframe(path=self.selection_table_file._path_with_root)
         return self._selection_table_apply(selection_table_df)
     
     def selection_table_data_delete(self):
@@ -858,7 +733,7 @@ class Selection(imodels.ISelection):
         self.clear_contour_statistics_attrs()
         if self.contour_file is not None:
             try:
-                contour_statistics_obj = contour_statistics.ContourFile(self.contour_file.get_full_absolute_path(), self.selection_number)
+                contour_statistics_obj = contour_statistics.ContourFile(self.contour_file._path_with_root, self.selection_number)
                 contour_statistics_obj.calculate_statistics(self)
             except ValueError as e:
                 raise exception_handler.WarningException(f"Error processing contour {self.selection_number}: " + str(e))
@@ -867,23 +742,24 @@ class Selection(imodels.ISelection):
 
     def _calculate_sampling_rate(self):
         if self.selection_file:
-            with wave.open(self.selection_file.get_full_absolute_path(), "rb") as wave_file:
+            with wave.open(self.selection_file._path_with_root, "rb") as wave_file:
                 self.sampling_rate = wave_file.getframerate()
         else: raise exception_handler.WarningException("Unable to calculate sampling rate as the selection file does not exist.")
 
     def deactivate(self):
-        self.traced = None
         self.deactivated = True
+        self.update_traced()
 
     def reactivate(self):
-        self.traced = None
         self.deactivated = False
+        self.update_traced()
 
     def clear_selection_table_attrs(self):
         for attr in self.selection_table_attrs:
             setattr(self, attr, None)
 
     def update_traced(self):
+        if self.deactivated: self.traced = None
         if self.contour_file: self.traced = True
         elif not self.contour_file and (self.annotation == "N"): self.traced = False
         else: self.traced = None
@@ -914,7 +790,7 @@ class Selection(imodels.ISelection):
         #     session.commit()
 
         # Load the audio file
-        with open(self.selection_file.get_full_absolute_path(), 'rb') as selection_file:
+        with open(self.selection_file._path_with_root, 'rb') as selection_file:
             audio, sr = librosa.load(selection_file)
 
         # Increase the resolution of the spectrogram
@@ -991,9 +867,9 @@ class Selection(imodels.ISelection):
             try:
                 self.contour_file.get_binary()
                 if self.contour_file.extension.lower() == "csv":
-                    df = pd.read_csv(self.contour_file.get_full_absolute_path())
+                    df = pd.read_csv(self.contour_file._path_with_root)
                 elif self.contour_file.extension.lower() == "xlsx":
-                    df = pd.read_excel(self.contour_file.get_full_absolute_path())
+                    df = pd.read_excel(self.contour_file._path_with_root)
                 else:
                     raise exception_handler.WarningException(f"Unable to parse contour file as it is in the wrong format. Require CSV or XLSX")
                 return df
@@ -1017,7 +893,7 @@ class Selection(imodels.ISelection):
     def generate_contour_stats_dict(self):
         if not self.contour_statistics_calculated: return None
         headers = ['Encounter', 'Location', 'Project', 'Recording', 'Species', 'SamplingRate', 'SELECTIONNUMBER']
-        values = [self.recording.encounter.encounter_name, self.recording.encounter.location, self.recording.encounter.project, self.recording.start_time_pretty, self.recording.encounter.species.species_name, self.sampling_rate, self.selection_number]
+        values = [self.recording.encounter.encounter_name, self.recording.encounter.location, self.recording.encounter.project, self.recording.start_time_pretty, self.recording.encounter.species.scientific_name, self.sampling_rate, self.selection_number]
         contour_statistics_attrs = imodels.ISelection.get_contour_statistics_attrs()
         for attr in contour_statistics_attrs:
             if contour_statistics_attrs[attr][2]:
@@ -1094,17 +970,17 @@ class Selection(imodels.ISelection):
         if self.selection_file is not None:
             with database_handler.get_session() as session:
                 selection_file = session.query(File).with_for_update().get(self.selection_file_id)
-                selection_file.update(session, self.relative_directory,self.selection_file_name)
+                selection_file.update(self.relative_directory,self.selection_file_name)
                 session.commit()
         if self.contour_file is not None:
             with database_handler.get_session() as session:
                 contour_file = session.query(File).with_for_update().get(self.contour_file_id)
-                contour_file.update(session, self.relative_directory,self.contour_file_name)
+                contour_file.update(self.relative_directory,self.contour_file_name)
                 session.commit()
         if self.ctr_file is not None:
             with database_handler.get_session() as session:
                 ctr_file = session.query(File).with_for_update().get(self.ctr_file_id)
-                ctr_file.update(session, self.relative_directory,self.ctr_file_name)
+                ctr_file.update(self.relative_directory,self.ctr_file_name)
                 session.commit()
 
     @property

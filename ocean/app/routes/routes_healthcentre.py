@@ -89,7 +89,7 @@ def get_data_warnings():
             new_warning_sel = {'selection': selection, 'warning': [warning]}
 
             if selection['enc_id'] not in warnings:
-                warnings[selection['enc_id']] = {'enc_name':selection['enc_encounter_name'], 'enc_species': selection['species_name'], 'enc_location': selection['enc_location'], 'recordings': {}}
+                warnings[selection['enc_id']] = {'enc_name':selection['enc_encounter_name'], 'enc_species': selection['scientific_name'], 'enc_location': selection['enc_location'], 'recordings': {}}
             if selection['rec_id'] not in warnings[selection['enc_id']]['recordings']:
                 warnings[selection['enc_id']]['recordings'][selection['rec_id']] = {'rec_name': selection['rec_start_time'], 'rec_route': url_for('recording.recording_view', recording_id=selection['rec_id']), 'selections': []}
 

@@ -199,7 +199,7 @@ def test_update_status_on_hold_does_not_change(recording: models.Recording):
 def test_relative_directory(recording: models.Recording):
     for c in common.INVALID_CHARACTERS + ["_"]:
         recording.encounter = factories.EncounterFactory.create()
-        recording.encounter.species.species_name = f"Test{c}Species"
+        recording.encounter.species.scientific_name = f"Test{c}Species"
         recording.encounter.encounter_name = f"Test{c}Encounter"
         recording.encounter.location = f"Test{c}Location"
         recording.start_time = datetime.datetime(2020,8,21,2,54,22)
@@ -212,7 +212,7 @@ def test_relative_directory_exception(recording: models.Recording):
 
 def test_recording_file_name(recording: models.Recording):
     for c in common.INVALID_CHARACTERS + ["_"]:
-        recording.encounter.species.species_name = f"Test{c}Species"
+        recording.encounter.species.scientific_name = f"Test{c}Species"
         recording.encounter.encounter_name = f"Test{c}Encounter"
         recording.encounter.location = f"Test{c}Location"
         recording.start_time = datetime.datetime(2020,8,21,2,54,22)
@@ -221,14 +221,14 @@ def test_recording_file_name(recording: models.Recording):
 def test_selection_table_file_name(recording: models.Recording):
     for c in common.INVALID_CHARACTERS + ["_"]:
         species = recording.encounter.species
-        species.species_name = f"Test{c}Species"
+        species.scientific_name = f"Test{c}Species"
         recording.encounter.encounter_name = f"Test{c}Encounter"
         recording.encounter.location = f"Test{c}Location"
         recording.start_time = datetime.datetime(2020,8,21,2,54,22)
         assert recording.selection_table_file_name == f"SelTable-Test_Species-Test_Location-Test_Encounter-20200821T025422"
 
 def test_ensure_selection_table_file_name_has_no_invalid_characters(recording: models.Recording):
-    recording.encounter.species.species_name = f"TestSpecies" + "".join(common.INVALID_CHARACTERS)
+    recording.encounter.species.scientific_name = f"TestSpecies" + "".join(common.INVALID_CHARACTERS)
     recording.encounter.encounter_name = f"TestEncounter" + "".join(common.INVALID_CHARACTERS)
     recording.encounter.location = f"TestLocation" + "".join(common.INVALID_CHARACTERS)
     recording.start_time = datetime.datetime(2020,8,21,2,54,22)

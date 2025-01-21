@@ -5,6 +5,7 @@
             <th>Start Time</th>
             <th>Recording File</th>
             <th>Actions</th>
+            <th>Selections</th>
         </tr>
         {% for recording in recordings %}
         <tr>
@@ -27,6 +28,9 @@
                     href="{{ url_for('recording.recording_view', encounter_id=recording.encounter_id, recording_id=recording.id) }}">View
                     Selections</a><br>
 
+            </td>
+            <td>
+                <label>{{recording.get_selections_count()}} ({{recording.get_selections_count((None,))}} to be traced)</label>
             </td>
         </tr>
         {% endfor %}

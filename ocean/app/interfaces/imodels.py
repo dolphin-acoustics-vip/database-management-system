@@ -14,8 +14,9 @@ from .. import utils
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 import typing
 import warnings
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text, ForeignKey, PrimaryKeyConstraint, LargeBinary
 from .. import exception_handler
+from .. import logger
 
 # Combine ABCMeta and SQLAlchemy's DeclarativeMeta
 class CombinedMeta(ABCMeta, type(database_handler.db.Model)):
@@ -102,30 +103,37 @@ class TableOperations(ABC):
     def apply_updates(self):
         with database_handler.get_session() as session:
             if issubclass(type(self), FileSpaceDependency):
-                self._update_filespace()
+                try:
+                    self._update_filespace()
+                    session.commit()
+                except Exception as e:
+                    logger.logger.error("Unable to apply updates to filespace", e)
             if issubclass(type(self), Cascading):
                 for child in self._get_children():
                     if issubclass(type(child), TableOperations):
-                        child.apply_updates()
+                        try:
+                            child.apply_updates()
+                        except Exception as e:
+                            logger.logger.error("Unable to apply updates", e)
             session.commit()
 
 class IFile(AbstractModelBase, Serialisable, TableOperations):
     __tablename__ = 'file'
 
-    id = database_handler.db.Column(database_handler.db.String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
-    directory = database_handler.db.Column(database_handler.db.String(255), nullable=False)
-    filename = database_handler.db.Column(database_handler.db.String(255), nullable=False)
-    uploaded_date = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
-    upload_datetime = database_handler.db.Column(database_handler.db.DateTime(timezone=True))
+    id = Column(String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
+    directory = Column(String(255), nullable=False)
+    filename = Column(String(255), nullable=False)
+    uploaded_date = Column(DateTime(timezone=True))
+    upload_datetime = Column(DateTime(timezone=True))
 
-    extension = database_handler.db.Column(database_handler.db.String(10), nullable=False)
-    duration = database_handler.db.Column(database_handler.db.Integer)
-    deleted = database_handler.db.Column(database_handler.db.Boolean, default=False)
-    original_filename = database_handler.db.Column(database_handler.db.String(255))
-    hash = database_handler.db.Column(database_handler.db.LargeBinary)
+    extension = Column(String(10), nullable=False)
+    duration = Column(Integer)
+    deleted = Column(Boolean, default=False)
+    original_filename = Column(String(255))
+    hash = Column(LargeBinary)
     to_be_deleted = Column(Boolean, nullable=False, default=False)
 
-    updated_by_id = database_handler.db.Column(database_handler.db.String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
     # @validates("filename")
@@ -258,18 +266,14 @@ class FileSpaceDependency(ABC):
     def _set_file(self, obj_attr, new_file_obj: IFile, nullable = False, overridable = True, dtypes = None):
         # Validate all attributes
         if not hasattr(self, obj_attr):
-            if new_file_obj: new_file_obj.rollback()
             raise exception_handler.CriticalException(f"Object has no attribute {obj_attr}.")
         if not nullable and not new_file_obj: 
-            if new_file_obj: new_file_obj.rollback()
             raise exception_handler.CriticalException(f"File object cannot be None for {obj_attr}.")
         if nullable and not new_file_obj: return None
         if not isinstance(new_file_obj, IFile): 
-            if new_file_obj: new_file_obj.rollback()
             raise exception_handler.CriticalException(f"File object must be of subclass IFile for {obj_attr}.")
         if dtypes:
             if not new_file_obj.extension or (new_file_obj.extension and new_file_obj.extension.lower() not in dtypes):
-                if new_file_obj: new_file_obj.rollback()
                 raise exception_handler.WarningException(f"File extension must be one of {', '.join(dtypes)} for {obj_attr}.")
         file_obj = getattr(self, obj_attr)
         # If there already exists a file object and overridable is False then raise an exception
@@ -331,14 +335,13 @@ class Cascading(ABC):
 
 class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     __tablename__ = 'species'
-    __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
+    __table_args__ = (PrimaryKeyConstraint('id'),)
 
     id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
-    # TODO rename to scientific_name (refactor with actual database)
-    species_name = Column(String(100), nullable=False, unique=True)
-    genus_name = Column(String(100))
-    common_name = Column(String(100))
-    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    scientific_name = Column(String(100), nullable=False, unique=True)
+    genus_name = Column(String(100), nullable=True)
+    common_name = Column(String(100), nullable=True)
+    updated_by_id = Column(String(36), ForeignKey('user.id'), nullable=True)
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
     def _get_children(self):
@@ -347,17 +350,17 @@ class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     def _to_dict(self):
         return {
             'id': self.id,
-            'species_name': self.species_name,
+            'scientific_name': self.scientific_name,
             'genus_name': self.genus_name,
             'common_name': self.common_name,
             'updated_by_id': self.updated_by_id,
         }
-    
+
     def _form_dict(self):
         return {
-            'species_name': True,
-            'genus_name': True,
-            'common_name': True
+            'scientific_name': True,
+            'genus_name': False,
+            'common_name': False
         }
 
     @validates("id")
@@ -372,7 +375,7 @@ class ISpecies(AbstractModelBase, Serialisable, TableOperations, Cascading):
     def _validate_str_nullable(self, key, value):
         return utils.validate_string(value=value, field=key, allow_none=True)
     
-    @validates("species_name")
+    @validates("scientific_name")
     def _validate_str(self, key, value):
         return utils.validate_string(value=value, field=key, allow_none=False)
 
@@ -391,11 +394,11 @@ class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
     """
 
     __tablename__ = 'recording_platform'
-    __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
+    __table_args__ = (PrimaryKeyConstraint('id'),)
 
     id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
     name = Column(String(100), unique=True, nullable=False)
-    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
     def _to_dict(self) -> dict:
@@ -434,24 +437,24 @@ class IRecordingPlatform(AbstractModelBase, Serialisable, TableOperations):
 
 class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
     __tablename__ = 'encounter'
-    # __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
+    # __table_args__ = (PrimaryKeyConstraint('id'),)
 
     id = Column(String(36), primary_key=True, default=uuid.uuid4)
     encounter_name = Column(String(100), nullable=False)
     location = Column(String(100), nullable=False)
-    species_id = Column(String(36), database_handler.db.ForeignKey('species.id'), nullable=False)
+    species_id = Column(String(36), ForeignKey('species.id'), nullable=False)
     project = Column(String(100), nullable=False)
     latitude = Column(database_handler.db.Double)
     longitude = Column(database_handler.db.Double)
-    data_source_id = Column(String(36), database_handler.db.ForeignKey('data_source.id'), nullable=False)
-    recording_platform_id = Column(String(36), database_handler.db.ForeignKey('recording_platform.id'), nullable=False)
+    data_source_id = Column(String(36), ForeignKey('data_source.id'), nullable=False)
+    recording_platform_id = Column(String(36), ForeignKey('recording_platform.id'), nullable=False)
     notes = Column(String(1000))
     file_timezone = Column(Integer)
     local_timezone = Column(Integer)
     species = database_handler.db.relationship("Species")
     data_source = database_handler.db.relationship("DataSource")
     recording_platform = database_handler.db.relationship("RecordingPlatform")
-    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
     __table_args__ = (
@@ -559,7 +562,7 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
     # identifiers
     id = Column(String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
     # parent
-    encounter_id = Column(String(36), database_handler.db.ForeignKey('encounter.id'), nullable=False)
+    encounter_id = Column(String(36), ForeignKey('encounter.id'), nullable=False)
     encounter = database_handler.db.relationship("Encounter", foreign_keys=[encounter_id])
     # metadata
     start_time = Column(DateTime(timezone=True), nullable=False)
@@ -567,12 +570,12 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
     status_change_datetime = Column(DateTime(timezone=True))
     notes = Column(Text)
     # children
-    recording_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
+    recording_file_id = Column(String(36), ForeignKey('file.id'))
     recording_file = database_handler.db.relationship("File", foreign_keys=[recording_file_id])
-    selection_table_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
+    selection_table_file_id = Column(String(36), ForeignKey('file.id'))
     selection_table_file = database_handler.db.relationship("File", foreign_keys=[selection_table_file_id])
     # automatic metadata
-    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
     row_start = Column(DateTime(timezone=True), server_default="current_timestamp()")
     created_datetime = Column(DateTime(timezone=True), nullable=False, server_default="current_timestamp()")
@@ -580,6 +583,11 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
     __table_args__ = (
         database_handler.db.UniqueConstraint('start_time', 'encounter_id', name='unique_time_encounter_id'),
     )
+
+    @abstractmethod
+    def get_selections_count(self, traced = (None, True, False)):
+        raise NotImplementedError
+
 
     def _get_children(self):
         """Returns a list of the child objects of this object.
@@ -702,12 +710,6 @@ class IRecording(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
     
     @property
     @abstractmethod
-    def selection_count(self):
-        """Returns the number of selections in the recording."""
-        raise NotImplementedError()
-    
-    @property
-    @abstractmethod
     def selection_file_count(self):
         """Returns the number of selection files in the recording."""
         raise NotImplementedError()
@@ -798,10 +800,10 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
 
     id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
     selection_number = Column(Integer, nullable=False)
-    selection_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'), nullable=False)
-    recording_id = Column(String(36), database_handler.db.ForeignKey('recording.id'), nullable=False)
-    contour_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
-    ctr_file_id = Column(String(36), database_handler.db.ForeignKey('file.id'))
+    selection_file_id = Column(String(36), ForeignKey('file.id'), nullable=False)
+    recording_id = Column(String(36), ForeignKey('recording.id'), nullable=False)
+    contour_file_id = Column(String(36), ForeignKey('file.id'))
+    ctr_file_id = Column(String(36), ForeignKey('file.id'))
     sampling_rate = Column(Float)
     traced = Column(Boolean, nullable=True, default=None)
     deactivated = Column(Boolean, nullable=False, default=False)
@@ -885,7 +887,7 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
     recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])
     ctr_file = database_handler.db.relationship("File", foreign_keys=[ctr_file_id])
     
-    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
     __table_args__ = (
@@ -1291,12 +1293,12 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     """
     
     __tablename__ = 'user'
-    __table_args__ = (database_handler.db.PrimaryKeyConstraint('id'),)
+    __table_args__ = (PrimaryKeyConstraint('id'),)
 
     id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
     login_id = Column(String(100), unique=True, nullable=False)
     name = Column(String(1000), nullable=True)
-    role_id = Column(Integer, database_handler.db.ForeignKey('role.id'), nullable=False)
+    role_id = Column(Integer, ForeignKey('role.id'), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     expiry = Column(DateTime(timezone=True), nullable=False)
     role = database_handler.db.relationship('Role', backref='users', lazy=True)
@@ -1380,7 +1382,7 @@ class IDataSource(AbstractModelBase, Serialisable, TableOperations):
     notes = Column(Text)
     type = Column(database_handler.db.Enum('person', 'organisation'))
 
-    updated_by_id = Column(String(36), database_handler.db.ForeignKey('user.id'))
+    updated_by_id = Column(String(36), ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
     def _form_dict(self):
@@ -1448,8 +1450,8 @@ class IRole(AbstractModelBase):
 class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     __tablename__ = 'assignment'
     
-    user_id = Column(String(36), database_handler.db.ForeignKey('user.id'), primary_key=True, nullable=False)
-    recording_id = Column(String(36), database_handler.db.ForeignKey('recording.id'), primary_key=True, nullable=False)
+    user_id = Column(String(36), ForeignKey('user.id'), primary_key=True, nullable=False)
+    recording_id = Column(String(36), ForeignKey('recording.id'), primary_key=True, nullable=False)
     row_start = Column(DateTime(timezone=True), server_default="current_timestamp()")
     user = database_handler.db.relationship("User", foreign_keys=[user_id])
     recording = database_handler.db.relationship("Recording", foreign_keys=[recording_id])

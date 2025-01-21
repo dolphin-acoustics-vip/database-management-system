@@ -201,7 +201,7 @@ def test_relative_directory(selection: models.Selection):
     for c in common.INVALID_CHARACTERS + ["_"]:
         selection.selection_number = 1
         selection.recording.encounter = factories.EncounterFactory.create()
-        selection.recording.encounter.species.species_name = f"Test{c}Species"
+        selection.recording.encounter.species.scientific_name = f"Test{c}Species"
         selection.recording.encounter.encounter_name = f"Test{c}Encounter"
         selection.recording.encounter.location = f"Test{c}Location"
         selection.recording.start_time = datetime.datetime(2020,8,21,2,54,22)

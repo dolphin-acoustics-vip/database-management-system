@@ -26,6 +26,7 @@ from flask_login import current_user
 from . import database_handler
 from . import models
 from . import exception_handler
+from .logger import logger
 
 from werkzeug.utils import secure_filename
 
@@ -50,7 +51,6 @@ def action_to_be_deleted(session):
             file.delete(session)
             session.commit()
         except Exception as e:
-            from .logger import logger
             logger.error(f"Error deleting file {file.id}: {e}")
 
 def format_date_for_filespace(d: datetime.datetime) -> str:
@@ -236,7 +236,7 @@ def query_file_class(session, deleted: bool) -> dict:
         if not files:
             break
         for file in files:
-            absolute_path = file.get_full_absolute_path()
+            absolute_path = file._path_with_root
             if not os.path.exists(absolute_path):
                 invalid_links[file.id] = file
                 parent = None
@@ -274,7 +274,7 @@ def check_file_exists_in_filespace(file: models.File) -> bool:
     :return: True if the file exists in the filespace, False otherwise
     """
 
-    absolute_path = file.get_full_absolute_path()
+    absolute_path = file._path_with_root
     return os.path.exists(absolute_path)
 
 

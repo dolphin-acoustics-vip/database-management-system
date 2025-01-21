@@ -26,6 +26,7 @@ from .. import models
 from .. import exception_handler
 from .. import utils
 from .. import response_handler
+from .. import transaction_handler
 from ..logger import logger
 
 routes_encounter = Blueprint('encounter', __name__)
@@ -65,29 +66,19 @@ def encounter_new():
 @database_handler.exclude_role_4
 @database_handler.require_live_session
 def encounter_insert():
-    """POST Route to insert a new encounter. Returns JSON following `response_handler.JSONResponse` protocol.
-    
-    Must include a `form` with all necessary fields (see `models.Encounter`).
-    """
-
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
             encounter = models.Encounter()
             encounter.insert(request.form)
             session.add(encounter)
-            session.commit()
-            flash(f'Inserted {encounter.unique_name}.', 'success')
-            response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter.id))
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, prefix='Error inserting encounter', session=session, show_flash=False))
+            flash_message = f'Inserted encounter {encounter.unique_name}.'
+        flash(flash_message, 'success')
+        response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter.id))
     return response.to_json()
 
 @routes_encounter.route('/encounter/<encounter_id>/view', methods=['GET'])
 @login_required
 def encounter_view(encounter_id):
-    """ GET route to show the page of an encounter."""
-
     with database_handler.get_session() as session:
         try:
             encounter = database_handler.create_system_time_request(session, models.Encounter, {"id":encounter_id}, one_result=True)
@@ -121,29 +112,14 @@ def encounter_edit(encounter_id):
 @login_required
 @database_handler.require_live_session
 def encounter_update(encounter_id):
-    """POST request to update an encounter. Returns JSON following `response_handler.JSONResponse` protocol.
-    
-    Must include a `form` with all necessary fields (see `models.Encounter`).
-    """
-
-    response = response_handler.JSONResponse()
-    with database_handler.get_session() as session:
-        try :
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
             encounter = session.query(models.Encounter).with_for_update().join(models.Species).filter(models.Encounter.id == encounter_id).first()
             encounter.update(request.form)
-            session.commit()
-            response.add_message('Updated {}.'.format(encounter.unique_name))
-            response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter.id))
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session, show_flash=False))
-    
-    with database_handler.get_session() as session:
-        try:
-            encounter = session.query(models.Encounter).filter(models.Encounter.id == encounter_id).first()
+            flash_message = f"Updated encounter {encounter.unique_name}."
             encounter.apply_updates()
-        except Exception as e:
-            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating encounter", session=session, show_flash=False))
-    
+        flash(flash_message, 'success')
+        response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
     return response.to_json()
 
         

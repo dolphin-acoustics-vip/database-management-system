@@ -16,9 +16,10 @@ Variables required:
         {% set editing = False %}
         <form id="encounter-insert-form" method="post" action="{{ url_for('encounter.encounter_insert') }}">
         {% include 'encounter/encounter-form-template.html' %}
+        <button id="insert-encounter-button" class="blue" type="submit">Insert</button>
         </form>
         <script>
-            ajaxifyForm(document.getElementById('encounter-insert-form'));
+            ajaxifyForm(document.getElementById('encounter-insert-form', undefined, undefined, undefined, undefined, button = document.getElementById("insert-encounter-button"), message = "Inserting encounter."));
         </script>
     </div>
 </body>

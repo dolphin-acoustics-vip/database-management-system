@@ -364,12 +364,12 @@ DROP TABLE IF EXISTS `species`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `species` (
   `id` varchar(36) NOT NULL DEFAULT uuid(),
-  `species_name` varchar(100) NOT NULL,
+  `scientific_name` varchar(100) NOT NULL,
   `genus_name` varchar(100) DEFAULT NULL,
   `common_name` varchar(100) DEFAULT NULL,
   `updated_by_id` varchar(36) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `species_name` (`species_name`),
+  UNIQUE KEY `scientific_name` (`scientific_name`),
   KEY `fk_updated_by_id_species` (`updated_by_id`),
   CONSTRAINT `fk_updated_by_id_species` FOREIGN KEY (`updated_by_id`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci WITH SYSTEM VERSIONING;

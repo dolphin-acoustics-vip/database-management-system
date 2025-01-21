@@ -57,7 +57,7 @@ def download_files(file_objects, file_names, zip_filename):
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for file_object, file_name in zip(file_objects, file_names):
                 # If the file does not exist, create a text entry explaining it
-                if not os.path.exists(file_object.get_full_absolute_path()):
+                if not os.path.exists(file_object._path_with_root):
                     error_message = f"The file {file_name} was not found."
                     zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
                     continue

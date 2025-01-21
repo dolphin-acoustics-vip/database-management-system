@@ -20,6 +20,7 @@
                 {% from 'recording/recording-form-template.html' import recording_form %}
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
                                     local_timezone=recording.encounter.local_timezone, recording=recording) }}
+                <button id="update-recording-button" class="blue" type="submit" title="Update encounter with changed data.">Update</button>
             </form>
             {% if recording.recording_file %}
             <form id="recording-file-delete-form" action="{{ url_for('recording.recording_file_delete', recording_id=recording.id) }}" method="post">
@@ -35,7 +36,7 @@
             </script>
             {% endif %}
             <script>
-                ajaxifyForm(document.getElementById('recording-form'));
+                ajaxifyForm(document.getElementById('recording-form'), undefined, undefined, undefined, undefined, button = document.getElementById("update-recording-button"), message="Updating recording.");
             </script>
 
             <h3>Review</h3>
@@ -170,7 +171,7 @@
             <label>Start date: {{ recording.start_time_pretty }}</label>
             <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
                 recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
-            <label>Number of selections: {{ recording.selection_count }}</label>
+            <label>Number of selections: {{ recording.selections_count }}</label>
             <label>Number of contours: {{ recording.contour_file_count }}</label>
 
             <form id="update-notes-form" action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
@@ -303,11 +304,9 @@
                     });
                 </script>
                 <form id="refresh-selection-table-form" action="{{ url_for('recording.selection_table_refresh', recording_id=recording.id)}}" method="post" style="flex : 1;">
-                    <button class="gray small" style="margin-top:0.5rem; margin-left:0.25rem;" type="submit">Refresh Selection Table Values</button>
+                    <button id="refresh-selection-table-button" class="gray small" style="margin-top:0.5rem; margin-left:0.25rem;" type="submit">Refresh Selection Table Values</button>
                 </form>
-                <script>
-                    ajaxifyForm(document.getElementById('refresh-selection-table-form'));
-                </script>
+
                 </div>
 
                 {% endif %}
@@ -487,7 +486,7 @@
         event.preventDefault();
         form = event.target;
         if (confirm("This will reset the traced status of all selections. Are you sure you want to do this?")) {
-            makeAjaxRequestForm(form)
+            makeAjaxRequestForm(form, undefined, undefined, undefined, undefined, button = document.getElementById('refresh-selection-table-button'), message="Refreshing selection table.")
         }
     });
 

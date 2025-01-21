@@ -29,6 +29,7 @@ from . import models
 from . import exception_handler
 from .logger import logger
 from . import database_handler
+from . import filespace_handler
 from .routes.routes_general import routes_general
 from .routes.routes_admin import routes_admin
 from .routes.routes_selection import routes_selection
@@ -72,6 +73,8 @@ def create_app(config_class):
     app = Flask(__name__)
 
     check_interfaces()
+
+    
 
     ROUTE_PREFIX = '/ocean'
 
@@ -134,6 +137,7 @@ def create_app(config_class):
         create_database_script = 'script_run.sql'
 
     db = database_handler.init_db(app, run_script=create_database_script)
+    filespace_handler.clean_directory(database_handler.get_file_space_path())
 
     # Register blueprints and error handlers
     app.register_blueprint(routes_general, url_prefix=ROUTE_PREFIX)

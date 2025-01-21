@@ -27,7 +27,7 @@ species provided in species_list.-->
 <div class="form-check">
   <input class="form-check-input" type="checkbox" id="species-checkbox-{{ species.id }}" value="{{ species.id }}" onclick="onSpeciesCheckboxClick()">
   <label class="form-check-label" for="species-checkbox-{{ species.id }}">
-    {{ species.species_name }}
+    {{ species.scientific_name }}
   </label>
 </div>
 {% endfor %}

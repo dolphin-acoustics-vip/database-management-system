@@ -21,10 +21,18 @@ def atomic():
 @contextmanager
 def atomic_with_filespace():
     """
-    A context manager that provides atomicity between the database and the file space. In the event of an error in either the database or the file space, all changes to both will be rolled back.
+    A context manager that provides atomicity between the database and the file space. 
+    In the event of an error in either the database or the file space, all changes to
+    both will be rolled back. Whenever a file is created or updated it needs to be
+    tracked by the transaction proxy object that is supplied by the context manager.
+    Typical usage is shown below. ::
 
-    :param session: the SQLAlchemy session
-    :param files: a list of File objects to rollback if an error happens
+        with atomic_with_filespace() as transaction_proxy:
+            seesion = self.session
+            # to create a new file and track it in the atomic session
+            file = transaction_proxy.create_tracked_file()
+            # to add an existing file to be tracked in the atomic session
+            transaction_proxy.track_file(file)
     """
 
     class TransactionProxy:
@@ -34,13 +42,9 @@ def atomic_with_filespace():
             self.on_success = None
 
         def track_file(self, file):
-            """Track the given `File` object. 
-            
-            This means that in the event of an error within the transactino changes to the file will
-            be rolled back. If the file is new, it will also be added to the current session.
-            """
-            self.session.add(file)
-            self.files.append(file)
+            if file:
+                self.session.add(file)
+                self.files.append(file)
 
         def create_tracked_file(self):
             file = File()

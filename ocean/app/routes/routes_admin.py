@@ -262,7 +262,7 @@ def admin_species_edit(species_id):
             session.commit()
             species.apply_updates()
             
-            response.add_message(f"Species updated: {species.species_name}")
+            response.add_message(f"Species updated: {species.scientific_name}")
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
@@ -277,11 +277,11 @@ def admin_species_delete(species_id):
         try:
             species = session.query(models.Species).filter_by(id=species_id).first()
             if not species: raise exception_handler.CriticalException('Unexpected error')
-            species_name = species.species_name
+            scientific_name = species.scientific_name
             species.prepare_for_delete()
             session.delete(species)
             session.commit()
-            flash('Species deleted: {}'.format(species_name), 'success')
+            flash('Species deleted: {}'.format(scientific_name), 'success')
             response.set_redirect(request.referrer)
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
@@ -306,7 +306,7 @@ def admin_species_insert():
             species.insert(request.form)
             session.add(species)
             session.commit()
-            flash(f'Species inserted: {species.species_name}', 'success')
+            flash(f'Species inserted: {species.scientific_name}', 'success')
             response.set_redirect(url_for('admin.admin_dashboard'))
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))

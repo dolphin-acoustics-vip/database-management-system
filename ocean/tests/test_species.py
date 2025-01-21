@@ -27,10 +27,10 @@ def test_set_updated_by_id_wrong_type(species: models.Species):
         species.updated_by_id = "this-is-not-a-uuid"
 
 @pytest.mark.parametrize("attr, value, expected", [
-    ("species_name", "TestName", "TestName"),
-    ("species_name", " TestName", "TestName"),
-    ("species_name", "TestName ", "TestName"),
-    ("species_name", " Test Name ", "Test Name"),
+    ("scientific_name", "TestName", "TestName"),
+    ("scientific_name", " TestName", "TestName"),
+    ("scientific_name", "TestName ", "TestName"),
+    ("scientific_name", " Test Name ", "Test Name"),
     ("genus_name", "TestName", "TestName"),
     ("genus_name", " TestName", "TestName"),
     ("genus_name", "TestName ", "TestName"),
@@ -51,10 +51,10 @@ def test_set_attribute(species: models.Species, attr: str, value, expected):
     assert getattr(species, attr) == expected
 
 @pytest.mark.parametrize("attr, value", [
-    ("species_name", 1),
-    ("species_name", None),
-    ("species_name", ""),
-    ("species_name", "   "),
+    ("scientific_name", 1),
+    ("scientific_name", None),
+    ("scientific_name", ""),
+    ("scientific_name", "   "),
     ("genus_name", 1),
     ("common_name", 1)
 ])
@@ -66,7 +66,7 @@ def test_validation_error(species: models.Species, attr: str, value):
 def test_to_dict(species: models.Species):
     expected = {
             'id': species.id,
-            'species_name': species.species_name,
+            'scientific_name': species.scientific_name,
             'genus_name': species.genus_name,
             'common_name': species.common_name,
             'updated_by_id': species.updated_by_id,

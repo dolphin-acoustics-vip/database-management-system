@@ -273,6 +273,6 @@ def upload():
     file_id = request.form['file_id']
     with database_handler.get_session() as session:
         file = session.query(models.File).filter_by(id=file_id).first()
-        file_path = file.get_full_absolute_path()
+        file_path = file._path_with_root
 
         return 'File uploaded successfully! Found ' + str(file_path) + ": " + str(os.path.exists(file_path))
