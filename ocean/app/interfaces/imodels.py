@@ -1281,94 +1281,6 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
         as the header and values as the value."""
         raise NotImplementedError()
 
-class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
-    """Abstract class for the SQLAlchemy table user.
-    
-    Abstract class implementation is inforced using ABC. 
-    Inherits from `Serialisable` and `UserMixin`.
-
-    Implementation for the following is required:
-    - `activate()`
-    - `deactivate()`
-    """
-    
-    __tablename__ = 'user'
-    __table_args__ = (PrimaryKeyConstraint('id'),)
-
-    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
-    login_id = Column(String(100), unique=True, nullable=False)
-    name = Column(String(1000), nullable=True)
-    role_id = Column(Integer, ForeignKey('role.id'), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    expiry = Column(DateTime(timezone=True), nullable=False)
-    role = database_handler.db.relationship('Role', backref='users', lazy=True)
-
-    @property
-    def unique_name(self):
-        """The login ID"""
-        return self.login_id
-
-    def _to_dict(self) -> typing.Dict[str, typing.Any]:
-        return {
-            'id': self.id,
-            'login_id': self.login_id,
-            'role_id': self.role_id,
-            'role': self.role
-        }
-    
-    def _form_dict(self) -> typing.Dict[str, typing.Any]:
-        return {
-            'name': True,
-            'login_id': False,
-            'role_id': True,
-            'expiry': True,
-            'is_active': False
-        }
-
-    @validates("id")
-    def validate_id(self, key, value):
-        return utils.validate_id(value=value, field=key, allow_none=False)
-
-    @validates("login_id")
-    def validate_login_id(self, key, value):
-        return utils.validate_string(value=value, field=key, allow_none=False)
-
-    @validates("name")
-    def validate_name(self, key, value):
-        return utils.validate_string(value=value, field=key, allow_none=True)
-    
-    @validates("is_active")
-    def validate_is_active(self, key, value):
-        return utils.validate_boolean(value=value, field=key, allow_none=False)
-
-    @validates("expiry")
-    def validate_expiry(self, key, value):
-        return utils.validate_datetime(value=value, field=key, allow_none=False)
-
-    @validates("role_id")
-    def validate_role_id(self, key, value):
-        return utils.validate_int(value=value, field=key, allow_none=False)
-    
-    @validates("role")
-    def validate_role(self, key, value):
-        # TODO: implement
-        return value
-
-    @property
-    def pretty_expiry(self) -> str:
-        """Get the expiry date in a human readable format."""
-        return utils.pretty_date(self.expiry)
-
-    @abstractmethod
-    def activate(self) -> None:
-        """Activate the user."""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def deactivate(self) -> None:
-        """Deactivate the user."""
-        raise NotImplementedError()
-
 class IDataSource(AbstractModelBase, Serialisable, TableOperations):
     __tablename__ = 'data_source'
 
@@ -1446,6 +1358,95 @@ class IRole(AbstractModelBase):
     @validates("name")
     def _validate_str(self, key, value):
         return utils.validate_string(value=value, field=key, allow_none=False)
+
+
+class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
+    """Abstract class for the SQLAlchemy table user.
+    
+    Abstract class implementation is inforced using ABC. 
+    Inherits from `Serialisable` and `UserMixin`.
+
+    Implementation for the following is required:
+    - `activate()`
+    - `deactivate()`
+    """
+    
+    __tablename__ = 'user'
+    __table_args__ = (PrimaryKeyConstraint('id'),)
+
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+    login_id = Column(String(100), unique=True, nullable=False)
+    name = Column(String(1000), nullable=True)
+    role_id = Column(Integer, ForeignKey('role.id'), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    expiry = Column(DateTime(timezone=True), nullable=False)
+    role = database_handler.db.relationship('Role', backref='users', lazy=True)
+
+    @property
+    def unique_name(self):
+        """The login ID"""
+        return self.login_id
+
+    def _to_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            'id': self.id,
+            'login_id': self.login_id,
+            'role_id': self.role_id,
+            'role': self.role
+        }
+    
+    def _form_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            'name': True,
+            'login_id': False,
+            'role_id': True,
+            'expiry': True,
+            'is_active': False
+        }
+
+    @validates("id")
+    def validate_id(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=False)
+
+    @validates("login_id")
+    def validate_login_id(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=False)
+
+    @validates("name")
+    def validate_name(self, key, value):
+        return utils.validate_string(value=value, field=key, allow_none=True)
+    
+    @validates("is_active")
+    def validate_is_active(self, key, value):
+        return utils.validate_boolean(value=value, field=key, allow_none=False)
+
+    @validates("expiry")
+    def validate_expiry(self, key, value):
+        return utils.validate_datetime(value=value, field=key, allow_none=False)
+
+    @validates("role_id")
+    def validate_role_id(self, key, value):
+        return utils.validate_int(value=value, field=key, allow_none=False)
+    
+    @validates("role")
+    def validate_role(self, key, value):
+        return utils.validate_type(value, IRole, key, allow_none = False)
+
+    @property
+    def pretty_expiry(self) -> str:
+        """Get the expiry date in a human readable format."""
+        return utils.pretty_date(self.expiry)
+
+    @abstractmethod
+    def activate(self) -> None:
+        """Activate the user."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def deactivate(self) -> None:
+        """Deactivate the user."""
+        raise NotImplementedError()
+
 
 class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     __tablename__ = 'assignment'

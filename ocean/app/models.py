@@ -1024,89 +1024,11 @@ class User(imodels.IUser):
     def update(self, form: dict, current_user):
         self._insert_or_update(form, False, current_user)
 
-
-    def set_login_id(self, value: str) -> None:
-        warnings.warn("User.set_login_id() is deprecated. Use User.login_id instead.", DeprecationWarning, stacklevel=2)
-        if self.login_id == None:
-            self.login_id = utils.parse_string_notempty(value, 'Login ID')
-        elif value != self.login_id:
-            raise exception_handler.WarningException("Login ID cannot be changed.")
-        
-    def get_role_id(self):
-        warnings.warn("User.get_role_id() is deprecated. Use User.role_id instead.", DeprecationWarning, stacklevel=2)
-        return self.role_id
-    
-    def get_role(self):
-        warnings.warn("User.get_role() is deprecated. Use User.role instead.", DeprecationWarning, stacklevel=2)
-        return self.role
-    
-    def set_role_id(self, value: int | str):
-        """Set the role ID of this user. Must either be an integer
-        or an integer-convertable string. This method does not verify
-        foreign key constraints.
-
-        Args:
-            value (int | str): the new value
-
-        Raises:
-            exception_handler.WarningException: `value` is not of the type stated above
-            exception_handler.WarningException: `value` is `None`
-        """
-        warnings.warn("User.set_role_id() is deprecated. Use User.role_id instead.", DeprecationWarning, stacklevel=2)
-        if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Role' cannot be empty or None.")
-        try:
-            value = int(float(value))
-        except Exception:
-            raise exception_handler.WarningException("Field 'role' must be of type integer (a whole number).")
-        self.role_id = value
-    
-    def set_role(self, value: Role):
-        warnings.warn("User.set_role() is deprecated. Use User.role instead.", DeprecationWarning, stacklevel=2)
-        self.role = utils.validate_type(value=value, target_type=Role, field="Role", allow_none=False)
-    
-    def set_expiry(self, value):
-        warnings.warn("User.set_expiry() is deprecated. Use User.expiry instead.", DeprecationWarning, stacklevel=2)
-        self.expiry = value
-    
-    def set_name(self, value):
-        warnings.warn("User.set_name() is deprecated. Use User.name instead.", DeprecationWarning, stacklevel=2)
-        self.name = utils.validate_string(value, field="Name", allow_none=False)
-    
-    def get_name(self):
-        warnings.warn("User.get_name() is deprecated. Use User.name instead.", DeprecationWarning, stacklevel=2)
-        return utils.validate_string(self.name, field="Name", allow_none=True)
-    
-    def get_login_id(self):
-        warnings.warn("User.get_login_id() is deprecated. Use User.login_id instead.", DeprecationWarning, stacklevel=2)
-        # NOTE: the login ID must never be altered or formatted
-        return self.login_id
-
-    def set_login_id(self, value: str):
-        warnings.warn("User.set_login_id() is deprecated. Use User.login_id instead.", DeprecationWarning, stacklevel=2)
-        if value is None or str(value).strip() is None: raise exception_handler.WarningException("Field 'Login ID' cannot be None.")
-        self.login_id = str(value)
-
     def activate(self):
         self.is_active = True
     
     def deactivate(self):
         self.is_active = False
-
-    def get_is_active(self):
-        warnings.warn("User.get_is_active() is deprecated. Use User.is_active instead.", DeprecationWarning, stacklevel=2)
-        return self.is_active if self.is_active else False
-
-    def get_expiry(self):
-        warnings.warn("User.get_expiry() is deprecated. Use User.expiry instead.", DeprecationWarning, stacklevel=2)
-        return utils.validate_datetime(value=self.expiry, field="Expiry", allow_none=True)
-    
-    def get_expiry_pretty(self):
-        warnings.warn("User.get_expiry_pretty() is deprecated. Use User.pretty_expiry_date instead.", DeprecationWarning, stacklevel=2)
-        return utils.pretty_date(self.get_expiry())
-    
-    def set_expiry(self, value):
-        warnings.warn("User.set_expiry() is deprecated. Use User.expiry instead.", DeprecationWarning, stacklevel=2)
-        self.expiry = utils.validate_datetime(value=value, field="Expiry", allow_none=False)
 
 class Assignment(imodels.IAssignment):
 

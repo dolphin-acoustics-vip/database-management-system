@@ -3,8 +3,8 @@ from ..app import exception_handler
 import pytest
 
 # Values that signify an "empty string"
-EMPTY_CHARACTERS = ["", " ", "\n", "\t"]
-INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," "]
+EMPTY_CHARACTERS = ["", " ", "\n", "\t", None, " \n\t "]
+INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," ", ":"]
 
 DATE_FORMAT = ['%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d', '%Y%m%d', '%Y%m%dT%H:%M:%S', '%Y%m%dT%H:%M']
 
