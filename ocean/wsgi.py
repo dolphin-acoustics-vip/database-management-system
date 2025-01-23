@@ -1,3 +1,4 @@
 from app.main import create_app
+import config
 
-app = create_app()
+app = create_app(config.ProductionConfig)
