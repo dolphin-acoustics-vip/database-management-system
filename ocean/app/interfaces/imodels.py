@@ -14,7 +14,7 @@ from .. import utils
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 import typing
 import warnings
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text, ForeignKey, PrimaryKeyConstraint, LargeBinary
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text, ForeignKey, PrimaryKeyConstraint, LargeBinary, Double
 from .. import exception_handler
 from .. import logger
 
@@ -123,12 +123,10 @@ class IFile(AbstractModelBase, Serialisable, TableOperations):
     id = Column(String(36), primary_key=True, nullable=False, server_default="uuid_generate_v4()")
     directory = Column(String(255), nullable=False)
     filename = Column(String(255), nullable=False)
-    uploaded_date = Column(DateTime(timezone=True))
-    upload_datetime = Column(DateTime(timezone=True))
+    upload_datetime = Column(DateTime(timezone=True), server_default="current_timestamp()")
 
     extension = Column(String(10), nullable=False)
-    duration = Column(Integer)
-    deleted = Column(Boolean, default=False)
+    deleted = Column(Boolean, nullable=False, default=False)
     original_filename = Column(String(255))
     hash = Column(LargeBinary)
     to_be_deleted = Column(Boolean, nullable=False, default=False)
@@ -444,8 +442,8 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
     location = Column(String(100), nullable=False)
     species_id = Column(String(36), ForeignKey('species.id'), nullable=False)
     project = Column(String(100), nullable=False)
-    latitude = Column(database_handler.db.Double)
-    longitude = Column(database_handler.db.Double)
+    latitude = Column(Double)
+    longitude = Column(Double)
     data_source_id = Column(String(36), ForeignKey('data_source.id'), nullable=False)
     recording_platform_id = Column(String(36), ForeignKey('recording_platform.id'), nullable=False)
     notes = Column(String(1000))
@@ -800,7 +798,7 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
 
     id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
     selection_number = Column(Integer, nullable=False)
-    selection_file_id = Column(String(36), ForeignKey('file.id'), nullable=False)
+    selection_file_id = Column(String(36), ForeignKey('file.id'))
     recording_id = Column(String(36), ForeignKey('recording.id'), nullable=False)
     contour_file_id = Column(String(36), ForeignKey('file.id'))
     ctr_file_id = Column(String(36), ForeignKey('file.id'))
@@ -1398,7 +1396,7 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     def _form_dict(self) -> typing.Dict[str, typing.Any]:
         return {
             'name': True,
-            'login_id': False,
+            'login_id': True,
             'role_id': True,
             'expiry': True,
             'is_active': False

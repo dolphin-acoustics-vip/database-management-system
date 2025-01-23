@@ -82,10 +82,9 @@ Variables required:
         recording=None) }}
         <input type="hidden" id="encounter_id" name="encounter_id" value="{{ encounter.id }}">
         <input type="hidden" id="assign_user_id" name="assign_user_id" value="">
-        <button id="insert-recording-button" class="blue" type="submit" title="Create a new recording with provided data.">Submit</button>
       </form>
       <script>
-        ajaxifyForm(document.getElementById('recording-insert-form'), undefined, undefined, undefined, undefined, button = document.getElementById("insert-recording-button"), message="Inserting recording.");
+        ajaxifyForm(document.getElementById('recording-insert-form'), undefined, undefined, undefined, undefined, button = document.getElementById("recording-form-submit-button"), message="Inserting recording.");
     </script>
       {% endif %}
     </section>

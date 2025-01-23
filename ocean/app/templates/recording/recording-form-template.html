@@ -30,6 +30,9 @@
 <input type="hidden" id="recording-file-id-store" name="upload_recording_file_id" value="">
 <input type="hidden" id="recording-file-name-store" name="upload_recording_file_name" value="">
 
+<button id="recording-form-submit-button" class="blue" type="submit" title="Update encounter with changed data.">Update</button>
+
+
 <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
 
 {% endif %}
@@ -73,10 +76,11 @@
         if ('{{editing}}' == 'True') {
             calculateTimeOffsets('start-time', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
         }
-        fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-insert-form-submit'));
+        fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-form-submit-button'));
 
     });
 
 </script>
+
 
 {% endmacro %}

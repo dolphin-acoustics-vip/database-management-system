@@ -39,7 +39,6 @@ def text_file_path():
     
 @fixture
 def text_file_object(text_file):
-    print(text_file)
     file = factories.FileFactory()
     file.insert(text_file, "dir1", "file1", extension="txt")
     return file

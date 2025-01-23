@@ -72,7 +72,6 @@ def selection_table_refresh(recording_id):
             for new_selection in new_selections:
                 session.add(new_selection)
             recording.update_selection_traced_status()
-            print("I GOT HERE")
             flash_message = f'Updated selection table for {recording.unique_name}.'
         flash(flash_message, 'success')
         response.set_redirect(request.referrer)

@@ -20,7 +20,6 @@
                 {% from 'recording/recording-form-template.html' import recording_form %}
                 {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
                                     local_timezone=recording.encounter.local_timezone, recording=recording) }}
-                <button id="update-recording-button" class="blue" type="submit" title="Update encounter with changed data.">Update</button>
             </form>
             {% if recording.recording_file %}
             <form id="recording-file-delete-form" action="{{ url_for('recording.recording_file_delete', recording_id=recording.id) }}" method="post">
@@ -36,7 +35,7 @@
             </script>
             {% endif %}
             <script>
-                ajaxifyForm(document.getElementById('recording-form'), undefined, undefined, undefined, undefined, button = document.getElementById("update-recording-button"), message="Updating recording.");
+                ajaxifyForm(document.getElementById('recording-form'), undefined, undefined, undefined, undefined, button = document.getElementById("recording-form-submit-button"), message="Updating recording.");
             </script>
 
             <h3>Review</h3>

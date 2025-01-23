@@ -372,7 +372,6 @@ def write_contour_stats(selections, filename):
         header.append(v[1])
     writer.writerow(header)
     for selection in selections:
-        print(selection.traced)
         if selection.traced:
             row = [
                 selection.recording.encounter.encounter_name,

@@ -130,13 +130,13 @@ def create_app(config_class):
         client_session.clear()
         return redirect(url_for('general.home'))
 
-    create_database_script = ''
-    if config_class.__name__ == 'TestingConfig':
-        create_database_script = 'create_database.sql'
-    else:
-        create_database_script = 'script_run.sql'
+    # create_database_script = ''
+    # if config_class.__name__ == 'TestingConfig':
+    #     create_database_script = 'create_database.sql'
+    # else:
+    #     create_database_script = 'script_run.sql'
 
-    db = database_handler.init_db(app, run_script=create_database_script)
+    db = database_handler.init_db(app)
     filespace_handler.clean_directory(database_handler.get_file_space_path())
 
     # Register blueprints and error handlers

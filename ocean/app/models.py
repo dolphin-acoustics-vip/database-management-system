@@ -96,7 +96,6 @@ class Species(imodels.ISpecies):
         return self.scientific_name
     
     def prepare_for_delete(self):
-        print(self.encounters)
         if len(self.encounters) > 0:
             raise exception_handler.WarningException("Cannot delete species as it has dependencies.")
 
@@ -286,9 +285,7 @@ class File(imodels.IFile):
         chunk_size = 1024 * 1024  # 1MB chunks
         with open(dst, 'wb') as dest_file:
             while True:
-                print(file_stream)
                 chunk = file_stream.read(chunk_size)
-                print(chunk)
                 if chunk:
                     dest_file.write(chunk)
                 else:
@@ -318,7 +315,6 @@ class File(imodels.IFile):
 
     def calculate_hash(self):
         import hashlib
-        print("Calculate hash", self._path_with_root)
         if os.path.exists(self._path_with_root) == False:
             return None
         with open(self._path_with_root, 'rb') as file:

@@ -171,6 +171,7 @@ def test_update_role_current_user():
     request.form = {
         "name": "Jane Doe",
         "role_id": "2",
+        "login_id": "test@gmail.com",
         "expiry": "3000-01-01"
     }
     with pytest.raises(exception_handler.WarningException) as e:
@@ -183,6 +184,7 @@ def test_deactivate_current_user():
     request.form = {
         "name": "Jane Doe",
         "role_id": "1",
+        "login_id": "test@gmail.com",
         "expiry": "3000-01-01"
     }
     with pytest.raises(exception_handler.WarningException) as e:
