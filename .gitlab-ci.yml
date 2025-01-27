@@ -14,10 +14,12 @@ include:
         sed "s/YOUR_DB_PASS/$DB_PASS/" > .env
     - echo SESSION_COOKIE_SECURE=True >> .env
     - scp -o stricthostkeychecking=no -r * .env $SSH_USER@$SSH_SERVER:$DEPLOY_PATH
+    - ssh -o stricthostkeychecking=no $SSH_USER@$SSH_SERVER "cd $DEPLOY_PATH && ./setup.sh"
 
 stages:
   - test
   - deploy-test
+  - deploy-prod
 
 test:
   stage: test
@@ -45,3 +47,24 @@ deploy-test:
     - !reference [.deploy, script]
   rules:
     - if: $CI_COMMIT_BRANCH == "master"
+
+deploy-prod:
+  stage: deploy-prod
+  variables:
+    SSH_USER: $PROD_SSH_USER
+    SSH_SERVER: $PROD_SSH_SERVER
+    SSH_KEY: "$PROD_SSH_KEY"
+    SSH_PASSPHRASE: "$PROD_SSH_PASS"
+    DEPLOY_PATH: $PROD_DEPLOY_PATH
+    FILESPACE_PATH: $PROD_FILESPACE_PATH
+    DB_HOST: $PROD_DB_HOST
+    DB_USER: $PROD_DB_USER
+    DB_NAME: $PROD_DB_NAME
+    DB_PASS: "$PROD_DB_PASS"
+  before_script:
+    - !reference [.ssh_with_passphrase, before_script]
+  script:
+    - sed -i 's/DEV_STADOLPHINACOUSTICS/PROD_STADOLPHINACOUSTICS/' .env_template
+    - !reference [.deploy, script]
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
