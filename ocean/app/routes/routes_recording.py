@@ -340,31 +340,18 @@ def recording_delete_selections():
     Returns:
         flask.Response: the response object (see response_handler.JSONResponse)
     """
-    response = response_handler.JSONResponse()
-    data = request.get_json()
-    selection_ids = data.get('selectionIds', [])
-    if selection_ids == None or len(selection_ids) == 0:
-        response.add_error('No selections selected for deletion.')
-        return response.to_json()
-    
-    with database_handler.get_session() as session:
-        counter=0
-        for selection_id in selection_ids:
-            selection = None
-            try:
-                selection = session.query(models.Selection).filter_by(id=selection_id).first()
-                recording = session.query(models.Recording).filter_by(id=selection.recording_id).first()
-                check_editable(recording)
-                selection.delete(session)
-                session.commit()
-                counter += 1
-            except (SQLAlchemyError,Exception) as e:
-                response.add_error(exception_handler.handle_exception(exception=e,prefix=f"Error deleting selection {selection.selection_number if selection else ''}", session=session, show_flash=False))
-        if counter > 0:
-            flash(f'Deleted {counter} selections.', 'success')
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction_proxy:
+            session = transaction_proxy.session
+            data = request.get_json()
+            selection_ids = data.get('selectionIds', [])
+            if selection_ids == None or len(selection_ids) == 0: raise exception_handler.WarningException("No selections selected for deletion.")
+            selections = session.query(models.Selection).filter(models.Selection.id.in_(selection_ids)).all()
+            for selection in selections:
+                check_editable(selection.recording)
+                selection._delete_children(session)
             response.set_redirect(request.referrer)
-        else:
-            response.add_error(f'No selections deleted.')
+            flash(f"Deleted {len(selection_ids)} selections.", category="success")
         return response.to_json()
 
 
