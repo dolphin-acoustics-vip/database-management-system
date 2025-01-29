@@ -790,10 +790,10 @@ class Selection(imodels.ISelection):
         spectogram_axs.set_xlabel(f'Time (ms)', fontsize=20)
         spectogram_axs.set_ylabel('Frequency (Hz)', fontsize=20)
         spectogram_axs.tick_params(axis='both', labelsize=14)
-        spectrogram_y_min = axs[0].get_ylim()[0]
-        prectrogram_y_max = axs[0].get_ylim()[1] if axs[0].get_ylim()[1] < 20000 else 20000
+        spectrogram_y_min = spectogram_axs.get_ylim()[0]
+        sprectrogram_y_max = spectogram_axs.get_ylim()[1] if spectogram_axs.get_ylim()[1] < 20000 else 20000
         spectogram_axs.set_xlim(0)
-        spectogram_axs.set_ylim(spectrogram_y_min, prectrogram_y_max)
+        spectogram_axs.set_ylim(spectrogram_y_min, sprectrogram_y_max)
         spectogram_axs.xaxis.set_major_formatter(ticker.FuncFormatter(format_ms))
         spectrogram_x_min, spectrogram_x_max = [x * 1000 for x in spectogram_axs.get_xlim()]
 
@@ -807,7 +807,7 @@ class Selection(imodels.ISelection):
             contour_axs.set_xlabel('Time (ms)', fontsize=20)
             contour_axs.set_ylabel('Frequency (Hz)', fontsize=20)
             contour_axs.tick_params(axis='both', labelsize=14)
-            contour_axs.set_ylim(spectrogram_y_min, prectrogram_y_max)
+            contour_axs.set_ylim(spectrogram_y_min, sprectrogram_y_max)
             contour_axs.set_xlim(spectrogram_x_min, spectrogram_x_max)
         fig.suptitle(f'{self.unique_name} spectrogram (Sampling Rate: {sampling_rate} Hz, Duration {audio_length:.2f} s, Window Size: {window_size}, Hop Size: {hop_size})', fontsize=26)
         # Layout so plots do not overlap
