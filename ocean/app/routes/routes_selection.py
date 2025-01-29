@@ -231,16 +231,12 @@ def process_selection():
 @routes_selection.route('/serve-plot/<selection_id>')
 @login_required
 def serve_plot(selection_id: str):
-    with database_handler.get_operation_lock() as operation_lock:
-        fft_size = request.args.get('fft_size', type=int) if request.args.get('fft_size', type=int) else None
-        hop_size = request.args.get('hop_size', type=int) if request.args.get('hop_size', type=int) else None
-        with database_handler.get_session() as session:
-            filespace_handler.clean_filespace_temp()
-            selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-            temp_dir = tempfile.mkdtemp(dir=database_handler.get_tempdir())  # Use mkdtemp for manual cleanup
-            update_permissions = True if current_user.role_id != 4 else False
-            plot_file_path = selection.create_temp_plot(session, temp_dir, fft_size, hop_size, update_permissions=update_permissions)
-        return send_file(plot_file_path, mimetype='image/png')
+    with database_handler.get_session() as session:
+        filespace_handler.clean_filespace_temp()
+        selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
+        temp_dir = tempfile.mkdtemp(dir=database_handler.get_tempdir())  # Use mkdtemp for manual cleanup
+        plot_file_path = selection.create_temp_plot(temp_dir)
+    return send_file(plot_file_path, mimetype='image/png')
 
 @routes_selection.route('/recording/<recording_id>/contour-insert', methods=['POST'])
 @database_handler.require_live_session

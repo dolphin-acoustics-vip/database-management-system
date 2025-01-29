@@ -760,101 +760,62 @@ class Selection(imodels.ISelection):
         elif not self.contour_file and (self.annotation == "N"): self.traced = False
         else: self.traced = None
             
-    def create_temp_plot(self, session, temp_dir, fft_size=None, hop_size=None, update_permissions=False):
-        
-        warning = ""
-        
-        # Set default FFT and hop sizes if not provided
-        if fft_size is None:
-            n_fft = self.default_fft_size if self.default_fft_size else 2048
-            if not self.default_fft_size:
-                self.default_fft_size = n_fft
-        else:
-            self.default_fft_size = fft_size
-            n_fft = fft_size
+    def create_temp_plot(self, temp_dir):
+        sampling_rate = int(self.sampling_rate) if self.sampling_rate else 44100
+        bin_width = 25  # Adjustable: 20–50 ms (time between frequency bins)
+        # Window size should be a power of 2 and adhere to the defined bin width (above)
+        window_size = 2 ** int(round(np.log2((bin_width / 1000) * sampling_rate)))
+        # Hop size should be 25% - 50% of window size
+        hop_size = window_size // 4  # 75% overlap
 
-        if hop_size is None:
-            hop_length = self.default_hop_size if self.default_hop_size else 512
-            if not self.default_hop_size:
-                self.default_hop_size = hop_length
-        else:
-            self.default_hop_size = hop_size
-            hop_length = hop_size
-        
-        # TODO: fix this for a live session
-        # if update_permissions:
-        #     session.commit()
+        import matplotlib.ticker as ticker
+        # Set x-axis labels in milliseconds
+        def format_ms(x, pos):
+            """Convert x axis labels from seconds to milliseconds"""
+            return f"{x*1000:.0f}"
 
-        # Load the audio file
         with open(self.selection_file._path_with_root, 'rb') as selection_file:
-            audio, sr = librosa.load(selection_file)
-
-        # Increase the resolution of the spectrogram
-        spectrogram = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
+            audio, sr = librosa.load(selection_file, sr=sampling_rate)
+            audio_length = len(audio)/sampling_rate
+        spectrogram = librosa.stft(audio, n_fft=window_size, hop_length=hop_size)
 
         # Create a figure with one or two subplots
-        if self.contour_file:
-            fig, axs = plt.subplots(2, 1, figsize=(30, 10))
-        else:
-            fig, axs = plt.subplots(1, 1, figsize=(30, 5))
-
+        if self.contour_file: fig, axs = plt.subplots(1, 2, figsize=(30, 10))
+        else: fig, axs = plt.subplots(1, 1, figsize=(30, 5))
         spectogram_axs = axs[0] if self.contour_file else axs
+        contour_axs = axs[1] if self.contour_file else None
 
         # Plot the spectrogram
-        spectogram_axs.imshow(librosa.amplitude_to_db(np.abs(spectrogram), ref=np.max), cmap='inferno', origin='lower', aspect='auto')
-        spectogram_axs.set_xlabel('Time', fontsize=20)
-        spectogram_axs.set_ylabel('Frequency (hz)', fontsize=20)
+        librosa.display.specshow(librosa.amplitude_to_db(np.abs(spectrogram), ref=np.max), ax=spectogram_axs, sr=sampling_rate, hop_length=hop_size, cmap='inferno', x_axis='time', y_axis='hz')
+        spectogram_axs.set_xlabel(f'Time (ms)', fontsize=20)
+        spectogram_axs.set_ylabel('Frequency (Hz)', fontsize=20)
         spectogram_axs.tick_params(axis='both', labelsize=14)
+        spectrogram_y_min = axs[0].get_ylim()[0]
+        prectrogram_y_max = axs[0].get_ylim()[1] if axs[0].get_ylim()[1] < 20000 else 20000
+        spectogram_axs.set_xlim(0)
+        spectogram_axs.set_ylim(spectrogram_y_min, prectrogram_y_max)
+        spectogram_axs.xaxis.set_major_formatter(ticker.FuncFormatter(format_ms))
+        spectrogram_x_min, spectrogram_x_max = [x * 1000 for x in spectogram_axs.get_xlim()]
 
         # Plot the contour if it exists
-        if self.contour_file_id:
+        if self.contour_file_id and contour_axs:
             contour_file_handler = self.get_contour_file_handler()
             contour_rows = contour_file_handler.contour_rows
-            min_time_ms = min([unit.time_milliseconds for unit in contour_rows])
-            axs[1].plot([unit.time_milliseconds - min_time_ms for unit in contour_rows], [unit.peak_frequency for unit in contour_rows])
-            axs[1].set_xlabel('Time (ms)', fontsize=20)
-            axs[1].set_ylabel('Frequency (hz)', fontsize=20)
-            axs[1].tick_params(axis='both', labelsize=14)
-
-            # Adjust the y-axis limits of the spectrogram to match the y-axis limits of the contour plot
-            contour_y_min = min([unit.peak_frequency for unit in contour_rows])
-            contour_y_max = max([unit.peak_frequency for unit in contour_rows])
-            contour_y_range = contour_y_max - contour_y_min
-            spectogram_y_min = axs[0].get_ylim()[0]
-            spectogram_y_max = axs[0].get_ylim()[1]
-            spectogram_y_range = spectogram_y_max - spectogram_y_min
-            range_diff = spectogram_y_range - contour_y_range
-
-            if range_diff < 0:
-                warning = ". Warning: contour y-axis range larger than spectogram y-axis range."
-            else:
-                contour_y_min_new = contour_y_min - (range_diff / 2)
-                contour_y_max_new = contour_y_max + (range_diff / 2)
-                axs[1].set_ylim(contour_y_min_new, contour_y_max_new)
-
-            contour_x_min = min([unit.time_milliseconds - min_time_ms for unit in contour_rows])
-            contour_x_max = max([unit.time_milliseconds - min_time_ms for unit in contour_rows])
-            contour_x_range = contour_x_max - contour_x_min
-            spectogram_x_min = axs[0].get_xlim()[0]
-            spectogram_x_max = axs[0].get_xlim()[1]
-            spectogram_x_range = spectogram_x_max - spectogram_x_min
-            range_x_diff = contour_x_range - spectogram_x_range
-            contour_x_min_new = contour_x_min - (range_x_diff / 2)
-            contour_x_max_new = contour_x_max + (range_x_diff / 2)
-            axs[1].set_xlim(contour_x_min_new, contour_x_max_new)
-            fig.suptitle(f'Spectrogram (FFT Size: {n_fft}, Hop Size: {hop_length}){warning if warning else ""}', fontsize=26)
-        else:
-            fig.suptitle(f'Spectrogram (FFT Size: {n_fft}, Hop Size: {hop_length})', fontsize=26)
-
+            contour_domain = [(unit.time_milliseconds - contour_rows[0].time_milliseconds) for unit in contour_rows]
+            contour_range = [unit.peak_frequency for unit in contour_rows]
+            contour_axs.plot(contour_domain, contour_range)
+            contour_axs.set_xlabel('Time (ms)', fontsize=20)
+            contour_axs.set_ylabel('Frequency (Hz)', fontsize=20)
+            contour_axs.tick_params(axis='both', labelsize=14)
+            contour_axs.set_ylim(spectrogram_y_min, prectrogram_y_max)
+            contour_axs.set_xlim(spectrogram_x_min, spectrogram_x_max)
+        fig.suptitle(f'{self.unique_name} spectrogram (Sampling Rate: {sampling_rate} Hz, Duration {audio_length:.2f} s, Window Size: {window_size}, Hop Size: {hop_size})', fontsize=26)
         # Layout so plots do not overlap
         fig.tight_layout()
-
         # Save the plot as a PNG
         plot_path = os.path.join(temp_dir, self.plot_file_name + ".png")
         plt.savefig(plot_path, bbox_inches='tight')
-
         plt.close('all')
-
         return plot_path
 
     def __contour_file_load_dataframe(self) -> pd.DataFrame:
