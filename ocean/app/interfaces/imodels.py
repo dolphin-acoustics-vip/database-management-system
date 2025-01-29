@@ -1396,7 +1396,7 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     def _form_dict(self) -> typing.Dict[str, typing.Any]:
         return {
             'name': True,
-            'login_id': True,
+            'login_id': False,
             'role_id': True,
             'expiry': True,
             'is_active': False

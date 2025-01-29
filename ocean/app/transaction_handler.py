@@ -52,9 +52,9 @@ def atomic_with_filespace():
             return file
 
         def rollback(self):
-            self.session.rollback()
             for file in self.files:
                 file.rollback(self.session)
+            self.session.rollback()
 
     with get_session() as session:
         transaction_proxy = TransactionProxy(session)
