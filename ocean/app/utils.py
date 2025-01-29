@@ -151,35 +151,33 @@ def download_file(file_obj, filename=None):
     with a custom name, set `filename`. If the file is to be downloaded with the same
     name as the original, set `filename` to None (default).
     """
-    try:
-        # Generate a custom filename for the download
-        custom_filename = filename if filename else file_obj.filename
-        if not custom_filename.endswith(file_obj.extension):
-            custom_filename = f"{custom_filename}.{file_obj.extension}"
-        
-        # Get the binary content of the file
+    # Generate a custom filename for the download
+    custom_filename = filename if filename else file_obj.filename
+    if not custom_filename.endswith(file_obj.extension):
+        custom_filename = f"{custom_filename}.{file_obj.extension}"
+    
+    # Create a generator that yields chunks of the file content
+    def generate_file():
         binary_content = file_obj.get_binary()
+        chunk_size = 1024
+        for i in range(0, len(binary_content), chunk_size):
+            yield binary_content[i:i + chunk_size]
 
-        # Calculate the SHA-256 hash of the file content
-        if not file_obj.verify_hash():
-            raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
+    # Calculate the SHA-256 hash of the file content
+    if not file_obj.verify_hash():
+        raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
 
-        # Create an in-memory binary stream
-        file_stream = io.BytesIO(binary_content)
+    # Send the file stream as an attachment
+    response = flask.Response(
+        flask.stream_with_context(generate_file()),
+        mimetype='application/octet-stream',
+        content_type='application/octet-stream',
+        headers={
+            'Content-Disposition': f'attachment; filename="{secure_filename(custom_filename)}"'
+        }
+    )
 
-        # Send the file stream as an attachment
-        response = flask.send_file(
-            file_stream,
-            as_attachment=True,
-            download_name=secure_filename(custom_filename),  # Custom download filename
-        )
-
-        return response
-    except exception_handler.WarningException as e:
-        # Log or handle the exception as needed
-        exception_handler.handle_exception(exception=e, prefix="Error downloading file")
-        return flask.redirect(flask.request.referrer)
-
+    return response
 
 def validate_boolean(value: bool | str, field: str, allow_none: bool = False):
     """
