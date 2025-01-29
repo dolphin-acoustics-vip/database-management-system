@@ -352,7 +352,7 @@ def recording_delete_selections():
                 selection._delete_children(session)
             response.set_redirect(request.referrer)
             flash(f"Deleted {len(selection_ids)} selections.", category="success")
-        return response.to_json()
+    return response.to_json()
 
 
   

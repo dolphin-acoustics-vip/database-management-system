@@ -82,7 +82,7 @@ def process_contour():
     database. If no selection number has been given, one is automatically extracted from
     the filename of the contour file being processed. 
 
-    The selection number is extracted using 'sel_(\d+)' in the filename of the contour file.
+    The selection number is extracted using 'sel_(\\d+)' in the filename of the contour file.
 
     :param recording_id: the id of the recording
     :type recording_id: str (HTTP argument)
@@ -158,7 +158,7 @@ def process_selection():
     database. If no selection number has been given, one is automatically extracted from
     the filename of the contour file being processed. 
 
-    The selection number is extracted using 'sel_(\d+)' in the filename of the contour file.
+    The selection number is extracted using 'sel_(\\d+)' in the filename of the contour file.
 
     :param recording_id: the id of the recording
     :type recording_id: str (HTTP argument)
@@ -234,9 +234,10 @@ def serve_plot(selection_id: str):
     with database_handler.get_session() as session:
         filespace_handler.clean_filespace_temp()
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        temp_dir = tempfile.mkdtemp(dir=database_handler.get_tempdir())  # Use mkdtemp for manual cleanup
-        plot_file_path = selection.create_temp_plot(temp_dir)
-    return send_file(plot_file_path, mimetype='image/png')
+        plot_bytestream = selection.create_temp_plot()
+        response = Response(plot_bytestream, mimetype='image/png')
+        response.headers['Content-Disposition'] = f'attachment; filename="{selection.plot_file_name}"'
+        return response
 
 @routes_selection.route('/recording/<recording_id>/contour-insert', methods=['POST'])
 @database_handler.require_live_session
@@ -466,4 +467,4 @@ def reactivate_selections():
                 response.set_redirect(request.referrer)
             if success_counter == 0:
                 response.add_error('No selections reactivated')
-        return response.to_json()
+    return response.to_json()

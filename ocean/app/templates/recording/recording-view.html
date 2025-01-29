@@ -331,9 +331,10 @@
                 {% endif %}
 
                 <h2>Selections for recording {{ recording.start_time_pretty }}</h2>
+                <button style="margin-bottom:1rem;" id="show-plots-button" class="gray small" style="width: 100%; margin-top: 1rem;">Show Plots</button>
                 {% if selections|length > 0 %}
                 <div class="table-responsive">
-                    <table class="table-striped">
+                    <table class="table-striped" id="selections-table">
                         <tr>
                             <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
                             <th></th>
@@ -345,6 +346,7 @@
                         </tr>
                         {% for selection in selections %}
                         <tr id="row-{{ selection.id }}" {% if selection.deactivated %} style="color: red;" {% endif %}>
+                            <input type="hidden" class="serve-plot-route" value="{{ url_for('selection.serve_plot', selection_id=selection.id) }}">
                             <td><input class="rowCheckbox" type="checkbox" name="selections-checkboxes"
                                     value="{{ selection.id }}">
                             </td>
@@ -366,12 +368,7 @@
 
                             </td>
                             {% if selection.deactivated %}
-                            <td colspan="3">
-                                <div style="display:inline-flex; width: 100%;">
-                                    <button class="gray small"
-                                        onclick="reactivateSelection('{{ selection.id }}')">Reactivate</button>
-                                </div>
-                            </td>
+
                             {% else %}
                             <td>
                                 <label>{{ selection.annotation }}</label>
@@ -427,6 +424,14 @@
                             </td>
                             {% endif %}
                         </tr>
+                        <!-- <tr>
+                            <td>
+                            <div style="display: flex; margin-top: 20px; margin-bottom: 20px; align-items:center; position: relative;">
+                                <img style="width:100%; padding-left:0.5rem; padding-right:0.5rem;" id="plot-image"
+                                    src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot" style="width:100%; display:none;">
+                            </div>
+                        </td>
+                        </tr> -->
                         {% endfor %}
                     </table>
                 </div>
@@ -459,6 +464,65 @@
     </div>
 
 </body>
+
+<script>
+
+    // Get the table element
+    var table = document.getElementById('selections-table');
+
+    // Get the button element
+    var button = document.getElementById('show-plots-button');
+    var generatedRowClass = 'generated-row';
+
+    var generatedRowCount = 0;
+    var totalTows = 0
+
+    // Add an event listener to the button
+    button.addEventListener('click', async function() {
+        var loadNextRow = function(rowIndex) {
+            return new Promise(resolve => {
+                // Get the current row
+                var row = table.rows[rowIndex];
+                // Get the plot route from the hidden input element
+                // Get the nearest element with class serve-plot-route
+                if (!row) {
+                    resolve();
+                    return;
+                }
+                var plotRouteInput = row.querySelector('.serve-plot-route');
+                if (!plotRouteInput) {
+                    loadNextRow(rowIndex+1).then(resolve);
+                    return;
+                }
+                // Create a new row underneath the current row
+                var newRow = table.insertRow(rowIndex+1);
+                newRow.className = generatedRowClass;
+
+                // Create a new cell in the new row
+                var newCell = newRow.insertCell(0);
+                newCell.colSpan = table.rows[0].cells.length; // Set colSpan to the number of columns in the table
+
+                // Create an image element to display the plot
+                var plotImage = new Image();
+                plotImage.onload = function() {
+                    newCell.appendChild(plotImage);
+                    button.innerHTML = 'Loading... Depending on your network this will take some time. (' + generatedRowCount++ + '/' + totalRows + ')';
+                    loadNextRow(rowIndex+1).then(resolve);
+                };
+                plotImage.src = plotRouteInput.value;
+                plotImage.alt = 'Plot';
+            });
+        }
+        var generatedRows = table.getElementsByClassName(generatedRowClass);
+        while (generatedRows.length > 0) {
+            table.deleteRow(generatedRows[0].rowIndex);
+        }
+        button.disabled = true;
+        totalRows = table.rows.length
+        await loadNextRow(1);
+        button.hidden = true;
+    });
+</script>
 
 <script>
     $("#delete-recording-button").on("click", function (event) {

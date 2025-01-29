@@ -760,7 +760,7 @@ class Selection(imodels.ISelection):
         elif not self.contour_file and (self.annotation == "N"): self.traced = False
         else: self.traced = None
             
-    def create_temp_plot(self, temp_dir):
+    def create_temp_plot(self):
         sampling_rate = int(self.sampling_rate) if self.sampling_rate else 44100
         bin_width = 25  # Adjustable: 20–50 ms (time between frequency bins)
         # Window size should be a power of 2 and adhere to the defined bin width (above)
@@ -813,10 +813,22 @@ class Selection(imodels.ISelection):
         # Layout so plots do not overlap
         fig.tight_layout()
         # Save the plot as a PNG
-        plot_path = os.path.join(temp_dir, self.plot_file_name + ".png")
-        plt.savefig(plot_path, bbox_inches='tight')
-        plt.close('all')
-        return plot_path
+        # plot_path = os.path.join(temp_dir, self.plot_file_name + ".png")
+        # plt.savefig(plot_path, bbox_inches='tight')
+        # plt.close('all')
+
+        # Create a BytesIO object to store the plot
+        buf = io.BytesIO()
+
+        # Save the plot to the BytesIO object
+        plt.savefig(buf, format='png', bbox_inches='tight')
+
+        # Seek back to the beginning of the buffer
+        buf.seek(0)
+
+        # Return the bytestream of the plot
+        return buf.getvalue()
+
 
     def __contour_file_load_dataframe(self) -> pd.DataFrame:
         """Read the `contour_file` into a pandas dataframe, validating columns and their types."""
