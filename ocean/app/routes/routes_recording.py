@@ -16,6 +16,8 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Third-party imports
+from functools import wraps
+import typing
 from flask import Blueprint, Response, flash, jsonify, redirect, render_template, url_for, request
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_required, current_user
@@ -27,183 +29,157 @@ from .. import models
 from .. import exception_handler
 from .. import utils
 from .. import contour_statistics
+from .. import response_handler
+from .. import transaction_handler
 
 routes_recording = Blueprint('recording', __name__)
 
 
-def insert_or_update_recording(session, request, recording: models.Recording):
-    """
-    Insert or update a recording in the database. This function should be called
-    by routes either inserting (new) Recording objects or updating (existing) 
-    Recording objects.
+def check_editable(recording: models.Recording):
+    if recording.is_reviewed() or recording.is_on_hold():
+        if current_user.role.id == 3 or current_user.role.id == 4:
+            raise exception_handler.WarningException("You do not have permission to edit this recording.")
 
-    :param session: The database session
-    :param request: The request object
-    :param encounter_id: The id of the encounter
-    :param recording_id: The id of the recording to be updated (default is None if inserting a new recording)
-
-    :return: The Recording object that was inserted or updated
-    """
-    recording.set_start_time(request.form['time_start'])
-    session.flush()
-    # If a recording file has been given, add it to the Recording object
-    if 'recording_file_id' in request.form and request.form['recording_file_id'] != "":
-        recording_file_id = request.form['recording_file_id']
-        recording_filename = request.form['recording_filename']
-        recording_file = models.File()
-        recording_file.insert_path_and_filename(session, filespace_handler.get_complete_temporary_file(recording_file_id, recording_filename), recording.generate_relative_directory(), recording.generate_recording_file_name())
-        filespace_handler.remove_temporary_file(recording_file_id, recording_filename)
-        session.add(recording_file)
-        recording.set_recording_file(recording_file)
-    filespace_handler.clean_filespace_temp()
-    return recording
-
-@routes_recording.route('/recording/<recording_id>/refresh-selection-table', methods=['POST'])
-def refresh_selection_table(recording_id):
+@routes_recording.route('/recording/<recording_id>/check-editable', methods=['POST'])
+def check_editable_recording(recording_id):
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            recording.load_and_validate_selection_table()
-            session.commit()
-            recording.update_selection_traced_status()
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            check_editable(recording)
+            response.data['editable'] = 1
+        except (Exception, SQLAlchemyError) as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
 
-@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/selection-table/add', methods=['POST'])
+@routes_recording.route('/recording/<recording_id>/selection-table/refresh', methods=['POST'])
+def selection_table_refresh(recording_id):
+    """POST route to re-apply the uploaded selection table file to the recording. Response uses
+    the `response_handler.JSONResponse()` protocol.
+    
+    Will also update the traced status of all selections in the recording based on the annotations
+    in the selection table and the contour files uploaded. If the update was successful or there
+    exists no selection table in the recording, the response will redirect to the referrer. If
+    any errors occur the response will include an error message with no redirect.
+
+    If the recording is marked as Reviewed and the user is not an admin, an error is logged.
+    """
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            check_editable(recording)
+            new_selections = recording.selection_table_apply()
+            for new_selection in new_selections:
+                session.add(new_selection)
+            recording.update_selection_traced_status()
+            flash_message = f'Updated selection table for {recording.unique_name}.'
+        flash(flash_message, 'success')
+        response.set_redirect(request.referrer)
+    return response.to_json()
+
+@routes_recording.route('/recording/<recording_id>/selection-table/insert', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_4
 @login_required
-def recording_selection_table_add(encounter_id,recording_id):
-    """
-    Handles a POST request to upload a selection table for a given recording.
-
-    :param encounter_id: the id of the encounter
-    :type encounter_id: str
-    :param recording_id: the id of the recording
-    :type recording_id: str
-
-    :return: a redirect to the recording view
-    """
-    with database_handler.get_session() as session:
-        try:
+def selection_table_insert(recording_id):
+    check_editable_recording(recording_id)       
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
+            selection_table_file = transaction.create_tracked_file()
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            # If a selection file has been given, add it to the Recording object
             if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
-                selection_table_file = request.files['selection-table-file'] # required in the POST request
-                # Generate the destination filename and filepath for the selection table
-                new_selection_table_filename = recording.generate_selection_table_file_name()
-                new_relative_path = recording.generate_relative_directory()
-                new_file = models.File()
-                new_file.insert_path_and_filename(session, selection_table_file, new_relative_path, new_selection_table_filename)
-                session.add(new_file)
-                recording.selection_table_file = new_file 
-                # Validate the selection table - if invalid then delete the selection table file
-                recording.load_and_validate_selection_table()
-                session.commit()
-                recording.update_selection_traced_status()
-                
-                flash("Selection table uploaded successfully", "success")
-            else:
-                raise exception_handler.WarningException("The form did not send a selection table file.")
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error adding selection table", session=session)
-        
-    return redirect(url_for('recording.recording_view', recording_id=recording_id))
- 
+                selection_table_file.insert(request.files['selection-table-file'], recording.relative_directory, recording.selection_table_file_name)
+                new_selections = recording.selection_table_file_insert(selection_table_file)
+                for new_selection in new_selections:
+                    session.add(new_selection)
+            else: raise exception_handler.WarningException("The form did not send a selection table file.")
+        flash("Selection table uploaded successfully", "success")
+        response.set_redirect(request.referrer)
+    return response.to_json()
 
-@routes_recording.route('/export-selection-table/<recording_id>/<export_format>')
-@database_handler.require_live_session
+@routes_recording.route('/export-selection-table/<recording_id>/<export_format>', methods=['GET'])
 @login_required
-def export_selection_table(recording_id, export_format):
-    """
-    Export the selection table of a recording to a CSV or TSV file.
-    """
+def selection_table_export(recording_id: str, export_format: typing.Literal["csv", "txt"]):
+    
     with database_handler.get_session() as session:
         try:
             recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-            return recording.export_selection_table(session, export_format)
-        except (Exception, SQLAlchemyError) as e:
+            return recording.selection_table_export(export_format)
+        except Exception as e:
             exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
-    with database_handler.get_session() as session:
-        try:
-            recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-            return recording.export_selection_table(session, export_format)
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error exporting selection table", session=session)
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            return redirect(request.referrer)
 
-@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['POST'])
+@routes_recording.route('/recording/<recording_id>/selection-table/delete', methods=['DELETE','POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_4
 @login_required
-def recording_selection_table_delete(recording_id: str) -> Response:
-    """
-    Delete the selection table file associated with the recording.
-
-    Args:
-        recording_id (str): The ID of the recording to delete the selection table file for.
-
-    Returns:
-        Response: A redirect to the recording view page.
-    """
-    with database_handler.get_session() as session:
-        try:
+def selection_table_delete(recording_id: str):
+    from .. import transaction_handler
+    response = response_handler.JSONResponse()
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as (transaction_proxy):
+            session = transaction_proxy.session
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            file = session.query(models.File).filter_by(id=recording.selection_table_file_id).first()
-            recording.reset_selection_table_values(session)
-            file.move_to_trash()
-            recording.selection_table_file = None
-            session.commit()
+            transaction_proxy.track_file(recording.selection_table_file)
+            recording.selection_table_file_delete()
             recording.update_selection_traced_status()
-            flash(f'Deleted selection table from {recording.get_unique_name()}.', 'success')
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)            
+            filespace_handler.action_to_be_deleted(session)
+            response.set_redirect(request.referrer)
+            flash(f'Deleted selection table from {recording.unique_name}.', 'success')
+            
+    return response.to_json()      
+
+def recording_file_insert_helper(recording, transaction, form):
+    if 'upload_recording_file_id' in form and 'upload_recording_file_name' in form and form['upload_recording_file_id'] and form['upload_recording_file_name']:
+        recording_file = transaction.create_tracked_file()
+        recording_file.insert(file=filespace_handler.get_complete_temporary_file(form['upload_recording_file_id'], form['upload_recording_file_name']), directory=recording.relative_directory, filename=recording.recording_file_name)
+        recording.recording_file_insert(recording_file)
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
-def recording_insert(encounter_id: str) -> Response:
-    """
-    Inserts a new recording into the database for a given encounter ID.
+def recording_insert(encounter_id: str):
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
+            encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
+            recording = models.Recording(encounter = encounter)
+            success_message = f'Inserted {recording.unique_name}.'
+            session.add(recording)
+            recording.insert(request.form)
+            recording_file_insert_helper(recording, transaction, request.form)
+        flash(success_message)
+        response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
+    return response.to_json()
 
-    Args:
-        encounter_id (str): The ID of the encounter to insert the recording into.
-    
-    Returns:
-        flask.Response: The rendered template for the encounter view page.
-    """
-    with database_handler.get_session() as session:
-        try:
-            recording_obj = models.Recording(encounter_id=encounter_id)
-            session.add(recording_obj)
-            insert_or_update_recording(session, request, recording_obj)
-            session.commit()
-            flash(f'Inserted {recording_obj.get_unique_name()}.', 'success')
-            return redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error inserting recording", session=session)
-            return redirect(request.referrer)
+@routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_3
+@database_handler.exclude_role_4
+@login_required
+def recording_update(recording_id: str) -> Response:
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction:
+            session = transaction.session
+            recording = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
+            if not recording: raise exception_handler.DoesNotExistError("recording")
+            check_editable(recording)
+            recording.update(request.form)
+            session.add(recording)
+            recording_file_insert_helper(recording, transaction, request.form)
+            flash(f'Updated {recording.unique_name}.', 'success')
+        response.set_redirect(request.referrer)
+    return response.to_json()
 
 @routes_recording.route('/recording/<recording_id>/view', methods=['GET'])
 @login_required
 def recording_view(recording_id: str) -> Response:
-    """
-    Renders the recording view page for a specific encounter and recording.
-
-    Args:
-        recording_id (str): The ID of the recording to view.
-    
-    Returns:
-        flask.Response: The rendered template for the recording view page.
-    """
     with database_handler.get_session() as session:
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
+        if not recording: raise exception_handler.DoesNotExistError("recording")
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id}, order_by="selection_number")
         assigned_users = database_handler.create_system_time_request(session, models.Assignment, {"recording_id":recording_id})
         logged_in_user_assigned = database_handler.create_system_time_request(session, models.Assignment, {"user_id":current_user.id,"recording_id":recording_id})
@@ -216,228 +192,172 @@ def recording_view(recording_id: str) -> Response:
 @database_handler.exclude_role_4
 @login_required
 def update_notes(recording_id):
-    with database_handler.get_session() as session:
-        recording = session.query(models.Recording).filter_by(id=recording_id).first()
-        notes = request.form.get('notes')
-        recording.notes = notes.strip()
-        recording.notes = notes.strip()
-        session.commit()
-        return redirect(url_for('recording.recording_view', recording_id=recording_id))  # Redirect to the recording view page
-
-
-def flag_user_assignment(session, recording_id, user_id, completed_flag):
-    """
-    Update the completion status of a user's assignment for a recording.
-
-    This function sets the `completed_flag` for a specified user's assignment
-    associated with a given recording. It also updates the recording's status 
-    based on the current assignment flags.
-
-    Args:
-        session (Session): The database session to use for the query.
-        recording_id (str): The ID of the recording whose assignment is to be updated.
-        user_id (str): The ID of the user whose assignment is to be updated.
-        completed_flag (bool): The flag indicating whether the assignment is completed.
-    """
-    recording = session.query(models.Recording).filter_by(id=recording_id).first()
-    assignment = session.query(models.Assignment).filter_by(recording_id=recording_id).filter_by(user_id=user_id).first()
-    if assignment is not None:
-        assignment.completed_flag = completed_flag
-        session.commit()
-        recording.update_status()
-        session.commit()
-
-@routes_recording.route('/recording/flag-as-completed-for-user', methods=['GET'])
-@database_handler.require_live_session
-@database_handler.exclude_role_3
-@database_handler.exclude_role_4
-@login_required
-def flag_as_complete_for_user():
-    """
-    Given a user_id and recording_id, if an assignment exists for the user and recording,
-    flag the assignment as complete. This route will also update the provided recording
-    status - see Recording.status_update()
-
-    Args:
-        recording_id (_type_): The ID of the recording of the assignment.
-        user_id (_type_): The ID of the user of the assignment
-    """
-    recording_id = utils.extract_args('recording_id')
-    user_id = utils.extract_args('user_id')
-    with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, user_id, True)
-        return jsonify({'message': 'Success'}), 200
-
-@routes_recording.route('/recording/unflag-as-completed-for-user', methods=['GET'])
-@database_handler.require_live_session
-@database_handler.exclude_role_3
-@database_handler.exclude_role_4
-@login_required
-def unflag_as_complete_for_user():
-    """
-    Given a user_id and recording_id, if an assignment exists for the user and recording,
-    flag the assignment as incomplete. This route will also update the provided recording
-    status - see Recording.status_update()
-
-    Args:
-        recording_id (_type_): The ID of the recording of the assignment.
-        user_id (_type_): The ID of the user of the assignment
-    """
-    recording_id = utils.extract_args('recording_id')
-    user_id = utils.extract_args('user_id')
-    with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, user_id, False)
-        return jsonify({'message': 'Success'})
-
-@routes_recording.route('/recording/unflag-as-completed', methods=['POST'])
-@database_handler.require_live_session
-@database_handler.exclude_role_4
-@login_required
-def unflag_as_complete():
-    """
-    If a user assignment exists for the current logged in user and the recording passed
-    as an argument, flag it as incomplete. This route will also update the provided
-    recording status - see Recording.status_update()
-
-    Args:
-        recording_id (str): The ID of the recording to flag.
-
-    Returns:
-        : redirect to the referring page.
-    """
-    recording_id = utils.extract_args('recording_id')
-    with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, current_user.id, False)
-        return redirect(request.referrer)
-
-@routes_recording.route('/recording/flag-as-completed', methods=['POST'])
-@database_handler.require_live_session
-@database_handler.exclude_role_4
-@login_required
-def flag_as_complete():
-    """
-    If a user assignment exists for the current logged in user and the recording passed
-    as an argument, flag it as complete. This route will also update the provided
-    recording status - see Recording.status_update()
-
-    Args:
-        recording_id (str): The ID of the recording to flag.
-
-    Returns:
-        : redirect to the referring page.
-    """
-    recording_id = utils.extract_args('recording_id')
-    with database_handler.get_session() as session:
-        flag_user_assignment(session, recording_id, current_user.id, True)
-        return redirect(request.referrer)
-
-@routes_recording.route('/recording/<recording_id>/update', methods=['POST'])
-@database_handler.require_live_session
-@database_handler.exclude_role_3
-@database_handler.exclude_role_4
-@login_required
-def recording_update(recording_id):
-    """
-    Updates a recording in the encounter with the specified encounter ID and recording ID.
-    """
-    with database_handler.get_session() as session:
-        try:
-            recording_obj = session.query(models.Recording).with_for_update().filter_by(id=recording_id).first()
-            insert_or_update_recording(session, request, recording_obj)
-            session.commit()
-            flash(f'Updated {recording_obj.get_unique_name()}.', 'success')
-            recording_obj.update_call()
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)
-
-@routes_recording.route('/encounter/<encounter_id>/recording/<recording_id>/delete', methods=['GET'])
-@database_handler.require_live_session
-@database_handler.exclude_role_3
-@database_handler.exclude_role_4
-@login_required
-def recording_delete(encounter_id,recording_id):
-    """
-    Function for deleting a recording of a given ID
-    """
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            if recording:
-                unique_name = recording.get_unique_name()
-                recording.delete_children(keep_file_reference=True)
-                session.delete(recording)
-                session.commit()
-                flash(f'Deleted {unique_name}.', 'success')
-            return redirect(url_for("encounter.encounter_view", encounter_id=encounter_id))
-        except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)
+            check_editable(recording)
+            notes = request.form.get('notes')
+            recording.notes = notes.strip()
+            recording.notes = notes.strip()
+            session.commit()
+            response.add_message("Notes updated successfully.")
+        except (Exception, SQLAlchemyError) as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating notes", session=session, show_flash=False))
+        return response.to_json()
 
-@routes_recording.route('/encounter/recording/<recording_id>/recording-file/<file_id>/delete',methods=['GET'])
+def assignment_flag_change_helper(completed_flag):
+    """Helper method for `assignment_flag_as_complete` and `assignment_flag_as_incomplete`"""
+    response = response_handler.JSONResponse()
+    with database_handler.get_session() as session:
+        try:
+            form = utils.parse_form(request.form, schema={"recording_id":True, "user_id": False})
+            recording_id = form['recording_id']
+            # Only allow the user to update someone else's assignment if they have adequate permissions.
+            # Users without permission to update someone else's assignment usually will not include `user_id` in the form
+            if 'user_id' not in form:
+                user_id = current_user.id
+            elif 'user_id' in form and current_user.role_id >= 3: raise exception_handler.WarningException('You cannot unflag an assignment for another user.')
+            else: user_id = form['user_id']
+            assignment = session.query(models.Assignment).filter_by(user_id=user_id).filter_by(recording_id=recording_id).first()
+            if not assignment: raise exception_handler.Exception(f"No assignment with user_id '{user_id}' and recording_id '{recording_id}'")
+            assignment.completed_flag = completed_flag
+            session.commit()
+            status_changed = assignment.recording.update_status(session)
+            session.commit()
+            response.set_redirect(request.referrer)
+            flash(f"Assignment {assignment.unique_name} set as {'complete' if completed_flag else 'incomplete'}.", category="success")
+            if status_changed: flash(f"Recording status updated to {assignment.recording.status}.", category="success")
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error updating assignment", session=session, show_flash=False))
+    return response.to_json()
+
+@routes_recording.route('/recording/flag-as-completed-for-user', methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_4
+@login_required
+def assignment_flag_as_complete():
+    """POST route to mark an assignment as complete. The response follows the protocol
+    of `response_handler.JSONResponse`.
+
+    Requires `recording_id` in the form data. If a `user_id` is provided the assignment
+    will be of the `user_id` and `recording_id`. If a `user_id` is not provided the
+    assignment will be of the current logged in user id and `recording_id`. If the
+    combination of `user_id` and `recording_id` do not exist, or they do exist but
+    an error occurs, the error will be added to the response.
+    
+    This route will also update the overall recording status.
+    """
+    return assignment_flag_change_helper(True)
+
+@routes_recording.route('/recording/unflag-as-completed-for-user', methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_4
+@login_required
+def assignment_flag_as_incomplete():
+    """POST route to mark an assignment as incomplete. The response follows the protocol
+    of `response_handler.JSONResponse`.
+
+    Requires `recording_id` in the form data. If a `user_id` is provided the assignment
+    will be of the `user_id` and `recording_id`. If a `user_id` is not provided the
+    assignment will be of the current logged in user id and `recording_id`. If the
+    combination of `user_id` and `recording_id` do not exist, or they do exist but
+    an error occurs, the error will be added to the response.
+    
+    This route will also update the overall recording status.
+    """
+    return assignment_flag_change_helper(False)
+
+@routes_recording.route('/recording/assignment-delete', methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_4
+@database_handler.exclude_role_3
+@login_required
+def assignment_delete():
+    response = response_handler.JSONResponse()
+    with database_handler.get_session() as session:
+        try:
+            form = utils.parse_form(request.form, schema={"recording_id":True, "user_id":True})
+            assignment = session.query(models.Assignment).filter_by(user_id=form['user_id']).filter_by(recording_id=form['recording_id']).first()
+            unique_name = assignment.unique_name
+            if not assignment: raise Exception(f"No assignment with user_id '{form['user_id']}' and recording_id '{form['recording_id']}'")
+            session.delete(assignment)
+            session.commit()
+            flash(f"Assignment {unique_name} deleted.", category="success")
+            response.set_redirect(request.referrer)
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, prefix="Error deleting assignment", session=session, show_flash=False))
+    return response.to_json()
+
+
+@routes_recording.route('/recording/<recording_id>/delete', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
-def recording_file_delete(recording_id,file_id):
-    """
-    A function for deleting a recording file of a given ID
-    """
-    with database_handler.get_session() as session:
-        try:
-            recording = session.query(models.Recording).filter_by(recording_file_id=file_id).first()
-            # Remove recording file reference from recording
-            recording.recording_file=None
-            # Delete the File object for the recording file its self
-            file = session.query(models.File).filter_by(id=file_id).first()
-            file.delete()
+def recording_delete(recording_id):
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            if recording:
+                encounter_id = recording.encounter_id
+                unique_name = recording.unique_name
+                recording.delete(session)
+                flash(f'Deleted {unique_name}.', 'success')
+            response.set_redirect(url_for("encounter.encounter_view", encounter_id=encounter_id))
+    return response.to_json()
+
+@routes_recording.route('/recording/<recording_id>/recording-file-delete',methods=['POST'])
+@database_handler.require_live_session
+@database_handler.exclude_role_3
+@database_handler.exclude_role_4
+@login_required
+def recording_file_delete(recording_id):
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            recording = session.query(models.Recording).filter_by(id=recording_id).first()
+            recording.recording_file_delete()
             session.commit()
-            flash(f'Deleted recording file from {recording.get_unique_name()}.', 'success')
-            return redirect(url_for('recording.recording_view', recording_id=recording_id))
-        except (Exception,SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-            return redirect(request.referrer)
-        
+            flash(f'Deleted recording file from {recording.unique_name}.', 'success')
+            response.set_redirect(request.referrer)
+    return response.to_json()
 
 @routes_recording.route('/recording/recording_delete_selections', methods=['DELETE'])
 @database_handler.require_live_session
 @database_handler.exclude_role_4
 @login_required
 def recording_delete_selections():
+    """ 
+    Function for deleting multiple selections of a recording. If no changes are made (either
+    because `selectionIds` is empty or `selectionIds` is not empty but all deletions fail) then
+    no redirect link is given, and errors are returned in the response_handler.JSONResponse object.
+
+    If `selectionIds` are given and any are successful, then a redirect link is given. Any failures
+    are added to the response_handler.JSONResponse object.
+
+    Note that this method requires `selectionIds` to be passed to the data.
+
+    Returns:
+        flask.Response: the response object (see response_handler.JSONResponse)
     """
-    Bulk delete selections from the database.
-
-    :param selectionIds: A JSON list of selection IDs to delete.
-
-    Expects a JSON payload with a list of selection IDs under the key "selectionIds".
-    Returns a JSON response with a message indicating the number of selections deleted.
-    """
-    data = request.get_json()
-
-    selection_ids = data.get('selectionIds', [])
-    if selection_ids == None or len(selection_ids) == 0:
-        exception_handler.handle_exception(exception=exception_handler.WarningException('No selections selected for deletion.'), session=session)
-    
-    with database_handler.get_session() as session:
-        counter=0
-        for selection_id in selection_ids:
-            try:
-                selection = session.query(models.Selection).filter_by(id=selection_id).first()
-                selection.delete_children()
-                session.delete(selection)
-
-                session.commit()
-                counter += 1
-            except (SQLAlchemyError,Exception) as e:
-                exception_handler.handle_exception(exception=e,prefix="Error deleting selection", session=session)
-        flash(f'Deleted {counter} selections.', 'success')
-        return jsonify({'message': 'Bulk delete completed'}), 200
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction_proxy:
+            session = transaction_proxy.session
+            data = request.get_json()
+            selection_ids = data.get('selectionIds', [])
+            if selection_ids == None or len(selection_ids) == 0: raise exception_handler.WarningException("No selections selected for deletion.")
+            selections = session.query(models.Selection).filter(models.Selection.id.in_(selection_ids)).all()
+            for selection in selections:
+                check_editable(selection.recording)
+                selection._delete_children(session)
+            response.set_redirect(request.referrer)
+            flash(f"Deleted {len(selection_ids)} selections.", category="success")
+    return response.to_json()
 
 
   
 
-@routes_recording.route('/encounter/extract_date', methods=['GET'])
+@routes_recording.route('/encounter/extract_date', methods=['GET', 'POST'])
 def extract_date():
     """
     Extracts a date from a filename.
@@ -446,41 +366,44 @@ def extract_date():
     :type filename: str
     :return date: The date extracted from the filename in JSON format {date:value}, or {date:None}.
     """
-    filename = request.args.get('filename')
-    date = database_handler.parse_date(filename)
-    return jsonify(date=date)
+    response = response_handler.JSONResponse()
+    try:
+        filename = request.form.get('filename')
+        date = utils.parse_date(filename)
+        if not date:
+            response.add_error('No date found in filename.')
+        else:
+            response.add_message('Date found in filename.')
+        response.data['date'] = date
+    except (Exception) as e:
+        response.add_error(exception_handler.handle_exception(exception=e, session=None, show_flash=False))
+    return response.to_json()
 
-@routes_recording.route('/assign_recording', methods=['GET'])
+@routes_recording.route('/assign_recording', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
 @login_required
 def assign_recording():
-    """Create an assignment between a user and a recording.
+    """POST route to assign a recording to a user. Requires `user_id` and `recording_id` to be passed as
+    arguments in the request. Returns a JSON response following the `response_handler.JSONResponse` protocol.
+    (redirect on success, error message(s) on failure)."""
 
-    Args:
-        user_id (str): The ID of the user to assign the recording to.
-        recording_id (str): The ID of the recording to assign.
-
-    Returns:
-        _type_: _description_
-    """
-    user_id = utils.extract_args('user_id')
-    recording_id = utils.extract_args('recording_id')
+    response = response_handler.JSONResponse()
+    response.set_redirect(request.referrer)
     with database_handler.get_session() as session:
         try:
-            assignment = models.Assignment(recording_id=recording_id, user_id=user_id)
+            assignment = models.Assignment()
+            assignment.insert(request.get_json())
             session.add(assignment)
             session.commit()
-            assignment = models.Assignment(recording_id=recording_id, user_id=user_id)
-            session.add(assignment)
+            flash(f'Assigned {assignment.recording.unique_name} to {assignment.user.unique_name}.', 'success')
+            changed = assignment.recording.update_status(session)
             session.commit()
-            recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            recording.update_status()
-            session.commit()      
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-
+            if changed: flash(f'Updated status to {assignment.recording.status}.', 'success')
+        except Exception as e:
+            exception_handler.handle_exception(exception=e, session=session, show_flash=False)
+    return response.to_json()
 
 @routes_recording.route('/unassign_recording', methods=['GET'])
 @database_handler.require_live_session
@@ -488,95 +411,45 @@ def assign_recording():
 @database_handler.exclude_role_4
 @login_required
 def unassign_recording():
-    """
-    Unassigns a recording from a user.
-
-    :param user_id: The ID of the user to unassign the recording from.
-    :type user_id: str
-    :param recording_id: The ID of the recording to unassign.
-    :type recording_id: str
-    :return: A JSON object with a single key, 'success', with a value of True if successful, False otherwise.
-    :rtype: dict
-    """
-    user_id = request.args.get('user_id')
-    recording_id = request.args.get('recording_id')
+    """POST route to unassign a recording from a user. Requires `user_id` and `recording_id` to be passed as
+    arguments in the request. Returns a JSON response following the `response_handler.JSONResponse` protocol.
+    (redirect on success, error messages(s) on failure)."""
+    
+    response = response_handler.JSONResponse()
     with database_handler.get_session() as session:
         try:
+            user_id = utils.extract_args('user_id')
+            recording_id = utils.extract_args('recording_id')
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             assignment = session.query(models.Assignment).filter_by(user_id=user_id).filter_by(recording_id=recording_id).first()
             session.delete(assignment)
+            session.flush()
+            recording.update_status(session)
             session.commit()
+            response.set_redirect(response.referrer)
+        except Exception as e:
+            response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
+    return response.to_json()
+
+
+
+@routes_recording.route('/recording/<recording_id>/recalculate-contour-statistics', methods=['POST'])
+@login_required
+@database_handler.exclude_role_4
+@database_handler.require_live_session
+def calculate_contour_statistics_for_recording(recording_id: str):
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic_with_filespace() as transaction_proxy:
+            session = transaction_proxy.session
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
-            recording.update_status()
-            session.commit()
-        except (SQLAlchemyError,Exception) as e:
-            exception_handler.handle_exception(exception=e, session=session)
-
-def recalculate_contour_statistics(session, selection):
-    """
-    Recalculate contour statistics for the given selection.
-
-    :param session: The current sqlalchemy session
-    :type session: sqlalchemy.orm.session.Session
-    :param selection: The selection object to recalculate the contour statistics for
-    :type selection: Selection
-    """
-    selection.reset_contour_stats()
-    if selection and selection.contour_file is not None:
-        contour_file_obj = contour_statistics.ContourFile(selection.contour_file.get_full_absolute_path(),selection.selection_number)
-        contour_rows = contour_file_obj.calculate_statistics(session, selection)
-        selection.generate_ctr_file(session, contour_rows)
-
-@routes_recording.route('/selection/<selection_id>/recalculate-contour-statistics', methods=['GET'])
-@login_required
-@database_handler.exclude_role_4
-@database_handler.require_live_session
-def recalculate_contour_statistics_for_selection(selection_id):
-    with database_handler.get_session() as session:
-        try:
-            selection = session.query(models.Selection).filter_by(id=selection_id).first()
-            selection.recalculate_contour_statistics(session)
-            session.commit()
-            flash(f"Refreshed contour statistics for {selection.get_unique_name()}", 'success')
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, prefix="Error refreshing contour statistics", session=session)
-    return redirect(request.referrer)
-
-@routes_recording.route('/recording/<recording_id>/recalculate-contour-statistics', methods=['GET'])
-@login_required
-@database_handler.exclude_role_4
-@database_handler.require_live_session
-def recalculate_contour_statistics_for_recording(recording_id):
-    """
-    Recalculates the contour statistics for all selections associated with the recording specified by recording_id.
-
-    :param recording_id: The ID of the recording to recalculate contour statistics for.
-    :type recording_id: str
-    :return: Redirects to the recording view page.
-    :rtype: flask.Response
-    """
-    counter = 0
-
-    with database_handler.get_session() as session:
-        # no with_for_update() as this session/query is only for SELECT (no updates)
-        selections = session.query(models.Selection).filter_by(recording_id=recording_id).all()
-        selection_ids = [selection.id for selection in selections]
-        session.close()
-    
-    for selection_id in selection_ids:
-        try:
-            # need to query selection in new session to atomise transaction
-            with database_handler.get_session() as selection_session:
-                selection = selection_session.query(models.Selection).with_for_update().filter_by(id=selection_id).first()
-                selection.recalculate_contour_statistics(selection_session)
-                selection_session.commit()
-                counter += 1
-                selection_session.close()
-            selection_session = None
-        except (Exception, SQLAlchemyError) as e:
-            exception_handler.handle_exception(exception=e, session=selection_session)
-    flash(f'Recalculated {counter} contour statistics.', 'success')
-    return redirect(url_for('recording.recording_view', recording_id=recording_id))
+            check_editable(recording)
+            count = 0
+            for selection in recording.selections:
+                if selection.contour_file: selection.ctr_file_generate(transaction_proxy.create_tracked_file())
+                selection.contour_statistics_calculate()
+                if selection.contour_file: count += 1
+        response.add_message(f"{count} contour statistic(s) and CTR file(s) were regenerated.")
+    return response.to_json()
     
 
 @routes_recording.route('/recording/<recording_id>/download-ctr-files', methods=['GET'])
@@ -586,9 +459,9 @@ def download_ctr_files(recording_id):
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
-        file_names = [selection.generate_ctr_file_name() for selection in selections if selection.ctr_file is not None]
-        zip_filename = f"{recording.encounter.species.get_species_name()}-{recording.encounter.get_encounter_name()}-{recording.encounter.get_location()}-{filespace_handler.format_date_for_filespace(recording.get_start_time())}_ctr_files.zip"
-        file_paths = [ctr_file.get_full_absolute_path() for ctr_file in ctr_files]
+        file_names = [selection.ctr_file_name for selection in selections if selection.ctr_file is not None]
+        zip_filename = f"{recording.encounter.species.scientific_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_ctr_files.zip"
+        file_paths = [ctr_file._path_with_root for ctr_file in ctr_files]
         response = utils.download_files(ctr_files, file_names, zip_filename)
         
         return response
@@ -608,9 +481,9 @@ def download_selection_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         selection_files = [selection.selection_file for selection in selections if selection.selection_file is not None]
-        file_names = [selection.generate_selection_file_name() for selection in selections if selection.selection_file is not None]
-        zip_filename = f"{recording.encounter.species.get_species_name()}-{recording.encounter.get_encounter_name()}-{recording.encounter.get_location()}-{filespace_handler.format_date_for_filespace(recording.get_start_time())}_selection_files.zip"
-        file_paths = [selection_file.get_full_absolute_path() for selection_file in selection_files]
+        file_names = [selection.selection_file_name for selection in selections if selection.selection_file is not None]
+        zip_filename = f"{recording.encounter.species.scientific_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_selection_files.zip"
+        file_paths = [selection_file._path_with_root for selection_file in selection_files]
         response = utils.download_files(selection_files, file_names, zip_filename)
         return response
 
@@ -628,9 +501,8 @@ def download_contour_files(recording_id):
         selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
         contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
-        file_names = [selection.generate_contour_file_name() for selection in selections if selection.contour_file is not None]
-        zip_filename = f"{recording.encounter.species.get_species_name()}-{recording.encounter.get_encounter_name()}-{recording.encounter.get_location()}-{filespace_handler.format_date_for_filespace(recording.get_start_time())}_contour_files.zip"
-        file_paths = [contour_file.get_full_absolute_path() for contour_file in contour_files]
+        file_names = [selection.contour_file_name for selection in selections if selection.contour_file is not None]
+        zip_filename = f"{recording.encounter.species.scientific_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_contour_files.zip"
         response = utils.download_files(contour_files, file_names, zip_filename)
         return response
     
@@ -639,7 +511,7 @@ def download_contour_files(recording_id):
 def download_recording_file(recording_id):
     with database_handler.get_session() as session:
         recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-        return utils.download_file(recording.recording_file, recording.generate_recording_file_name)
+        return utils.download_file(recording.recording_file, filename = recording.recording_file_name)
 
     
 @routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['GET'])
@@ -660,7 +532,7 @@ def mark_as_complete(recording_id):
     """
     with database_handler.get_session() as session:
         recording = session.query(models.Recording).filter_by(id=recording_id).first()
-        recording.set_status_reviewed()
+        recording.status = "Reviewed"
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
@@ -682,6 +554,6 @@ def mark_as_on_hold(recording_id):
     """
     with database_handler.get_session() as session:
         recording = session.query(models.Recording).filter_by(id=recording_id).first()
-        recording.set_status_on_hold()
+        recording.status = "On Hold"
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))

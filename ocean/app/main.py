@@ -29,6 +29,7 @@ from . import models
 from . import exception_handler
 from .logger import logger
 from . import database_handler
+from . import filespace_handler
 from .routes.routes_general import routes_general
 from .routes.routes_admin import routes_admin
 from .routes.routes_selection import routes_selection
@@ -38,6 +39,24 @@ from .routes.routes_encounter import routes_encounter
 from .routes.routes_datahub import routes_datahub
 from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
+
+
+def check_interfaces():
+    """
+    Checks the database for all interfaces by instantiating an instance of each model.
+    If any interface is missing a TypeError will be raised.
+    """
+    recording_platform = models.RecordingPlatform()
+    user = models.User()
+    recording = models.Recording()
+    assignment = models.Assignment()
+    data_source = models.DataSource()
+    encounter = models.Encounter()
+    species = models.Species()
+    selection = models.Selection(recording)
+    file = models.File()
+    role = models.Role()
+    
 
 def check_file_space():
     FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
@@ -50,18 +69,20 @@ def check_file_space():
         return f"Assigned file space '{FILE_SPACE_PATH}'"
 
 
-def create_app(config_class=None):
+def create_app(config_class):
     app = Flask(__name__)
 
-    ROUTE_PREFIX = '/ocean'
+    check_interfaces()
 
-    if config_class is None:
-        config_class = os.getenv('FLASK_CONFIG', 'config.DevelopmentConfig')
-    app.config.from_object(config_class)
+    
+
+    ROUTE_PREFIX = '/ocean'
 
     # Set up a custom login manager for the web app
     login_manager = LoginManager()
     login_manager.init_app(app)
+
+    app.config.from_object(config_class)
 
     # Set up user loader for the login manager
     @login_manager.user_loader
@@ -109,13 +130,14 @@ def create_app(config_class=None):
         client_session.clear()
         return redirect(url_for('general.home'))
 
-    create_database_script = ''
-    if config_class == 'config.TestingConfig':
-        create_database_script = 'create_database.sql'
-    else:
-        create_database_script = 'script_run.sql'
+    # create_database_script = ''
+    # if config_class.__name__ == 'TestingConfig':
+    #     create_database_script = 'create_database.sql'
+    # else:
+    #     create_database_script = 'script_run.sql'
 
-    db = database_handler.init_db(app, run_script=create_database_script)
+    db = database_handler.init_db(app)
+    filespace_handler.clean_directory(database_handler.get_file_space_path())
 
     # Register blueprints and error handlers
     app.register_blueprint(routes_general, url_prefix=ROUTE_PREFIX)
@@ -153,11 +175,20 @@ def create_app(config_class=None):
     import MySQLdb
     @app.errorhandler(MySQLdb.OperationalError)
     def handle_mysql_error(ex):
+        logger.error(str(ex))
         return "Database not functional."
     
+
+    @app.errorhandler(exception_handler.DoesNotExistError)
+    def handle_dne_error(ex):
+        logger.warning(str(ex))
+        return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
+
+
     @app.errorhandler(exception_handler.CriticalException)
     def handle_critical_error(ex):
-        return str(ex)
+        logger.error(ex)
+        return render_template('general-error.html', error_code=404, error_message="Internal server error", current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
 
     @app.errorhandler(Exception)
     def handle_error(ex):
@@ -180,7 +211,7 @@ def create_app(config_class=None):
     @app.errorhandler(500)
     def internal_server_error(e):
         logger.critical('Internal server error: ' + str(e))
-        return "Internal server error. Please try again later.", 500
+        return "Internal server error(s). Please try again later.", 500
 
     # 502 Error Handler
     @app.errorhandler(502)

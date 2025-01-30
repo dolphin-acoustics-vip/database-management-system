@@ -1,9 +1,9 @@
 {% macro recording_form(editing, file_timezone, local_timezone, recording) %}
 
-<label for="time_start" class="bold">Start Time</label>
-<input type="datetime-local" class="date-input small" id="time_start" name="time_start" step="1" required
-    onchange="calculateTimeOffsets('time_start','gmt-offset-label','local-offset-label','file-time-label','{{ file_timezone }}','{{ local_timezone }}')"
-    {% if editing %}value="{{ recording.get_start_time_string() }}" {% endif %}>
+<label for="start_time" class="bold">Start Time</label>
+<input type="datetime-local" class="date-input small" id="start-time" name="start_time" step="1" required
+    onchange="calculateTimeOffsets('start-time','gmt-offset-label','local-offset-label','file-time-label','{{ file_timezone }}','{{ local_timezone }}')"
+    {% if editing %}value="{{ recording.start_time_pretty }}" {% endif %}>
 <div id="time-offsets">
     <label style="display: none;" id="file-time-label"></label>
     <label style="display: none;" id="gmt-offset-label"></label>
@@ -17,15 +17,8 @@
     <a style="margin-right: 0.25rem" class="button small"
         href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Download</a>
     <a style="margin-left: 0.25rem" class="button small"
-        href="{{ url_for('general.get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.get_unique_name()}}">File
+        href="{{ url_for('general.get_file_details', file_id=recording.recording_file.id) }}?file_details=Recording File for {{recording.unique_name}}">File
         Details</a>
-
-    <form
-        action="{{ url_for('recording.recording_file_delete', recording_id=recording.id, file_id=recording.recording_file.id) }}"
-        method="post">
-
-        <a style="margin-left: 0.25rem;" class="button small"
-            href="{{ url_for('recording.recording_file_delete', recording_id=recording.id, file_id=recording.recording_file.id) }}">Delete</a>
 
 </div>
 {% else %}
@@ -34,54 +27,60 @@
     <span style="display: none; padding-right: 0.5rem;" id="recording-insert-progress-text">0%</span>
     <progress style="display: none;" id="recording-insert-progress-bar" value="0" max="100"></progress>
 </div>
-<input type="hidden" id="recording-file-id-store" name="recording_file_id" value="">
-<input type="hidden" id="recording-file-name-store" name="recording_filename" value="">
+<input type="hidden" id="recording-file-id-store" name="upload_recording_file_id" value="">
+<input type="hidden" id="recording-file-name-store" name="upload_recording_file_name" value="">
+
+<button id="recording-form-submit-button" class="blue" type="submit" title="Update encounter with changed data.">Update</button>
+
 
 <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
 
 {% endif %}
+
 <script src="{{ url_for('general.serve_script', filename='time-management.js') }}"></script>
 
 <script>
 
 
     /**
-     * Extracts the date from a given file name and updates the time_start and seconds fields in the document.
+     * Extracts the date from a given file name and updates the start-time and seconds fields in the document.
      * The date is extracted using an HTTP request to a server-side method which determines the regex code.
      * 
      * @param {string} fileName - The name of the file to extract the date from.
      */
     function extractDate(fileName) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', "{{ url_for('recording.extract_date', filename='') }}" + encodeURIComponent(fileName), true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-            console.log(xhr)
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                if (response.date != null) {
-                    var date = new Date(response.date);
+        makeAjaxRequest(
+            "{{ url_for('recording.extract_date') }}",
+            "POST",
+            {'filename': fileName},
+            undefined,
+            true,
+            true,
+            successCallback = (response) => {
+                date_string = response.data.date;
+                if (date_string != null) {
+                    var date = new Date(date_string);
                     // cut out milliseconds
                     var formattedDate = date.toISOString().slice(0, 19);
                     if ('{{editing}}' == 'False') {
-                        document.getElementById('time_start').value = formattedDate;
-
+                        document.getElementById('start-time').value = formattedDate;
                     }
-                    calculateTimeOffsets('time_start', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
-
+                    calculateTimeOffsets('start-time', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
                 }
             }
-        }
-        xhr.send();
+        )
+
     }
 
     $(document).ready(function () {
         if ('{{editing}}' == 'True') {
-            calculateTimeOffsets('time_start', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
+            calculateTimeOffsets('start-time', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
         }
+        fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-form-submit-button'));
+
     });
 
-
 </script>
+
 
 {% endmacro %}

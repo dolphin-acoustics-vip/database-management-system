@@ -65,19 +65,8 @@
             {% endif %}
             <h3>Spectogram and Contour Plot</h3>
             <div style="display: flex; margin-top: 20px; margin-bottom: 20px; align-items:center; position: relative;">
-                <img style="width:80%" id="plot-image"
+                <img style="width:100%; padding-left:0.5rem; padding-right:0.5rem;" id="plot-image"
                     src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot" style="width:100%; display:none;">
-
-
-                <form style="width:15%; margin-left: 20px; align-items:center;" id="plot-form">
-                    <label for="fft-size">FFT Size:</label>
-                    <input type="number" id="fft-size" name="fft-size"
-                        value="{{ selection.default_fft_size if selection.default_fft_size else 2048}}">
-                    <label for="hop-size">Hop Size:</label>
-                    <input type="number" id="hop-size" name="hop-size"
-                        value="{{ selection.default_hop_size if selection.default_hop_size else 512}}">
-                    <button class="gray small" type="submit" style="margin-top: 0.7rem;">Apply</button>
-                </form>
             </div>
 
             <hr>
@@ -86,7 +75,7 @@
                 href="{{url_for('selection.download_selection_file', selection_id = selection.id )}}">Download
                 Selection File</a>
             <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.get_unique_name() }}&redirect_link={{ request.referrer }}">See
+                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.unique_name }}&redirect_link={{ request.referrer }}">See
                 Selection File Details</a>
             {% else %}
             <p style="margin-right:10px;">This selection has no selection file.</p>
@@ -96,12 +85,25 @@
                 href="{{url_for('selection.download_contour_file', selection_id = selection.id )}}">Download
                 Contour File</a>
             <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.get_unique_name()}}">See
+                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.unique_name}}">See
                 Contour File Details</a>
-
-            <a alt="Re-generate CTR file and re-calculate contour statistics" class="button small"
-                href="{{url_for('recording.recalculate_contour_statistics_for_selection', selection_id=selection.id)}}">Recalculate
-                Contour Statistics</a>
+            {% if selection.ctr_file %}
+            <a class="button small"
+                href="{{url_for('selection.download_ctr_file', selection_id = selection.id )}}">Download
+                CTR File</a>
+            <a class="button small"
+                href="{{ url_for('general.get_file_details', file_id=selection.ctr_file_id) }}?file_details=Contour File for {{selection.unique_name}}">See
+                CTR File Details</a>
+            {% else %}
+            <p>There was an issue generating the CTR file. Try recalculating the contour statistics.</p>
+            {% endif %}
+            
+            <form id="recalculate-contour-statistics-form" method="post" action="{{url_for('selection.calculate_contour_statistics', selection_id=selection.id)}}">
+                <button id="recalculate-contour-statistics-button" class="link small" type="submit">Recalculate Contour Statistics</button>
+            </form>
+            <script>
+                ajaxifyForm(document.getElementById('recalculate-contour-statistics-form'), undefined, undefined, undefined, undefined, button = document.getElementById("recalculate-contour-statistics-button"), message = "Recalculating contour statistics...");
+            </script>
 
             {% else %}
             <p style="margin-right:10px;">This selection has no contour file.</p>
@@ -176,7 +178,7 @@
                 {% for attr_name, attr_value in selection_dict.items() %}
                 <tr>
                     <td>{{ attr_name }}</td>
-                    <td>{{ selection.get_rounded_value(attr_value) }}</td>
+                    <td>{{ attr_value }}</td>
                 </tr>
                 {% endfor %}
             </table>
@@ -185,15 +187,11 @@
 
 </body>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     document.getElementById("plot-form").addEventListener("submit", function (event) {
         document.getElementById("plot-image").style.display = "none";
         event.preventDefault();
-        var fftSize = document.getElementById("fft-size").value;
-        var hopSize = document.getElementById("hop-size").value;
         var url = "{{url_for('selection.serve_plot',selection_id=selection.id)}}";
-        url += "?fft_size=" + fftSize + "&hop_size=" + hopSize;
         document.getElementById("plot-image").src = url;
         document.getElementById("plot-image").style.display = "block";
 

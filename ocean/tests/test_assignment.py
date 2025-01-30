@@ -1,3 +1,4 @@
+import copy
 import datetime
 import uuid
 import pytest
@@ -12,96 +13,80 @@ EMPTY_CHARACTERS = common.EMPTY_CHARACTERS
 def assignment():
     return factories.AssignmentFactory.create()
 
-def test_hasattr_row_start(assignment: models.Assignment):
-    assert hasattr(assignment, "row_start")
-    assert hasattr(assignment, "get_row_start")
-    assert hasattr(assignment, "get_row_start_pretty")
 
-def test_hasattr_created_datetime(assignment: models.Assignment):
-    assert hasattr(assignment, "created_datetime")
-    assert hasattr(assignment, "get_created_datetime")
-    assert hasattr(assignment, "get_created_datetime_pretty")
+@pytest.mark.parametrize("attr, value, expected", [
+    ("completed_flag", True, True),
+    ("completed_flag", False, False),
+])
+def test_set_attribute(assignment: models.Assignment, attr: str, value, expected):
+    common.test_set_attribute(assignment, attr, value, expected)
 
-def test_hasattr_getters(assignment: models.Assignment):
-    assert hasattr(assignment, "get_user_id")
-    assert hasattr(assignment, "get_user")
-    assert hasattr(assignment, "get_recording_id")
-    assert hasattr(assignment, "get_recording")
-    assert hasattr(assignment, "get_completed_flag")
+@pytest.mark.parametrize("attr, value", [
+    ("completed_flag", None),
+    ("completed_flag", ""),
+    ("completed_flag", "   "),
+    ("completed_flag", "not-a-boolean"),
+    ("user_id", "this-is-not-a-uuid"),
+    ("user_id", 1),
+    ("recording_id", "this-is-not-a-uuid"),
+    ("recording_id", 1)
+])
+def test_set_attribute_validation_error(assignment: models.Assignment, attr: str, value):
+    common.test_set_attribute_validation_error(assignment, attr, value)
 
-def test_hasattr_setters(assignment: models.Assignment):
-    assert hasattr(assignment, "set_user_id")
-    assert hasattr(assignment, "set_user")
-    assert hasattr(assignment, "set_recording_id")
-    assert hasattr(assignment, "set_recording")
-    
-@pytest.mark.parametrize("value", [True, False])
-def test_get_completed_flag(assignment: models.Assignment, value: bool):
-    assignment.completed_flag = value
-    assert assignment.get_completed_flag() == value
-    
-def set_complete(assignment: models.Assignment):
-    assert hasattr(assignment, "set_completed")
-    assignment.completed_flag = None
-    assignment.set_complete()
+
+@pytest.mark.parametrize("attr, nullable", [
+    ("user_id", False),
+    ("recording_id", False)
+])
+def test_uuid(assignment: models.Assignment, attr: str, nullable: bool):
+    common.validate_uuid(assignment, attr, str(uuid.uuid4()), nullable)
+
+
+@pytest.mark.parametrize("form", [
+    ({
+        'user_id': str(uuid.uuid4()),
+        'recording_id': str(uuid.uuid4()),
+    }) ])
+def test_insert_or_update(assignment: models.Assignment, form):
+    assignment._insert_or_update(form = form, new = True)
+    assert str(assignment.user_id) == form['user_id']
+    assert str(assignment.recording_id) == form['recording_id']
+
+
+@pytest.mark.parametrize("attr, value", [
+    ("user_id", "this-is-not-a-uuid"),
+    ("user_id", 1),
+    ("user_id", None),
+    ("recording_id", None),
+    ("recording_id", "this-is-not-a-uuid"),
+    ("recording_id", 1)
+])
+def test_set_attribute_validation_error(assignment: models.Assignment, attr: str, value):
+    common.test_set_attribute_validation_error(assignment, attr, value)
+
+@pytest.mark.parametrize("form", [
+    ({
+        'user_id': str(uuid.uuid4()),
+    }),
+    ({
+        'recording_id': str(uuid.uuid4()),
+    }),
+    ({
+    }), ])
+def test_insert_or_update_attribute_error(assignment: models.Assignment, form):
+    with pytest.raises(AttributeError):
+        assignment._insert_or_update(form = form, new = False)
+
+def test_complete(assignment: models.Assignment):
+    assignment.complete_flag = False
+    assignment.complete()
     assert assignment.completed_flag == True
 
-def set_not_completed(assignment: models.Assignment):
-    assert hasattr(assignment, "set_incomplete")
-    assignment.completed_flag = None
-    assignment.set_incomplete()
+def test_incomplete(assignment: models.Assignment):
+    assignment.complete_flag = True
+    assignment.incomplete()
     assert assignment.completed_flag == False
 
-def test_set_user_id(assignment: models.Assignment):
-    user_id = uuid.uuid4()
-    assignment.set_user_id(user_id)
-    assert assignment.user_id == user_id
-    
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_user_id_none(assignment: models.Assignment, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        assignment.set_user_id(c)
-
-def test_set_user_id_wrong_type(assignment: models.Assignment):
-    with pytest.raises(exception_handler.WarningException):
-        assignment.set_user_id("this-is-not-a-uuid")
-
-def test_set_user(assignment: models.Assignment):
-    user = factories.UserFactory.create()
-    assignment.set_user(user)
-    assert assignment.user == user
-
-def test_set_user_none(assignment: models.Assignment):
-    with pytest.raises(exception_handler.WarningException):
-        assignment.set_user(None)
-
-def test_set_user_wrong_type(assignment: models.Assignment):
-    with pytest.raises(ValueError):
-        assignment.set_user(factories.SpeciesFactory.create())
-
-def test_set_recording_id(assignment: models.Assignment):
-    recording_id = uuid.uuid4()
-    assignment.set_recording_id(recording_id)
-    assert assignment.recording_id == recording_id
-    
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_recording_id_none(assignment: models.Assignment, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        assignment.set_recording_id(c)
-
-def test_set_recording_id_wrong_type(assignment: models.Assignment):
-    with pytest.raises(exception_handler.WarningException):
-        assignment.set_recording_id("this-is-not-a-uuid")
-
-def test_set_recording(assignment: models.Assignment):
-    recording = factories.RecordingFactory.create()
-    assignment.set_recording(recording)
-    assert assignment.recording == recording
-
-def test_set_recording_none(assignment: models.Assignment):
-    with pytest.raises(exception_handler.WarningException):
-        assignment.set_recording(None)
-
-def test_set_recording_wrong_type(assignment: models.Assignment):
-    with pytest.raises(ValueError):
-        assignment.set_recording(factories.SpeciesFactory.create())
+def test_unique_name(assignment: models.Assignment):
+    assert assignment.unique_name == f"{assignment.recording.unique_name}_{assignment.user.unique_name}"

@@ -7,10 +7,13 @@
 <body>
     <div class="outer-div">
     <h1>New Data Source</h1>
-    <form action="{{ url_for('admin.admin_data_source_insert') }}" method="post">
+    <form id="data-source-new-form" action="{{ url_for('admin.admin_data_source_insert') }}" method="post">
         {% set editing = False %}
         {% include 'admin/admin-data-source-template.html' %}
     </form>
+    <script>
+        ajaxifyForm(document.getElementById('data-source-new-form'), true, true, null, null);
+    </script>
     </div>
 </body>
 </html>

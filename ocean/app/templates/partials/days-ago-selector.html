@@ -73,7 +73,6 @@ const dropdown = document.getElementById('date-dropdown');
 
         if (customStartDateTimeValue) {
             const date = new Date(customStartDateTimeValue);
-            console.log(StartDateTime)
             // Store the date in a JavaScript variable
             StartDateTime = await getLocalDateString(date);
             dayCount = null

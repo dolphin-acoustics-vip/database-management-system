@@ -1,7 +1,16 @@
 <!DOCTYPE html>
 <html>
+  <style>
+    .banner-image {
+      width:100%;
+    }
+    @media only screen and (max-width: 980px) {
+    .banner-image {
+        width: 150%;
+        }
+    }
+  </style>
 <head>
-
 
 </head>
 {% include 'partials/header.html' %}
@@ -9,7 +18,8 @@
   <div class="hero-section__image-mask">
     <picture class="hero-section__image">
       <source srcset="resources/dolphin-image.jpg" media="(min-width: 640px)">
-      <img src="resources/dolphin-image.jpg" alt="">
+      <img class="banner-image"  src="resources/dolphin-image.jpg" alt="">
+
     </picture>
   </div>
   <div class="container">
@@ -30,18 +40,16 @@
           <th>Species</th>
           <th>Encounter</th>
           <th>Recording</th>
-          <th>Completed</th>
-          <th>Admin Review</th>
+          <th>Status</th>
       </tr>   
       
       {% for recording_and_assignment in recordings %}
 
       <tr>
         <td>{{ recording_and_assignment['assignment'].created_datetime }}</td>
-        <td>{{ recording_and_assignment['recording'].encounter.species.species_name }}</td>
+        <td>{{ recording_and_assignment['recording'].encounter.species.scientific_name }}</td>
         <td><a href="{{ url_for('encounter.encounter_view', encounter_id=recording_and_assignment['recording'].encounter.id) }}">{{ recording_and_assignment['recording'].encounter.encounter_name }}</a></td>
-        <td><a href="{{ url_for('recording.recording_view', recording_id=recording_and_assignment['recording'].id, encounter_id= recording_and_assignment['recording'].encounter.id) }}">{{ recording_and_assignment['recording'].get_start_time_string() }}</a></td>
-        <td>{{ recording_and_assignment['assignment'].is_complete() }}</td>
+        <td><a href="{{ url_for('recording.recording_view', recording_id=recording_and_assignment['recording'].id, encounter_id= recording_and_assignment['recording'].encounter.id) }}">{{ recording_and_assignment['recording'].start_time_pretty }}</a></td>
         <td>{% if recording_and_assignment['recording'].is_on_hold() %} ACTION REQUIRED {% else %} {{ recording_and_assignment['recording'].status}} {% endif %}</td>
       </tr>
       {% endfor %}

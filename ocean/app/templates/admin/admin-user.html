@@ -8,7 +8,7 @@
     <div class="outer-div">
 
         <h1>Users</h1>
-        <a href="{{ url_for('admin.admin_user_new') }}" class="add-new-button"><button class="gray">Add new user</button></a>
+        <a href="{{ url_for('admin.admin_user_new') }}" class="add-new-button"><button class="gray">Add New User</button></a>
 
         <div class="table-responsive" style="margin-top: 10px">
             <table class="table-striped"  id="data-source-table">
@@ -25,7 +25,7 @@
                 <td>{{ user.login_id }}</td>
                 <td>{% if user.is_active %}Active{% else %}Inactive{% endif %}</td>
                 <td>{{ user.name }}</td>
-                <td>{{user.expiry}}</td>
+                <td>{{user.pretty_expiry}}</td>
                 <td>{{user.role.name}}</td>
                 <td>
                     <a class="button" href="{{ url_for('admin.admin_user_view', user_id=user.id) }}">View</a>

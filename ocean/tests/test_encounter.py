@@ -1,4 +1,5 @@
 # Standard library imports
+import copy
 import uuid
 import os
 
@@ -10,516 +11,206 @@ from . import factories
 from . import common
 from ..app import models
 from ..app import exception_handler
-
+UUID_TEST = uuid.uuid4()
 EMPTY_CHARACTERS = common.EMPTY_CHARACTERS
 
 @pytest.fixture
 def encounter():
-    
     return factories.EncounterFactory.create()
 
-def test_hasattr_updated_by_id(encounter):
-    """Test if the Encounter object has the updated_by_id attribute"""
-    assert hasattr(encounter, "set_updated_by_id") == True
-    
-def test_hasattr_update_call(encounter):
-    assert hasattr(encounter, "update_call") == True
+@pytest.mark.parametrize("attr, value, expected", [
+    ("encounter_name", "TestName", "TestName"),
+    ("encounter_name", " TestName", "TestName"),
+    ("encounter_name", "TestName ", "TestName"),
+    ("encounter_name", " Test Name ", "Test Name"),
+    ("location", "TestName", "TestName"),
+    ("location", " TestName", "TestName"),
+    ("location", "TestName ", "TestName"),
+    ("location", " Test Name ", "Test Name"),
+    ("project", "TestName", "TestName"),
+    ("project", " TestName", "TestName"),
+    ("project", "TestName ", "TestName"),
+    ("project", " Test Name ", "Test Name"),
+    ("latitude", 1.6, 1.6),
+    ("latitude", -50, -50),
+    ("latitude", "1.6", 1.6),
+    ("latitude", 0, 0),
+    ("latitude", "1.613251", 1.613251),
+    ("latitude", "0.00", 0),
+    ("latitude", "", None),
+    ("latitude", " ", None),
+    ("latitude", None, None),
+    ("longitude", 1.6, 1.6),
+    ("longitude", -50, -50),
+    ("longitude", "1.6", 1.6),
+    ("longitude", 0, 0),
+    ("longitude", "1.613251", 1.613251),
+    ("longitude", "0.00", 0),
+    ("longitude", "", None),
+    ("longitude", " ", None),
+    ("longitude", None, None),
+    ("notes", "TestName", "TestName"),
+    ("notes", " TestName\nHello\n\tThis is a new line.", "TestName\nHello\n\tThis is a new line."),
+    ("notes", "TestName\nHello\n\tThis is a new line. ", "TestName\nHello\n\tThis is a new line."),
+    ("notes", "TestName\nHello\n\tThis is a new line.", "TestName\nHello\n\tThis is a new line."),
+    ("file_timezone", -100, -100),
+    ("file_timezone", 0, 0),
+    ("file_timezone", 50.0, 50),
+    ("file_timezone", 100.8, 100),
+    ("file_timezone", "-100", -100),
+    ("file_timezone", "0", 0),
+    ("file_timezone", "50.0", 50),
+    ("file_timezone", "100.8", 100),
+    ("local_timezone", -100, -100),
+    ("local_timezone", 0, 0),
+    ("local_timezone", 50.0, 50),
+    ("local_timezone", 100.8, 100),
+    ("local_timezone", "-100", -100),
+    ("local_timezone", "0", 0),
+    ("local_timezone", "50.0", 50),
+    ("local_timezone", "100.8", 100)
+])
+def test_set_attribute(encounter: models.Encounter, attr: str, value, expected):
+    common.test_set_attribute(encounter, attr, value, expected)
 
-def test_hasattr_delete_children(encounter):
-    assert hasattr(encounter, "delete_children") == True    
+@pytest.mark.parametrize("attr, value", [
+    ("encounter_name", 1),
+    ("encounter_name", None),
+    ("encounter_name", ""),
+    ("encounter_name", "   "),
+    ("location", 1),
+    ("location", None),
+    ("location", ""),
+    ("location", "   "),
+    ("project", 1),
+    ("project", None),
+    ("project", ""),
+    ("project", "   "),
+    ("species_id", "this-is-not-a-uuid"),
+    ("species_id", 1),
+    ("species_id", None),
+    ("species_id", ""),
+    ("species_id", "   "),
+    ("data_source_id", "this-is-not-a-uuid"),
+    ("data_source_id", 1),
+    ("recording_platform_id", "this-is-not-a-uuid"),
+    ("recording_platform_id", 1),
+    ("updated_by_id", "this-is-not-a-uuid"),
+    ("updated_by_id", 1)
+])
+def test_set_attribute_validation_error(encounter: models.Encounter, attr: str, value):
+    common.test_set_attribute_validation_error(encounter, attr, value)
 
-def test_hasattr_getters(encounter):
-    assert hasattr(encounter, "get_encounter_name") == True
-    assert hasattr(encounter, "get_location") == True
-    assert hasattr(encounter, "get_project") == True
-    assert hasattr(encounter, "get_latitude") == True
-    assert hasattr(encounter, "get_longitude") == True
-    assert hasattr(encounter, "get_notes") == True
-    assert hasattr(encounter, "get_file_timezone") == True
-    assert hasattr(encounter, "get_local_timezone") == True 
-    assert hasattr(encounter, "get_species_id") == True
-    assert hasattr(encounter, "get_data_source_id") == True
-    assert hasattr(encounter, "get_recording_platform_id") == True
+@pytest.mark.parametrize("attr, nullable", [
+    ("species_id", False),
+    ("data_source_id", True),
+    ("recording_platform_id", True),
+    ("updated_by_id", True)
+])
+def test_uuid(encounter: models.Encounter, attr: str, nullable: bool):
+    common.validate_uuid(encounter, attr, str(uuid.uuid4()), nullable)
 
-def test_hasattr_setters(encounter):
-    assert hasattr(encounter, "set_encounter_name") == True
-    assert hasattr(encounter, "set_location") == True
-    assert hasattr(encounter, "set_project") == True
-    assert hasattr(encounter, "set_latitude") == True
-    assert hasattr(encounter, "set_longitude") == True
-    assert hasattr(encounter, "set_notes") == True
-    assert hasattr(encounter, "set_file_timezone") == True
-    assert hasattr(encounter, "set_local_timezone") == True 
-    assert hasattr(encounter, "set_species") == True
-    assert hasattr(encounter, "set_species_id") == True
-    assert hasattr(encounter, "set_data_source") == True
-    assert hasattr(encounter, "set_data_source_id") == True
-    assert hasattr(encounter, "set_recording_platform") == True
-    assert hasattr(encounter, "set_recording_platform_id") == True
+@pytest.mark.parametrize("form", [
+    ({
+        'encounter_name': "TestName",
+        'location': "TestLocation",
+        'project': "TestProject",
+        'species_id': str(uuid.uuid4()),
+        'latitude': "14.3",
+        'longitude': "15.2",
+        'data_source_id': str(uuid.uuid4()),
+        'recording_platform_id': str(uuid.uuid4()),
+        'notes': "Test Notes",
+        'file_timezone': "200",
+        'local_timezone': "-50"
+    }),
+    ({
+        'encounter_name': "TestName",
+        'location': "TestLocation",
+        'project': "TestProject",
+        'species_id': str(uuid.uuid4()),
+        'latitude': "",
+        'longitude': "",
+        'data_source_id': "",
+        'recording_platform_id': "",
+        'notes': "",
+        'file_timezone': "",
+        'local_timezone': ""
+    }),
+    ({
+        'encounter_name': "TestName",
+        'location': "TestLocation",
+        'project': "TestProject",
+        'species_id': str(uuid.uuid4()),
+    }) ])
+def test_insert_or_update(encounter: models.Encounter, form):
+    encounter_old = copy.deepcopy(encounter)
+    encounter._insert_or_update(form = form, new = False)
+    assert encounter.encounter_name == form['encounter_name']
+    assert encounter.location == form['location']
+    assert encounter.project == form['project']
+    assert encounter.species_id == uuid.UUID(form['species_id'])
+    assert common.create_assertion(encounter.latitude, encounter_old.latitude, float(form['latitude']) if ('latitude' in form and form['latitude']) else None)
+    assert common.create_assertion(encounter.longitude, encounter_old.longitude, float(form['longitude']) if ('longitude' in form and form['longitude']) else None)
+    assert common.create_assertion(encounter.notes, encounter_old.notes, form['notes'] if 'notes' in form else "")
+    assert common.create_assertion(encounter.data_source_id, encounter_old.data_source_id, uuid.UUID(form['data_source_id']) if ('data_source_id' in form and form['data_source_id']) else None)
+    assert common.create_assertion(encounter.recording_platform_id, encounter_old.recording_platform_id, uuid.UUID(form['recording_platform_id']) if ('recording_platform_id' in form and form['recording_platform_id']) else None)
+    assert common.create_assertion(encounter.file_timezone, encounter_old.file_timezone, int(form['file_timezone']) if ('file_timezone' in form and form['file_timezone']) else None)
+    assert common.create_assertion(encounter.local_timezone, encounter_old.local_timezone, int(form['local_timezone']) if ('local_timezone' in form and form['local_timezone']) else None)
 
-def test_updated_by_id(encounter):
-    """Test that the """
-    assert encounter.updated_by_id == None
-    encounter.set_updated_by_id("1")
-    assert encounter.updated_by_id == "1"
-    encounter.set_updated_by_id("15")
-    assert encounter.updated_by_id == "15"
-
-def test_set_encounter_name(encounter):
-    encounter.set_encounter_name("Test")
-    assert encounter.encounter_name == "Test"
-
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_encounter_name_invalid(encounter: models.Encounter, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_encounter_name(c)
-    
-def test_set_location(encounter):
-    encounter.set_location("Test")
-    assert encounter.location == "Test"
-
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_location_invalid(encounter: models.Encounter, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_location(c)
-
-def test_set_project(encounter):
-    encounter.set_project("Test")
-    assert encounter.project == "Test"
-
-@pytest.mark.parametrize("c", EMPTY_CHARACTERS)
-def test_set_project_invalid(encounter: models.Encounter, c: str):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_project(c)
-
-def set_set_latitude(encounter):
-    encounter.set_latitude(45.0)
-    assert encounter.latitude == 45.0
-    encounter.set_latitude(45)
-    assert encounter.latitude == 45.0
-    encounter.set_latitude("45")
-    assert encounter.latitude == 45.0
-    encounter.set_latitude("45.0")
-    assert encounter.latitude == 45.0
-    
-def test_set_latitude_invalid_string(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_latitude("invalid-latitude")
-
-def test_set_latitude_out_of_range(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_latitude(100.0)
-        
-def test_set_latitude_empty(encounter):
-    encounter.set_latitude(None)
-    assert encounter.latitude == None
-    encounter.set_latitude("")
-    assert encounter.latitude == None
-    encounter.set_latitude(" ")
-    assert encounter.latitude == None
-
-def set_set_longitude(encounter):
-    encounter.set_longitude(45.0)
-    assert encounter.longitude == 45.0
-    encounter.set_longitude(45)
-    assert encounter.longitude == 45.0
-    encounter.set_longitude("45")
-    assert encounter.longitude == 45.0
-    encounter.set_longitude("45.0")
-    assert encounter.longitude == 45.0
-    
-def test_set_longitude_invalid_string(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_longitude("invalid-longitude")
-
-def test_set_longitude_out_of_range(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_longitude(181.0)
-    
-def test_set_longitude_empty(encounter):
-    encounter.set_longitude(None)
-    assert encounter.longitude == None
-    encounter.set_longitude("")
-    assert encounter.longitude == None
-    encounter.set_longitude(" ")
-    assert encounter.longitude == None
-
-def test_set_data_source(encounter):
-    data_source = factories.DataSourceFactory.create()
-    encounter.set_data_source(data_source)
-    assert encounter.data_source == data_source
-
-def test_set_data_source_id(encounter):
-    data_source_id = uuid.uuid4().hex
-    encounter.set_data_source_id(data_source_id)
-    assert encounter.data_source_id == data_source_id
-
-def test_set_recording_platform(encounter):
-    recording_platform = factories.RecordingPlatformFactory.create()
-    encounter.set_recording_platform(recording_platform)
-    assert encounter.recording_platform == recording_platform
-
-def test_set_recording_platform_id(encounter):
-    recording_platform_id = uuid.uuid4()
-    encounter.set_recording_platform_id(recording_platform_id)
-    assert encounter.recording_platform_id == recording_platform_id
-
-def test_set_notes(encounter):
-    encounter.set_notes("Test")
-    assert encounter.notes == "Test"
-
-def test_set_notes_whitespace(encounter):
-    encounter.set_notes("  Test \t")
-    assert encounter.notes == "Test"
-
-def test_set_notes_multiple_lines(encounter):
-    encounter.set_notes("Test\nTest")
-    assert encounter.notes == "Test\nTest"
-
-def test_set_notes_empty(encounter):
-    for c in EMPTY_CHARACTERS:
-        encounter.set_notes(c)
-        assert encounter.notes == None
-
-def test_set_file_timezone(encounter):
-    encounter.set_file_timezone(0)
-    assert encounter.file_timezone == 0
-    encounter.set_file_timezone(12)
-    assert encounter.file_timezone == 12
-    encounter.set_file_timezone(60)
-    assert encounter.file_timezone == 60
-    encounter.set_file_timezone(-60.3)
-    assert encounter.file_timezone == -60
-
-def test_set_file_timezone_string(encounter):
-    encounter.set_file_timezone("0")
-    assert encounter.file_timezone == 0
-    encounter.set_file_timezone("12")
-    assert encounter.file_timezone == 12
-    encounter.set_file_timezone("60")
-    assert encounter.file_timezone == 60
-    encounter.set_file_timezone("-60.3")
-    assert encounter.file_timezone == -60
-
-def test_set_file_timezone_out_of_range(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_file_timezone(1000)
-
-def test_set_file_timezone_none(encounter):
-    encounter.set_file_timezone(None)
-    assert encounter.file_timezone == None
-    encounter.set_file_timezone("")
-    assert encounter.file_timezone == None
-    encounter.set_file_timezone(" ")
-    assert encounter.file_timezone == None
-
-def test_set_file_timezone_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_file_timezone("1.5f")
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_file_timezone("this-is-not-a timezone")
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_file_timezone(factories.SpeciesFactory.create())
-
-def test_set_local_timezone(encounter):
-    encounter.set_local_timezone(0)
-    assert encounter.local_timezone == 0
-    encounter.set_local_timezone(12)
-    assert encounter.local_timezone == 12
-    encounter.set_local_timezone(60)
-    assert encounter.local_timezone == 60
-    encounter.set_local_timezone(-60.3)
-    assert encounter.local_timezone == -60
-
-def test_set_local_timezone_string(encounter):
-    encounter.set_local_timezone("0")
-    assert encounter.local_timezone == 0
-    encounter.set_local_timezone("12")
-    assert encounter.local_timezone == 12
-    encounter.set_local_timezone("60")
-    assert encounter.local_timezone == 60
-    encounter.set_local_timezone("-60.3")
-    assert encounter.local_timezone == -60
-    
-def test_set_local_timezone_out_of_range(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_local_timezone(-1000)
-
-def test_set_local_timezone_none(encounter):
-    encounter.set_local_timezone(None)
-    assert encounter.local_timezone == None
-    encounter.set_local_timezone("")
-    assert encounter.local_timezone == None
-    encounter.set_local_timezone(" ")
-    assert encounter.local_timezone == None
-
-def test_set_local_timezone_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_local_timezone("1.5f")
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_local_timezone("this-is-not-a timezone")
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_local_timezone(factories.SpeciesFactory.create())
-
-def test_set_species(encounter):
-    species = factories.SpeciesFactory.create()
-    encounter.set_species(species)
-    assert encounter.species == species
-
-def test_set_species_none(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_species(None)
-
-def test_set_species_wrong_type(encounter):
-    with pytest.raises(ValueError):
-        data_source = factories.DataSourceFactory.create()
-        encounter.set_species(data_source)
-    with pytest.raises(ValueError):
-        encounter.set_species(1)
-    with pytest.raises(ValueError):
-        encounter.set_species("u8354")
-
-def test_set_species_id(encounter):
-    species_id = uuid.uuid4()
-    encounter.set_species_id(species_id.hex)
-    assert encounter.species_id == species_id
-    encounter.species_id = None
-    encounter.set_species_id(species_id)
-    assert encounter.species_id == species_id
-
-def test_set_species_id_none(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_species_id(None)
-
-def test_set_species_id_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_species_id(1)
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_species_id("21581739")
-
-def test_set_data_source(encounter):
-    data_source = factories.DataSourceFactory.create()
-    encounter.set_data_source(data_source)
-    assert encounter.data_source == data_source
-
-def test_set_data_source_none(encounter):
-    encounter.set_data_source(None)
-    assert encounter.data_source == None
-
-def test_set_data_source_wrong_type(encounter):
-    with pytest.raises(ValueError):
-        data_source = factories.SpeciesFactory.create()
-        encounter.set_data_source(data_source)
-    with pytest.raises(ValueError):
-        encounter.set_data_source(1)
-    with pytest.raises(ValueError):
-        encounter.set_data_source("u8354")
-
-def test_set_data_source_id(encounter):
-    data_source_id = uuid.uuid4()
-    encounter.set_data_source_id(data_source_id)
-    assert encounter.data_source_id == data_source_id
-    encounter.data_source_id = None
-    encounter.set_data_source_id(data_source_id.hex)
-    assert encounter.data_source_id == data_source_id
-
-def test_set_data_source_id_none(encounter):
-    encounter.set_data_source_id(None)
-    assert encounter.data_source_id == None
-
-def test_set_data_source_id_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_data_source_id(1)
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_data_source_id("21581739")
-
-def test_set_recording_platform(encounter):
-    recording_platform = factories.RecordingPlatformFactory.create()
-    encounter.set_recording_platform(recording_platform)
-    assert encounter.recording_platform == recording_platform
-
-def test_set_recording_platform_none(encounter):
-    encounter.set_recording_platform(None)
-    assert encounter.recording_platform == None
-
-def test_set_recording_platform_wrong_type(encounter):
-    with pytest.raises(ValueError):
-        recording_platform = factories.SpeciesFactory.create()
-        encounter.set_recording_platform(recording_platform)
-    with pytest.raises(ValueError):
-        encounter.set_recording_platform(1)
-    with pytest.raises(ValueError):
-        encounter.set_recording_platform("u8354")
-
-def test_set_recording_platform_id(encounter):
-    recording_platform_id = uuid.uuid4()
-    encounter.set_recording_platform_id(recording_platform_id.hex)
-    assert encounter.recording_platform_id == recording_platform_id
-    encounter.recording_platform_id = None
-    encounter.set_recording_platform_id(recording_platform_id)
-    assert encounter.recording_platform_id == recording_platform_id
-
-def test_set_recording_platform_id_none(encounter):
-    encounter.set_recording_platform_id(None)
-    assert encounter.recording_platform_id == None
-
-def test_set_recording_platform_id_wrong_type(encounter):
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_recording_platform_id(1)
-    with pytest.raises(exception_handler.WarningException):
-        encounter.set_recording_platform_id("21581739")
-
-def test_get_encounter_name(encounter):
-    encounter.encounter_name = "Test Name"
-    assert encounter.get_encounter_name() == "Test Name"
-    encounter.encounter_name = None
-    assert encounter.get_encounter_name() == ""
-    encounter.encounter_name = ""
-    assert encounter.get_encounter_name() == ""
-
-def test_get_location(encounter):
-    encounter.location = "Test Location"
-    assert encounter.get_location() == "Test Location"
-    encounter.location = None
-    assert encounter.get_location() == ""
-    encounter.location = ""
-    assert encounter.get_location() == ""
-
-def test_get_project(encounter):
-    encounter.project = "Test Project"
-    assert encounter.get_project() == "Test Project"
-    encounter.project = None
-    assert encounter.get_project() == ""
-    encounter.project = ""
-    assert encounter.get_project() == ""
-
-def test_get_latitude(encounter):
-    encounter.latitude = 1.0
-    assert encounter.get_latitude() == 1.0
-    encounter.latitude = 0
-    assert encounter.get_latitude() == 0
-    encounter.latitude = None
-    assert encounter.get_latitude() == None
-    encounter.latitude = "0"
-    assert encounter.get_latitude() == 0
-    encounter.latitude = "15.6"
-    assert encounter.get_latitude() == 15.6
-    # this should theoretically never happen if the proper setter is used
-    encounter.latitude = "not-a-float"
-    assert encounter.get_latitude() == None
-    
-def test_get_longitude(encounter):
-    encounter.longitude = 1.0
-    assert encounter.get_longitude() == 1.0
-    encounter.longitude = 0
-    assert encounter.get_longitude() == 0
-    encounter.longitude = None
-    assert encounter.get_longitude() == None
-    encounter.longitude = "0"
-    assert encounter.get_longitude() == 0
-    encounter.longitude = "15.6"
-    assert encounter.get_longitude() == 15.6
-    # this should theoretically never happen if the proper setter is used
-    encounter.longitude = "not-a-float"
-    assert encounter.get_longitude() == None
-
-def test_get_notes(encounter):
-    encounter.notes = "Test Notes"
-    assert encounter.get_notes() == "Test Notes"
-    encounter.notes = None
-    assert encounter.get_notes() == ""
-    encounter.notes = ""
-    assert encounter.get_notes() == ""
-
-def test_get_file_timezone(encounter):
-    encounter.file_timezone = 200
-    assert encounter.get_file_timezone() == 200
-    encounter.file_timezone = None
-    assert encounter.get_file_timezone() == None
-    encounter.file_timezone = "-200"
-    assert encounter.get_file_timezone() == -200
-    encounter.file_timezone = 0
-    assert encounter.get_file_timezone() == 0
-
-def test_get_local_timezone(encounter):
-    encounter.local_timezone = 200
-    assert encounter.get_local_timezone() == 200
-    encounter.local_timezone = None
-    assert encounter.get_local_timezone() == None
-    encounter.local_timezone = "-200"
-    assert encounter.get_local_timezone() == -200
-    encounter.local_timezone = 0
-    assert encounter.get_local_timezone() == 0
-
-def test_get_species_id(encounter):
-    species_id = uuid.uuid4()
-    encounter.species_id = species_id
-    assert encounter.get_species_id() == species_id
-    species_id = uuid.uuid4()
-    encounter.species_id = species_id.hex
-    assert encounter.get_species_id() == species_id
-    encounter.species_id = None
-    assert encounter.get_species_id() == None
-    encounter.species_id = "not-a-uuid"
-    with pytest.raises(exception_handler.WarningException):
-        encounter.get_species_id()
-
-def test_get_data_source_id(encounter):
-    data_source_id = uuid.uuid4()
-    encounter.data_source_id = data_source_id
-    assert encounter.get_data_source_id() == data_source_id
-    data_source_id = uuid.uuid4()
-    encounter.data_source_id = data_source_id.hex
-    assert encounter.get_data_source_id() == data_source_id
-    encounter.data_source_id = None
-    assert encounter.get_data_source_id() == None
-    encounter.data_source_id = "not-a-uuid"
-    with pytest.raises(exception_handler.WarningException):
-        encounter.get_data_source_id()
-
-def test_get_recording_platform_id(encounter):
-    recording_platform_id = uuid.uuid4()
-    encounter.recording_platform_id = recording_platform_id
-    assert encounter.get_recording_platform_id() == recording_platform_id
-    recording_platform_id = uuid.uuid4()
-    encounter.recording_platform_id = recording_platform_id.hex
-    assert encounter.get_recording_platform_id() == recording_platform_id
-    encounter.recording_platform_id = None
-    assert encounter.get_recording_platform_id() == None
-    encounter.recording_platform_id = "not-a-uuid"
-    with pytest.raises(exception_handler.WarningException):
-        encounter.get_recording_platform_id()
+@pytest.mark.parametrize("form", [
+    ({
+        'location': "TestLocation",
+        'project': "TestProject",
+        'species_id': str(uuid.uuid4()),
+    }),
+    ({
+        'encounter_name': "TestName",
+        'project': "TestProject",
+        'species_id': str(uuid.uuid4()),
+    }),
+    ({
+        'encounter_name': "TestName",
+        'location': "TestLocation",
+        'species_id': str(uuid.uuid4()),
+    }),
+    ({
+        'encounter_name': "TestName",
+        'location': "TestLocation",
+        'project': "TestProject",
+    }), ])
+def test_insert_or_update_attribute_error(encounter: models.Encounter, form):
+    with pytest.raises(AttributeError):
+        encounter._insert_or_update(form = form, new = False)
 
 
-def test_generate_relative_directory(encounter: models.Encounter):
-    encounter.species.species_name = "TestSpecies"
+def test_relative_directory(encounter: models.Encounter):
+    encounter.species.scientific_name = "TestSpecies"
     encounter.encounter_name = "TestEncounter"
     encounter.location = "TestLocation"
-    assert encounter.generate_relative_directory() == os.path.join("Species-TestSpecies", "Location-TestLocation", "Encounter-TestEncounter")
+    assert encounter.relative_directory == os.path.join("Species-TestSpecies", "Location-TestLocation", "Encounter-TestEncounter")
 
-def test_generate_relative_directory_invalid_characters(encounter: models.Encounter):
-    for c in ["/","\\","*","?","\"","<",">","|"," "]:
-        encounter.species.species_name = f"Test{c}Species"
+def test_relative_directory_invalid_characters(encounter: models.Encounter):
+    for c in common.INVALID_CHARACTERS:
+        encounter.species.scientific_name = f"Test{c}Species"
         encounter.encounter_name = f"Test{c}Encounter"
         encounter.location = f"Test{c}Location"
-        assert encounter.generate_relative_directory() == os.path.join(f"Species-Test_Species", f"Location-Test_Location", f"Encounter-Test_Encounter")
+        assert encounter.relative_directory == os.path.join(f"Species-Test_Species", f"Location-Test_Location", f"Encounter-Test_Encounter")
 
+def test_folder_name(encounter: models.Encounter):
+    encounter.encounter_name = "TestEncounter"
+    assert encounter.folder_name == "Encounter-TestEncounter"
 
-# def test_set_species(encounter, session):
-#     species = factories.SpeciesFactory.create()
-#     session.add(encounter)
-#     session.add(species)
-#     session.flush()
-#     encounter.set_species(species)
-#     session.commit()
-#     assert str(encounter.species) == str(species)
+def test_folder_name_invalid_characters(encounter: models.Encounter):
+    for c in common.INVALID_CHARACTERS:
+        encounter.encounter_name = f"Test{c}Encounter"
+        assert encounter.folder_name == f"Encounter-Test_Encounter"
 
-# def test_set_species_id(encounter, session):
-#     species = factories.SpeciesFactory.create()
-#     session.add(species)
-#     session.add(encounter)
-#     session.flush()
-#     encounter.set_species_id(species.id)
-#     session.commit()
-#     assert str(encounter.species) == str(species)
-#     assert str(encounter.species_id) == str(species.id)
+def test_location_folder_name(encounter: models.Encounter):
+    encounter.location = "TestLocation"
+    assert encounter.location_folder_name == "Location-TestLocation"
+
+def test_location_folder_name_invalid_characters(encounter: models.Encounter):
+    for c in common.INVALID_CHARACTERS:
+        encounter.location = f"Test{c}Location"
+        assert encounter.location_folder_name == f"Location-Test_Location"

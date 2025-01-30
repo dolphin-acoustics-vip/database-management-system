@@ -7,10 +7,10 @@
     <a href="{{redirect_link}}">Go Back</a>
     <p>Path: {{ file.path }}</p>
     <p>Filename: {{ file.filename }}</p>
-    <p>Uploaded date: {{ file.get_uploaded_date_utc() }}</p>
+    <p>Uploaded date: {{ file.upload_datetime }}</p>
     <p>Extension: {{ file.extension }}</p>
     <p>Original filename: {{ file.original_filename }}</p>
-    <p>Hash (SHA-256): {{ file.get_hash() }}</p>
+    <p>Hash (SHA-256): {{ file.hash_hex }}</p>
     <p>Hash matching: {{ file.verify_hash() }}</p>
   </div>
 </body>

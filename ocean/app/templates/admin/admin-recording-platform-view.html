@@ -7,10 +7,13 @@
 <body>
     <div class="outer-div">
     <h1>Edit Recording Platform</h1>
-    <form action="{{ url_for('admin.admin_recording_platform_edit', recording_platform_id=recording_platform.id) }}" method="post">
+    <form id="recording-platform-update-form" action="{{ url_for('admin.admin_recording_platform_edit', recording_platform_id=recording_platform.id) }}" method="post">
         {% set editing = True %}
         {% include 'admin/admin-recording-platform-template.html' %}
     </form>
+    <script>
+        ajaxifyForm(document.getElementById('recording-platform-update-form'), true, true, null, null);
+    </script>
     </div>
 </body>
 </html>

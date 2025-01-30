@@ -9,26 +9,23 @@ from ..app import models
 def role():
     return factories.RoleFactory()
 
-def test_get_id(role: models.Role):
-    role.id = 1
-    assert role.get_id() == 1
-    role.id = "1"
-    assert role.get_id() == 1
-    
-def test_get_id_wrong_type(role: models.Role):
-    role.id = "this-is-not-an-integer"
-    with pytest.raises(ValueError):
-        role.get_id()
-        
-def test_get_id_none(role: models.Role):
-    role.id = None
-    with pytest.raises(ValueError):
-        role.get_id()
 
-def test_get_name(role: models.Role):
-    role.name = "System Administrator"
-    assert role.get_name() == "System Administrator"
+@pytest.mark.parametrize("attr, value, expected", [
+    ("id", "1", 1),
+    ("id", 1, 1),
+    ("name", "TestName ", "TestName"),
+    ("name", " Test Name ", "Test Name"),
+])
+def test_set_attribute(role: models.Role, attr: str, value, expected):
+    common.test_set_attribute(role, attr, value, expected)
 
-def test_get_name_none(role: models.Role):
-    role.name = None
-    assert role.get_name() == ""
+@pytest.mark.parametrize("attr, value", [
+    ("id", None),
+    ("id", ""),
+    ("id", "   "),
+    ("name", None),
+    ("name", ""),
+    ("name", "   ")
+])
+def test_set_attribute_validation_error(role: models.Role, attr: str, value):
+    common.test_set_attribute_validation_error(role, attr, value)

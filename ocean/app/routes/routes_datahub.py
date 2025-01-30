@@ -168,7 +168,7 @@ def get_selection_statistics():
                     'untracedCount':0,
                     'deactivatedCount':0,
                     'completedCount': 0,
-                    'speciesName': selection['species_name'],
+                    'speciesName': selection['scientific_name'],
                     'record':[0] * len(axis_labels)}
             if selection['deactivated'] == True:
                 species_statistics[selection['sp_id']]['deactivatedCount'] += 1
@@ -306,7 +306,7 @@ def get_recording_statistics():
         all_species = database_handler.create_system_time_request(session, models.Species)
 
         # Dictionary to store recording statistics for each species
-        species_specific_data = {str(species.id): {'speciesName': species.species_name, 'recordings': 0, 'assignedRecordings': 0, 'unassignedRecordings': 0, 'completedAssignments': 0, 'inprogressAssignments': 0, 'tracedCount': 0, 'recordingsReviewedCount': 0, 'recordingsOnHoldCount': 0, 'recordingsAwaitingReviewCount': 0, 'recordingsUnassignedCount': 0, 'recordingsInProgressCount': 0} for species in all_species}
+        species_specific_data = {str(species.id): {'speciesName': species.scientific_name, 'recordings': 0, 'assignedRecordings': 0, 'unassignedRecordings': 0, 'completedAssignments': 0, 'inprogressAssignments': 0, 'tracedCount': 0, 'recordingsReviewedCount': 0, 'recordingsOnHoldCount': 0, 'recordingsAwaitingReviewCount': 0, 'recordingsUnassignedCount': 0, 'recordingsInProgressCount': 0} for species in all_species}
 
         # Variables to store recordings statistics depending on each of its status (a field containing either
         # Reviewed, Awaiting Review, In Hold, Unassigned, In Progress)

@@ -8,10 +8,13 @@
 
     <div class="outer-div">
         <h1>New User</h1>
-        <form action="{{ url_for('admin.admin_user_insert') }}" method="post">
+        <form id="user-insert-form" action="{{ url_for('admin.admin_user_insert') }}" method="post">
             {% set editing = False %}
             {% include 'admin/admin-user-template.html' %}
         </form>
+        <script>
+            ajaxifyForm(document.getElementById('user-insert-form'), true, true, null, null);
+        </script>
     </div>
 
 

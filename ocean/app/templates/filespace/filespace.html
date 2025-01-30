@@ -3,84 +3,137 @@
 
 <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
 
-{% macro orphaned_file_template(orphaned_files, deleted, unique_id) %}
+<script>
+function deleteOrphanedFile(link, tableRow, button) {
+    button.disabled = true;
+        makeAjaxRequest(
+            link,
+            'DELETE',
+            undefined,
+            undefined,
+            true,
+            true,
+            successCallback = () => {
+                tableRow.remove();
+            },
+            errorCallback = () => {
+                button.disabled = false;
+            },
+            redirectNewTab=true
+        );
+}
+function loadOrphanedFiles(deleted, tableId) {
+    var url = "{{ url_for('filespace.get_orphaned_files') }}";
+    makeAjaxRequest(
+        url,
+        "GET",
+        {deleted:deleted},
+        undefined,
+        true,
+        true,
+        successCallback = (response) => {
+            var tableBody = $('#' + tableId + ' tbody');
+            $.each(response.data.orphanedFiles, function(index, result) {
+                var row = $('<tr>');
+                row.append($('<td>').html('<button class="gray small" onclick="deleteOrphanedFile(\'' + result.link + '\', this.closest(\'tr\'), this)">Delete</button>'))
+                row.append($('<td>').append($('<a>', {class: 'button', href: result.download}).text('Download')));
+                row.append($('<td>').text(result.path));
+                tableBody.append(row);
+            });
+        }
+    )
+}
 
-<button class="gray" style="width:50%; margin-top:0.5rem; margin-bottom: 1rem" id="delete-selected-orphaned-files-{{unique_id}}">Delete Selected Orphaned Files</button>
+
+</script>
+
+{% macro orphaned_file_template(deleted, unique_id) %}
 
 <div class="table-responsive">
-    <form id="delete-orhpaned-files-form-{{unique_id}}" method="post" action="{{ url_for('filespace.delete_orphaned_files') }}">
-        <input type="hidden" id="file-paths-{{unique_id}}" name="file_paths[]">
-        <input type="hidden" id="deleted" name="deleted" value="{{deleted}}">
-    </form>
-<table class="table-striped">
+<table id="orphaned-files-table-{{unique_id}}" class="table-striped">
     <tr>
-        <th><input type="checkbox" name="checkboxes-{{unique_id}}" class="select-all"></th>
-        <th>Path</th>
-        <th>Download</th>
         <th>Resolve</th>
+        <th>Download</th>
+        <th>Path</th>
     </tr>
-    {% for orphaned_file in orphaned_files %}
-    <tr>
-        <td>
-            <input type="checkbox" name="checkboxes-{{unique_id}}" value="{{orphaned_file['path']}}">
-        </td>
-        <td>
-            <label for="file">{{ orphaned_file['path'] }}</label><br>
-            
-        </td>
-        <td>
-            <a class="button" href="{{ orphaned_file['download'] }}">Download</a><br>
-        </td>
-        <td>
-            <a class="button" href="{{ orphaned_file['link'] }}">Delete</a><br>
-        </td>
-
-    </tr>
-    {% endfor %}
 </table>
 </div>
 <script>
-    addShiftClickFunctionality(document.querySelectorAll('input[name="checkboxes-{{unique_id}}"]'));
-    addCheckboxFormSubmission(document.querySelectorAll('input[name="checkboxes-{{unique_id}}"]'), document.getElementById('delete-selected-orphaned-files-{{unique_id}}'), document.getElementById('file-paths-{{unique_id}}'), document.getElementById('delete-orhpaned-files-form-{{unique_id}}'));
+    $(document).ready(function() {
+        var deleted = "{{deleted}}";
+        loadOrphanedFiles(deleted, "orphaned-files-table-{{unique_id}}");
+    });
 </script>
 {% endmacro %}
 
 
-{% macro invalid_link_template(invalid_links, deleted, unique_id) %}
-<div class="table-responsive">
-<table class="table-striped">
-        <tr>
-            <th>File</th>
-            <th>Resolve</th>
+<script>
+    function deleteBrokenLink(link, tableRow, button) {
+        button.disabled = true;
+        makeAjaxRequest(
+            link,
+            'DELETE',
+            undefined,
+            undefined,
+            true,
+            true,
+            successCallback = () => {
+                tableRow.remove();
+                loadBrokenLinks(deleted, tableId);
+            },
+            errorCallback = () => {
+                button.disabled = false;
+            },
+            redirectNewTab=true
+        );
+    }
 
-            <th>Path</th>
-        </tr>
-        {% for file_id in invalid_links %}
-        <tr>
-            <td>
-                <label for="file">{{ invalid_links[file_id]['file'].id }}</label><br>
-            </td>
-            <td>
-                {% if invalid_links[file_id]['parent'] %}
-                <label>You cannot delete this file automatically as a parent ({{invalid_links[file_id]['parent']}}) depends on it. Please delete the <a href="{{invalid_links[file_id]['link']}}">parent</a> first.</label><br>
-                {% else %}
-                {% if invalid_links[file_id]['delete'] %}
-                <label><a href="{{invalid_links[file_id]['delete']}}">Delete file object</a> (WARNING: this may cause issues in archive mode)</label><br>
-                {% else %}
-                <label>This issue is not resolvable. Please contact the developer.</label><br>
-                {% endif %}
-                {% endif %}
-                
-            </td>
-            <td>
-                <label>{{ invalid_links[file_id]['file'].get_full_absolute_path() }}</label><br>
-            </td>
-
-        </tr>
-        {% endfor %}
+      function loadBrokenLinks(deleted, tableId) {
+        var url = "{{ url_for('filespace.get_broken_links') }}";
+        makeAjaxRequest(
+          url,
+          'GET',
+          {deleted: deleted},
+          undefined,
+          true,
+          true,
+          successCallback = (response) => {
+            var tableBody = $('#' + tableId + ' tbody');
+            $.each(response.data.brokenLinks, function(index, link) {
+              var row = $('<tr>');
+              if (link.parent) {
+                row.append("<a class='button' href='" + link.link + "'>View Parent</a>");
+                row.append($('<td>').html('Resolve by deleting the file reference in the parent (' + link.parent.uniqueName + ').'));
+              } else if (link.delete) {
+                row.append($('<td>').html('<button class="gray small" onclick="deleteBrokenLink(\'' + link.delete + '\', this.closest(\'tr\'), this)">Resolve</button>'))
+                row.append($('<td>').html('Resolve by deleting the file reference directly.'));
+              } else {
+                row.append($('<td>').text('N/A'));
+                row.append($('<td>').text('This issue is not resolvable. Please contact the developer.'));
+              }
+              row.append($('<td>').text(link.file.path));
+              tableBody.append(row);
+            });
+          }
+        );
+      }
+  </script>
+{% macro invalid_link_template(deleted, unique_id) %}
+  <div class="table-responsive">
+    <table class="table-striped" id="invalid-links-table-{{unique_id}}">
+      <tr>
+        <th>Resolve</th>
+        <th>Action</th>
+        <th>Path</th>
+      </tr>
     </table>
-</div>
-
+  </div>
+  <script>
+    $(document).ready(function() {
+      var deleted = "{{deleted}}";
+      loadBrokenLinks(deleted, "invalid-links-table-{{unique_id}}");
+    });
+  </script>
 {% endmacro %}
 
 {% include 'partials/header.html' %}
@@ -94,26 +147,26 @@
         <h1>Filespace</h1>
 
         <h2>Storage</h2>
-        <p>System statistics: {{storage}}</p>
-        <p>Total storage size (both data and trash): {{file_space_size}}</p>
+        <p>System: {{storage}}</p>
+        <p>Filespace: {{file_space_size}}</p>
         <p><a href="{{ url_for('filespace.trash_view') }}">Manage trash ({{trash_dir_size}})</a></p>
 
         <h2>Invalid Links</h2>
         <p>Invalid links from existing file objects. This usually means a file has been wrongly moved or deleted from the filespace without using the software to do so.</p>
-        {{ invalid_link_template(invalid_links) }}
+        {{ invalid_link_template(False, 'table1') }}
 
         <h2>Invalid Deleted Links</h2>
         <p>Invalid links from softly deleted file objects. This usually means the trash directory has been emptied and that softly deleted files are no longer accessible. Use this software to delete those file objects.</p>
-        {{ invalid_link_template(invalid_deleted_links) }}
+        {{ invalid_link_template(True, 'table2') }}
 
 
         <h2>Orphaned Files</h2>
         <p>Orphaned files. These files are not referenced by any other file object.</p>
-        {{ orphaned_file_template(orphaned_files, False, "1") }}
+        {{ orphaned_file_template(False, "table3") }}
 
         <h2>Orphaned Deleted Files</h2>
         <p>Orphaned deleted files. These files are not referenced by any other file object.</p>
-        {{ orphaned_file_template(orphaned_deleted_files, True, "2") }}
+        {{ orphaned_file_template(True, "table4") }}
     </div>
 
 </body>

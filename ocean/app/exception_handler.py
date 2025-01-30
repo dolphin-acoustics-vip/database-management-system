@@ -35,6 +35,16 @@ class CriticalException(Exception):
         """
         super().__init__(message)
 
+class DoesNotExistError(Exception):
+
+    def __init__(self, missing):
+        super().__init__("Missing " + missing + " from database.")
+
+class FormError(CriticalException):
+
+    def __init__(self, missing):
+        super().__init__("Missing " + missing + " from submitted form.")
+
 class WarningException(Exception):
     def __init__(self, message:str):
         """
@@ -47,6 +57,14 @@ class WarningException(Exception):
         """
         super().__init__(message)
 
+
+class ValidationError(WarningException):
+    """An error that is to be raised when a validation test for data
+    fails. This is typically caused by a bad request from a user.
+    """
+
+    def __init__(self, field:str, required:str, value):
+        super().__init__(f"Field '{str(field)}' is not of type {str(required)} (given '{str(value)}').")
 
 def _parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
     """Process an SQLAlchemy exception (a subclass of `sqlalchemy.exc.SQLAlchemyError`).
@@ -88,8 +106,8 @@ def _parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
             duplicate_value = exception.orig.args[1].split("Duplicate entry ")[1].split(" for key ")[0]
             exc_msg += f"Unable to add record as it already exists ({duplicate_value})."
         else:
-            foreign_key_constraint = exc_msg.split('`')[3]
-            exc_msg += "Cannot delete or update a parent row: this data row is relied upon by an entity in '{}'.".format(foreign_key_constraint)
+            logger.exception(exception)
+            exc_msg += "Database integrity error. This error has been logged."
     elif isinstance(exception, exc.OperationalError):
         # Wraps a DB-API OperationalError.
         logger.exception(exception)
@@ -176,16 +194,20 @@ def _parse_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
     return_string = (prefix + ": ") if prefix else ""
     if isinstance(exception, exc.SQLAlchemyError):
         return return_string + _parse_sqlalchemy_exc(exception)
+    elif isinstance(exception, ValidationError):
+        return return_string + str(exception)
     elif isinstance(exception, WarningException):
         return return_string + str(exception)
     elif isinstance(exception, CriticalException):
         logger.exception(str(exception))
         raise CriticalException(str(exception))
+    elif isinstance(exception, DoesNotExistError):
+        raise exception
     else:
         logger.exception(str(exception))
         raise CriticalException("An unexpected error ocurred. It has been logged. Please notify your administrator and try again later.")
 
-def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None, session:orm.Session=None) -> str:
+def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None, session:orm.Session=None, show_flash:bool=True) -> str:
     """Parse an exception and rollback a SQLAlchemy session. The way in which an exception is parsed
     is dependent on the type of exception. There are three categories:
 
@@ -214,14 +236,16 @@ def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
         str: The parsed error message (note that when `CriticalException` or `Exception` are re-raised nothing will be returned)
     """
 
+
     if session:
+        uncommitted_objects = [obj for obj in session.identity_map.values() if obj not in session.new and obj not in session.dirty]
         # Rollback any newly created File objects
         from .models import File
-        for file_object in [obj for obj in session.new if isinstance(obj, File)]:
+        for file_object in [obj for obj in session.dirty if isinstance(obj, File)]:
             if hasattr(file_object, 'rollback'): file_object.rollback(session)
         # Rollback the ORM session
         session.rollback()
 
     error_string = _parse_exception(exception=exception, prefix = prefix)
-    flash(error_string, category='error')
+    if show_flash: flash(error_string, category='error')
     return error_string

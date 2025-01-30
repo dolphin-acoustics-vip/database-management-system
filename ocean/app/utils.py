@@ -29,6 +29,14 @@ from . import exception_handler
 from . import database_handler
 
 
+def parse_filename(filename: str):
+    """
+    Parse a filename into a tuple of (name, extension). If no extension is
+    found, the extension will be of type None.
+    """
+    name, extension = os.path.splitext(filename)
+    return name, extension
+
 def download_files(file_objects, file_names, zip_filename):
     """
     Creates and streams a zip file from the given list of file paths.
@@ -49,13 +57,12 @@ def download_files(file_objects, file_names, zip_filename):
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for file_object, file_name in zip(file_objects, file_names):
                 # If the file does not exist, create a text entry explaining it
-                if not os.path.exists(file_object.get_full_absolute_path()):
+                if not os.path.exists(file_object._path_with_root):
                     error_message = f"The file {file_name} was not found."
                     zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
                     continue
                 binary = file_object.get_binary()
-                file_hash = hashlib.sha256(binary).hexdigest()
-                if file_hash != None and file_hash != file_object.get_hash():
+                if not file_object.verify_hash():
                     # If the hash does not match, create a text entry explaining the mismatch
                     error_message = f"The hash for {file_name} does not match."
                     zipf.writestr(f"ERROR_{secure_filename(file_name)}.txt", error_message)
@@ -118,29 +125,12 @@ def download_files(file_objects, file_names, zip_filename):
 #             new_file_paths.append(new_file_path)
             
 #         return zip_and_download_files(new_file_paths, zip_filename)
-    
-def download_file(file_obj, file_name_generator=None):
-    """
-    Takes a file object and sends the file to the user. Before doing so,
-    uses the file_name_generator() method passed to rename the file during
-    export without copying or moving the file.
-    """
-    try:
-        # Generate a custom filename for the download
-        custom_filename = file_name_generator() if file_name_generator else file_obj.filename
-        if not custom_filename.endswith(file_obj.extension):
-            custom_filename = f"{custom_filename}.{file_obj.extension}"
-        
-        # Get the binary content of the file
-        binary_content = file_obj.get_binary()
 
-        # Calculate the SHA-256 hash of the file content
-        file_hash = hashlib.sha256(binary_content).hexdigest()
-
-        if file_obj.get_hash() != None:
-            if file_hash != file_obj.get_hash():
-                raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
-
+def download_file_from_path(path, deleted):
+    root = database_handler.get_deleted_space() if deleted else database_handler.get_data_space()
+    full_path = os.path.join(root, path)
+    if os.path.exists(full_path):
+        binary_content = open(full_path, 'rb').read()
         # Create an in-memory binary stream
         file_stream = io.BytesIO(binary_content)
 
@@ -148,14 +138,61 @@ def download_file(file_obj, file_name_generator=None):
         response = flask.send_file(
             file_stream,
             as_attachment=True,
-            download_name=secure_filename(custom_filename),  # Custom download filename
+            download_name=secure_filename(os.path.basename(full_path)),  # Custom download filename
         )
 
         return response
-    except exception_handler.WarningException as e:
-        # Log or handle the exception as needed
-        exception_handler.handle_exception(exception=e, prefix="Error downloading file")
-        return flask.redirect(flask.request.referrer)
+    else:
+        raise exception_handler.WarningException("File not found.")
+
+def download_file(file_obj, filename=None):
+    """
+    Takes a file object and sends the file to the user. If the file is to be downloaded
+    with a custom name, set `filename`. If the file is to be downloaded with the same
+    name as the original, set `filename` to None (default).
+    """
+    # Generate a custom filename for the download
+    custom_filename = filename if filename else file_obj.filename
+    if not custom_filename.endswith(file_obj.extension):
+        custom_filename = f"{custom_filename}.{file_obj.extension}"
+    
+    # Create a generator that yields chunks of the file content
+    def generate_file():
+        binary_content = file_obj.get_binary()
+        chunk_size = 1024
+        for i in range(0, len(binary_content), chunk_size):
+            yield binary_content[i:i + chunk_size]
+
+    # Calculate the SHA-256 hash of the file content
+    if not file_obj.verify_hash():
+        raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
+
+    # Send the file stream as an attachment
+    response = flask.Response(
+        flask.stream_with_context(generate_file()),
+        mimetype='application/octet-stream',
+        content_type='application/octet-stream',
+        headers={
+            'Content-Disposition': f'attachment; filename="{secure_filename(custom_filename)}"'
+        }
+    )
+
+    return response
+
+def validate_boolean(value: bool | str, field: str, allow_none: bool = False):
+    """
+    Parse a value to a boolean. Accepted values include "1", "0", 1, 0, "True", "true", "False",
+    "false", True and False. If `allow_none` is indicated `True` whitespace values are also
+    accepted and return `None`.
+    """
+    err = exception_handler.ValidationError(field=field, required="Boolean", value=str(value))
+    if not allow_none and (value is None or str(value).strip() == ""): raise err
+    if allow_none and (value is None or str(value).strip() == ""): return None
+    if type(value) != bool:
+        if str(value) == "false" or str(value) == "False" or str(value) == "0": return False
+        elif str(value) == "true" or str(value) == "True" or str(value) == "1": return True
+        else: raise err
+    return value
 
 def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bool = False, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> datetime.datetime:
     """
@@ -167,6 +204,7 @@ def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bo
     :param value: The datetime value to validate (or convertable string).
     :return: the parsed datetime object.
     """
+    err = exception_handler.ValidationError(field=field, required="Datetime", value=str(value))
     if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
@@ -193,138 +231,76 @@ def validate_datetime(value: datetime.datetime | str, field: str, allow_none: bo
     return value_aware
 
 def validate_latitude(value: float | str | int, field: str, allow_none: bool = False) -> float:
-    """ Validate a given value as a latitude. This involves checking whether
-    the provided float (if given a a string, converted to a float) fits within
-    the bounds defining latitude (-90 to 90 inclusive). 
-
-    Args:
-        value (float | str | int): the latitude to be validated (if a string, it must be in a convertable format for float)
-        field (str): the name of the field being validated (used in exception messages)
-        allow_none (bool, optional): whether the value can be None. Defaults to False.
-
-    Raises:
-        ValueError: if the value is not a valid float nor latitude
-        ValueError: if the value is None when `allow_none` is False
-
-    Returns:
-        float: the validated latitude in float format
-    """
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    """Parse any float, integer or string representation of a latitude (between -90 and 90 inclusive)."""
+    err = exception_handler.ValidationError(field=field, required="Float between -90 and 90 inclusive", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     value = validate_float(value, field=field, allow_none=allow_none)
     if value is not None:
         if value < -90 or value > 90:
-            raise exception_handler.WarningException(f"Field '{field}' must be between -90 and 90.")
+            raise err
     return value
 
 
 def validate_longitude(value: float | str | int, field: str, allow_none: bool = False) -> float:
-    """ Validate a given value as a longitude. This involves checking whether
-    the provided float (if given a a string, converted to a float) fits within
-    the bounds defining longitude (-180 to 180 inclusive).
-
-    Args:
-        value (float | str): the longitude to be validated
-        field (str): the name of the field being validated
-        allow_none (bool, optional): whether `value` can be `None`. Defaults to False.
-
-    Raises:
-        ValueError: if `value` is not a valid float nor longitude
-        ValueError: if `value` is `None` when `allow_none` is False
-
-    Returns:
-        float: the validated longitude in float format
-    """
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    """Parse any float, integer or string representation of a longitude (between -180 and 180 inclusive)."""
+    err = exception_handler.ValidationError(field=field, required="Float between -180 and 180 inclusive", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     value = validate_float(value, field=field, allow_none=allow_none)
     if value is not None:
         if value < -180 or value > 180:
-            raise exception_handler.WarningException(f"Field '{field}' must be between -90 and 90.")
+            raise err
     return value
 
 def validate_string(value: str, field=None, allow_none = False):
-    if not allow_none and (value is None or str(value).strip() == ""): raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    if not allow_none and (value is None or str(value).strip() == ""): raise exception_handler.ValidationError(field=field, required="String", value=str(value))
+    if str(value).strip() == "" and allow_none: return None
     if value is None and allow_none: return None
-    if type(value) != str: raise ValueError(f'Field {field} must be of type str.')
-    value = str(value).strip()
-    return value
+    if type(value) != str: raise exception_handler.ValidationError(field=field, required="String", value=str(value))
+    return str(value).strip()
 
 def validate_float(value: float | str, field=None, allow_none=False) -> float:
-    """
-    Parse a float value and validate it is a float.
-
-    :param value: The float value to validate.
-
-    :return: the parsed float value.
-
-    :raise exception_handler.WarningException: If the float value cannot be converted to a float.
-    """
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    err = exception_handler.ValidationError(field=field, required="Float", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     try:
         value = float(value)
     except ValueError:
-        raise exception_handler.WarningException(f"Field '{field}' must be of type float.")
+        raise err
     return float(value)
 
 def validate_int(value: int | str, field=None, allow_none=False) -> int:
-    if not allow_none and value is None: raise exception_handler.WarningException(f"Field '{field}' cannot be None.")
+    err = exception_handler.ValidationError(field=field, required="Integer", value=str(value))
+    if not allow_none and value is None: raise err
     elif type(allow_none) == int and allow_none == 0: return 0
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None): return None
     try:
         value = int(float(value))
-    except ValueError:
-        raise exception_handler.WarningException(f"Field '{field}' must be of type int.")
+    except Exception:
+        raise err
     return int(float(value))
 
 def validate_id(value: str | uuid.UUID, field: str, allow_none: bool=False) -> str:
-    """Validate a value is a valid UUID
-
-    Args:
-        value (str | uuid.UUID): the value to be validated
-        field (str, optional): the name of the field being validated.
-        allow_none (bool, optional): whether `value` can be `None `or empty. Defaults to False.
-
-    Raises:
-        ValueError: if the value is not a valid UUID
-        ValueError: if the value is `None` and `allow_none` is False
-
-    Returns:
-        str: the validated UUID in str format
-    """
+    err = exception_handler.ValidationError(field=field, required="UUID", value=str(value))
     if not allow_none and ((type(value) == str and value.strip() == "") or value is None):
-        raise exception_handler.WarningException(f"Field '{field}' cannot be none or empty.")
+        raise err
     elif allow_none and ((type(value) == str and value.strip() == "") or value is None):
         return None
     try:
         uuid.UUID(str(value))
     except ValueError:
-        raise exception_handler.WarningException(f"Field '{field}' must be a valid UUID.")
+        raise err
     return uuid.UUID(str(value))
 
 def validate_type(value, target_type, field, allow_none=False):
-    """Validate the type of a value
-
-    Args:
-        value (Any): the value to validate
-        target_type (Any): a type to match with the value (e.g. str, int, Object)
-        field (str): the name of the field being validated (to be used in exception messages)
-        allow_none (bool, optional): whether an exception should be thrown if the value is None. Defaults to False.
-
-    Raises:
-        ValueError: if the value is not of the target type
-        WarningException: if the value is `None` or empty and `allow_none` is False
-
-    Returns:
-        target_type: the validated value
-    """
-    if not allow_none and not value: raise exception_handler.WarningException(f"{field} cannot be empty")
+    err = exception_handler.ValidationError(field=field, required=str(target_type), value=str(value))
+    if not allow_none and not value: raise err
     if allow_none and not value: return None
-    if not isinstance(value, target_type): raise ValueError(f"{field} must be of type {target_type}")
+    if not isinstance(value, target_type): raise err
     return value
         
 
@@ -334,62 +310,49 @@ def validate_timezone(value: int | str, field: str, allow_none=False) -> float:
     example, GMT-2 is -120, GMT+1 is +60 and GMT+0 or GMT-0 is 0.
     
     WARNING: do not validate timezones greater than -720 (GMT-12) or less than 840 (GMT+14)
-    
-    Args:
-        value (int | str): the timezone to be validated (if passed as a string it must be in an integer format, if passed as a string or string any decimal points are truncated)
-        field (str): the name of the field being validated
-        allow_none (bool, optional): whether `value` can be `None`. Defaults to False.
-
-    Raises:
-        ValueError: if the value is not a valid integer or is not between -720 and +840
-        ValueError: if the value is `None` and `allow_none` is False
-
-    Returns:
-        int: the validated timezone
-    
     """
-
-    if not allow_none and not value: raise exception_handler.WarningException(f"{field} cannot be empty")
+    err = exception_handler.ValidationError(field=field, required="Integer in minutes between -720 and 840", value=str(value))
+    if not allow_none and (value is None or str(value).strip() == ""): raise exception_handler.WarningException(f"{field} cannot be empty")
     elif type(value) == int and value == 0: return 0
     elif allow_none and not value or str(value).strip() == "": return None
     try:
         value = int(float(value))
     except Exception:
-        raise exception_handler.WarningException(f"Field '{field}' must be a valid timezone in integer minutes.")
+        raise err
     if value is not None and (value < -720 or value > 840):
-        raise exception_handler.WarningException(f"Field '{field}' must be a timezone between -720 and +840 (inclusive).")
+        raise err
     return value
 
+import typing
 
-
-def get_form_data(request, schema):
-    """
-    Retrieves form data from the current request and validates it against the provided schema.
-
-    :param schema: The schema to validate the form data against.
-    :type schema: dict {form data key: form data type}
-
-    :return data: The form data as a dictionary.
-
-    :raises ValueError: If any required keys are missing or if the data type of any key does not match the schema.
-    """
-    data = request.form.to_dict()
-    errors = []
-
-    for key, value in schema.items():
-        if key not in data:
-            errors.append(f"Missing key: {key}")
-        else:
-            try:
-                data[key] = value(data[key])
-            except ValueError:
-                errors.append(f"Invalid data type for key: {key}. Expected {value.__name__}")
-
-    if errors:
-        raise ValueError("\n".join(errors))
-
+def parse_form(form: typing.Dict[str, typing.Any], schema: typing.Dict[str, bool]):
+    data = {}
+    missing = []
+    for k in schema:
+        if k not in form and schema[k] == True:
+            missing.append(k)
+        elif k in form:
+            data[k] = form[k]
+    if len(missing) > 0: raise AttributeError(f"The submitted form does not contain the required fields: {', '.join(missing)}")
     return data
 
+# Characters which need to be replaced by an underscore in paths
+INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," ", ":"]
+
+def secure_fname(s: str) -> str:
+    if str(s).strip() == "" or s is None: raise exception_handler.CriticalException("File name cannot be secured as it is None.")
+    else: 
+        s = str(s).strip()
+        for c in INVALID_CHARACTERS:
+            s = s.replace(c,"_")
+        # double check security using in-built Python library
+        return secure_filename(s)
+
+
+def secure_datename(d: datetime.datetime) -> str:
+    if str(d).strip() == "" or d is None: raise exception_handler.CriticalException("Datetime is None or empty.")
+    if not d or type(d) != datetime.datetime: raise exception_handler.CriticalException(f"Attempting to parse date but invalid format (got {type(d)}).")
+    return secure_filename(d.strftime('%Y%m%dT%H%M%S'))
 
 import pandas as pd, os
 
@@ -406,7 +369,7 @@ def extract_to_dataframe(path:str) -> pd.DataFrame:
         raise FileNotFoundError("Path is not a string")
     
     if path is None or path == "":
-        raise ValueError("File is invalid")
+        raise exception_handler.WarningException("File is invalid")
 
     if not os.path.exists(path):
         raise FileNotFoundError("File does not exist")
@@ -419,20 +382,20 @@ def extract_to_dataframe(path:str) -> pd.DataFrame:
         try:
             df = pd.read_csv(path)
         except pd.errors.EmptyDataError as e:
-            raise ValueError("File is empty")
+            raise exception_handler.WarningException("File is empty")
     elif file_extension == '.txt':
         # Read the text file into a pandas DataFrame
         try:
             df = pd.read_csv(path, sep='\t')
         except pd.errors.EmptyDataError as e:
-            raise ValueError("File is empty")
+            raise exception_handler.WarningException("File is empty")
     elif file_extension == '.xlsx' or file_extension == '.xls':
         # Read the Excel file into a pandas DataFrame
         df = pd.read_excel(path)
         if len(df) == 0:
-            raise ValueError("File is empty")
+            raise exception_handler.WarningException("File is empty")
     else:
-        raise ValueError("Unsupported file format. Please provide a .csv, .txt or .xlsx file")
+        raise exception_handler.WarningException("File must be a .csv, .txt or .xlsx file")
 
     return df
 
@@ -445,39 +408,15 @@ def extract_args(arg, datatype=str, allow_empty=False):
             return datatype(value)
         except ValueError:
             raise ValueError(f"Invalid value for argument: {arg}")
-        
-        
-def parse_string_notempty(value:str, field:str) -> str:
-    """Parse a value and validate that it is neither None nor
-    an empty string. Empty strings include all "" and those which
-    have whitespace such as " " or "\t" or "\n". If the value is
-    valid then it is converted to a string and stripped of whitespace.
-
-    Args:
-        value (str): the value to be parsed
-        field (str): the name of the field being parsed
-
-    Raises:
-        ValueError: value is None
-        ValueError: value is an empty string
-
-    Returns:
-        str: the value as a string with no whitespace
-    """
-    if value is None:
-        raise exception_handler.WarningException(f"Field '{field}' cannot be null.")
-    if str(value).strip() == "":
-        raise exception_handler.WarningException(f" Field '{field}' cannot be empty.")
-    else:
-        return str(value).strip()
 
 
-DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M'
+DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 def pretty_date(d: datetime.datetime | None, format=DEFAULT_DATE_FORMAT):
     if not d: return None
-    if type(d) != datetime.datetime: raise ValueError("Attempting to parse datetime object but not in datetime.datetime format.")
-    return d.ctime()
+    if type(d) != datetime.datetime and type(d) != datetime.date: raise ValueError("Attempting to parse datetime object but not in datetime.datetime format.")
+    if type(d) == datetime.date: return d.strftime("%Y-%m-%d")
+    else: return d.strftime(format)
 
 
 def parse_date(date_string: str) -> datetime.datetime:
@@ -492,17 +431,24 @@ def parse_date(date_string: str) -> datetime.datetime:
     :type date_string: str
     :return: The parsed date
     """
+    if type(date_string) != str or not date_string: return None
     import re
     date = None
     match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
     if not match:
-        match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
+        match = re.search(r'(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})', date_string)
         if not match:
-            match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+            match = re.search(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})', date_string)
             if not match:
-                match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                match = re.search(r'(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
                 if not match:
-                    return None
+                    match = re.search(r'(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_string)
+                    if not match:
+                        match = re.search(r'(\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', date_string)
+                        if not match:
+                            match = re.search(r'(\d{2})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})', date_string)
+                            if not match:
+                                return None
     if len(match.group(1)) == 2: year = int("20" + match.group(1))
     else: year = int(match.group(1))
     month = int(match.group(2))
@@ -511,5 +457,60 @@ def parse_date(date_string: str) -> datetime.datetime:
     minute = int(match.group(5))
     second = int(match.group(6))
     date = datetime.datetime(year, month, day, hour, minute, second)
-    print(date)
     return date
+
+
+def serialise_object(attributes):
+    """
+    This function takes an object and a list of its attributes and
+    creates a dictionary representation of the object. The dictionary
+    will contain the attributes specified in the list as keys, and
+    the values of those attributes as the corresponding values.
+
+    If the attribute is a datetime object, it is first converted to
+    ISO format before being added to the dictionary. If the attribute
+    is a bytes object, it is first converted to a hexadecimal string
+    before being added to the dictionary. If the attribute has a
+    'to_dict' method, it is called and the result is added to the
+    dictionary.
+
+    If the object does not have an attribute with the given name, a
+    ValueError is raised.
+
+    :param obj: the object to be serialized
+    :param attributes: a list of attributes to be included in the
+        serialized representation
+    :return: a dictionary containing the serialized object
+    """
+    def to_camel_case(snake_str):
+        components = snake_str.split('_')
+        return components[0] + ''.join(x.title() for x in components[1:])
+    
+    result = {}
+    for attr in attributes:
+        getter = attributes[attr]
+        value = getter()
+        if hasattr(value, 'to_dict'):
+            value = value.to_dict()
+        elif isinstance(value, datetime.datetime):
+            value = value.isoformat()
+        elif isinstance(value, bytes):
+            value = value.hex()
+
+        result[to_camel_case(attr)] = value
+
+    return result
+
+def verify_subarray_of_dict(sub, arr):
+    if sub is not None and arr is not None:
+        for s in sub:
+            if s not in arr:
+                raise ValueError(f"Unknown attribute: {s}")
+    raise ValueError("Subarray or dict is None")
+
+def validate_enum(value, field, enum, prepare=None, allow_none=False):
+    if allow_none and (value is None or str(value).strip() == ""): return None
+    if prepare is not None: value = prepare(str(value))
+    if value not in enum:
+        raise exception_handler.ValidationError(field=field, required=",".join(enum), value=value)
+    return value
