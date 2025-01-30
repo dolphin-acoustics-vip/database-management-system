@@ -73,7 +73,7 @@ def encounter_insert():
             session.add(encounter)
             flash_message = f'Inserted encounter {encounter.unique_name}.'
         flash(flash_message, 'success')
-        response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter.id))
+        response.set_redirect(url_for('encounter.encounter'))
     return response.to_json()
 
 @routes_encounter.route('/encounter/<encounter_id>/view', methods=['GET'])
