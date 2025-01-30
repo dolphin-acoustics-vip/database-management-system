@@ -65,6 +65,7 @@ deploy-prod:
     - !reference [.ssh_with_passphrase, before_script]
   script:
     - sed -i 's/DEV_STADOLPHINACOUSTICS/PROD_STADOLPHINACOUSTICS/' .env_template
+    - sed -i 's/DevelopmentConfig/ProductionConfig/' ./ocean/wsgi.py
     - !reference [.deploy, script]
   rules:
     - if: '$CI_COMMIT_TAG != null'
