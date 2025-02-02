@@ -159,7 +159,7 @@ def download_file(file_obj, filename=None):
     # Create a generator that yields chunks of the file content
     def generate_file():
         binary_content = file_obj.get_binary()
-        chunk_size = 1024
+        chunk_size = 1024 * 100
         for i in range(0, len(binary_content), chunk_size):
             yield binary_content[i:i + chunk_size]
 
