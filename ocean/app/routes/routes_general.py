@@ -193,7 +193,7 @@ def index():
     """
     Redirect user from root to home directory.
     """
-    return redirect(url_for('general.home', user=current_user))
+    return redirect(url_for('general.home'))
 
 @routes_general.route('/api/users')
 def search_users():
@@ -226,7 +226,7 @@ def home():
             order_by(models.Assignment.created_datetime.desc()). \
             all()
         recordings = [{'recording': recording, 'assignment': assignment} for recording, assignment in result]
-        return render_template('home.html', user=current_user, recordings=recordings)
+        return render_template('home.html', recordings=recordings)
 
 
 @routes_general.route('/ping', methods=['GET'])

@@ -20,6 +20,7 @@ import hashlib
 import io
 import uuid, datetime, tempfile
 from werkzeug.utils import secure_filename
+from flask import send_file
 
 # Third-party imports
 import shutil, zipfile, flask
@@ -155,29 +156,19 @@ def download_file(file_obj, filename=None):
     custom_filename = filename if filename else file_obj.filename
     if not custom_filename.endswith(file_obj.extension):
         custom_filename = f"{custom_filename}.{file_obj.extension}"
-    
-    # Create a generator that yields chunks of the file content
-    def generate_file():
-        binary_content = file_obj.get_binary()
-        chunk_size = 1024 * 100
-        for i in range(0, len(binary_content), chunk_size):
-            yield binary_content[i:i + chunk_size]
 
     # Calculate the SHA-256 hash of the file content
-    if not file_obj.verify_hash():
-        raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
+    # Compare it to the hash stored in the database
+    if not file_obj.verify_hash(): raise exception_handler.WarningException("File hash mismatch. Unable to download file.")
 
-    # Send the file stream as an attachment
-    response = flask.Response(
-        flask.stream_with_context(generate_file()),
-        mimetype='application/octet-stream',
-        content_type='application/octet-stream',
-        headers={
-            'Content-Disposition': f'attachment; filename="{secure_filename(custom_filename)}"'
-        }
+    # Send the file as an attachment and stream it
+    return send_file(
+        os.path.abspath(file_obj._path_with_root),  # File path
+        as_attachment=True,
+        download_name=secure_filename(custom_filename),  # Safe filename
+        mimetype='application/octet-stream',  # MIME type for binary files
+        conditional=True,
     )
-
-    return response
 
 def validate_boolean(value: bool | str, field: str, allow_none: bool = False):
     """
