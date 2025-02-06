@@ -534,12 +534,12 @@ class Recording(imodels.IRecording):
 
     @property
     def selection_file_count(self):
-        return len(database_handler.create_system_time_request(database_handler.get_session(), Selection, filters={"recording_id":self.id, "selection_file_id":True}))
+        return len([selection for selection in self.selections if selection.selection_file is not None])
 
     @property
     def contour_file_count(self):
-        return len(database_handler.create_system_time_request(database_handler.get_session(), Selection, filters={"recording_id":self.id, "contour_file_id":True}))
-
+        return len([selection for selection in self.selections if selection.contour_file is not None])
+    
     def _update_filespace(self):
         if self.recording_file is not None:
             with database_handler.get_session() as recording_file_session:
