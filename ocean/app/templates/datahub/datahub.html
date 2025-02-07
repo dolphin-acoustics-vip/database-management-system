@@ -475,16 +475,19 @@
             tbody = assignedRecordingTable.find('tbody')
             for (recording in assignedRecordings) {
                 status = assignedRecordings[recording]['assignment_completed_flag'] ? "Completed" : "In Progress"
-                tracedCount = assignedRecordings[recording]['tracedCount']
+                tracedCount = assignedRecordings[recording]['traced_count']
+                untracedCount = assignedRecordings[recording]['untraced_count']
+                completedSelectionCount = Number(tracedCount) + Number(untracedCount)
+                selectionCount = assignedRecordings[recording]['selection_count']
                 if (tracedCount > 0) {
-                    status += " (" + tracedCount + ")"
+                    status += " (" + completedSelectionCount + "/" +  selectionCount + ")"
                 } else if (tracedCount == 0 && assignedRecordings[recording]['assignment_completed_flag'] == 1) {
                     status = "COMPLETED WITH NO TRACES"
                 } else {
                     status += " (" + tracedCount + ")"
                 }
                 recording_link = "<a href='" + assignedRecordings[recording]['recordingRoute'] + "'>" + assignedRecordings[recording]['start_time'] + "</a>"
-                addStatisticsTableRow(tbody, [assignedRecordings[recording]['assignment_created_datetime'], status, assignedRecordings[recording]['assignment_user_name'] + " (" + assignedRecordings[recording]['assignment_user_login_id'] + ")", assignedRecordings[recording]['sp_speciesName'], assignedRecordings[recording]['enc_encounter_name'], recording_link, assignedRecordings[recording]['created_datetime']])
+                addStatisticsTableRow(tbody, [assignedRecordings[recording]['assignment_created_datetime'], status, assignedRecordings[recording]['assignment_user_name'] + " (" + assignedRecordings[recording]['assignment_user_login_id'] + ")", assignedRecordings[recording]['sp_scientific_name'], assignedRecordings[recording]['enc_encounter_name'], recording_link, assignedRecordings[recording]['created_datetime']])
             }
             $('#assignment-statistics-box').append("<h3>Current Open Assignments</h3>")
             $('#assignment-statistics-box').append(assignedRecordingTable);

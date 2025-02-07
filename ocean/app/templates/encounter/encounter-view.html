@@ -35,6 +35,10 @@ Variables required:
       </div>
       <form action="{{url_for('selection.extract_contour_stats_for_encounter', encounter_id=encounter.id)}}" method="get">
         <button class="link small" type="submit">Download Contour Stats For Encounter</button></form>
+      
+      <form action="{{url_for('encounter.download_ctr_files', encounter_id=encounter.id)}}" method="get">
+        <button class="link small" type="submit">Download CTR Files</button>
+      </form>
     </section>
     <hr>
 

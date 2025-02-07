@@ -142,3 +142,18 @@ def encounter_delete(encounter_id):
         except Exception as e:
             response.add_error(exception_handler.handle_exception(exception=e, prefix='Error deleting encounter', session=session))
     return response.to_json()
+
+@routes_encounter.route('/encounter/<encounter_id>/download-ctr-files', methods=['GET'])
+@login_required
+def download_ctr_files(encounter_id):
+    """Download CTR files for all recordings in an encounter."""
+    with database_handler.get_session() as session:
+        encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
+        ctr_files = []
+        ctr_file_names = []
+        for recording in encounter.recordings:
+            ctr_files.extend(selection.ctr_file for selection in recording.selections if selection.ctr_file is not None)
+            ctr_file_names.extend(selection.ctr_file_name for selection in recording.selections if selection.ctr_file is not None)
+        zip_filename = f"{encounter.species.scientific_name}-{encounter.encounter_name}-{encounter.location}_ctr_files.zip"
+        response = utils.download_files(ctr_files, ctr_file_names, zip_filename)
+    return response

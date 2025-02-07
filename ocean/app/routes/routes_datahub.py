@@ -175,11 +175,17 @@ def get_selection_statistics():
             else:
                 if selection['traced'] == True:
                     species_statistics[selection['sp_id']]['completedCount'] += 1
+                    try:
+                        index = axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(monthly_axis_label_format if category_months else daily_axis_label_format))
+                    except ValueError:
+                        # If the date is not in the axis_labels list, it most likely just spills off the start so add it to the start
+                        index = 0
+                    
                     if category_months:
-                        index = axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(monthly_axis_label_format))
                         species_statistics[selection['sp_id']]['record'][index] += 1
-                    else:  
-                        species_statistics[selection['sp_id']]['record'][axis_labels.index(selection['contour_file_upload_datetime'].date().strftime(daily_axis_label_format))] += 1
+                    else:
+                        species_statistics[selection['sp_id']]['record'][index] += 1
+
                 elif selection['traced'] == None:
                     species_statistics[selection['sp_id']]['untracedCount'] += 1
 
