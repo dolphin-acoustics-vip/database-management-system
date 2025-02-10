@@ -1,195 +1,209 @@
-> ⚠️ **Warning:** this project is still in a developmental stage. Some sections of the code and documentation may be incomplete.
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <a>
+    <img src="ocean/app/resources/OCEAN-banner.png" alt="Logo" width="150" height="80">
+  </a>
 
+  <h3 align="center">Odontocete Call Environment and Archival Network</h3>
 
-# Odontocete Call Environment and Archival Network
+  <p align="center">
+    A database management system for dolphin acoustic research at the University of St Andrews
+    <br />
+    <a href="https://github.com/dolphin-acoustics-vip/database-management-system/wiki"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+    <a href="https://github.com/dolphin-acoustics-vip/database-management-system/issues">Report Bug</a>
+    &middot;
+    <a href="https://github.com/dolphin-acoustics-vip/database-management-system/issues/new?template=feature_request.md">Request Feature</a>
+  </p>
+</div>
 
-The Odontocete Call Environment and Archival Network (OCEAN) is a project that aims to streamline the data pipeline of the Dolphin Acoustics Vertically Integrated Project at the University of St Andrews.
+## About The Project
 
-The ensuing documentation details the [installation](#installation) and [operation](#maintaining-and-operating-the-web-app) of the code.
+The Odontocete Call Environment and Archival Network (OCEAN) is a web application that streamlines the storage and processing of acoustic data (specifically, recordings of dolphin whistles).
 
-Familiarity with the data pipeline and implementation strategy found in the Project's Wiki are essential. General computer science competency, as well as more specific familiarity with the [requirements](#requirements) are also prerequesite.
+The software facilitates the storage of passive acoustic recording files, selections from those recording files and contour traces of the selections.
 
-<a name="requirements"></a>
-<a name="dependencies" depracated></a>
-## Requirements
+Familiarity with the data pipeline and implementation strategy found in the [user documentation](https://github.com/dolphin-acoustics-vip/database-management-system/wiki) is essential.
 
-This section lists software and hardware requirements for the operation of the Program.
+## Getting Started
 
-The Program has been developed on and for, a Linux based system running Debian 12. Further development, testing and production are to be done on the same (or similar) type system.
+OCEAN is a web application that manages both a database and a filespace. These **must** be correctly installed before attempting to modify the code.
+
+### Prerequisites
+
+OCEAN was developed in Python 3. It was built to work with a standard install of the MariaDB Server of the version stated below.
 
 - Python 3.10.12 from [here](https://www.python.org/downloads/release/python-31012/)
-- All Python libraries in [requirements.txt](requirements.txt)
-- MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive) (restricted by production environment)
+- MariaDB 10.5.23 from [here](https://mariadb.org/download/?t=mariadb&o=true&p=mariadb&r=10.5.23&os=Linux&cpu=x86_64&i=systemd&mirror=archive)
 
-Note: to install the package `mysqlclient` the following commands first need to be run.
+If you are developing on Windows, install the [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/about) before continuing. Development on MacOS is not recommended, however can work - please take extra care installing MariaDB propertly using `brew`.
 
-For Debian/Ubuntu:
-`sudo apt-get update
-sudo apt-get install gcc libmysqlclient-dev python3-dev`
-For Fedora:
-`sudo dnf install gcc mysql-devel python3-devel`
+To install MariaDB on windows, simply use the installer found in the link above. 
 
-Note: if access to a local MariaDB instance is denied (even though you have provided the correct user, host and password, it may be that the root user requires administrative privileges. On linux, this may mean that you require `sudo` to be used to access the server from the client. To remove this requirement use `GRANT ALL PRIVILEGES on *.* to 'root'@'localhost' IDENTIFIED BY 'password';` where `password` is replaced by the password given during MariaDB installation. 
-
-## Project description
-The Program was developed to store data with its metadata in a homogenised system. The following are outlined a list of some features (a more comprehensive list is to be found on the GitHub Wiki):
-- Storage of raw audio recordings (wav)
-- Storage of selections of the recordings (wav)
-- Storage of aggregate selection tables (csv)
-- Storage of contours of the selections (csv)
-- Storage of aggregate contour statistics (csv)
-- Export of contour files in a different format (ctr)
-- Quality assurance at each stage of the pipeline
-
-Files and their metadata are stored in two separate locations: the Filespace and Database respectively. The Web App was then created to maintain data integrity between the two, and provide an interface for users.
-
-![alt text](documentation/readme-resources/data-flow-high-level.png)
-
-*High level data flow diagram of the DBMS*
-
-## Installation
-> ⚠️ **Warning** make sure you have read and understood the [requirements](#requirements) before continuing.
-
-The [repository](/) of which this document is a part includes all code pertaining to the Program. The following steps are required whether the Program is in development or production, and must be followed closely to ensure a seamless installation:
-
-1. [Create a virtual environment](#creating-a-virtual-development-environment)
-2. [Create and link the Database](#creating-and-linking-the-database)
-3. [Create and link the Filespace](#creating-and-linking-the-filespace)
-4. [Start the Web App](#starting-the-web-app)
-
-### Creating a Virtual Development Environment
-The Program was developed using an array of libraries installed using the package installer for Python ([pip](https://pip.pypa.io/en/latest/)). It is recommended whether developing or in production to install all requirements in [requirements.txt](requirements.txt) in a [virtual environment](https://docs.python.org/3/library/venv.html).
-
-**Commands to create and run the virtual environment**
-
+To install MariaDB on MacOS use Homebrew (ensure `mysql` is removed before installing `mariadb` as they contain conflicting binaries)
 ```
-python3 -m venv virtualenv
-source virtualenv/bin/activate
-pip3 install -r requirements.txt
+brew remove mysql
+brew install mariadb
+
+# to auto-start the server on startup
+brew services start mariadb
 ```
 
-**Command to create the requirements text file**
-
- If you make changes to the library and want to generate a new [requirements.txt](requirements.txt) file, open the virtual environment and run the following command:
-
- `pip3 freeze > requirements.txt`
-
-### Creating and Linking the Database
-
->Note: the following section assumes the existence of a local (for development and testing) or external (for production) MariaDB instance.
-
-To create the database, open a MariaDB shell and run the DDL script [create_database.sql](create_database.sql). This will create all empty tables apart from a single administrator user which can be used to log into the Web App initially.
-
-The database connection is made in [database_handler.py](ocean/ocean/database_handler.py), however configuration for the database is made in [config.py](ocean/config.py). Here exist three different profiles. In [main.py](main.py), the profile can be changed by changing the argument passed in the mainline:
+To install MariaDB on Ubuntu/Debian
 
 ```
-# For development configuration (DEFAULT)
-app = create_app('config.DevelopmentConfig')
-# For testing configuration
-app = create_app('config.TestingConfig')
-# For production configuration
-app = create_app('config.ProductionConfig')
+sudo apt update
+sudo apt install mariadb-server
+sudo mysql_secure_installation
 ```
 
-Each configuration required different global environment variables to be set to ensure an operational database connection.
+#### Verifying your MariaDB Installation
+
+In the [Installation](#installation) section, below, you will initialise all the required tables for OCEAN to operate in MariaDB. Before preceeding, however, it is good to check that you can access MariaDB on your system. This means you should have a MariaDB client installed. This may have been packaged with your installation of the server, so see if you can access the client with the command
+
+```
+mariadb -u root -p
+```
+
+Note the `-u root` tells the client to access the server through the `root` user and `-p` says you will provide it with a password. If you set up MariaDB without a password, you don't need to include `-p`.
+
+If you get a connection error to the server, you may need to start or restart the server.
+
+On Windows (with Administrator permissions)
+```
+net stop mariadb
+net start mariadb
+```
+
+On Ubuntu/Debian
+```
+sudo systemctl stop mariadb
+sudo systemctl start mariadb
+```
+
+On MacOS (if installed with `brew`) - [More info](https://mariadb.com/kb/en/installing-mariadb-on-macos-using-homebrew/)
+```
+mysql.server start
+
+# To auto-start the service on start-up
+brew services stop mariadb
+brew services start mariadb
+```
+
+<a name="initialising-the-mariadb-database"></a>
+#### Initialising the MariaDB Database
+
+If you have a fresh install of MariaDB or have not previously used OCEAN on your system before, you will need to create a new database from the MariaDB client (in the example before the name of the database is `ocean` but this can be whatever you prefer - this will be configured in [Variables](#variables)).
+
+```
+CREATE DATABASE ocean;
+use ocean;
+```
+
+All the required tables will need to be created. Do this by copying the entirety of [create_database.sql](/create_database.sql) into the MariaDB client. This will create all tables.
+
+To access OCEAN you will need to insert a user into the `user` table of the database. The command below should be run to create an `admin` user (this assumes the script above has been run).
+
+```
+INSERT INTO user (login_id, name, role_id, is_active) VALUES ('admin', 'Admin', 1, 1);
+```
+
+<a name="installation"></a>
+### Installation
+
+1. Clone the repository (the example below uses HTTPS, but SSH works too provided it is set up on your system)
+   
+   ```
+   git clone https://github.com/dolphin-acoustics-vip/database-management-system.git
+
+2. Create a virtual environment in the cloned folder
+   
+   ```
+   python -m venv venv
+
+3. Activate the virtual environment
+   ```
+   // On MacOS and Linux
+   source venv/bin/activate
+   // On Windows
+   venv\Scripts\activate.bat
+  
+4. Use the PIP package manager to install all the dependencies in [requirements.txt](requirements.txt) (see [Installing `mysqlclient`](#installing-mysqlclient) below)
+   ```
+   pip install -r requirements.txt
+
+5. **Before** this step ensure you have followed the instructions in [Initialising the MariaDB Database](#initialising-the-mariadb-database)
+   
+   Link the `database` and `filespace` by setting the following environment variables (note: see Production Setup instead if installing OCEAN in a production environment). On MacOS/Linux run the following commands (see [Variables](#variables) for definitions for all `<x>`):
+   ```
+   # export is used on MacOS/Linux
+   # on Windows replace export with SET
+   export DEV_STADOLPHINACOUSTICS_HOST=<host>
+   export DEV_STADOLPHINACOUSTICS_USER=<user>
+   export DEV_STADOLPHINACOUSTICS_DATABASE=<database>
+   export DEV_STADOLPHINACOUSTICS_PASSWORD=<password>
+   export OCEAN_FILESPACE_PATH=<filespace>
+   ```
+
+6. Authenticate access to OCEAN. In the production environment OCEAN reads an email from the `HTTP_EPPN` environment variable. In the development environment you need to define the following environment variable (assuming the `admin` user was added to the database in [Initialising the MariaDB Database](#initialising-the-mariadb-database)):
+   ```
+   # export is used on MacOS/Linux
+   # on Windows replace export with SET
+   export OCEAN_SSO_OVERRIDE=admin
+   ```
+
+    > WARNING: THIS MUST NEVER BE USED ON THE PRODUCTION ENVIRONMENT. IT WILL ALLOW ANY INDIVIDUAL TO ACCESS OCEAN WITHOUT PROPER AUTHENTICATION.
+
+<a name="variables"></a>
+#### Variables
+`host` is the database host (for local instances of MariaDB this will be `localhost`)
+
+`user` is the name of the user profile through which the database should be accessed (for local instances of MariaDB this will be `root`). To check if you can access MariaDB through the `root` user run `mariadb -u root -p` in the command line utility.
+
+`database` is the name of the database that should be accessed by OCEAN (see [Initialising Database]())
+
+`password` is the password used by `user` to access the database (even if you don't have a password, define the environment variable as empty)
+
+`filespace` is the ABSOLUTE path to the filespace on the system (use `/` on MacOS and Linux and `\` on Windows). The entire path up to and including the outer-most folder of the filespace must be stored in this variable
+
+<a name="installing-mysqlclient"></a>
+#### Installing `mysqlclient`
+
+Depending on the way you installed MariaDB onto your system, certain flags may not be correctly configured for mysqlclient to install. The following commands mayn eed to be run.
+
+On Debian/Ubuntu:
+
+```
+sudo apt-get update sudo apt-get install gcc libmysqlclient-dev python3-dev
+pip install mysqlclient
+```
+
+On MacOS:
+
+```
+brew install mysql pkg-config
+pip install mysqlclient
+```
 
 
-#### Configuring the Development Database
+### Usage
 
-Set the following global environment variables:
-- `DEV_OCEAN_HOST` to set the host of the database (usually `localhost` for development environment)
-- `DEV_OCEAN_USER` to set the user of the database (usually `root` for development environment)
-- `DEV_OCEAN_PASSWORD` to set the password of the database
-- `DEV_OCEAN_DATABASE` to set the name of the database
+To start the Web App on the server, activate the virtual environment and run `python ocean/run.py` from the root directory.
 
-#### Configuring the Testing Database
-
-Set the following global environment variables:
-- `TESTING_OCEAN_HOST` to set the host of the database (usually `localhost` for the test environment)
-- `TESTING_OCEAN_USER` to set the user of the database (usually `root` for the test environment)
-- `TESTING_OCEAN_PASSWORD` to set the password of the database
-- `TESTING_OCEAN_DATABASE` to set the name of the database
-
-#### Configuring the Production Database
-
-Set the following global environment variables:
-- `PROD_OCEAN_HOST` to set the host of the database
-- `PROD_OCEAN_USER` to set the user of the database
-- `PROD_OCEAN_PASSWORD` to set the password of the database
-- `PROD_OCEAN_DATABASE` to set the name of the database
-
-#### Configuring the Filespace
-
-The File Space is simply a designated path on the server system. To set this folder, insert the relative or absolute path into the `OCEAN_FILESPACE_PATH` environment variable. 
-
-No folders or files need to be inserted in the Filespace. However the Filespace folder itself must exist in the system before operating OCEAN. If this is not done OCEAN will not start.
-
-#### Using Single-Sign On
-
-The web app requires each request that a user makes to contian the environment variable `HTTP_EPPN` which must contain the username (most likely email) of the user in the database. This authentication method is good for SSO on the production environment, but can be a nuicanse in the test or development environmnet. For this reason a global environment `OCEAN_SSO_OVERRIDE` variable can be defined which will override any other authentication method.
-
-WARNING: THIS MUST NEVER BE USED ON THE PRODUCTION ENVIRONMENT. IT WILL ALLOW ANY INDIVIDUAL TO ACCESS OCEAN WITHOUT PROPER AUTHENTICATION.
-
-### Starting the Web App
-
-To start the Web App on the server, activate the [Virtual Environment](#creating-a-virtual-development-environment) and run [main.py](main.py) from the root directory. No parameters are required. If all steps prior were completed satisfactorily the Flask application will run successfully. 
-
->Note: if the Flask start-up message includes `Debug mode: on`, this likely means the program is being run in development or testing configuration.
+A production server should use the [wsgi.py](/ocean/wsgi.py) script provided (which automatically configures the application for a production environment)
 
 ## Maintaining and Operating the Web App
-The Web App brings together the Meta Base and the File Space into a single user interface. The Web App utilises the Flask library.
+The Web App brings together the database and the filespace into a single user interface. The Flask framework in Python is used to do this.
 
-The following folders exist in the Web App's root directory (note that a *module* refers to a compartamentalised section of code pertaining to a specific functionality such as encounter, recording or selection):
-- [resources](resources) contains additional files required in the Web App such as images
-- [routes](routes) contains all the Flask route blueprints for separate modules
-- [static](static) contains all CSS scripts and Javascript code used in the user interface
-- [templates](templates) contains all HTML scripts used in the user interface
-- [logs](logs) contains all logging files automatically generated
+OCEAN can be roughly split into the following key components:
 
-The following files exist outside the aforementioned folders:
-- [main.py](main.py) runs the Web App
-- [config.py](config.py) sets Flask environment variables for a development, testing or production environment
-- [database_handler.py](database_handler.py) initialises the database and SQLAlchemy ORM model provides APIs for custom database interaction
-- [models.py](models.py) contains all SQLAlchemy ORM database classes
-- [logger.py](models.py) handles the setup of a logger
-- [exception_handler.py](exception_handler.py) defines custom exceptions and contains methods to handle them
-- [contour_statistics.py](contour_statistics.py) completes all contour stats calculations
-- [maintenance.py](maintenance.py) is another flask app that can be called whenever the main application needs to be taken down for maintenance
-- [test.py](test.py) contains automated tests for the Web App
+1. `Models` are the ORM representations of the tables in the MariaDB database. Most of the insertion, updating and deleting of data are handled in each model.
+2. `Routes` are the API endpoints which are accessed by the user. Routes are restricted to only be accessible by users with certain roles.
+3. `Utilities` are aditional files found in [/ocean/app](/ocean/app/) that contain custom exceptions, calculations, utility methods, and filespace (IO) utilities. 
+4. `Templates` are the HTML, CSS and JS frontend files that are rendered by the `Routes` on request.
 
-## Templates and Static Files
-Templates are layouts that arrange content on a webpage, usually written in HTML. Found in the `templates` folder, templates are structured into modular sub-categories for set functions.
-
-The template [templates/partials](/templates/partials/) folder has a number of modular templates which are used multiple times in other HTML code.
-
-Styling (or CSS) and Javascript files are stored in the [static/css](/static/css) and [static/js](/static/js/) folders respectively. The files in these folders are loaded in templates by the [header.html](/templates/partials/header.html) module which is shown on each page. 
-
-## Routes
-Routes are a server-side URL schema which describe interfaces through which a client can interact with a web app. Routes follow a Hypertext Transfer Protocol (HTTP) through which requests such as `GET`, `POST` and `DELETE` can be made. 
-
-Any request sent to the server that matches a defined URL schema is handed to the associated method defined in [routes](/routes/). All routes are brought together in [main.py](main.py).
-
-Routes are intuitively modularised by function (a general rule of thumb is that a particular section of the user interface will interact with routes from just a single module).
-
-> For example: viewing, adding, updating and removing recordings is done through routes in [routes_recording.py](/routes/routes_recording.py).
-
-### Object Relational Mapping
-When interacting with the Meta Base, an object relational mapping (ORM) is implemented. This allows all the database relations to be lazily and effortlessly loaded in a familiar object-oriented structure in Python.
-
-The classes for each relation are written in [models.py](models.py) using the [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/). This library offers seamless integration with the Flask library, that used to create the Web App. The structure of each model closely matches the Meta Base schema. 
-
-### Version History
-
-In the database creation script, you will notice a command used on all but the file and user tables: `WITH VERSION HISTORY`. This is a feature of MariaDB meaning a snapshot of the database can be viewed at any point in time since its creation. 
-
-This requires complex queries that cannot be completed in the SQLAlchemy ORM model. Therefore, [database_handler.py](database_handler.py) contains methods used throughout the program to query the database in a snapshot state. This is called Archive Mode and is implemented through storing `snapshot_date` in the session cookies (more can be read on Archive Mode in the GitHub Wiki).
-
-### Session handling
-As data must be synchronised between the File Space and Meta Base, atomicity is crucial. An atomic database transaction is one where either all required operations occur or none at all.
-
-To implement atomicity in the Web App, all database operations are bundled into sessions. If an error is produced in interacting with the File Space, any metadata changes pertaining to the request are rolled back. 
-
-To prevent orphaned files from appearing in the database, all database changes are flushed (`flush()`) before any files are moved. This way, any issues appearing due to the flush are caught and handled (or passed to the user) before creating irreversible file changes.
 
 # Data Model
 
