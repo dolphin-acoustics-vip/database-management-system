@@ -23,6 +23,7 @@ from datetime import datetime
 from jinja2 import Environment
 from flask import Flask, flash, redirect, render_template, request, url_for, session as client_session, g
 from flask_login import LoginManager, login_user,login_required, current_user, login_manager, logout_user
+from flask_restful import Resource, Api, reqparse, fields, marshal_with, abort
 
 # Local application imports
 from . import models
@@ -71,6 +72,11 @@ def check_file_space():
 
 def create_app(config_class):
     app = Flask(__name__)
+    api = Api(app)
+
+    user_args = reqparse.RequestParser()
+    user_args.add_argument('name', type=str, required=True, help="Name cannot be blank")
+    user_args.add_argument('email', type=str, required=True, help="Email cannot be blank")
 
     check_interfaces()
 
@@ -136,7 +142,9 @@ def create_app(config_class):
     # else:
     #     create_database_script = 'script_run.sql'
 
+    
     db = database_handler.init_db(app)
+    database_handler.init_api(api)
     filespace_handler.clean_directory(database_handler.get_file_space_path())
 
     # Register blueprints and error handlers
@@ -148,6 +156,9 @@ def create_app(config_class):
     app.register_blueprint(routes_datahub, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_healthcentre, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_filespace, url_prefix=ROUTE_PREFIX)
+    from .routes.api import test_api
+    test_api.register(api, prefix=ROUTE_PREFIX)
+    # app.register_blueprint(test_api, url_prefix=ROUTE_PREFIX)
 
     try:
         logger.info(check_file_space())

@@ -122,6 +122,8 @@ def get_operation_lock():
 # INITIALISE DATABASE ORM MODEL #
 #################################
 
+api = None
+
 db = SQLAlchemy()
 
 def get_engine():
@@ -145,6 +147,8 @@ def get_session():
 
 Session = get_session
 
+def init_api(api):
+    api = api
 
 def init_db(app: Flask, run_script: str=None):
     """

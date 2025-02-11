@@ -162,7 +162,7 @@ class IFile(AbstractModelBase, Serialisable, TableOperations):
             "id": self.id,
             "directory": self.directory,
             "filename": self.filename,
-            "uploaded_date": self.uploaded_date,
+            "upload_datetime": self.upload_datetime,
             "extension": self.extension,
             "deleted": self.deleted,
             "original_filename": self.original_filename,
