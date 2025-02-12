@@ -1,4 +1,5 @@
 from flask_restful import Resource, reqparse, marshal_with, fields
+from flask import Response
 from ... import models
 
 selection_resource_fields = {
@@ -23,3 +24,26 @@ class SelectionResource(Resource):
         filters = create_filter_kwargs(selection_number=args.get('selection_number'), recording_id=args.get('recording_id'))
         selections = models.Selection.query.filter_by(**filters).all()
         return [selection.to_dict() for selection in selections]
+    
+file_resource_parser = reqparse.RequestParser()
+file_resource_parser.add_argument('id', type=str, required=True, location='args')
+
+spectrogram_resource_parser = reqparse.RequestParser()
+spectrogram_resource_parser.add_argument('selection_id', type=str, required=True, location='args')
+
+class SpectrogramResource(Resource):
+    def get(self):
+        args = spectrogram_resource_parser.parse_args()
+        selection = models.Selection.query.filter_by(id = args.get('selection_id')).first()
+        plot_bytestream = selection.create_temp_plot()
+        r = Response(plot_bytestream, mimetype='image/png')
+        r.headers['Content-Disposition'] = f'attachment; filename="{selection.plot_file_name}.png"'
+        return r
+
+class FileResource(Resource):
+    def get(self):
+        args = file_resource_parser.parse_args()
+        file_id = args.get('id')
+        file = models.File.query.filter_by(id=file_id).first()
+        from ... import utils
+        return utils.download_file(file, mimetype='audio/wav')

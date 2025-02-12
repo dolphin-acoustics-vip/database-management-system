@@ -12,3 +12,5 @@ def register(api, prefix):
         prefix = prefix + "/" + 'api'
     
     api.add_resource(resources.SelectionResource, prefix + '/selections/')
+    api.add_resource(resources.FileResource, prefix + '/file/')
+    api.add_resource(resources.SpectrogramResource, prefix + '/spectrogram/')

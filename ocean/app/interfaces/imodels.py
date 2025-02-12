@@ -1084,6 +1084,7 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
 
     def _to_dict(self) -> typing.Dict[str, typing.Any]:
         return {
+            'id':self.id,
             'unique_name':self.unique_name,
             'selection_number':self.selection_number,
             'selection_file':self.selection_file,

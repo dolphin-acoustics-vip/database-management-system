@@ -39,6 +39,7 @@ import wave
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from werkzeug.utils import secure_filename
+import matplotlib.ticker as ticker
 
 # Local application imports
 from . import contour_statistics
@@ -761,14 +762,14 @@ class Selection(imodels.ISelection):
         else: self.traced = None
             
     def create_temp_plot(self):
+        # Sampling rate defaults to 44100 (otherwise use that from the selection file)
         sampling_rate = int(self.sampling_rate) if self.sampling_rate else 44100
-        bin_width = 25  # Adjustable: 20–50 ms (time between frequency bins)
-        # Window size should be a power of 2 and adhere to the defined bin width (above)
+        
+        # Adjustable: 20–50 ms (time between frequency bins)
+        bin_width = 25  
         window_size = 2 ** int(round(np.log2((bin_width / 1000) * sampling_rate)))
-        # Hop size should be 25% - 50% of window size
         hop_size = window_size // 4  # 75% overlap
 
-        import matplotlib.ticker as ticker
         # Set x-axis labels in milliseconds
         def format_ms(x, pos):
             """Convert x axis labels from seconds to milliseconds"""
@@ -777,9 +778,11 @@ class Selection(imodels.ISelection):
         with open(self.selection_file._path_with_root, 'rb') as selection_file:
             audio, sr = librosa.load(selection_file, sr=sampling_rate)
             audio_length = len(audio)/sampling_rate
+        
         spectrogram = librosa.stft(audio, n_fft=window_size, hop_length=hop_size)
 
-        # Create a figure with one or two subplots
+        # If there is no contour file, create just one subplot (spectrogram only)
+        # If there is a contour file, create two subplots (spectrogram and contour)
         if self.contour_file: fig, axs = plt.subplots(1, 2, figsize=(30, 10))
         else: fig, axs = plt.subplots(1, 1, figsize=(30, 5))
         spectogram_axs = axs[0] if self.contour_file else axs
@@ -809,13 +812,11 @@ class Selection(imodels.ISelection):
             contour_axs.tick_params(axis='both', labelsize=14)
             contour_axs.set_ylim(spectrogram_y_min, sprectrogram_y_max)
             contour_axs.set_xlim(spectrogram_x_min, spectrogram_x_max)
+        
         fig.suptitle(f'{self.unique_name} spectrogram (Sampling Rate: {sampling_rate} Hz, Duration {audio_length:.2f} s, Window Size: {window_size}, Hop Size: {hop_size})', fontsize=26)
+        
         # Layout so plots do not overlap
         fig.tight_layout()
-        # Save the plot as a PNG
-        # plot_path = os.path.join(temp_dir, self.plot_file_name + ".png")
-        # plt.savefig(plot_path, bbox_inches='tight')
-        # plt.close('all')
 
         # Create a BytesIO object to store the plot
         buf = io.BytesIO()
