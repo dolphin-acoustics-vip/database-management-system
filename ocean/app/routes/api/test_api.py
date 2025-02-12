@@ -10,4 +10,5 @@ def register(api, prefix):
         prefix = str(prefix)[:-1]
     if not str(prefix).endswith('api'):
         prefix = prefix + "/" + 'api'
-    api.add_resource(resources.Selections, prefix + '/selections/')
+    
+    api.add_resource(resources.SelectionResource, prefix + '/selections/')
