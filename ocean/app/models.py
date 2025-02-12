@@ -860,17 +860,6 @@ class Selection(imodels.ISelection):
         else:
             raise exception_handler.WarningException(f"Contour file {self.selection_number} unable to be parsed.")
 
-    def generate_contour_stats_dict(self):
-        if not self.contour_statistics_calculated: return None
-        headers = ['Encounter', 'Location', 'Project', 'Recording', 'Species', 'SamplingRate', 'SELECTIONNUMBER']
-        values = [self.recording.encounter.encounter_name, self.recording.encounter.location, self.recording.encounter.project, self.recording.start_time_pretty, self.recording.encounter.species.scientific_name, self.sampling_rate, self.selection_number]
-        contour_statistics_attrs = imodels.ISelection.get_contour_statistics_attrs()
-        for attr in contour_statistics_attrs:
-            if contour_statistics_attrs[attr][2]:
-                headers.append(attr)[1]
-                values.append(getattr(self, attr))
-        return dict(zip(headers, values))
-
     def contour_statistics_calculate(self):
         if self.contour_file:
             self._calculate_sampling_rate()

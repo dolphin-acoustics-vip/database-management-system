@@ -72,7 +72,6 @@ def check_file_space():
 
 def create_app(config_class):
     app = Flask(__name__)
-    api = Api(app)
     check_interfaces()
     ROUTE_PREFIX = '/ocean'
 
@@ -232,10 +231,6 @@ def create_app(config_class):
     def gateway_timeout(e):
         logger.critical('Gateway timeout: ' + str(e))
         return "Gateway timeout. Please try again later.", 504
-
-    
-
-
 
     return app
 
