@@ -330,6 +330,16 @@ CREATE TABLE `user` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
+DROP TABLE IF EXISTS `api_key`;
+
+CREATE TABLE `api_key` (
+    `id` VARCHAR(36) PRIMARY KEY NOT NULL DEFAULT uuid(),
+    `access_token` VARCHAR(500) UNIQUE NOT NULL,
+    `user_id` VARCHAR(36) NOT NULL,
+    `created_datetime` timestamp NOT NULL DEFAULT current_timestamp(),
+    CONSTRAINT `user_id_fk1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

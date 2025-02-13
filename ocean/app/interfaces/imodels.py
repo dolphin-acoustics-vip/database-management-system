@@ -17,6 +17,7 @@ import warnings
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text, ForeignKey, PrimaryKeyConstraint, LargeBinary, Double
 from .. import exception_handler
 from .. import logger
+import secrets
 
 # Combine ABCMeta and SQLAlchemy's DeclarativeMeta
 class CombinedMeta(ABCMeta, type(database_handler.db.Model)):
@@ -1386,6 +1387,7 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     role_id = Column(Integer, ForeignKey('role.id'), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     expiry = Column(DateTime(timezone=True), nullable=False)
+    api_password_hash = Column(String(200), nullable=True)
     role = database_handler.db.relationship('Role', backref='users', lazy=True)
 
     @property
@@ -1512,4 +1514,3 @@ class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     def incomplete(self):
         """Mark the assignment as incomplete."""
         raise NotImplementedError()
-

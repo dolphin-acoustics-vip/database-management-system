@@ -11,6 +11,7 @@ class DevelopmentConfig(Config):
     secret_key = "not_so_secret_key"
     SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
     SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1')
+    JWT_SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
 
 class TestingConfig(Config):
     TESTING = True
@@ -23,6 +24,6 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('PROD_STADOLPHINACOUSTICS_USER')}:{os.environ.get('PROD_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('PROD_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('PROD_STADOLPHINACOUSTICS_DATABASE')}"
     DEBUG = False
-    secret_key = secrets.token_urlsafe(32)
-    SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
+    SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_urlsafe(32))
     SESSION_COOKIE_SECURE = True
+    JWT_SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_urlsafe(32))

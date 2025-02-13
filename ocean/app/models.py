@@ -956,6 +956,13 @@ class User(imodels.IUser):
     def unique_name(self):
         return self.login_id
 
+    def set_api_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.api_password_hash = generate_password_hash(password)
+
+    def revoke_api(self):
+        self.api_password_hash = None
+
     def _insert_or_update(self, form, new, current_user=None):
         form = utils.parse_form(form, self._form_dict())
 

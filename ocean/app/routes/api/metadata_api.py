@@ -1,14 +1,19 @@
+from functools import wraps
 from flask_restx import Resource, reqparse, marshal_with, fields, Namespace, inputs
-from flask import Response
+from flask import Response, request, jsonify
 from datetime import datetime
+from flask_jwt_extended import jwt_required, current_user
 from ... import models
 from ... import exception_handler
 
 api = Namespace('metadata', 'All endpoints that serve data from OCEAN to the user' )
 
+SECURITY_KEY = "jsonWebToken"
+
 responses = {
     200: 'Success',
     400: 'Bad Request',
+    401: 'Unauthorized',
     404: 'Not Found',
     500: 'Internal Server Error'
 }
@@ -33,8 +38,10 @@ encounter_resource_parser.add_argument('page', type=int, help=f'Default {PAGE_DE
 encounter_resource_parser.add_argument('id', type=str, help='Filter encounters by id', required=False, location='args')
 @api.route('/encounters/')
 class EncounterResource(Resource):
+    method_decorators = [jwt_required()]
+
     @api.expect(encounter_resource_parser)
-    @api.doc(responses=responses)
+    @api.doc(responses=responses, security=SECURITY_KEY)
     def get(self):
         args = encounter_resource_parser.parse_args()
         filters = create_filter_kwargs(id=args.get('id'), encounter_name=args.get('encounter_name'), location=args.get('location'), project=args.get('project'), species_id=args.get('species_id'))
@@ -52,8 +59,9 @@ selection_parser.add_argument('page', type=int, help=f'Default {PAGE_DEFAULT}', 
 selection_parser.add_argument('id', type=str, help='Filter encounters by id', required=False, location='args')
 @api.route('/selections/')
 class SelectionResource(Resource):
+    method_decorators = [jwt_required()]
     @api.expect(selection_parser)
-    @api.doc(responses=responses)
+    @api.doc(responses=responses, security=SECURITY_KEY)
     def get(self):
         args = selection_parser.parse_args()
         filters = create_filter_kwargs(id=args.get('id'), selection_number=args.get('selection_number'), recording_id=args.get('recording_id'))
@@ -70,8 +78,9 @@ recording_resource_parser.add_argument('page', type=int, help=f'Default {PAGE_DE
 recording_resource_parser.add_argument('id', type=str, help='Filter encounters by id', required=False, location='args')
 @api.route('/recordings/')
 class RecordingResource(Resource):
+    method_decorators = [jwt_required()]
     @api.expect(recording_resource_parser)
-    @api.doc(responses=responses)
+    @api.doc(responses=responses, security=SECURITY_KEY)
     def get(self):
         args = recording_resource_parser.parse_args()
         filters = create_filter_kwargs(id=args.get('id'), encounter_id=args.get('encounter_id'), start_time=args.get('start_time'))
