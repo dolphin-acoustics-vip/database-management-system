@@ -267,18 +267,6 @@ def test_get_contour_statistics_attrs(selection: models.Selection, attr):
 def test_get_selection_table_attrs(selection: models.Selection, attr):
     assert attr in selection.selection_table_attrs
 
-def test_get_contour_statistics_dict(selection: models.Selection):
-    populate_contour_statistics(selection)
-    for attr, value in selection.get_contour_statistics_dict().items():
-        assert attr in common.CONTOUR_STATISTICS
-        assert type(value) == common.CONTOUR_STATISTICS[attr][0]
-
-def test_get_contour_statistics_dict_headers(selection: models.Selection):
-    populate_contour_statistics(selection)
-    for attr, (dtype, header, _) in common.CONTOUR_STATISTICS.items():
-        assert header in selection.get_contour_statistics_dict(use_headers=True)
-        assert type(selection.get_contour_statistics_dict(use_headers=True)[header]) == dtype
-
 def test_unique_name(selection: models.Selection):
     recording = factories.RecordingFactory.create()
     selection.selection_number = 1

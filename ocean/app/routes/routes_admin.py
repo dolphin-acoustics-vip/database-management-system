@@ -30,6 +30,7 @@ from .. import models
 from .. import exception_handler
 from .. import logger
 from .. import response_handler
+from .. import transaction_handler
 
 routes_admin = Blueprint('admin', __name__)
 
@@ -454,3 +455,61 @@ def admin_user_insert():
     except Exception as e:
         response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
+
+@routes_admin.route('/admin/user/<user_id>/set-api-password', methods=['POST'])
+@database_handler.exclude_role_4
+@database_handler.exclude_role_3
+@database_handler.exclude_role_2
+@database_handler.require_live_session
+def admin_user_set_api_password(user_id):
+    password = request.form.get('password')
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            user = session.query(models.User).filter_by(id=user_id).first()
+            user.set_api_password(password)
+        response.set_redirect(request.referrer)
+    return response.to_json()
+
+@routes_admin.route('/admin/user/<user_id>/revoke-api', methods=['POST'])
+@database_handler.exclude_role_4
+@database_handler.exclude_role_3
+@database_handler.exclude_role_2
+@database_handler.require_live_session
+def admin_user_revoke_api(user_id):
+    with response_handler.json_response_context() as response:
+        with transaction_handler.atomic() as session:
+            user = session.query(models.User).filter_by(id=user_id).first()
+            user.revoke_api()
+        response.set_redirect(request.referrer)
+    return response.to_json()
+
+# @routes_admin.route('/admin/user/<user_id>/add-api-key', methods=['POST'])
+# @database_handler.exclude_role_4
+# @database_handler.exclude_role_3
+# @database_handler.exclude_role_2
+# @database_handler.require_live_session
+# def admin_user_add_api_key(user_id):
+#     with response_handler.json_response_context() as response:
+#         with transaction_handler.atomic() as session:
+#             user = session.query(models.User).filter_by(id=user_id).first()
+#             api_key = models.ApiKey()
+#             api_key.insert({'user_id': user.id})
+#             session.add(api_key)
+#             session.commit()
+#         response.set_redirect(request.referrer)
+#     return response.to_json()
+
+# @routes_admin.route('/admin/user/<api_key_id>/remove-api-key', methods=['POST'])
+# @database_handler.exclude_role_4
+# @database_handler.exclude_role_3
+# @database_handler.exclude_role_2
+# @database_handler.require_live_session
+# def admin_user_remove_api_key(api_key_id):
+#     password = request.form.get('password')
+#     with response_handler.json_response_context() as response:
+#         with transaction_handler.atomic() as session:
+#             api_key = session.query(models.ApiKey).filter_by(id=api_key_id).first()
+#             session.delete(api_key)
+#             session.commit()
+#         response.set_redirect(request.referrer)
+#     return response.to_json()

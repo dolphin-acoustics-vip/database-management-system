@@ -23,6 +23,7 @@ from datetime import datetime
 from jinja2 import Environment
 from flask import Flask, flash, redirect, render_template, request, url_for, session as client_session, g
 from flask_login import LoginManager, login_user,login_required, current_user, login_manager, logout_user
+from flask_restx import Api
 
 # Local application imports
 from . import models
@@ -39,7 +40,7 @@ from .routes.routes_encounter import routes_encounter
 from .routes.routes_datahub import routes_datahub
 from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
-
+from .routes.api import blueprint as api
 
 def check_interfaces():
     """
@@ -71,11 +72,7 @@ def check_file_space():
 
 def create_app(config_class):
     app = Flask(__name__)
-
     check_interfaces()
-
-    
-
     ROUTE_PREFIX = '/ocean'
 
     # Set up a custom login manager for the web app
@@ -136,7 +133,9 @@ def create_app(config_class):
     # else:
     #     create_database_script = 'script_run.sql'
 
+    
     db = database_handler.init_db(app)
+    database_handler.init_api(api)
     filespace_handler.clean_directory(database_handler.get_file_space_path())
 
     # Register blueprints and error handlers
@@ -148,6 +147,8 @@ def create_app(config_class):
     app.register_blueprint(routes_datahub, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_healthcentre, url_prefix=ROUTE_PREFIX)
     app.register_blueprint(routes_filespace, url_prefix=ROUTE_PREFIX)
+    
+    app.register_blueprint(api, url_prefix=ROUTE_PREFIX + "/api/")
 
     try:
         logger.info(check_file_space())
@@ -230,10 +231,6 @@ def create_app(config_class):
     def gateway_timeout(e):
         logger.critical('Gateway timeout: ' + str(e))
         return "Gateway timeout. Please try again later.", 504
-
-    
-
-
 
     return app
 

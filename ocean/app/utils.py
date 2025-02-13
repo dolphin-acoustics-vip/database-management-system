@@ -146,7 +146,7 @@ def download_file_from_path(path, deleted):
     else:
         raise exception_handler.WarningException("File not found.")
 
-def download_file(file_obj, filename=None):
+def download_file(file_obj, filename=None, mimetype='application/octet-stream'):
     """
     Takes a file object and sends the file to the user. If the file is to be downloaded
     with a custom name, set `filename`. If the file is to be downloaded with the same
@@ -166,7 +166,7 @@ def download_file(file_obj, filename=None):
         os.path.abspath(file_obj._path_with_root),  # File path
         as_attachment=True,
         download_name=secure_filename(custom_filename),  # Safe filename
-        mimetype='application/octet-stream',  # MIME type for binary files
+        mimetype=mimetype,  # MIME type for binary files
         conditional=True,
     )
 

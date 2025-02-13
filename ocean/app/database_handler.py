@@ -26,6 +26,7 @@ from sqlalchemy.orm import sessionmaker
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask import Flask, abort, g, render_template, request, session as client_session
+from flask_jwt_extended import JWTManager
 from threading import Lock
 operation_lock = Lock()
 
@@ -122,6 +123,8 @@ def get_operation_lock():
 # INITIALISE DATABASE ORM MODEL #
 #################################
 
+api = None
+
 db = SQLAlchemy()
 
 def get_engine():
@@ -145,6 +148,8 @@ def get_session():
 
 Session = get_session
 
+def init_api(api):
+    api = api
 
 def init_db(app: Flask, run_script: str=None):
     """
@@ -166,6 +171,12 @@ def init_db(app: Flask, run_script: str=None):
 
     db.init_app(app)
 
+    jwt = JWTManager()
+    jwt.init_app(app)
+
+
+
+
     global engine
     global session_instance
 
@@ -186,6 +197,18 @@ def init_db(app: Flask, run_script: str=None):
                                 logger.info("Empty database script found. Assuming that no changes are required to the database.")
                         except Exception as e:
                             logger.warning("Attempting to run DDL script failed (this could be because the changed defined in the DDL script have already been applied): " + str(e))
+
+        @jwt.user_identity_loader
+        def user_identity_lookup(user):
+            return user.id
+
+        @jwt.user_lookup_loader
+        def user_lookup_callback(_jwt_header, jwt_data):
+            from . import models
+            identity = jwt_data["sub"]
+            user = models.User.query.filter_by(id=identity).one_or_none()
+            return user
+
 
         def add_user_data(session):
             """

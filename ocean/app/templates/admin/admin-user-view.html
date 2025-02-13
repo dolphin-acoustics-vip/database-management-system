@@ -15,6 +15,30 @@
         <script>
             ajaxifyForm(document.getElementById('user-update-form'), true, true, null, null);
         </script>
+
+        <h2>API Password</h2>
+        {% if user.api_password_hash %}
+        <form id="revoke-user-api" action = "{{ url_for('admin.admin_user_revoke_api', user_id=user.id) }}" method="post">
+            <button id="revoke-user-api-submit" class="gray" type="submit">Revoke API</button>
+        </form>
+        <script>
+            ajaxifyForm(document.getElementById('revoke-user-api'), true, true, null, null);
+        </script>
+        {% else %}
+        <form id="set-user-api-password" action = "{{ url_for('admin.admin_user_set_api_password', user_id=user.id) }}" method="post">
+            <label for="password">Password:</label>
+            <p>The password will be hashed and stored. Please make note of the password before submitting this form as it cannot be recovered.</p>
+            <input id="password" name="password" required>
+            {% if user.api_password_hash %}
+                <p>Submitting this form will override this user's existing password</p>
+            {% endif %}
+            <button id="set-user-api-password-submit" class="blue" type="submit">Set Password</button>
+        </form>
+        <script>
+            ajaxifyForm(document.getElementById('set-user-api-password'), true, true, null, null);
+        </script>
+        {% endif %}
+
     </div>
 
 

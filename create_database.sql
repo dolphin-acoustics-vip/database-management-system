@@ -320,6 +320,7 @@ CREATE TABLE `user` (
   `login_id` varchar(100) NOT NULL,
   `name` varchar(1000) DEFAULT NULL,
   `role_id` int(11) NOT NULL,
+  `api_password_hash` varchar(200) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `expiry` date DEFAULT (curdate() + interval 1 year),
   PRIMARY KEY (`id`),
@@ -329,6 +330,7 @@ CREATE TABLE `user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
 
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;

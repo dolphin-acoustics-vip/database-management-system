@@ -39,6 +39,7 @@ import wave
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from werkzeug.utils import secure_filename
+import matplotlib.ticker as ticker
 
 # Local application imports
 from . import contour_statistics
@@ -761,14 +762,14 @@ class Selection(imodels.ISelection):
         else: self.traced = None
             
     def create_temp_plot(self):
+        # Sampling rate defaults to 44100 (otherwise use that from the selection file)
         sampling_rate = int(self.sampling_rate) if self.sampling_rate else 44100
-        bin_width = 25  # Adjustable: 20–50 ms (time between frequency bins)
-        # Window size should be a power of 2 and adhere to the defined bin width (above)
+        
+        # Adjustable: 20–50 ms (time between frequency bins)
+        bin_width = 25  
         window_size = 2 ** int(round(np.log2((bin_width / 1000) * sampling_rate)))
-        # Hop size should be 25% - 50% of window size
         hop_size = window_size // 4  # 75% overlap
 
-        import matplotlib.ticker as ticker
         # Set x-axis labels in milliseconds
         def format_ms(x, pos):
             """Convert x axis labels from seconds to milliseconds"""
@@ -777,9 +778,11 @@ class Selection(imodels.ISelection):
         with open(self.selection_file._path_with_root, 'rb') as selection_file:
             audio, sr = librosa.load(selection_file, sr=sampling_rate)
             audio_length = len(audio)/sampling_rate
+        
         spectrogram = librosa.stft(audio, n_fft=window_size, hop_length=hop_size)
 
-        # Create a figure with one or two subplots
+        # If there is no contour file, create just one subplot (spectrogram only)
+        # If there is a contour file, create two subplots (spectrogram and contour)
         if self.contour_file: fig, axs = plt.subplots(1, 2, figsize=(30, 10))
         else: fig, axs = plt.subplots(1, 1, figsize=(30, 5))
         spectogram_axs = axs[0] if self.contour_file else axs
@@ -809,13 +812,11 @@ class Selection(imodels.ISelection):
             contour_axs.tick_params(axis='both', labelsize=14)
             contour_axs.set_ylim(spectrogram_y_min, sprectrogram_y_max)
             contour_axs.set_xlim(spectrogram_x_min, spectrogram_x_max)
+        
         fig.suptitle(f'{self.unique_name} spectrogram (Sampling Rate: {sampling_rate} Hz, Duration {audio_length:.2f} s, Window Size: {window_size}, Hop Size: {hop_size})', fontsize=26)
+        
         # Layout so plots do not overlap
         fig.tight_layout()
-        # Save the plot as a PNG
-        # plot_path = os.path.join(temp_dir, self.plot_file_name + ".png")
-        # plt.savefig(plot_path, bbox_inches='tight')
-        # plt.close('all')
 
         # Create a BytesIO object to store the plot
         buf = io.BytesIO()
@@ -858,17 +859,6 @@ class Selection(imodels.ISelection):
             return handler
         else:
             raise exception_handler.WarningException(f"Contour file {self.selection_number} unable to be parsed.")
-
-    def generate_contour_stats_dict(self):
-        if not self.contour_statistics_calculated: return None
-        headers = ['Encounter', 'Location', 'Project', 'Recording', 'Species', 'SamplingRate', 'SELECTIONNUMBER']
-        values = [self.recording.encounter.encounter_name, self.recording.encounter.location, self.recording.encounter.project, self.recording.start_time_pretty, self.recording.encounter.species.scientific_name, self.sampling_rate, self.selection_number]
-        contour_statistics_attrs = imodels.ISelection.get_contour_statistics_attrs()
-        for attr in contour_statistics_attrs:
-            if contour_statistics_attrs[attr][2]:
-                headers.append(attr)[1]
-                values.append(getattr(self, attr))
-        return dict(zip(headers, values))
 
     def contour_statistics_calculate(self):
         if self.contour_file:
@@ -965,6 +955,13 @@ class User(imodels.IUser):
     @property
     def unique_name(self):
         return self.login_id
+
+    def set_api_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.api_password_hash = generate_password_hash(password)
+
+    def revoke_api(self):
+        self.api_password_hash = None
 
     def _insert_or_update(self, form, new, current_user=None):
         form = utils.parse_form(form, self._form_dict())

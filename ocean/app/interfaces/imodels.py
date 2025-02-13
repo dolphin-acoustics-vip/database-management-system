@@ -17,6 +17,7 @@ import warnings
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text, ForeignKey, PrimaryKeyConstraint, LargeBinary, Double
 from .. import exception_handler
 from .. import logger
+import secrets
 
 # Combine ABCMeta and SQLAlchemy's DeclarativeMeta
 class CombinedMeta(ABCMeta, type(database_handler.db.Model)):
@@ -43,7 +44,7 @@ class Serialisable(ABC):
         pass
 
     @final
-    def to_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_dict(self, unpack=False) -> typing.Dict[str, typing.Any]:
         """Convert the object to a dictionary representation.
         
         The dictionary contains all publicly accessible attributes of
@@ -52,14 +53,14 @@ class Serialisable(ABC):
         interface, its value is recursively converted to a dictionary.
         """
         d = self._to_dict()
+        r = {}
         for k, v in d.items():
-            if isinstance(v, Serialisable):
-                d[k] = v.to_dict()
+            if isinstance(v, Serialisable) and unpack:
+                r[k] = v.to_dict()
             elif isinstance(v, (str, int, float, bool, type(None), list, dict)):
-                pass
-            else:
-                d[k] = str(v)
-        return d
+                r[k] = v
+
+        return r
 
 class TableOperations(ABC):
     
@@ -162,7 +163,7 @@ class IFile(AbstractModelBase, Serialisable, TableOperations):
             "id": self.id,
             "directory": self.directory,
             "filename": self.filename,
-            "uploaded_date": self.uploaded_date,
+            "upload_datetime": self.upload_datetime,
             "extension": self.extension,
             "deleted": self.deleted,
             "original_filename": self.original_filename,
@@ -1084,6 +1085,7 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
 
     def _to_dict(self) -> typing.Dict[str, typing.Any]:
         return {
+            'id':self.id,
             'unique_name':self.unique_name,
             'selection_number':self.selection_number,
             'selection_file':self.selection_file,
@@ -1094,7 +1096,9 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
             'contour_file_id':self.contour_file,
             'recording_id':self.recording_id,
             'created_datetime':self.created_datetime,
-            'row_start':self.row_start
+            'row_start':self.row_start,
+            'contour_statistics': self.get_contour_statistics_dict(),
+            'selection_table': self.get_selection_table_dict()
         }
     
     def _form_dict(self) -> typing.Dict[str, typing.Any]:
@@ -1149,8 +1153,19 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
         the attribute names will be the attribute names of the object."""
         d = {}
         for k, v in ISelection.get_contour_statistics_attrs().items():
-            if v[2] and not use_headers: d[k] = getattr(self, k)
-            elif v[2] and use_headers: d[v[1]] = getattr(self, k)
+            key = k if use_headers else v[1]
+            if v[2] and not use_headers: d[key] = getattr(self, k)
+            elif v[2] and use_headers: d[key] = getattr(self, k)
+            if d[key] and type(d[key]) == float: d[key] = round(d[key], 3)
+        return d
+
+    def get_selection_table_dict(self) -> typing.Dict[str, typing.Any]:
+        """A dictionary of all the selection table attribute names (string) as the key and the
+        attribute data types as the value. This does not include `selection_number` as this
+        attribute pertains to the entire `Selection` object."""
+        d = {}
+        for k, v in self.selection_table_attrs.items():
+            d[k] = getattr(self, k)
         return d
 
     @property
@@ -1272,12 +1287,6 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
         exceptions. If the contour file does not exist the the function returns `None`."""
         raise NotImplementedError()
 
-    @abstractmethod
-    def generate_contour_stats_dict(self):
-        """Generate a dictionary of the object's contour statistics. Returns `None` if the contour
-        file does not exist. The dictionary contains all the headers of `self.contour_statistics_attrs`
-        as the header and values as the value."""
-        raise NotImplementedError()
 
 class IDataSource(AbstractModelBase, Serialisable, TableOperations):
     __tablename__ = 'data_source'
@@ -1378,6 +1387,7 @@ class IUser(AbstractModelBase, Serialisable, TableOperations, UserMixin):
     role_id = Column(Integer, ForeignKey('role.id'), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     expiry = Column(DateTime(timezone=True), nullable=False)
+    api_password_hash = Column(String(200), nullable=True)
     role = database_handler.db.relationship('Role', backref='users', lazy=True)
 
     @property
@@ -1504,4 +1514,3 @@ class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     def incomplete(self):
         """Mark the assignment as incomplete."""
         raise NotImplementedError()
-
