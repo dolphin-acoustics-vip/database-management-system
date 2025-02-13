@@ -320,6 +320,7 @@ CREATE TABLE `user` (
   `login_id` varchar(100) NOT NULL,
   `name` varchar(1000) DEFAULT NULL,
   `role_id` int(11) NOT NULL,
+  `api_password_hash` varchar(200) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `expiry` date DEFAULT (curdate() + interval 1 year),
   PRIMARY KEY (`id`),
@@ -330,15 +331,6 @@ CREATE TABLE `user` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-DROP TABLE IF EXISTS `api_key`;
-
-CREATE TABLE `api_key` (
-    `id` VARCHAR(36) PRIMARY KEY NOT NULL DEFAULT uuid(),
-    `access_token` VARCHAR(500) UNIQUE NOT NULL,
-    `user_id` VARCHAR(36) NOT NULL,
-    `created_datetime` timestamp NOT NULL DEFAULT current_timestamp(),
-    CONSTRAINT `user_id_fk1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
