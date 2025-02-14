@@ -88,15 +88,19 @@ def create_app(config_class):
 
     @app.before_request
     def sso_login():
+        # Api access does not require SSO authentication
+        if request.path.startswith('/ocean/api'):
+            return
+        # Swaggerui is used by flask_restx for API documentation
+        if request.path.startswith('/swaggerui'):
+            return
+
         # Retrieve email from environment
         email = request.environ.get('HTTP_EPPN')
-        
-
         override = os.environ.get('OCEAN_SSO_OVERRIDE', '').lower()
         if override != None and override != '':
             email = override
-
-
+            
         # Skip if user is already authenticated
         if current_user.is_authenticated and current_user.login_id == email:
             return
