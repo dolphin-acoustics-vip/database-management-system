@@ -6,6 +6,7 @@ from .metadata_api import api as ns1
 from .filespace_api import api as ns2
 from .auth_api import api as ns3
 from ... import exception_handler, models
+from ...logger import logger
 from ...main import CONFIG
 
 # api = Api(
@@ -44,14 +45,17 @@ def handle_no_authorization_error(error):
 
 @api.errorhandler(InvalidSignatureError)
 def handle_invalid_signature_error(error):
+    logger.error(error)
     return {'message': 'Invalid Signature in Authorization Header'}, 401
 
 @api.errorhandler(ExpiredSignatureError)
 def handle_expired_signature_error(error):
+    logger.error(error)
     return {'message': 'Expired Signature in Authorization Header'}, 401
 
 @api.errorhandler(exception_handler.DoesNotExistError)
 def handle_dne_exception(error):
+    logger.error(error)
     return {'message': 'Requested resource does not exist with the defined paramters.'}, 404
 
 @api.errorhandler(exception_handler.WarningException)
@@ -60,4 +64,5 @@ def handle_warning_exception(error):
 
 @api.errorhandler(Exception)
 def handle_root_exception(error):
+    logger.error(error)
     return {'message': 'Server error'}, 500
