@@ -40,7 +40,8 @@ from .routes.routes_encounter import routes_encounter
 from .routes.routes_datahub import routes_datahub
 from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
-from .routes.api import blueprint as api
+
+CONFIG = None
 
 def check_interfaces():
     """
@@ -71,9 +72,15 @@ def check_file_space():
 
 
 def create_app(config_class):
-    app = Flask(__name__)
+    # Configure the global configuration class which can be accessed by all other modules
+    global CONFIG
+    CONFIG = config_class
+
+    # Ensure all interfaces are implemented properly
     check_interfaces()
-    ROUTE_PREFIX = '/ocean'
+
+    # Start flask app
+    app = Flask(__name__)
 
     # Set up a custom login manager for the web app
     login_manager = LoginManager()
@@ -89,10 +96,10 @@ def create_app(config_class):
     @app.before_request
     def sso_login():
         # Api access does not require SSO authentication
-        if request.path.startswith('/ocean/api'):
+        if request.path.startswith(CONFIG.URL_PREFIX + '/api'):
             return
         # Swaggerui is used by flask_restx for API documentation
-        if request.path.startswith('/swaggerui'):
+        if request.path.startswith(CONFIG.URL_PREFIX + '/swaggerui'):
             return
 
         # Retrieve email from environment
@@ -137,22 +144,22 @@ def create_app(config_class):
     # else:
     #     create_database_script = 'script_run.sql'
 
-    
+    from .routes.api import blueprint as api
     db = database_handler.init_db(app)
     database_handler.init_api(api)
     filespace_handler.clean_directory(database_handler.get_file_space_path())
 
     # Register blueprints and error handlers
-    app.register_blueprint(routes_general, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_admin, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_encounter, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_recording, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_selection, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_datahub, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_healthcentre, url_prefix=ROUTE_PREFIX)
-    app.register_blueprint(routes_filespace, url_prefix=ROUTE_PREFIX)
+    app.register_blueprint(routes_general, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_admin, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_encounter, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_recording, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_selection, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_datahub, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_healthcentre, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_filespace, url_prefix=CONFIG.URL_PREFIX)
     
-    app.register_blueprint(api, url_prefix=ROUTE_PREFIX + "/api/")
+    app.register_blueprint(api, url_prefix=CONFIG.URL_PREFIX + "/api/")
 
     try:
         logger.info(check_file_space())

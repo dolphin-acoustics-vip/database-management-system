@@ -1,4 +1,4 @@
-from flask_restx import Api
+from flask_restx import Api, apidoc
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from jwt import InvalidSignatureError, ExpiredSignatureError
@@ -6,6 +6,7 @@ from .metadata_api import api as ns1
 from .filespace_api import api as ns2
 from .auth_api import api as ns3
 from ... import exception_handler, models
+from ...main import CONFIG
 
 # api = Api(
 #     title='OCEAN API',
@@ -22,13 +23,15 @@ authorizations = {
     }
 }
 
+apidoc.apidoc.url_prefix = CONFIG.URL_PREFIX
+
 blueprint = Blueprint('api', __name__)
 api = Api(
     blueprint,
     version="1.0",
     title="OCEAN API",
     description="Welcome to the OCEAN API documentation site!",
-    authorizations=authorizations,
+    authorizations=authorizations
 )
 
 api.add_namespace(ns1)
