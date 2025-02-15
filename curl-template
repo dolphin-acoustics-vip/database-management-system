@@ -1,0 +1,1 @@
+curl -X 'POST' 'https://rescomp-test-2.st-andrews.ac.uk/ocean/api/auth/login/?username=<insert-here>&password=<insert-here>' -H 'accept: application/json' -d ''
