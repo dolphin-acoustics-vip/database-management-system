@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source .env
+
 env_dir="env"
 
 if [ -d $env_dir ]; then
@@ -21,7 +23,6 @@ pip install -r requirements.txt
 echo "Deactivating virtual env."
 deactivate
 
-source .env
 DB_HOST=$DEV_STADOLPHINACOUSTICS_HOST
 DB_USER=$DEV_STADOLPHINACOUSTICS_USER
 DB_PASSWORD=$DEV_STADOLPHINACOUSTICS_PASSWORD
