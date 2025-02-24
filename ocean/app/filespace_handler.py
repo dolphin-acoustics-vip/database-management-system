@@ -45,7 +45,7 @@ def action_to_be_deleted(session):
     """Any files marked to be deleted will be deleted. Ensure that changes to the database have been
     committed before calling this method."""
     session.flush()
-    to_be_deleted_files = session.query(models.File).filter_by(to_be_deleted=True).all()
+    to_be_deleted_files = session.query(models.File).filter_by(to_be_deleted=True, deleted=False).all()
     for file in to_be_deleted_files:
         try:
             file.delete(session)
