@@ -11,7 +11,7 @@ class DevelopmentConfig(Config):
     secret_key = "not_so_secret_key"
     SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
     SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1')
-    JWT_SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
+    JWT_SECRET_KEY = SECRET_KEY
     URL_PREFIX='/ocean'
 
 class TestingConfig(Config):
@@ -27,5 +27,5 @@ class ProductionConfig(Config):
     DEBUG = False
     SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_urlsafe(32))
     SESSION_COOKIE_SECURE = True
-    JWT_SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_urlsafe(32))
+    JWT_SECRET_KEY = SECRET_KEY
     URL_PREFIX='/ocean'
