@@ -179,13 +179,15 @@ def test_clear_slection_table_attrs(selection: models.Selection):
 
 def test_ctr_file_name(selection: models.Selection):
     selection.selection_number = 1
+    selection.recording.encounter.encounter_name = f"TestEncounter"
     selection.recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    assert selection.ctr_file_name == "CTR-1-20200821T025422"
+    assert selection.ctr_file_name == "CTR-1-20200821T025422-TestEncounter"
 
 def test_selection_file_name(selection: models.Selection):
     selection.selection_number = 1
+    selection.recording.encounter.encounter_name = f"TestEncounter"
     selection.recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    assert selection.selection_file_name == "Selection-1-20200821T025422"
+    assert selection.selection_file_name == f"Selection-1-20200821T025422-TestEncounter"
 
 def test_plot_file_name(selection: models.Selection):
     selection.selection_number = 1
@@ -194,8 +196,9 @@ def test_plot_file_name(selection: models.Selection):
 
 def test_contour_file_name(selection: models.Selection):
     selection.selection_number = 1
+    selection.recording.encounter.encounter_name = f"TestEncounter"
     selection.recording.start_time = datetime.datetime(2020,8,21,2,54,22)
-    assert selection.contour_file_name == "Contour-1-20200821T025422"
+    assert selection.contour_file_name == "Contour-1-20200821T025422-TestEncounter"
 
 def test_relative_directory(selection: models.Selection):
     for c in common.INVALID_CHARACTERS + ["_"]:
