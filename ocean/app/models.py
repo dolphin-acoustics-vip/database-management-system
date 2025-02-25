@@ -676,15 +676,15 @@ class Selection(imodels.ISelection):
 
     @property
     def selection_file_name(self):
-        return utils.secure_fname(f"Selection-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}")
+        return utils.secure_fname(f"Selection-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}-{utils.secure_fname(self.recording.encounter.encounter_name)}")
 
     @property
     def contour_file_name(self):
-        return utils.secure_fname(f"Contour-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}")
+        return utils.secure_fname(f"Contour-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}-{utils.secure_fname(self.recording.encounter.encounter_name)}")
 
     @property
     def ctr_file_name(self):
-        return utils.secure_fname(f"CTR-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}")
+        return utils.secure_fname(f"CTR-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}-{utils.secure_fname(self.recording.encounter.encounter_name)}")
 
     def selection_file_insert(self, file):
         if self.selection_file: raise exception_handler.WarningException(f"Selection file for selection {self.selection_number} already exists.")
