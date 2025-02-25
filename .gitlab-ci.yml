@@ -12,7 +12,7 @@ include:
         sed "s/YOUR_DB_NAME/$DB_NAME/" |
         sed "s/YOUR_FILESPACE/$FILESPACE_PATH/" |
         sed "s/YOUR_DB_PASS/$DB_PASS/" |
-        sed "s/YOUR_PROXY/$WEB_PROXY/" > .env
+        sed "s|YOUR_PROXY|$WEB_PROXY|" > .env
     - scp -o stricthostkeychecking=no -r * .env $SSH_USER@$SSH_SERVER:$DEPLOY_PATH
     - ssh -o stricthostkeychecking=no $SSH_USER@$SSH_SERVER "cd $DEPLOY_PATH && ./setup.sh"
 
