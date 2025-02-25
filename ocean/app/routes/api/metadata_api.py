@@ -90,3 +90,23 @@ class RecordingResource(Resource):
         return [recording.to_dict() for recording in recordings]
 
 
+species_resource_parser = reqparse.RequestParser()
+species_resource_parser.add_argument('scientific_name', type=str, help='Filter species by scientific_name', required=False, location='args')
+species_resource_parser.add_argument('common_name', type=str, help='Filter species by common_name', required=False, location='args')
+species_resource_parser.add_argument('genus_name', type=str, help='Filter species by genus_name', required=False, location='args')
+species_resource_parser.add_argument('per_page', type=int, help=f'Default {PER_PAGE_DEFAULT}', required=False, location='args')
+species_resource_parser.add_argument('page', type=int, help=f'Default {PAGE_DEFAULT}', required=False, location='args')
+species_resource_parser.add_argument('id', type=str, help='Filter encounters by id', required=False, location='args')
+@api.route('/species/')
+class SpeciesResource(Resource):
+    method_decorators = [jwt_required()]
+    @api.expect(species_resource_parser)
+    @api.doc(responses=responses, security=SECURITY_KEY)
+    def get(self):
+        args = species_resource_parser.parse_args()
+        filters = create_filter_kwargs(id=args.get('id'), scientific_name=args.get('scientific_name'), common_name=args.get('common_name'), genus_name=args.get('genus_name'))
+        page = args.get('page', 1)
+        per_page = args.get('per_page', 50)
+        speciess = models.Species.query.filter_by(**filters).paginate(page=page, per_page=per_page)
+        return [species.to_dict() for species in speciess]
+        

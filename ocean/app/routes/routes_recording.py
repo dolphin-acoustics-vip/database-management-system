@@ -17,8 +17,10 @@
 
 # Third-party imports
 from functools import wraps
+import io
 import typing
-from flask import Blueprint, Response, flash, jsonify, redirect, render_template, url_for, request
+import zipfile
+from flask import Blueprint, Response, flash, jsonify, redirect, render_template, send_file, url_for, request
 from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_required, current_user
 
@@ -450,22 +452,16 @@ def calculate_contour_statistics_for_recording(recording_id: str):
                 if selection.contour_file: count += 1
         response.add_message(f"{count} contour statistic(s) and CTR file(s) were regenerated.")
     return response.to_json()
-    
+
 
 @routes_recording.route('/recording/<recording_id>/download-ctr-files', methods=['GET'])
 @login_required
 def download_ctr_files(recording_id):
     with database_handler.get_session() as session:
-        recording = database_handler.create_system_time_request(session, models.Recording, {"id":recording_id}, one_result=True)
-        selections = database_handler.create_system_time_request(session, models.Selection, {"recording_id":recording_id})
-        ctr_files = [selection.ctr_file for selection in selections if selection.ctr_file is not None]
-        file_names = [selection.ctr_file_name for selection in selections if selection.ctr_file is not None]
+        recording = session.query(models.Recording).filter_by(id=recording_id).first()
         zip_filename = f"{recording.encounter.species.scientific_name}-{recording.encounter.encounter_name}-{recording.encounter.location}-{filespace_handler.format_date_for_filespace(recording.start_time)}_ctr_files.zip"
-        file_paths = [ctr_file._path_with_root for ctr_file in ctr_files]
-        response = utils.download_files(ctr_files, file_names, zip_filename)
-        
-        return response
-    
+        return utils.stream_zip_file(recording.generate_ctr_files, zip_filename)
+
 @routes_recording.route('/recording/<recording_id>/download-selection-files', methods=['GET'])
 @login_required
 def download_selection_files(recording_id):

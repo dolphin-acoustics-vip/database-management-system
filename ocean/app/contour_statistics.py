@@ -118,7 +118,7 @@ class ContourFileHandler:
         temp_res = find_most_common_difference([unit.time_milliseconds for unit in self.contour_rows])/1000
         ctr_length = temp_res*len(self.contour_rows)
         # Create a dictionary to store the data in the .ctr format
-        mat_data = {'tempRes':temp_res,'freqContour': np.array([unit.peak_frequency for unit in self.contour_rows]),'ctrLength':ctr_length}
+        mat_data = {'tempres':temp_res,'freqContour': np.array([unit.peak_frequency for unit in self.contour_rows]),'ctrlength':ctr_length}
         return mat_data
 
     def add_contour_data_unit(self, unit: ContourDataUnit):

@@ -1,1 +1,0 @@
-ALTER TABLE user ADD api_password_hash VARCHAR(200);

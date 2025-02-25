@@ -164,6 +164,12 @@ class Encounter(imodels.IEncounter):
     def location_folder_name(self):
         return utils.secure_fname(f"Location-{self.location}")
 
+    def generate_ctr_files(self):
+        for recording in self.recordings:
+            for selection in recording.selections:
+                if selection.contour_file is not None:
+                    yield selection.generate_ctr_binary(), f"{selection.ctr_file_name}.ctr"    
+
 
 class File(imodels.IFile):
     
@@ -423,6 +429,11 @@ class Recording(imodels.IRecording):
         for key, value in attr_form.items():
             setattr(self, key, value)
 
+    def generate_ctr_files(self):
+        for selection in self.selections:
+            if selection.contour_file is not None:
+                yield selection.generate_ctr_binary(), f"{selection.ctr_file_name}.ctr"    
+
     def recording_file_delete(self):
         if self.recording_file: self.recording_file.mark_for_deletion()
         self.recording_file = None
@@ -665,15 +676,15 @@ class Selection(imodels.ISelection):
 
     @property
     def selection_file_name(self):
-        return utils.secure_fname(f"Selection-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}")
+        return utils.secure_fname(f"Selection-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}-{utils.secure_fname(self.recording.encounter.encounter_name)}")
 
     @property
     def contour_file_name(self):
-        return utils.secure_fname(f"Contour-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}")
+        return utils.secure_fname(f"Contour-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}-{utils.secure_fname(self.recording.encounter.encounter_name)}")
 
     @property
     def ctr_file_name(self):
-        return utils.secure_fname(f"CTR-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}")
+        return utils.secure_fname(f"CTR-{self.selection_number}-{utils.secure_datename(self.recording.start_time)}-{utils.secure_fname(self.recording.encounter.encounter_name)}")
 
     def selection_file_insert(self, file):
         if self.selection_file: raise exception_handler.WarningException(f"Selection file for selection {self.selection_number} already exists.")
@@ -701,6 +712,16 @@ class Selection(imodels.ISelection):
     def ctr_file_delete(self):
         if self.ctr_file: self.ctr_file.mark_for_deletion()
         self.ctr_file = None
+
+    def generate_ctr_binary(self):
+        contour_file_handler = self.get_contour_file_handler()
+        if contour_file_handler:
+            mat_data = contour_file_handler.get_ctr_data()
+            if mat_data:
+                f = io.BytesIO()
+                scipy.io.savemat(f, mat_data)
+                f.seek(0)
+                return f
 
     def ctr_file_generate(self, ctr_file: File):
         contour_file_handler = self.get_contour_file_handler()
