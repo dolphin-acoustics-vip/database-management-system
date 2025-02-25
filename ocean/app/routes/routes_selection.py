@@ -290,7 +290,7 @@ def selection_file_insert(recording_id):
 def download_ctr_file(selection_id):
     with database_handler.get_session() as session:
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id}, one_result=True)
-        return utils.download_file(selection.ctr_file, selection.ctr_file_name)
+        return utils.download_BytesIO(selection.generate_ctr_file(), selection.ctr_file_name)
 
 @routes_selection.route('/selection/<selection_id>/download-contour', methods=['GET'])
 def download_contour_file(selection_id):
