@@ -38,6 +38,22 @@ def parse_filename(filename: str):
     name, extension = os.path.splitext(filename)
     return name, extension
 
+def stream_zip_file(generator, zip_filename):
+    """
+    Streams a zip file as a Flask response from a generator of file-like objects and file names.
+
+    :param generator: A generator of tuples of (file_like_object, file_name) to be added to the zip file
+    :param zip_filename: The name of the zip file that will be sent
+    :return: A Flask Response object containing the zip file
+    """
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+        for file_stream, file_name in generator():
+            zip_file.writestr(file_name, file_stream.read())
+    zip_buffer.seek(0)
+    return send_file(zip_buffer, as_attachment=True, download_name=zip_filename)
+    
+
 def download_files(file_objects, file_names, zip_filename):
     """
     Creates and streams a zip file from the given list of file paths.
@@ -145,6 +161,10 @@ def download_file_from_path(path, deleted):
         return response
     else:
         raise exception_handler.WarningException("File not found.")
+
+def download_BytesIO(file_stream, filename=None, mimetype='application/octet-stream'):
+    file_stream.seek(0)
+    return send_file(file_stream, as_attachment=True, download_name=secure_filename(filename) + ".ctr", mimetype=mimetype)
 
 def download_file(file_obj, filename=None, mimetype='application/octet-stream'):
     """
