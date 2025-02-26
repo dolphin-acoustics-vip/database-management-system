@@ -36,3 +36,8 @@ then
 fi
 echo "Updating database ${DB_NAME} on ${DB_HOST} as ${DB_USER} with script_run.sql"
 mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < script_run.sql
+
+echo "Setting secret key in .env"
+sed -i "s/YOUR_SECRET_KEY/$(od  -vN 32 -An -tx1 /dev/urandom | tr -d ' \n' ; echo)/" .env
+
+echo "Setup complete."
