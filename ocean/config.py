@@ -8,11 +8,17 @@ class Config:
 class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('DEV_STADOLPHINACOUSTICS_USER')}:{os.environ.get('DEV_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('DEV_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('DEV_STADOLPHINACOUSTICS_DATABASE')}"
     DEBUG = True
-    secret_key = "not_so_secret_key"
-    SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
-    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1')
+    SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_urlsafe(32))
+    SECRET_KEY = "not_a_secret_key"
+    SESSION_COOKIE_SECURE = True
     JWT_SECRET_KEY = SECRET_KEY
     URL_PREFIX='/ocean'
+    
+    # secret_key = secrets.token_urlsafe(32)
+    # SECRET_KEY = os.environ.get('SECRET_KEY', secret_key)
+    # SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1')
+    # JWT_SECRET_KEY = secrets.token_urlsafe(32)
+    # URL_PREFIX='/ocean'
 
 class TestingConfig(Config):
     TESTING = True
@@ -26,6 +32,7 @@ class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('PROD_STADOLPHINACOUSTICS_USER')}:{os.environ.get('PROD_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('PROD_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('PROD_STADOLPHINACOUSTICS_DATABASE')}"
     DEBUG = False
     SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_urlsafe(32))
+    SECRET_KEY = "not_a_secret_key"
     SESSION_COOKIE_SECURE = True
     JWT_SECRET_KEY = SECRET_KEY
     URL_PREFIX='/ocean'
