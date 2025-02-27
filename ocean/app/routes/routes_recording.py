@@ -38,7 +38,7 @@ routes_recording = Blueprint('recording', __name__)
 
 
 def check_editable(recording: models.Recording):
-    if recording.is_reviewed() or recording.is_on_hold():
+    if recording.is_reviewed():
         if current_user.role.id == 3 or current_user.role.id == 4:
             raise exception_handler.WarningException("You do not have permission to edit this recording.")
 
