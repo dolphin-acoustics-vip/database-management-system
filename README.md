@@ -31,6 +31,30 @@ Familiarity with the data pipeline and implementation strategy found in the [use
 
 OCEAN is a web application that manages both a database and a filespace. These **must** be correctly installed before attempting to modify the code.
 
+We provide a docker image for the development environment. Ensure you have docker installed on your local system, then run the following command in the root directory of OCEAN.
+
+```
+docker compose up --build
+```
+
+This will create 2 volumes: one for the database and one for the filespace. By default, the
+filespace is mounted to `/app/filespace` and the database is mounted to `/var/lib/mysql`. This
+allows you to build new containers without having to re-initialise the database nor filespace.
+
+If you want to wipe the database and and filespace, run the following command.
+
+```
+docker compose down -v
+docker compose up --build
+```
+
+By default, OCEAN runs on port 5000 accessible at `http://localhost:5000`. You will be logged into
+an admin account with username `Admin` (see [init_roles_and_admin.sql](/db-init/init_roles_and_admin.sql)).
+If you make any changes to the database, these changes need to be manually applied to the docker database
+container. Alternatively, reset the container and ensure up-to-date sql exists in the [db-init](/db-init) folder.
+
+If you don't have docker installed, follow the manual installation instructions below.
+
 ### Prerequisites
 
 OCEAN was developed in Python 3. It was built to work with a standard install of the MariaDB Server of the version stated below.
@@ -102,7 +126,7 @@ CREATE DATABASE ocean;
 use ocean;
 ```
 
-All the required tables will need to be created. Do this by copying the entirety of [create_database.sql](/create_database.sql) into the MariaDB client. This will create all tables.
+All the required tables will need to be created. Do this by copying the entirety of [create_database.sql](/db-init/create_database.sql) into the MariaDB client. This will create all tables.
 
 To access OCEAN you will need to insert a user into the `user` table of the database. The command below should be run to create an `admin` user (this assumes the script above has been run).
 

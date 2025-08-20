@@ -4,10 +4,17 @@ import secrets
 
 class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_recycle': 300,  # Recycle connections after 5 minutes
+        'pool_pre_ping': True,  # Enable the connection pool "pre-ping" feature
+        'pool_size': 5,  # Number of connections to keep open in the pool
+        'max_overflow': 10,  # Number of connections to allow in connection pool overflow
+        'pool_timeout': 30,  # Seconds to wait before giving up on getting a connection
+    }
 
 class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = f"mysql+mysqldb://{os.environ.get('DEV_STADOLPHINACOUSTICS_USER')}:{os.environ.get('DEV_STADOLPHINACOUSTICS_PASSWORD')}@{os.environ.get('DEV_STADOLPHINACOUSTICS_HOST')}/{os.environ.get('DEV_STADOLPHINACOUSTICS_DATABASE')}"
-    DEBUG = True
+    DEBUG = False
     SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_urlsafe(32))
     SESSION_COOKIE_SECURE = True
     JWT_SECRET_KEY = SECRET_KEY

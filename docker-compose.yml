@@ -1,0 +1,41 @@
+services:
+  db:
+    image: mariadb:11.3
+    container_name: ocean-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: ${DEV_STADOLPHINACOUSTICS_DATABASE}
+      MARIADB_USER: ${DEV_STADOLPHINACOUSTICS_USER}
+      MARIADB_PASSWORD: ${DEV_STADOLPHINACOUSTICS_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - ocean-net
+    env_file:
+      - .env
+
+  flask:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ocean-flask
+    restart: unless-stopped
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+      - ./filespace:/app/filespace
+    ports:
+      - "5000:5000"
+    networks:
+      - ocean-net
+    env_file:
+      - .env
+
+volumes:
+  db_data:
+
+networks:
+  ocean-net:
