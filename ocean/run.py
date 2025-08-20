@@ -8,4 +8,4 @@ if __name__ == '__main__':
         logger.fatal('Exiting program...')
         exit(1)
     logger.info('Starting application')
-    app.run()
+    app.run(host='0.0.0.0', port=5000)

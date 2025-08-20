@@ -72,6 +72,7 @@ def check_file_space():
 
 
 def create_app(config_class):
+    print("Creating app...")
     # Configure the global configuration class which can be accessed by all other modules
     global CONFIG
     CONFIG = config_class
@@ -82,130 +83,52 @@ def create_app(config_class):
     # Start flask app
     app = Flask(__name__)
 
-    # Set up a custom login manager for the web app
-    login_manager = LoginManager()
-    login_manager.init_app(app)
 
-    app.config.from_object(config_class)
-
-    # Set up user loader for the login manager
-    @login_manager.user_loader
-    def load_user(user_id):
-        return models.User.query.get(user_id) 
-
-    @app.before_request
-    def sso_login():
-        # Api access does not require SSO authentication
-        if request.path.startswith(CONFIG.URL_PREFIX + '/api'):
-            return
-        # Swaggerui is used by flask_restx for API documentation
-        if request.path.startswith(CONFIG.URL_PREFIX + '/swaggerui'):
-            return
-
-        # Retrieve email from environment
-        email = request.environ.get('HTTP_EPPN')
-        override = os.environ.get('OCEAN_SSO_OVERRIDE', '').lower()
-        if override != None and override != '':
-            email = override
-            
-        # Skip if user is already authenticated
-        if current_user.is_authenticated and current_user.login_id == email:
-            return
-            
-        if email:
-            # Query for the user based on email
-            user = models.User.query.filter_by(login_id=email.lower()).first()
-            g.user = user 
-            if user:
-                if not user.is_active:
-                   return "Your account has been deactivated. Please contact your administrator.", 403
-                days_until_expiry = (user.expiry - datetime.now().date()).days
-                if user.expiry < datetime.now().date():
-                    return "Your account has expired. Please contact your administrator.", 403
-                elif days_until_expiry <= 30:
-                    flash(f'Your account will be deactivated in {days_until_expiry} days. Please contact your administrator to prevent this.', 'warning')
-                # If user exists in the database, log them in
-                login_user(user)
-            else:
-                # Redirect or handle users who are not in the database
-                return f"User '{email}' not given access permissions. Please contact your administrator.", 403
-        else:
-            return "Unable to access single-sign-on service", 403 # Redirect if no SSO email is found
-        
     @app.route('/logout')
     def logout():
         logout_user()
         client_session.clear()
         return redirect(url_for('general.home'))
 
-    # create_database_script = ''
-    # if config_class.__name__ == 'TestingConfig':
-    #     create_database_script = 'create_database.sql'
-    # else:
-    #     create_database_script = 'script_run.sql'
 
-    from .routes.api import blueprint as api
-    db = database_handler.init_db(app)
-    database_handler.init_api(api)
-    filespace_handler.clean_directory(database_handler.get_file_space_path())
-
-    # Register blueprints and error handlers
-    app.register_blueprint(routes_general, url_prefix=CONFIG.URL_PREFIX)
-    app.register_blueprint(routes_admin, url_prefix=CONFIG.URL_PREFIX)
-    app.register_blueprint(routes_encounter, url_prefix=CONFIG.URL_PREFIX)
-    app.register_blueprint(routes_recording, url_prefix=CONFIG.URL_PREFIX)
-    app.register_blueprint(routes_selection, url_prefix=CONFIG.URL_PREFIX)
-    app.register_blueprint(routes_datahub, url_prefix=CONFIG.URL_PREFIX)
-    app.register_blueprint(routes_healthcentre, url_prefix=CONFIG.URL_PREFIX)
-    app.register_blueprint(routes_filespace, url_prefix=CONFIG.URL_PREFIX)
-    
-    app.register_blueprint(api, url_prefix=CONFIG.URL_PREFIX + "/api/")
-
-    try:
-        logger.info(check_file_space())
-    except exception_handler.CriticalException as e:
-        logger.fatal(str(e))
-        return
-
-    env = Environment()
-    env.globals['getattr'] = getattr
-
-
-    @app.before_request
-    def before_request():
-        """
-        Store the logged in user information in each request.
-        """
-        g.user = current_user 
-
-    
     @app.errorhandler(403)
     def forbidden(e):
         logger.warning('Route forbidden: ' + str(e))
         return render_template('unauthorized.html', user=current_user), 403
 
     import MySQLdb
-    @app.errorhandler(MySQLdb.OperationalError)
-    def handle_mysql_error(ex):
-        logger.error(str(ex))
-        return "Database not functional."
-    
+    # @app.errorhandler(MySQLdb.OperationalError)
+    # def handle_mysql_error(ex):
+    #     logger.error(str(ex))
+    #     return "Database not functional."
+    #
+    #
+    # @app.errorhandler(exception_handler.DoesNotExistError)
+    # def handle_dne_error(ex):
+    #     logger.warning(str(ex))
+    #     return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
+    #
+    #
+    # @app.errorhandler(exception_handler.CriticalException)
+    # def handle_critical_error(ex):
+    #     logger.error(ex)
+    #     return render_template('general-error.html', error_code=404, error_message="Internal server error", current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
+    #
+    # @app.errorhandler(Exception)
+    # def handle_error(ex):
+    #     exception_handler.handle_exception(exception=ex)
+    #     return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link='/home', goback_message="Home")
+    #
+    # @app.errorhandler(MySQLdb.OperationalError)
+    # def handle_error(ex):
+    #     exception_handler.handle_exception(exception=ex)
+    #     return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link='/home', goback_message="Home")
+    #
+    # @app.errorhandler(exception_handler.CriticalException)
+    # def handle_error(ex):
+    #     exception_handler.handle_exception(exception=ex)
+    #     return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link='/home', goback_message="Home")
 
-    @app.errorhandler(exception_handler.DoesNotExistError)
-    def handle_dne_error(ex):
-        logger.warning(str(ex))
-        return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
-
-
-    @app.errorhandler(exception_handler.CriticalException)
-    def handle_critical_error(ex):
-        logger.error(ex)
-        return render_template('general-error.html', error_code=404, error_message="Internal server error", current_timestamp_utc=datetime.utcnow(), goback_link=request.referrer, goback_message="Go back")
-
-    @app.errorhandler(Exception)
-    def handle_error(ex):
-        exception_handler.handle_exception(exception=ex)
-        return render_template('general-error.html', error_code=404, error_message=str(ex), current_timestamp_utc=datetime.utcnow(), goback_link='/home', goback_message="Home")
 
     # 404 Error Handler
     @app.errorhandler(404)
@@ -243,9 +166,105 @@ def create_app(config_class):
         logger.critical('Gateway timeout: ' + str(e))
         return "Gateway timeout. Please try again later.", 504
 
+    # Custom Exception Handlers
+    @app.errorhandler(Exception)
+    def handle_custom_errors(ex):
+        try:
+            error_message = exception_handler.handle_exception(exception=ex, show_flash=False)
+            return error_message
+        except Exception as e:
+            return str(e)
+
+
+    # Set up a custom login manager for the web app
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+
+    app.config.from_object(config_class)
+
+    # Set up user loader for the login manager
+    @login_manager.user_loader
+    def load_user(user_id):
+        return models.User.query.get(user_id)
+
+    @app.before_request
+    def sso_login():
+        # Api access does not require SSO authentication
+        if request.path.startswith(CONFIG.URL_PREFIX + '/api'):
+            return
+        # Swaggerui is used by flask_restx for API documentation
+        if request.path.startswith(CONFIG.URL_PREFIX + '/swaggerui'):
+            return
+
+        # Retrieve email from environment
+        email = request.environ.get('HTTP_EPPN')
+        override = os.environ.get('OCEAN_SSO_OVERRIDE', '').lower()
+        if override != None and override != '':
+            email = override
+
+        # Skip if user is already authenticated
+        if current_user.is_authenticated and current_user.login_id == email:
+            return
+
+        if email:
+            # Query for the user based on email
+            user = models.User.query.filter_by(login_id=email.lower()).first()
+            g.user = user
+            if user:
+                if not user.is_active:
+                    return "Your account has been deactivated. Please contact your administrator.", 403
+                days_until_expiry = (user.expiry - datetime.now().date()).days
+                if user.expiry < datetime.now().date():
+                    return "Your account has expired. Please contact your administrator.", 403
+                elif days_until_expiry <= 30:
+                    flash(
+                        f'Your account will be deactivated in {days_until_expiry} days. Please contact your administrator to prevent this.',
+                        'warning')
+                # If user exists in the database, log them in
+                login_user(user)
+            else:
+                # Redirect or handle users who are not in the database
+                return f"User '{email}' not given access permissions. Please contact your administrator.", 403
+        else:
+            return "Unable to access single-sign-on service", 403  # Redirect if no SSO email is found
+
+    # create_database_script = ''
+    # if config_class.__name__ == 'TestingConfig':
+    #     create_database_script = 'create_database.sql'
+    # else:
+    #     create_database_script = 'script_run.sql'
+
+    # check_file_space()
+    from .routes.api import blueprint as api
+    db = database_handler.init_db(app)
+    database_handler.init_api(api)
+    # filespace_handler.clean_directory(database_handler.get_file_space_path())
+
+    # Register blueprints and error handlers
+    app.register_blueprint(routes_general, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_admin, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_encounter, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_recording, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_selection, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_datahub, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_healthcentre, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_filespace, url_prefix=CONFIG.URL_PREFIX)
+    
+    app.register_blueprint(api, url_prefix=CONFIG.URL_PREFIX + "/api/")
+
+    env = Environment()
+    env.globals['getattr'] = getattr
+
+
+    @app.before_request
+    def before_request():
+        """
+        Store the logged in user information in each request.
+        """
+        g.user = current_user 
+
+
     return app
-
-
 
 def get_snapshot_date_from_session():
     """

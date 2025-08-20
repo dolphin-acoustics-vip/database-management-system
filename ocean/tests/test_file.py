@@ -20,13 +20,30 @@ def trash_path(relative_directory = None, relative_filename = None):
 def data_path(relative_directory = None, relative_filename = None):
     return os.path.join(FILESPACE, "data", relative_directory, relative_filename)
 
+
 @fixture
 def filespace():
-    if os.path.exists(FILESPACE): shutil.rmtree(FILESPACE)
-    os.makedirs(FILESPACE)
+    def handle_remove_readonly(func, path, exc_info):
+        import stat
+        for root, dirs, files in os.walk(path):
+            for dir in dirs:
+                os.chmod(os.path.join(root, dir), stat.S_IWUSR)
+            for file in files:
+                os.chmod(os.path.join(root, file), stat.S_IWUSR)
+        # Try the operation again
+        func(path)
+
+    if os.path.exists(FILESPACE):
+        # Try to remove read-only files and handle permission errors
+        shutil.rmtree(FILESPACE, onerror=handle_remove_readonly)
+
+    os.makedirs(FILESPACE, exist_ok=True)
     database_handler.FILE_SPACE_PATH = FILESPACE
     yield FILESPACE
-    os.path.exists(FILESPACE)
+
+    # Cleanup after test
+    if os.path.exists(FILESPACE):
+        shutil.rmtree(FILESPACE, onerror=handle_remove_readonly)
 
 @fixture
 def text_file():

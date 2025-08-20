@@ -16,12 +16,14 @@
 # along with OCEAN.  If not, see <https://www.gnu.org/licenses/>.
 
 # Standard library imports
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import time
 
 # Third party libraries
 from functools import wraps
 import sqlalchemy
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
@@ -54,6 +56,9 @@ def get_file_space() -> str:
 
     :return: The path to the file space
     """
+    print("GET FILE SPACE", FILE_SPACE_PATH, os.path.exists(FILE_SPACE_PATH))
+    if not os.path.exists(FILE_SPACE_PATH):
+        raise exception_handler.FilespaceError("File space not found. This could be an issue with mounting the volume.")
     return FILE_SPACE_PATH
 
 def get_deleted_space():
@@ -135,6 +140,52 @@ engine = None
 
 # some parts of the program still call the old variable Session()
 
+def db_retry(max_retries=3, initial_delay=1, backoff=2):
+    """
+    A decorator that provides retry logic for database operations.
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        initial_delay: Initial delay between retries in seconds
+        backoff: Multiplier for the delay between retries
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            delay = initial_delay
+            
+            while retries <= max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except (OperationalError, SQLAlchemyError) as e:
+                    if '2006' in str(e) or '2013' in str(e) or 'Lost connection' in str(e):
+                        if retries == max_retries:
+                            logger.error(f"Max retries ({max_retries}) reached. Last error: {str(e)}")
+                            raise
+                        
+                        # Log the retry attempt
+                        logger.warning(f"Database connection lost. Retrying in {delay} seconds... (Attempt {retries + 1}/{max_retries})")
+                        
+                        # Wait before retrying
+                        time.sleep(delay)
+                        delay *= backoff
+                        retries += 1
+                        
+                        # Try to refresh the session
+                        try:
+                            session = get_session()
+                            session.rollback()
+                            session.close()
+                        except:
+                            pass
+                    else:
+                        # Re-raise if it's not a connection error
+                        raise
+            return None
+        return wrapper
+    return decorator
+
 def get_session():
     """
     A function that returns an instance of the SQLAlchemy session
@@ -145,6 +196,17 @@ def get_session():
     """
     global session_instance
     return session_instance()
+    
+    # # Check if we have a valid session
+    # try:
+    #     session = session_instance()
+    #     # Test the connection
+    #     session.execute(sqlalchemy.text("SELECT 1"))
+    #     return session
+    # except (OperationalError, SQLAlchemyError) as e:
+    #     logger.warning(f"Session validation failed: {str(e)}. Creating a new session.")
+    #     session_instance.remove()
+    #     return session_instance()
 
 Session = get_session
 
@@ -162,13 +224,13 @@ def init_db(app: Flask, run_script: str=None):
     """
 
     global FILE_SPACE_PATH
-    # Define the file space folder and get the Google API key from a file
+    # # Define the file space folder and get the Google API key from a file
     FILE_SPACE_PATH = os.environ.get('OCEAN_FILESPACE_PATH')
     if FILE_SPACE_PATH == None or FILE_SPACE_PATH == "":
         logger.critical("The system variable 'OCEAN_FILESPACE_PATH' not found.")
     if not os.path.exists(FILE_SPACE_PATH):
         logger.critical(f"The system variable 'OCEAN_FILESPACE_PATH' found but the path '{FILE_SPACE_PATH}' does not exist.")
-
+    print("INIT DB", FILE_SPACE_PATH, os.path.exists(FILE_SPACE_PATH))
     db.init_app(app)
 
     jwt = JWTManager()

@@ -1,4 +1,3 @@
-/*!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.11.8-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: ocean
@@ -184,6 +183,12 @@ CREATE TABLE `role` (
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+INSERT INTO `role` (id, name) VALUES
+  (1, 'View Only'),
+  (2, 'General User'),
+  (3, 'Database Administrator'),
+  (4, 'System Administrator');
 
 --
 -- Table structure for table `selection`

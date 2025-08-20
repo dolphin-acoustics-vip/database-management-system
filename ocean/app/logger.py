@@ -21,7 +21,6 @@ from datetime import datetime
 
 # Third-party imports
 from flask import send_file
-from flask_login import login_user,login_required, current_user, login_manager 
 import logging
 from logging.handlers import RotatingFileHandler
 import pytz
@@ -63,11 +62,6 @@ tz = pytz.timezone('UTC')
 class TimezoneFormatter(logging.Formatter):
 
     def format(self, record):
-        if current_user and current_user.is_authenticated and not hasattr(record, 'user_id'):
-            record.user_id = '- (user: ' + current_user.id + ')'
-        elif not current_user and not hasattr(record, 'user_id'):
-            record.user_id = ' (logged out)'
-        
         return super().format(record)
 
     def formatTime(self, record, datefmt):
@@ -94,10 +88,10 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.ERROR)
 
 # Create a formatter and set it for the handlers
-formatter = TimezoneFormatter('%(asctime)s - %(name)s - %(levelname)s %(user_id)s - %(message)s')
+formatter = TimezoneFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 
-# Add the handlers to the logger
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
+if not logger.handlers:
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)

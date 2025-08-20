@@ -66,6 +66,10 @@ class ValidationError(WarningException):
     def __init__(self, field:str, required:str, value):
         super().__init__(f"Field '{str(field)}' is not of type {str(required)} (given '{str(value)}').")
 
+class FilespaceError(CriticalException):
+    def __init__(self, message:str):
+        super().__init__(message)
+
 def _parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
     """Process an SQLAlchemy exception (a subclass of `sqlalchemy.exc.SQLAlchemyError`).
     In most cases SQLAlchemy exceptions are thrown because of unexpected issues with the
@@ -83,6 +87,8 @@ def _parse_sqlalchemy_exc(exception: exc.SQLAlchemyError) -> str:
         the exception can be handled by a session rollback and the string should be shown to the user to
         inform them what happened.
     """
+    print("LOG EXCEPTION", exception, type(exception))
+    print(type(exception))
     exc_msg = "" # Exception message (initially empty)
     if isinstance(exception, exc.NotSupportedError):
         # Wraps a DB-API NotSupportedError.
@@ -193,19 +199,17 @@ def _parse_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | N
     """
     return_string = (prefix + ": ") if prefix else ""
     if isinstance(exception, exc.SQLAlchemyError):
-        return return_string + _parse_sqlalchemy_exc(exception)
+        return_string += _parse_sqlalchemy_exc(exception)
     elif isinstance(exception, ValidationError):
         return return_string + str(exception)
     elif isinstance(exception, WarningException):
         return return_string + str(exception)
-    elif isinstance(exception, CriticalException):
-        logger.exception(str(exception))
-        raise CriticalException(str(exception))
     elif isinstance(exception, DoesNotExistError):
-        raise exception
+        return return_string + str(exception)
     else:
         logger.exception(str(exception))
-        raise CriticalException("An unexpected error ocurred. It has been logged. Please notify your administrator and try again later.")
+        raise CriticalException(return_string + ("An unexpected error ocurred. It has been logged. Please notify your administrator and try again later."))
+    return return_string
 
 def handle_exception(exception: exc.SQLAlchemyError | Exception, prefix: str | None = None, session:orm.Session=None, show_flash:bool=True) -> str:
     """Parse an exception and rollback a SQLAlchemy session. The way in which an exception is parsed
