@@ -158,7 +158,7 @@ def process_selection():
     database. If no selection number has been given, one is automatically extracted from
     the filename of the contour file being processed. 
 
-    The selection number is extracted using 'sel_(\\d+)' in the filename of the contour file.
+    The selection number is extracted using 'sel[-_](\\d+)' in the filename of the contour file.
 
     :param recording_id: the id of the recording
     :type recording_id: str (HTTP argument)
@@ -184,7 +184,7 @@ def process_selection():
         selection_number = None
         
     # Extract the selection number from the filename using regular expression
-    match = re.search(r'sel_(\d+)', filename)
+    match = re.search(r'sel[-_](\d+)', filename)
     if match:
         if selection_number == None:
             selection_number = match.group(1).lstrip('0')  # Remove leading zeros
