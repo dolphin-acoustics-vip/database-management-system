@@ -7,6 +7,7 @@ from ..app import exception_handler
 from ..app import utils
 from . import common
 import uuid
+import re
 
 EMPTY_CHARACTERS = common.EMPTY_CHARACTERS
 
@@ -275,6 +276,18 @@ def test_unique_name(selection: models.Selection):
     selection.selection_number = 1
     selection.recording = recording
     assert selection.unique_name == f"{recording.unique_name}, Selection: 1"
+
+def test_selection_regex_hyphen():
+    filename = "recording_sel-2_data.csv"
+    match = re.search(r'sel[-_](\d+)', filename)
+    assert match is not None
+    assert match.group(1) == "2"
+
+def test_selection_regex_underscore():
+    filename = "recording_sel_3_data.csv"
+    match = re.search(r'sel[-_](\d+)', filename)
+    assert match is not None
+    assert match.group(1) == "3"
 
 # TODO: add test9s) for:
 # get_contour_file_handler
