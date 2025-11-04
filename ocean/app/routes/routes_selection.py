@@ -104,20 +104,20 @@ def process_contour():
         valid = False
     with database_handler.get_session() as session:
         # Extract the selection number from the filename using regular expression
-        match = re.search(r'sel[-_](\d+)', filename)
-        if match:
+        extracted_selection_number = utils.extract_selection_number(filename)
+        if extracted_selection_number:
             # If no selection number is given, use the one extracted from the filename (if possible)
-            if selection_number == None or selection_number.strip() == "":
-                selection_number = match.group(1).lstrip('0')  # Remove leading zeros
-                messages.append("Selection number: " + selection_number + ".")
+            if selection_number is None or selection_number.strip() == "":
+                selection_number = extracted_selection_number
+                messages.append("Selection numbers: " + selection_number + ".")
                 selection = session.query(models.Selection).filter_by(recording_id=recording_id).filter_by(selection_number=selection_number).first()
             else:
-                if selection_number == match.group(1).lstrip('0'):
+                if selection_number == extracted_selection_number:
                     messages.append("Selection number: " + selection_number + ".")
                 else:
                     messages.append("Selection number: " + selection_number + ".")
                     messages.append("<span style='color: orange;'>Warning: selection number mismatch.</span>")
-        elif not match and selection_number == None:
+        elif not extracted_selection_number and selection_number is None:
             messages.append("<span style='color: red;'>Error: invalid selection number.</span>")
             valid=False
         else:
@@ -184,25 +184,25 @@ def process_selection():
         selection_number = None
         
     # Extract the selection number from the filename using regular expression
-    match = re.search(r'sel[-_](\d+)', filename)
-    if match:
-        if selection_number == None:
-            selection_number = match.group(1).lstrip('0')  # Remove leading zeros
+    extracted_selection_number = utils.extract_selection_number(filename)
+    if extracted_selection_number is not None:
+        if selection_number is None:
+            selection_number = extracted_selection_number
             messages.append("Selection number: " + selection_number + ".")
         else:
-            if selection_number == match.group(1).lstrip('0'):
+            if selection_number == extracted_selection_number:
                 messages.append("Selection number: " + selection_number + ".")
             else:
                 messages.append("Selection number: " + selection_number + ".")
                 messages.append("<span style='color: orange;'>Warning: selection number mismatch.</span>")
-    elif not match and selection_number == None:
+    elif not extracted_selection_number and selection_number is None:
         messages.append("<span style='color: red;'>Error: invalid selection number.</span>")
         valid=False
     else:
         messages.append("Selection number: " + selection_number + ".")
     
     # Check if selection number is an integer
-    if selection_number != None and selection_number != "":
+    if selection_number is not None and selection_number != "":
         try:
             int(selection_number)
         except Exception:
@@ -211,7 +211,7 @@ def process_selection():
     
     # Check if selection number already exists
     with database_handler.get_session() as session:
-        if selection_number != None:
+        if selection_number is not None:
             selection_number_exists = session.query(models.Selection).filter(database_handler.db.text("selection_number = :selection_number and recording_id = :recording_id")).params(selection_number=selection_number, recording_id=recording_id).first()
             if selection_number_exists:
                 if selection_number_exists.selection_file_id is not None:

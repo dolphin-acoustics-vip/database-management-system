@@ -18,7 +18,7 @@
 # Standard library imports
 import hashlib
 import io
-import uuid, datetime, tempfile
+import uuid, datetime, tempfile, re
 from werkzeug.utils import secure_filename
 from flask import send_file
 
@@ -37,6 +37,16 @@ def parse_filename(filename: str):
     """
     name, extension = os.path.splitext(filename)
     return name, extension
+
+def extract_selection_number(source: str) -> str | None:
+    """
+    Parse a string `source` for the first entry that matches sel[-_](\\d+)'.
+    Return the selection number as a convertable string if found, None otherwise. Note
+    that this function will automatically remove leading zeros.
+    """
+    match = re.search(r'sel[-_](\d+)', source)
+    if match is None: return None
+    return match.group(1).lstrip('0')
 
 def stream_zip_file(generator, zip_filename):
     """
