@@ -443,11 +443,16 @@ def test_parse_form_invalid(form, schema):
         utils.parse_form(form, schema)
 
 @pytest.mark.parametrize("source, selnum", [
-    ("recording_sel-2_data.csv", "2"),
+    ("recording_sel_2_data.csv", "2"),
     ("recording_sel_3_data.csv", "3"),
     ("recording_sel_03_data.csv", "3"),
     ("recording_sel_0020_data.csv", "20"),
     ("recording_sel_data.csv", None),
+    ("recording_sel-2_data.csv", "2"),
+    ("recording_sel-3_data.csv", "3"),
+    ("recording_sel-03_data.csv", "3"),
+    ("recording_sel-0020_data.csv", "20"),
+    ("recording_sel-data.csv", None),
 ])
 def test_selection_regex_hyphen(source, selnum):
     extracted_selnum = utils.extract_selection_number(source)
