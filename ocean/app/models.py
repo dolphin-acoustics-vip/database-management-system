@@ -727,6 +727,7 @@ class Selection(imodels.ISelection):
         contour_file_handler = self.get_contour_file_handler()
         if contour_file_handler:
             mat_data = contour_file_handler.get_ctr_data()
+            mat_data["id"] = self.id
             if mat_data:
                 with io.BytesIO() as f:
                     scipy.io.savemat(f, mat_data)
