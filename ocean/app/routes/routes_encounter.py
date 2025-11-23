@@ -149,5 +149,5 @@ def download_ctr_files(encounter_id):
     """Download CTR files for all recordings in an encounter."""
     with database_handler.get_session() as session:
         encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
-        zip_filename = f"{encounter.species.scientific_name}-{encounter.encounter_name}-{encounter.location}_ctr_files.zip"
+        zip_filename = f"{encounter.species.scientific_name.replace(' ', '_')}-{encounter.encounter_name}-{encounter.location}_ctr_files.zip"
         return utils.stream_zip_file(encounter.generate_ctr_files, zip_filename)
