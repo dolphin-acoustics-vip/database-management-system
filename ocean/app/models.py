@@ -917,13 +917,13 @@ class Selection(imodels.ISelection):
 
 
         if isinstance(annotation, str):
-            if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M" or annotation.upper() == "bp":
+            if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M" or annotation.upper() == "BP":
                 self.annotation = annotation.upper()
             elif annotation.upper().startswith("Y"):
                 self.annotation = "Y"
             elif annotation.upper().startswith("N"):
                 self.annotation = "N"
-            elif annotation.upper().startswith("bp"):
+            elif annotation.upper().startswith("BP"):
                 self.annotation = "bp"   
             else:
                 self.annotation = "M"
