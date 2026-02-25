@@ -151,3 +151,16 @@ def download_ctr_files(encounter_id):
         encounter = session.query(models.Encounter).filter_by(id=encounter_id).first()
         zip_filename = f"{encounter.species.scientific_name.replace(' ', '_')}-{encounter.encounter_name}-{encounter.location}_ctr_files.zip"
         return utils.stream_zip_file(encounter.generate_ctr_files, zip_filename)
+
+@routes_encounter.route('/encounter/<encounter_id>/download-contour-files', methods=['GET'])
+@login_required
+def download_contour_files(encounter_id):
+    """Download Contour Files as CSV files for all selections in an encounter."""
+    with database_handler.get_session() as session:
+        selections = database_handler.create_system_time_request(session, models.Selection, {"encounter_id":encounter_id})
+        encounter = database_handler.create_system_time_request(session, models.Encounter, {"id":encounter_id}, one_result=True)
+        contour_files = [selection.contour_file for selection in selections if selection.contour_file is not None]
+        file_names = [selection.contour_file_name for selection in selections if selection.contour_file is not None]
+        zip_filename = f"{encounter.species.scientific_name.replace(' ', '_')}-{encounter.encounter_name}-{encounter.location}_contour_files.zip"
+        response = utils.download_files(contour_files, file_names, zip_filename)
+        return response
