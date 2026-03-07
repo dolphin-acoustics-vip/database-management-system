@@ -170,6 +170,12 @@ class Encounter(imodels.IEncounter):
                 if selection.contour_file is not None:
                     yield selection.generate_ctr_binary(), f"{selection.ctr_file_name}.ctr"    
 
+    def generate_contour_files(self):
+        for recording in self.recordings:
+            for selection in recording.selections:
+                if selection.contour_file is not None:
+                    yield selection.contour_file, selection.contour_file_name
+
 
 class File(imodels.IFile):
     
