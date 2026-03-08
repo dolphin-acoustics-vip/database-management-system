@@ -282,7 +282,7 @@ The `delete()` method in `Encounter`, `Recording`, and `Selection` are responsib
 > ⚠️ **Warning:** cascading delete is dangerous, and where it is implemented the user should always be warned before execution.
 
 ## Testing
-Testing is found in the [tests](/tests) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework. Tests can be run with `python3 -m pytest tests` from the root directory.
+Testing is found in the [tests](/tests) folder. Python files exist there within the [pytest](https://docs.pytest.org/en/stable/) framework. Tests can be run with `python3 -m pytest` from the root directory.
 
 The test environment is automatically created, and is effectively an instance of the Flask application. This means all setup instructions **MUST** be followed before running tests.
 
