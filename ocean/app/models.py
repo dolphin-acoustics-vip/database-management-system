@@ -267,7 +267,9 @@ class File(imodels.IFile):
     def insert(self, file, directory: str, filename: str, original_filename: str = None, extension: str = None):
         if isinstance(file, str):  # If `file` is a file path string
             if not os.path.exists(file): raise exception_handler.CriticalException("File with given path does not exist.")
-            self.filename, self.extension = utils.parse_filename(os.path.basename(file))
+            f, e = utils.parse_filename(os.path.basename(file))
+            self.extension = e
+            self.original_filename = original_filename if original_filename else f
             file_stream = open(file, 'rb')  # Open the file stream
         
         elif hasattr(file, 'stream'):

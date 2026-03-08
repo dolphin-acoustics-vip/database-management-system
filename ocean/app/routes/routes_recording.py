@@ -137,7 +137,7 @@ def selection_table_delete(recording_id: str):
 def recording_file_insert_helper(recording, transaction, form):
     if 'upload_recording_file_id' in form and 'upload_recording_file_name' in form and form['upload_recording_file_id'] and form['upload_recording_file_name']:
         recording_file = transaction.create_tracked_file()
-        recording_file.insert(file=filespace_handler.get_complete_temporary_file(form['upload_recording_file_id'], form['upload_recording_file_name']), directory=recording.relative_directory, filename=recording.recording_file_name)
+        recording_file.insert(file=filespace_handler.get_complete_temporary_file(form['upload_recording_file_id'], form['upload_recording_file_name']), directory=recording.relative_directory, filename=recording.recording_file_name, original_filename=form['upload_recording_file_name'])
         recording.recording_file_insert(recording_file)
 
 @routes_recording.route('/encounter/<encounter_id>/recording/insert', methods=['POST'])
