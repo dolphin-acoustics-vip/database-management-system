@@ -1062,10 +1062,9 @@ class ISelection(AbstractModelBase, Serialisable, TableOperations, Cascading, Fi
 
     @validates("annotation")
     def _validate_annotation(self, key, value):
-        def prepare(string):
-            if string is None: return None
-            return str(string).upper()
-        return utils.validate_enum(value=value, field=key, enum=["Y","M","N"], prepare=prepare, allow_none=True)
+        if value is None or str(value).strip() == "":
+            return None
+        return str(value)
 
     @validates('deactivated')
     def _validate_bool(self, key, value):
