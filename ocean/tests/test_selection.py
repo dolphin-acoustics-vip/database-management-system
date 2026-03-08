@@ -137,11 +137,17 @@ def test_set_contour_statistics_and_selection_table(selection: models.Selection,
 
 @pytest.mark.parametrize("value, expected", [
     ("Y", "Y"),
-    ("y", "Y"),
+    ("y", "y"),
     ("M", "M"),
-    ("m", "M"),
+    ("m", "m"),
     ("N", "N"),
-    ("n", "N"),
+    ("n", "n"),
+    ("Y - not valid", "Y - not valid"),
+    ("not-valid", "not-valid"),
+    ("YY", "YY"),
+    ("NN", "NN"),
+    ("MM", "MM"),
+    ("some arbitrary string", "some arbitrary string"),
     (None, None),
     (" ", None),
     ("\n\t", None),
@@ -149,17 +155,6 @@ def test_set_contour_statistics_and_selection_table(selection: models.Selection,
 def test_annotation(selection: models.Selection, value, expected):
     selection.annotation = value
     assert selection.annotation == expected
-
-@pytest.mark.parametrize("value", [
-    "Y - not valid",
-    "not-valid",
-    "YY",
-    "NN",
-    "MM",
-])
-def test_annotation_invalid(selection: models.Selection, value):
-    with pytest.raises(exception_handler.ValidationError):
-        setattr(selection, "annotation", value)
 
 def test_clear_contour_statistics_attrs(selection: models.Selection):
     populate_contour_statistics(selection)
