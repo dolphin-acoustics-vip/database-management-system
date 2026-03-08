@@ -448,10 +448,10 @@ class Recording(imodels.IRecording):
         
         self.recording_file = file
 
-    def selection_table_file_insert(self, file):
+    def selection_table_file_insert(self, file, coerce_annotations=True):
         if self.selection_table_file: raise exception_handler.CriticalException("Recording already has a selection table file")
         self.selection_table_file = file
-        new_selections = self.selection_table_apply()
+        new_selections = self.selection_table_apply(coerce_annotations=coerce_annotations)
         self.update_selection_traced_status()
         return new_selections
 
@@ -564,7 +564,7 @@ class Recording(imodels.IRecording):
                 selection_table_file.update(self.relative_directory, self.selection_table_file_name)
                 selection_table_file_session.commit()
 
-    def _selection_table_apply(self, dataframe):
+    def _selection_table_apply(self, dataframe, coerce_annotations=True):
         """Helper method to `selection_table_apply`.
 
         Args:
@@ -588,15 +588,15 @@ class Recording(imodels.IRecording):
         for selection_number in selection_table_selection_numbers:
             if selection_number not in selection_ids_dict:
                 new_selection = Selection(recording=self, selection_number=selection_number)
-                new_selection.upload_selection_table_data(dataframe.loc[dataframe['Selection'] == selection_number, :])
+                new_selection.upload_selection_table_data(dataframe.loc[dataframe['Selection'] == selection_number, :], coerce_annotations=coerce_annotations)
                 new_selections.append(new_selection)
             else:
-                selection_ids_dict[selection_number].upload_selection_table_data(dataframe.loc[dataframe['Selection'] == selection_number, :])
+                selection_ids_dict[selection_number].upload_selection_table_data(dataframe.loc[dataframe['Selection'] == selection_number, :], coerce_annotations=coerce_annotations)
         return new_selections
 
-    def selection_table_apply(self):
+    def selection_table_apply(self, coerce_annotations=True):
         selection_table_df = utils.extract_to_dataframe(path=self.selection_table_file._path_with_root)
-        return self._selection_table_apply(selection_table_df)
+        return self._selection_table_apply(selection_table_df, coerce_annotations=coerce_annotations)
     
     def selection_table_data_delete(self):
         for selection in self.selections:
@@ -888,7 +888,7 @@ class Selection(imodels.ISelection):
             contour_file_handler = self.get_contour_file_handler()
             contour_file_handler.calculate_statistics(self)
 
-    def upload_selection_table_data(self, st_df):
+    def upload_selection_table_data(self, st_df, coerce_annotations=True):
         missing_columns = []
 
         for required_column in ('Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation'):
@@ -916,19 +916,20 @@ class Selection(imodels.ISelection):
         annotation = st_df.iloc[0, annotation_index]
 
 
-        if isinstance(annotation, str):
-            if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M" or annotation.upper() == "BP":
-                self.annotation = annotation.upper()
-            elif annotation.upper().startswith("Y"):
-                self.annotation = "Y"
-            elif annotation.upper().startswith("N"):
-                self.annotation = "N"
-            elif annotation.upper().startswith("BP"):
-                self.annotation = "bp"   
+        if coerce_annotations:
+            if isinstance(annotation, str):
+                if annotation.upper() == "Y" or annotation.upper() == "N" or annotation.upper() == "M":
+                    self.annotation = annotation.upper()
+                elif annotation.upper().startswith("Y"):
+                    self.annotation = "Y"
+                elif annotation.upper().startswith("N"):
+                    self.annotation = "N"
+                else:
+                    self.annotation = "M"
             else:
                 self.annotation = "M"
         else:
-            self.annotation = "M"
+            self.annotation = annotation if isinstance(annotation, str) and annotation.strip() != "" else None
 
         # Check if the selection number matches the expected value
         if selection_number != self.selection_number:

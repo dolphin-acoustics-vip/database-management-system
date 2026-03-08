@@ -70,7 +70,8 @@ def selection_table_refresh(recording_id):
         with transaction_handler.atomic() as session:
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             check_editable(recording)
-            new_selections = recording.selection_table_apply()
+            coerce_annotations = request.form.get('coerce_annotations') != 'false'
+            new_selections = recording.selection_table_apply(coerce_annotations=coerce_annotations)
             for new_selection in new_selections:
                 session.add(new_selection)
             recording.update_selection_traced_status()
@@ -92,7 +93,8 @@ def selection_table_insert(recording_id):
             recording = session.query(models.Recording).filter_by(id=recording_id).first()
             if 'selection-table-file' in request.files and request.files['selection-table-file'].filename != '':
                 selection_table_file.insert(request.files['selection-table-file'], recording.relative_directory, recording.selection_table_file_name)
-                new_selections = recording.selection_table_file_insert(selection_table_file)
+                coerce_annotations = request.form.get('coerce_annotations') != 'false'
+                new_selections = recording.selection_table_file_insert(selection_table_file, coerce_annotations=coerce_annotations)
                 for new_selection in new_selections:
                     session.add(new_selection)
             else: raise exception_handler.WarningException("The form did not send a selection table file.")

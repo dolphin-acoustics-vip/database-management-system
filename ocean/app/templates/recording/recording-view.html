@@ -269,6 +269,9 @@
                 </script>
 
                 <h3>Selection table</h3>
+                <label style="display:flex; align-items:center; gap:0.35rem; width:fit-content; white-space:nowrap;">
+                    <input type="checkbox" id="selection-table-coerce-annotations-checkbox"> Store annotations verbatim
+                </label>
                 {% if recording.selection_table_file %}
                 <div style="display:flex;">
                     <a class="button small"
@@ -300,6 +303,7 @@
                     });
                 </script>
                 <form id="refresh-selection-table-form" action="{{ url_for('recording.selection_table_refresh', recording_id=recording.id)}}" method="post" style="flex : 1;">
+                    <input type="hidden" name="coerce_annotations" id="refresh-coerce-annotations-input" value="true">
                     <button id="refresh-selection-table-button" class="gray small" style="margin-top:0.5rem; margin-left:0.25rem;" type="submit">Refresh Selection Table Values</button>
                 </form>
 
@@ -313,9 +317,10 @@
                 {% if not session['snapshot_date'] %}
                 {% if current_user.role_id in [1, 2, 3] %}
                 <form
-                id="upload-selection-table-form"    
+                id="upload-selection-table-form"
                 action="{{ url_for('recording.selection_table_insert', recording_id=recording.id)}}"
                     method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="coerce_annotations" id="upload-coerce-annotations-input" value="true">
                     <div style="display:flex;">
                         <input class="small" type="file" name="selection-table-file" id="selection-table-file" accept=".xlsx, .csv, .txt">
                         <button class="gray small" type="submit">Upload</button>
@@ -540,6 +545,14 @@
             // If not confirmed, prevent the default form submission
             event.preventDefault();
         }
+    });
+
+    document.getElementById('selection-table-coerce-annotations-checkbox').addEventListener('change', function () {
+        var value = this.checked ? 'false' : 'true';
+        var upload = document.getElementById('upload-coerce-annotations-input');
+        var refresh = document.getElementById('refresh-coerce-annotations-input');
+        if (upload) upload.value = value;
+        if (refresh) refresh.value = value;
     });
 
     $("#refresh-selection-table-form").submit(function (event) {
