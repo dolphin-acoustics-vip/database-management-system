@@ -27,8 +27,50 @@ class FileResource(Resource):
         args = file_resource_parser.parse_args()
         file_id = args.get('id')
         file = models.File.query.filter_by(id=file_id).first()
+        if (not file):
+            raise exception_handler.DoesNotExistError("File")
+
         return utils.download_file(file, mimetype='audio/wav')
 
+contour_csv_file_resource_parser = reqparse.RequestParser()
+contour_csv_file_resource_parser.add_argument('selection_id', type=str, required=True, location='args')
+@api.route('/file/contour/csv/')
+class ContourCSVFileResource(Resource):
+    method_decorators = [jwt_required()]
+
+    @api.expect(contour_csv_file_resource_parser)
+    @api.doc(security=SECURITY_KEY)
+    def get(self):
+        args = contour_csv_file_resource_parser.parse_args()
+        selection_id = args.get('selection_id')
+        selection = models.Selection.query.filter_by(id = selection_id).first()
+        if (not selection):
+            raise exception_handler.DoesNotExistError("Selection")
+
+        if (not selection.contour_file):
+            raise exception_handler.DoesNotExistError("Contour CSV File")
+
+        return utils.download_file(selection.contour_file, selection.contour_file_name, mimetype='text/csv')
+
+contour_ctr_file_resource_parser = reqparse.RequestParser()
+contour_ctr_file_resource_parser.add_argument('selection_id', type=str, required=True, location='args')
+@api.route('/file/contour/ctr/')
+class ContourCTRFileResource(Resource):
+    method_decorators = [jwt_required()]
+
+    @api.expect(contour_ctr_file_resource_parser)
+    @api.doc(security=SECURITY_KEY)
+    def get(self):
+        args = contour_ctr_file_resource_parser.parse_args()
+        selection_id = args.get('selection_id')
+        selection = models.Selection.query.filter_by(id = selection_id).first()
+        if (not selection):
+            raise exception_handler.DoesNotExistError("Selection")
+
+        if (not selection.ctr_file):
+            raise exception_handler.DoesNotExistError("Contour CTR File")
+
+        return utils.download_file(selection.ctr_file, selection.ctr_file_name, mimetype='text/x-ctr')
 
 spectrogram_resource_parser = reqparse.RequestParser()
 spectrogram_resource_parser.add_argument('selection_id', type=str, required=True, location='args')
