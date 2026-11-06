@@ -4,6 +4,8 @@ from flask import Response, request, jsonify
 from datetime import datetime
 from flask_jwt_extended import jwt_required, current_user
 from ... import models
+from ... import classifier
+from ... import database_handler
 from ... import exception_handler
 
 api = Namespace('metadata', 'All endpoints that serve data from OCEAN to the user' )
@@ -61,14 +63,20 @@ selection_parser.add_argument('id', type=str, help='Filter encounters by id', re
 class SelectionResource(Resource):
     method_decorators = [jwt_required()]
     @api.expect(selection_parser)
-    @api.doc(responses=responses, security=SECURITY_KEY)
+    @api.doc(responses=responses, security=SECURITY_KEY, description=(
+        "Each selection includes `rocca_classification`: the result of its encounter's ROCCA whistle classifier "
+        "(`classifier`, `classified_as`, the votes of each classifier `stages`, whether the result is `up_to_date` "
+        "with the selection's contour statistics, and any `error`). It is null if the encounter has no classifier "
+        "or the selection has not been classified."))
     def get(self):
         args = selection_parser.parse_args()
         filters = create_filter_kwargs(id=args.get('id'), selection_number=args.get('selection_number'), recording_id=args.get('recording_id'))
         page = args.get('page', 1)
         per_page = args.get('per_page', 50)
         selections = models.Selection.query.filter_by(**filters).paginate(page=page, per_page=per_page)
-        return [selection.to_dict() for selection in selections]
+        results = classifier.get_results(database_handler.db.session, [selection.id for selection in selections])
+        return [{**selection.to_dict(), 'rocca_classification': classifier.api_dict(results.get(selection.id), selection)}
+                for selection in selections]
 
 recording_resource_parser = reqparse.RequestParser()
 recording_resource_parser.add_argument('encounter_id', type=str, help='Filter recordings by encounter_id', required=False, location='args')

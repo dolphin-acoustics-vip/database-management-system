@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     default-libmysqlclient-dev \
     pkg-config \
+    default-jdk-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache

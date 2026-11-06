@@ -34,6 +34,7 @@ from .. import utils
 from .. import filespace_handler
 from .. import response_handler
 from .. import transaction_handler
+from .. import classifier
 from .routes_recording import check_editable
 
 routes_selection = Blueprint('selection', __name__)
@@ -51,8 +52,10 @@ def calculate_contour_statistics(selection_id):
             check_editable(recording)
             selection.ctr_file_generate(transaction.create_tracked_file())
             selection.contour_statistics_calculate()
+            selection_id = selection.id
             flash(f"Contour statistics for {selection.unique_name} have been recalculated.", "success")
             response.set_redirect(request.referrer)
+        classifier.classify_after_commit([selection_id])
     return response.to_json()
 
 @routes_selection.route('/contour_file_delete/<selection_id>', methods=["POST"])
@@ -256,8 +259,11 @@ def contour_file_insert(recording_id):
                 if not selection: raise exception_handler.WarningException(f"Could not find corresponding selection with selection number {selection_number}.")
                 contour_file.insert(file_stream, selection.relative_directory, selection.contour_file_name)
                 selection.contour_file_insert(contour_file = contour_file, ctr_file = ctr_file)
+                selection_id = selection.id
             else:
                 raise exception_handler.WarningException("No contour file provided.")
+        # Classify after the upload has been committed so a classifier failure cannot undo it
+        classifier.classify_after_commit([selection_id])
     return response.to_json()
 
 
@@ -320,7 +326,10 @@ def selection_view(selection_id):
         selection = database_handler.create_system_time_request(session, models.Selection, {"id":selection_id})[0]
         selection_history = database_handler.create_all_time_request(session, models.Selection, filters={"id":selection_id}, order_by="row_start")
         selection_dict = selection.get_contour_statistics_dict(use_headers=True)
-        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict)
+        classification = classifier.get_results(session, [selection.id]).get(selection.id)
+        classification_up_to_date = classification is not None and classification.stats_hash == classifier.stats_hash(selection)
+        return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict,
+                               classification=classification, classification_up_to_date=classification_up_to_date)
 
 @routes_selection.route('/selection/confirm_no_file_upload', methods=['POST'])
 @database_handler.require_live_session
@@ -367,7 +376,11 @@ def write_contour_stats(selections, filename):
     for k, v in models.Selection.get_contour_statistics_attrs().items():
         required_attrs.append(k)
         header.append(v[1])
+    header += ['ROCCA_CLASSIFIER', 'ROCCA_CLASSIFIED_AS']
     writer.writerow(header)
+    with database_handler.get_session() as session:
+        classifications = {selection_id: (result.classifier.name, result.classified_as)
+                           for selection_id, result in classifier.get_results(session, [s.id for s in selections]).items()}
     for selection in selections:
         if selection.traced:
             row = [
@@ -381,6 +394,7 @@ def write_contour_stats(selections, filename):
             ]
             for attr in required_attrs:
                 row.append(getattr(selection, attr))
+            row += list(classifications.get(selection.id, (None, None)))
             writer.writerow(row)
     
     output.seek(0)
