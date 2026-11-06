@@ -35,6 +35,7 @@ operation_lock = Lock()
 # Local application imports
 from . import exception_handler
 from .logger import logger
+from . import migrations
 
 ###################
 # Filespace setup #
@@ -213,14 +214,13 @@ Session = get_session
 def init_api(api):
     api = api
 
-def init_db(app: Flask, run_script: str=None):
+def init_db(app: Flask):
     """
     Initialise the database for a Flask application. Set up a database
     hook that adds user information to tables in the database before each
-    commit. And, if requested, run a DDL script on the database during initialisation.
+    commit, and apply any pending database migrations (see `migrations.py`).
 
     :param (Flask) app: the Flask application
-    :param (str) run_script: (optional) the path to a DDL script to run on the database
     """
 
     global FILE_SPACE_PATH
@@ -245,20 +245,14 @@ def init_db(app: Flask, run_script: str=None):
     with app.app_context():
         engine = get_engine()
         session_instance = sessionmaker(bind=engine, autoflush=False)
-        if run_script:
-            with db.engine.connect() as conn:
-                if not os.path.exists(run_script):
-                    logger.info("No database script found. Assuming that no changes are required to the database.")
-                else:
-                    with open(run_script, mode='r') as f:
-                        try:
-                            sql_script = f.read()
-                            if sql_script.strip() != '':
-                                conn.execute(db.text(sql_script))
-                            else:
-                                logger.info("Empty database script found. Assuming that no changes are required to the database.")
-                        except Exception as e:
-                            logger.warning("Attempting to run DDL script failed (this could be because the changed defined in the DDL script have already been applied): " + str(e))
+        # Bring the database schema up to date (see migrations.py). If this fails the app does not
+        # start, rather than running against a partly migrated database.
+        try:
+            for name in migrations.migrate(engine):
+                logger.info(f"Applied database migration {name}")
+        except Exception as e:
+            logger.critical(f"Database migration failed: {e}")
+            raise
 
         @jwt.user_identity_loader
         def user_identity_lookup(user):

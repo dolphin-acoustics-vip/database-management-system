@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>ROCCA Classifier: {{ classifier.name }}</title>
+</head>
+<body>
+    <div class="outer-div">
+        <a href="{{ url_for('classifier.classifier_list') }}">Back to classifiers</a>
+        <h1>{{ classifier.name }}</h1>
+        <p>Species: {{ classifier.species | join(', ') }}</p>
+        <p>Stages: {{ classifier.num_stages }}. A whistle is labelled <b>Ambig</b> unless the {{ classifier.threshold_description }}.</p>
+        <p>Model file: {{ classifier.model_file.original_filename }}, uploaded {{ classifier.created_datetime }}</p>
+
+        <h2>Encounters</h2>
+        {% if encounters %}
+        <p>Encounters using this classifier. To change an encounter's classifier, edit the encounter.</p>
+        <table class="table-striped">
+            <tr>
+                <th>Encounter</th>
+                <th>Location</th>
+                <th>Project</th>
+            </tr>
+            {% for encounter in encounters %}
+            <tr>
+                <td><a href="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">{{ encounter.encounter_name }}</a></td>
+                <td>{{ encounter.location }}</td>
+                <td>{{ encounter.project }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>No encounters use this classifier. Choose it on an encounter's edit page to classify that encounter's selections.</p>
+        {% endif %}
+
+        <h2>Results</h2>
+        {% if label_counts %}
+        <table class="table-striped">
+            <tr>
+                <th>Classified as</th>
+                <th>Selections</th>
+            </tr>
+            {% for label, count in label_counts %}
+            <tr>
+                <td>{{ label }}</td>
+                <td>{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <a class="button small" href="{{ url_for('classifier.classifier_export', classifier_id=classifier.id) }}">Download results (CSV)</a>
+        {% else %}
+        <p>No results yet.</p>
+        {% endif %}
+
+        {% if not session['snapshot_date'] %}
+        <h2>Settings</h2>
+        <p>Changing the threshold re-labels existing results straight away; the classifier does not need to be run again.</p>
+        <form id="classifier-update-form" method="post" action="{{ url_for('classifier.classifier_update', classifier_id=classifier.id) }}">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" value="{{ classifier.name }}" required>
+            <label for="threshold">Classification threshold (%):</label>
+            <input type="number" id="threshold" name="threshold" min="0" max="100" value="{{ classifier.threshold }}" required>
+            <label class="inline-option"><input type="checkbox" name="strong_diff" {% if classifier.strong_diff %}checked{% endif %}> Apply the threshold to the difference between the top two votes (PAMGuard's "strong whistle" option)</label>
+            <button class="blue small" type="submit">Save</button>
+        </form>
+        <script>
+            ajaxifyForm(document.getElementById('classifier-update-form'));
+        </script>
+
+        {% if not encounters %}
+        <h2>Delete</h2>
+        <form id="classifier-delete-form" method="post" action="{{ url_for('classifier.classifier_delete', classifier_id=classifier.id) }}">
+            <button class="link" type="submit">Delete this classifier and all of its results</button>
+        </form>
+        <script>
+            $("#classifier-delete-form").submit(function (event) {
+                event.preventDefault();
+                if (confirm("Delete {{ classifier.name }} and all of its results?")) makeAjaxRequestForm(event.target);
+            });
+        </script>
+        {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>

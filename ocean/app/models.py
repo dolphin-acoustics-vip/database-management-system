@@ -23,11 +23,14 @@ import tempfile
 import uuid
 import datetime
 import warnings
+import json
 
 # Third-party imports
 from flask import Response
 from sqlalchemy.event import listens_for
 from sqlalchemy.sql import func
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy.orm import object_session
 from flask_login import UserMixin
 import csv
 import scipy.io
@@ -712,6 +715,9 @@ class Selection(imodels.ISelection):
         self.contour_file = None
         self.update_traced()
         self.clear_contour_statistics_attrs()
+        # Classifications of the deleted contour no longer apply
+        session = object_session(self)
+        if session: session.query(SelectionClassification).filter_by(selection_id=self.id).delete()
 
     def selection_file_delete(self):
         if self.selection_file: self.selection_file.mark_for_deletion()
@@ -1053,3 +1059,57 @@ class Assignment(imodels.IAssignment):
     @property
     def unique_name(self):
         return f"{self.recording.unique_name}_{self.user.unique_name}"
+
+class Classifier(imodels.AbstractModelBase):
+    """A PAMGuard ROCCA whistle classifier (a `.model` file stored in the filespace). Each encounter
+    can be assigned a classifier (`Encounter.classifier`), which is used for its selections.
+    See `classifier.py` for how it is run."""
+    __tablename__ = 'classifier'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(100), nullable=False, unique=True)
+    model_file_id = Column(String(36), ForeignKey('file.id'), nullable=False)
+    model_file = database_handler.db.relationship("File", foreign_keys=[model_file_id])
+    species_list = Column(Text)  # JSON list of the species the classifier can output
+    num_stages = Column(Integer)
+    threshold = Column(Integer, nullable=False, default=40)  # percent, as in PAMGuard
+    strong_diff = Column(Boolean, nullable=False, default=False)  # threshold applies to the gap between the top two votes
+    updated_by_id = Column(String(36), ForeignKey('user.id'))
+    created_datetime = Column(DateTime, server_default=func.current_timestamp())
+
+    @property
+    def species(self):
+        return json.loads(self.species_list) if self.species_list else []
+
+    @property
+    def threshold_description(self):
+        if self.strong_diff: return f"top two votes at least {self.threshold}% apart"
+        return f"top vote at least {self.threshold}%"
+
+
+class SelectionClassification(imodels.AbstractModelBase):
+    """The result of running a `Classifier` on a `Selection`."""
+    __tablename__ = 'selection_classification'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    selection_id = Column(String(36), ForeignKey('selection.id', ondelete='CASCADE'), nullable=False)
+    classifier_id = Column(String(36), ForeignKey('classifier.id', ondelete='CASCADE'), nullable=False)
+    classifier = database_handler.db.relationship("Classifier", foreign_keys=[classifier_id])
+    classified_as = Column(String(50), nullable=False)
+    stage_votes = Column(Text)  # JSON: [{"classes": [...], "votes": [...]}, ...] one entry per classifier stage
+    error = Column(String(255))
+    stats_hash = Column(String(40))
+    updated_datetime = Column(DateTime, server_default=func.current_timestamp())
+
+    @property
+    def stages(self):
+        return json.loads(self.stage_votes) if self.stage_votes else []
+
+    @property
+    def votes_description(self):
+        """The final stage's votes as text, highest first, e.g. 'Sb 55%, Pc 20%'."""
+        if not self.stages: return ""
+        stage = self.stages[-1]
+        pairs = sorted(zip(stage["classes"], stage["votes"]), key=lambda p: -p[1])
+        return ", ".join(f"{c} {round(v * 100)}%" for c, v in pairs if v > 0)
+

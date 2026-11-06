@@ -50,8 +50,7 @@ docker compose up --build
 
 By default, OCEAN runs on port 5000 accessible at `http://localhost:5000`. You will be logged into
 an admin account with username `Admin` (see [init_roles_and_admin.sql](/db-init/init_roles_and_admin.sql)).
-If you make any changes to the database, these changes need to be manually applied to the docker database
-container. Alternatively, reset the container and ensure up-to-date sql exists in the [db-init](/db-init) folder.
+Changes to the database schema are applied automatically when OCEAN starts (see [Database Migrations](#database-migrations)).
 
 If you don't have docker installed, follow the manual installation instructions below.
 
@@ -126,7 +125,7 @@ CREATE DATABASE ocean;
 use ocean;
 ```
 
-All the required tables will need to be created. Do this by copying the entirety of [create_database.sql](/db-init/create_database.sql) into the MariaDB client. This will create all tables.
+All the required tables will need to be created. Do this by copying the entirety of [create_database.sql](/db-init/create_database.sql) into the MariaDB client. This will create all tables. Any later schema changes are applied automatically when OCEAN starts (see [Database Migrations](#database-migrations)).
 
 To access OCEAN you will need to insert a user into the `user` table of the database. The command below should be run to create an `admin` user (this assumes the script above has been run).
 
@@ -228,6 +227,31 @@ OCEAN can be roughly split into the following key components:
 3. `Utilities` are aditional files found in [/ocean/app](/ocean/app/) that contain custom exceptions, calculations, utility methods, and filespace (IO) utilities. 
 4. `Templates` are the HTML, CSS and JS frontend files that are rendered by the `Routes` on request.
 
+<a name="database-migrations"></a>
+### Database Migrations
+
+The database schema is changed through migrations: SQL files in [ocean/migrations](/ocean/migrations/). When OCEAN starts, it applies every migration not yet recorded in the `schema_migrations` table, in filename order, and records each one, so each file runs exactly once per database. This also happens on `docker compose up`. If a migration fails, OCEAN logs the error and does not start, so it never runs against a partly migrated database. A lock ensures only one process migrates at a time. The runner is [migrations.py](/ocean/app/migrations.py).
+
+[create_database.sql](/db-init/create_database.sql) is the baseline schema that migrations build on. A new docker database is created from it automatically; for a manual install it is run by hand (see above). OCEAN will not migrate a database that has not been created from it.
+
+To change the schema:
+1. Add a new file to [ocean/migrations](/ocean/migrations/) named `YYYY-MM-DD_short_description.sql`. Never edit a migration that has already been merged; write a new one instead.
+2. Separate statements with `;` at the end of a line. MariaDB cannot roll back schema changes, so keep each migration small and, where possible, safe to re-run (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `DROP COLUMN IF EXISTS`). Most tables are system-versioned; altering them is allowed.
+3. Update the models in [imodels.py](/ocean/app/interfaces/imodels.py) / [models.py](/ocean/app/models.py) to match.
+4. [test_migrations.py](/ocean/tests/test_migrations.py) applies all migrations to a fresh copy of the baseline (this runs in CI).
+
+**Back up the production database (e.g. with `mariadb-dump`) before deploying a version of OCEAN that contains new migrations.**
+
+### ROCCA Classifiers
+
+OCEAN can classify whistles with PAMGuard ROCCA whistle classifiers (`.model` files). These are Weka random forests saved as Java objects, so they are run by a small Java helper, [RoccaClassify.java](/ocean/java/RoccaClassify.java), that reproduces PAMGuard's classification from the contour statistics OCEAN already calculates. The Python side is in [classifier.py](/ocean/app/classifier.py).
+
+* **Requirements**: a JDK, version 17 or newer (`java` and `javac` on the `PATH`). On Debian/Ubuntu: `sudo apt install openjdk-17-jdk-headless`; on RHEL/Rocky: `sudo dnf install java-17-openjdk-devel`. The docker image installs one. The helper is compiled automatically the first time it is used.
+* **Weka**: the version PAMGuard uses, [weka-dev-3.7.7.jar](/ocean/java/lib/weka-dev-3.7.7.jar), is included in the repository (unmodified from [Maven Central](https://repo1.maven.org/maven2/nz/ac/waikato/cms/weka/weka-dev/3.7.7/), SHA-1 `cdd1f13632810c86de646b4d2613c73001982b73`; Weka is licensed under the GPL v3). Set `OCEAN_WEKA_JAR` only to use a different copy.
+* **Database**: the tables are created by the migration [2026-11-06_rocca_classifier.sql](/ocean/migrations/2026-11-06_rocca_classifier.sql).
+* **Usage**: administrators upload classifiers in the admin portal (Admin > ROCCA Classifiers); the `.model` files are stored in the filespace (`Classifiers` folder). Each encounter can then be given a classifier on its edit page. Choosing a classifier for an encounter classifies its selections, and they are classified again whenever a contour is uploaded or its statistics are recalculated. Encounters without a classifier are not classified. Results appear on the selection, recording and encounter pages, in the contour statistics download and in the API (`rocca_classification` on `/api/metadata/selections/`). Each classifier's results are kept separately, so changing an encounter's classifier does not delete earlier results. The selection, recording and encounter pages have re-classify buttons.
+* **Thresholds**: the helper returns the raw votes of every classifier stage, and OCEAN applies the threshold (a contour is `Ambig` below it). Changing a classifier's threshold re-labels its results immediately, without running the model again.
+
 
 # Data Model
 
@@ -314,6 +338,14 @@ An example of this setup is shown here:
 **Test Restricted Routes**
 
 [tests/test_restricted_routes.py](/tests/test_restricted_routes.py) tests whether access is forbidden to the required routes for users without certain access permissions.
+
+**Test Migrations**
+
+[tests/test_migrations.py](/ocean/tests/test_migrations.py) checks migration file names and applies all migrations to a temporary database created from [create_database.sql](/db-init/create_database.sql). It needs a MariaDB server, given by `OCEAN_TEST_MARIADB_URL` (default `mysql+mysqldb://root:test123@localhost:3306`, the server used in CI), and is skipped if none is available.
+
+**Test Classifier**
+
+[tests/test_classifier.py](/ocean/tests/test_classifier.py) tests the ROCCA classifier threshold logic. It also includes an end-to-end test that checks OCEAN's classifications against PAMGuard's results stored in the `contour-stats` test resources (tests 4-9). This test is skipped unless Java, the Weka jar (`OCEAN_WEKA_JAR`) and the model file are available. Set `OCEAN_TEST_ROCCA_MODEL` to the path of `RF8sp53att.model`.
 
 **Test Utils**
 

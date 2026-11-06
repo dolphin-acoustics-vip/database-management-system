@@ -33,6 +33,7 @@ from .. import utils
 from .. import contour_statistics
 from .. import response_handler
 from .. import transaction_handler
+from .. import classifier
 
 routes_recording = Blueprint('recording', __name__)
 
@@ -189,7 +190,8 @@ def recording_view(recording_id: str) -> Response:
         logged_in_user_assigned = database_handler.create_system_time_request(session, models.Assignment, {"user_id":current_user.id,"recording_id":recording_id})
         logged_in_user_assigned = logged_in_user_assigned[0] if len(logged_in_user_assigned) > 0 else None
         recording_history = database_handler.create_all_time_request(session, models.Recording, filters={"id":recording_id}, order_by="row_start")
-        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned)
+        classifications = classifier.get_results(session, [selection.id for selection in selections])
+        return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned, classifications=classifications)
 
 @routes_recording.route('/recording/<recording_id>/update_notes', methods=['POST'])
 @database_handler.require_live_session
@@ -452,7 +454,9 @@ def calculate_contour_statistics_for_recording(recording_id: str):
                 if selection.contour_file: selection.ctr_file_generate(transaction_proxy.create_tracked_file())
                 selection.contour_statistics_calculate()
                 if selection.contour_file: count += 1
+            selection_ids = [selection.id for selection in recording.selections]
         response.add_message(f"{count} contour statistic(s) and CTR file(s) were regenerated.")
+        classifier.classify_after_commit(selection_ids)
     return response.to_json()
 
 

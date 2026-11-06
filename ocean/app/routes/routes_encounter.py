@@ -27,6 +27,7 @@ from .. import exception_handler
 from .. import utils
 from .. import response_handler
 from .. import transaction_handler
+from .. import classifier
 from ..logger import logger
 
 routes_encounter = Blueprint('encounter', __name__)
@@ -58,7 +59,8 @@ def encounter_new():
         data_sources = session.query(models.DataSource).all()
         species_list = session.query(models.Species).all()
         recording_platforms = session.query(models.RecordingPlatform).all()
-        return render_template('encounter/encounter-new.html', species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
+        classifiers = session.query(models.Classifier).order_by(models.Classifier.name).all()
+        return render_template('encounter/encounter-new.html', species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms, classifiers=classifiers)
 
 @routes_encounter.route('/encounter/insert', methods=['POST'])
 @login_required
@@ -105,7 +107,8 @@ def encounter_edit(encounter_id):
         species_list = session.query(models.Species).all()
         data_sources = session.query(models.DataSource).all()
         recording_platforms = session.query(models.RecordingPlatform).all()
-        return render_template('encounter/encounter-edit.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms)
+        classifiers = session.query(models.Classifier).order_by(models.Classifier.name).all()
+        return render_template('encounter/encounter-edit.html', encounter=encounter, species_list=species_list, data_sources=data_sources,recording_platforms=recording_platforms, classifiers=classifiers)
 
 
 @routes_encounter.route('/encounter/<encounter_id>/update', methods=['POST'])
@@ -115,9 +118,15 @@ def encounter_update(encounter_id):
     with response_handler.json_response_context() as response:
         with transaction_handler.atomic() as session:
             encounter = session.query(models.Encounter).with_for_update().join(models.Species).filter(models.Encounter.id == encounter_id).first()
+            old_classifier_id = encounter.classifier_id
             encounter.update(request.form)
+            classifier_changed = str(encounter.classifier_id or '') != str(old_classifier_id or '')
             flash_message = f"Updated encounter {encounter.unique_name}."
             encounter.apply_updates()
+            selection_ids = classifier.encounter_selection_ids(session, encounter_id) if classifier_changed and encounter.classifier_id else []
+        # A new classifier was chosen: classify the encounter's selections with it
+        warning = classifier.classify_after_commit(selection_ids)
+        if warning: response.add_message(warning)
         flash(flash_message, 'success')
         response.set_redirect(url_for('encounter.encounter_view', encounter_id=encounter_id))
     return response.to_json()

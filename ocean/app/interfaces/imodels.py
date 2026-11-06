@@ -453,6 +453,9 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
     species = database_handler.db.relationship("Species")
     data_source = database_handler.db.relationship("DataSource")
     recording_platform = database_handler.db.relationship("RecordingPlatform")
+    # The ROCCA classifier used for this encounter's selections (optional)
+    classifier_id = Column(String(36), ForeignKey('classifier.id'), nullable=True)
+    classifier = database_handler.db.relationship("Classifier", foreign_keys=[classifier_id])
     updated_by_id = Column(String(36), ForeignKey('user.id'))
     updated_by = database_handler.db.relationship("User", foreign_keys=[updated_by_id])
 
@@ -481,6 +484,7 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
             'species': self.species,
             'data_source': self.data_source,
             'recording_platform': self.recording_platform,
+            'classifier_id': self.classifier_id,
             'updated_by_id': self.updated_by_id,
         }
     
@@ -496,7 +500,8 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
             'recording_platform_id': False,
             'notes': False,
             'file_timezone': False,
-            'local_timezone': False
+            'local_timezone': False,
+            'classifier_id': False
         }
     
     @property
@@ -508,7 +513,7 @@ class IEncounter(AbstractModelBase, Serialisable, TableOperations, Cascading):
     def _validate_id(self, key, value):
         return utils.validate_id(value=value, field="ID", allow_none=False)
 
-    @validates("updated_by_id", "data_source_id", "recording_platform_id")
+    @validates("updated_by_id", "data_source_id", "recording_platform_id", "classifier_id")
     def _validate_id_nullable(self, key, value):
         return utils.validate_id(value=value, field=key, allow_none=True)
     
