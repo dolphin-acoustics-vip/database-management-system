@@ -35,6 +35,7 @@ from .. import filespace_handler
 from .. import response_handler
 from .. import transaction_handler
 from .. import classifier
+from .. import pagination
 from .routes_recording import check_editable
 
 routes_selection = Blueprint('selection', __name__)
@@ -328,8 +329,15 @@ def selection_view(selection_id):
         selection_dict = selection.get_contour_statistics_dict(use_headers=True)
         classification = classifier.get_results(session, [selection.id]).get(selection.id)
         classification_up_to_date = classification is not None and classification.stats_hash == classifier.stats_hash(selection)
+        # The previous and next selections in the recording, for the page's navigation buttons
+        siblings = database_handler.create_system_time_request(session, models.Selection, {"recording_id": selection.recording_id}, order_by="selection_number")
+        index = next((i for i, s in enumerate(siblings) if s.id == selection.id), None)
+        previous_selection = siblings[index - 1] if index else None
+        next_selection = siblings[index + 1] if index is not None and index + 1 < len(siblings) else None
+        selection_history = pagination.paginate(selection_history, request.args, prefix='hist_', per_page=25)
         return render_template('selection/selection-view.html', selection=selection, selection_history=selection_history,selection_dict=selection_dict,
-                               classification=classification, classification_up_to_date=classification_up_to_date)
+                               classification=classification, classification_up_to_date=classification_up_to_date,
+                               previous_selection=previous_selection, next_selection=next_selection)
 
 @routes_selection.route('/selection/confirm_no_file_upload', methods=['POST'])
 @database_handler.require_live_session

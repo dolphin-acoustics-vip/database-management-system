@@ -1,21 +1,19 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Edit Species</title>
-</head>
-<body>
-
-    <div class="outer-div">
-        <h1>New User</h1>
-        <form id="user-insert-form" action="{{ url_for('admin.admin_user_insert') }}" method="post">
-            {% set editing = False %}
-            {% include 'admin/admin-user-template.html' %}
-        </form>
-        <script>
-            ajaxifyForm(document.getElementById('user-insert-form'), true, true, null, null);
-        </script>
-    </div>
-
-
-</body>
+{% extends 'base.html' %}
+{% block title %}New User{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_user') }}">Users</a></li>
+<li class="breadcrumb-item active" aria-current="page">New user</li>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    <h1>New User</h1>
+    <form id="user-insert-form" action="{{ url_for('admin.admin_user_insert') }}" method="post">
+        {% set editing = False %}
+        {% include 'admin/admin-user-template.html' %}
+    </form>
+    <script>
+        ajaxifyForm(document.getElementById('user-insert-form'), true, true, null, null);
+    </script>
+</div>
+{% endblock %}

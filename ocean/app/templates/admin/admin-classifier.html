@@ -1,30 +1,44 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>ROCCA Classifiers</title>
-</head>
-<body>
-    <div class="outer-div">
-        <h1>ROCCA Classifiers</h1>
-        <p>PAMGuard ROCCA whistle classifiers classify selections from their contour statistics. Upload classifiers here,
-            then choose one for each encounter on the encounter's edit page. An encounter's selections are classified when
-            its classifier is chosen, when contours are uploaded and when contour statistics are recalculated.</p>
+{% extends 'base.html' %}
+{#
+Lists the ROCCA classifiers and uploads new ones.
+Variables required:
+- classifiers: a pagination.Page of Classifier objects
+- counts: {classifier id: number of results}
+- encounter_counts: {classifier id: number of encounters using it}
+#}
+{% from 'partials/ui.html' import search_box, sortable_header, pagination %}
+{% block title %}ROCCA Classifiers{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item active" aria-current="page">ROCCA classifiers</li>
+{% endblock %}
+{% block content %}
+<h1>ROCCA Classifiers</h1>
+<p>PAMGuard ROCCA whistle classifiers classify selections from their contour statistics. Upload classifiers here,
+    then choose one for each encounter on the encounter's edit page. An encounter's selections are classified when
+    its classifier is chosen, when contours are uploaded and when contour statistics are recalculated.</p>
 
-        <section id="classifiers">
-            <h2>Classifiers</h2>
-            {% if classifiers %}
-            <div class="table-responsive">
-                <table class="table-striped">
+<section id="classifiers" class="card">
+    <div class="card-body">
+        <h2>Classifiers</h2>
+        {% if classifiers or classifiers.search %}
+        <div class="list-toolbar">{{ search_box(classifiers, 'Search name or species', anchor='classifiers') }}</div>
+        {% endif %}
+        {% if classifiers %}
+        <div class="table-responsive">
+            <table class="table-striped">
+                <thead>
                     <tr>
-                        <th>Name</th>
+                        {{ sortable_header(classifiers, 'Name', 'name', anchor='classifiers') }}
                         <th>Species</th>
                         <th>Threshold</th>
                         <th>Encounters</th>
                         <th>Results</th>
-                        <th>Uploaded</th>
-                        <th>Actions</th>
+                        {{ sortable_header(classifiers, 'Uploaded', 'uploaded', anchor='classifiers') }}
+                        <th></th>
                     </tr>
+                </thead>
+                <tbody>
                     {% for classifier in classifiers %}
                     <tr>
                         <td>{{ classifier.name }}</td>
@@ -33,34 +47,43 @@
                         <td>{{ encounter_counts.get(classifier.id, 0) }}</td>
                         <td>{{ counts.get(classifier.id, 0) }}</td>
                         <td>{{ classifier.created_datetime }}</td>
-                        <td><a class="button" href="{{ url_for('classifier.classifier_view', classifier_id=classifier.id) }}">View</a></td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('classifier.classifier_view', classifier_id=classifier.id) }}">View</a></td>
                     </tr>
                     {% endfor %}
-                </table>
-            </div>
-            {% else %}
-            <p>No classifiers have been uploaded yet.</p>
-            {% endif %}
-        </section>
-
-        {% if not session['snapshot_date'] %}
-        <section id="classifier-upload">
-            <h2>Upload a Classifier</h2>
-            <form id="classifier-insert-form" action="{{ url_for('classifier.classifier_insert') }}" method="post" enctype="multipart/form-data">
-                <label for="name">Name:</label>
-                <input type="text" id="name" name="name" required>
-                <label for="file">PAMGuard ROCCA whistle classifier (.model):</label>
-                <input type="file" id="file" name="file" accept=".model" required>
-                <label for="threshold">Classification threshold (%):</label>
-                <input type="number" id="threshold" name="threshold" min="0" max="100" value="40" required>
-                <label class="inline-option"><input type="checkbox" name="strong_diff"> Apply the threshold to the difference between the top two votes (PAMGuard's "strong whistle" option)</label>
-                <button id="classifier-insert-button" class="blue" type="submit">Upload</button>
-            </form>
-            <script>
-                ajaxifyForm(document.getElementById('classifier-insert-form'), true, true, null, null, button = document.getElementById('classifier-insert-button'), message = "Uploading and checking the classifier...");
-            </script>
-        </section>
+                </tbody>
+            </table>
+        </div>
+        {{ pagination(classifiers, 'classifiers', anchor='classifiers') }}
+        {% elif classifiers.search %}
+        <p class="empty-state">No classifiers match "{{ classifiers.search }}".</p>
+        {% else %}
+        <p class="empty-state">No classifiers have been uploaded yet.</p>
         {% endif %}
     </div>
-</body>
-</html>
+</section>
+
+{% if not session['snapshot_date'] %}
+<section id="classifier-upload" class="card">
+    <div class="card-body">
+        <h2>Upload a classifier</h2>
+        <form id="classifier-insert-form" action="{{ url_for('classifier.classifier_insert') }}" method="post" enctype="multipart/form-data">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+            <label for="file">PAMGuard ROCCA whistle classifier (.model)</label>
+            <input type="file" id="file" name="file" accept=".model" required>
+            <label for="threshold">Classification threshold (%)</label>
+            <input type="number" id="threshold" name="threshold" min="0" max="100" value="40" required>
+            <label class="inline-option mt-2"><input type="checkbox" name="strong_diff"> Apply the threshold to the difference between the top two votes (PAMGuard's "strong whistle" option)</label>
+            <div><button id="classifier-insert-button" class="btn btn-primary" type="submit">Upload</button></div>
+        </form>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const insertForm = document.getElementById('classifier-insert-form');
+    if (insertForm) ajaxifyForm(insertForm, true, true, null, null, document.getElementById('classifier-insert-button'), "Uploading and checking the classifier...");
+</script>
+{% endblock %}

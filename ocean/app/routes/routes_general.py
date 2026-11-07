@@ -21,6 +21,7 @@ import os
 import uuid
 
 # Local application imports
+from .. import pagination
 from .. import database_handler
 from .. import models
 from .. import exception_handler
@@ -226,6 +227,11 @@ def home():
             order_by(models.Assignment.created_datetime.desc()). \
             all()
         recordings = [{'recording': recording, 'assignment': assignment} for recording, assignment in result]
+        recordings = pagination.paginate(recordings, request.args, per_page=25,
+            search=[lambda r: r['recording'].encounter.encounter_name, lambda r: r['recording'].status,
+                    lambda r: r['recording'].encounter.species.scientific_name if r['recording'].encounter.species else None],
+            sort={'assigned': lambda r: r['assignment'].created_datetime, 'encounter': lambda r: r['recording'].encounter.encounter_name,
+                  'recording': lambda r: r['recording'].start_time, 'status': lambda r: r['recording'].status})
         return render_template('home.html', recordings=recordings)
 
 

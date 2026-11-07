@@ -30,6 +30,7 @@ from .. import classifier as rocca
 from .. import database_handler
 from .. import exception_handler
 from .. import models
+from .. import pagination
 from .. import response_handler
 from .. import transaction_handler
 from .. import utils
@@ -64,7 +65,9 @@ def _parse_settings(form):
 @database_handler.exclude_role_3
 def classifier_list():
     with database_handler.get_session() as session:
-        classifiers = session.query(models.Classifier).order_by(models.Classifier.created_datetime.desc()).all()
+        classifiers = pagination.paginate(session.query(models.Classifier).order_by(models.Classifier.created_datetime.desc()).all(),
+            request.args, per_page=25, search=[lambda c: c.name, lambda c: ', '.join(c.species)],
+            sort={'name': lambda c: c.name, 'uploaded': lambda c: c.created_datetime})
         counts = dict(session.query(models.SelectionClassification.classifier_id, func.count())
                       .group_by(models.SelectionClassification.classifier_id))
         encounter_counts = dict(session.query(models.Encounter.classifier_id, func.count())
@@ -108,7 +111,9 @@ def classifier_view(classifier_id):
         label_counts = session.query(models.SelectionClassification.classified_as, func.count()) \
             .filter_by(classifier_id=classifier.id).group_by(models.SelectionClassification.classified_as) \
             .order_by(func.count().desc()).all()
-        encounters = _encounters_using(session, classifier)
+        encounters = pagination.paginate(_encounters_using(session, classifier), request.args, prefix='enc_', per_page=25,
+            search=[lambda e: e.encounter_name, lambda e: e.location, lambda e: e.project],
+            sort={'name': lambda e: e.encounter_name, 'location': lambda e: e.location, 'project': lambda e: e.project})
         return render_template('admin/admin-classifier-view.html', classifier=classifier, label_counts=label_counts, encounters=encounters)
 
 @routes_classifier.route('/admin/classifier/<classifier_id>/update', methods=['POST'])
