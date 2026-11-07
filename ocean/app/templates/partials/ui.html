@@ -1,0 +1,91 @@
+{#
+Small user interface macros shared by OCEAN pages. Import with:
+{% from 'partials/ui.html' import status_badge, search_box, sortable_header, pagination %}
+
+The list macros take a `Page` made by `pagination.paginate` in the route (see pagination.py).
+`anchor` is the id of an element on the page to scroll back to after following a link.
+#}
+
+{# A coloured badge for a recording status (Unassigned, In Progress, Awaiting Review, Reviewed, On Hold) #}
+{% macro status_badge(status) -%}
+{%- set colours = {'Unassigned': 'secondary', 'In Progress': 'primary', 'Awaiting Review': 'warning', 'Reviewed': 'success', 'On Hold': 'danger'} -%}
+<span class="badge text-bg-{{ colours.get(status, 'secondary') }}">{{ status }}</span>
+{%- endmacro %}
+
+{# The URL of the current page with some query parameters changed #}
+{% macro _url(changes, anchor=None) -%}
+{%- set args = dict(request.view_args or {}, **request.args.to_dict()) -%}
+{%- set _ = args.update(changes) -%}
+{{ url_for(request.endpoint, **args) }}{% if anchor %}#{{ anchor }}{% endif %}
+{%- endmacro %}
+
+{# A search box for the list. Searching keeps the other query parameters and goes back to page 1. #}
+{% macro search_box(page, placeholder='Search', anchor=None) -%}
+<form class="ocean-search" method="get" action="{% if anchor %}#{{ anchor }}{% endif %}" role="search">
+  {% for key, value in request.args.items() if key not in [page.arg('q'), page.arg('page')] %}
+  <input type="hidden" name="{{ key }}" value="{{ value }}">
+  {% endfor %}
+  <div class="input-group input-group-sm">
+    <input type="search" name="{{ page.arg('q') }}" value="{{ page.search }}" placeholder="{{ placeholder }}" aria-label="{{ placeholder }}">
+    <button class="btn btn-outline-primary" type="submit">Search</button>
+    {% if page.search %}
+    <a class="btn btn-outline-secondary" href="{{ _url({page.arg('q'): '', page.arg('page'): 1}, anchor) }}">Clear</a>
+    {% endif %}
+  </div>
+</form>
+{%- endmacro %}
+
+{# A table heading that sorts the list by `column` (one of the route's sort columns), toggling the direction #}
+{% macro sortable_header(page, label, column, anchor=None) -%}
+{%- set active = page.sort == column -%}
+{%- set next_direction = 'desc' if active and page.direction == 'asc' else 'asc' -%}
+<th {% if active %}aria-sort="{{ 'ascending' if page.direction == 'asc' else 'descending' }}"{% endif %}>
+  <a class="sort-link" href="{{ _url({page.arg('sort'): column, page.arg('direction'): next_direction, page.arg('page'): 1}, anchor) }}">{{ label }}
+    {%- if active %} {{ '▲' if page.direction == 'asc' else '▼' }}{% else %} <span class="sort-hint">↕</span>{% endif %}</a>
+</th>
+{%- endmacro %}
+
+{# "1-50 of 230 encounters", the page links and a page size selector #}
+{% macro pagination(page, noun='items', anchor=None) -%}
+{% if page.total %}
+<div class="ocean-pagination">
+  <span class="text-body-secondary small">
+    {% if page.pages > 1 %}{{ page.first_index }}–{{ page.last_index }} of {% endif %}{{ page.total }} {{ noun }}{% if page.search %} matching "{{ page.search }}"{% endif %}
+  </span>
+  {% if page.pages > 1 %}
+  <nav aria-label="Pages of {{ noun }}">
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page.page == 1 %}disabled{% endif %}">
+        <a class="page-link" href="{{ _url({page.arg('page'): page.page - 1}, anchor) }}" aria-label="Previous page">‹</a>
+      </li>
+      {% for p in range(1, page.pages + 1) %}
+      {% if p == 1 or p == page.pages or (p - page.page)|abs <= 2 %}
+      <li class="page-item {% if p == page.page %}active{% endif %}">
+        <a class="page-link" href="{{ _url({page.arg('page'): p}, anchor) }}" {% if p == page.page %}aria-current="page"{% endif %}>{{ p }}</a>
+      </li>
+      {% elif (p - page.page)|abs == 3 %}
+      <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+      {% endfor %}
+      <li class="page-item {% if page.page == page.pages %}disabled{% endif %}">
+        <a class="page-link" href="{{ _url({page.arg('page'): page.page + 1}, anchor) }}" aria-label="Next page">›</a>
+      </li>
+    </ul>
+  </nav>
+  {% endif %}
+  {% if page.total > 25 %}
+  <form method="get" action="{% if anchor %}#{{ anchor }}{% endif %}" class="ocean-per-page">
+    {% for key, value in request.args.items() if key not in [page.arg('per_page'), page.arg('page')] %}
+    <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endfor %}
+    <label class="m-0 fw-normal small" for="{{ page.arg('per_page') }}">Per page</label>
+    <select class="form-select-sm" id="{{ page.arg('per_page') }}" name="{{ page.arg('per_page') }}" onchange="this.form.submit()">
+      {% for option in [25, 50, 100, 200, 500] %}
+      <option value="{{ option }}" {% if option == page.per_page %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+{%- endmacro %}

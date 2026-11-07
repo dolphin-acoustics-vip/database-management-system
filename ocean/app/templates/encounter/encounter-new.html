@@ -1,26 +1,24 @@
-<!--
+{% extends 'base.html' %}
+{#
 This page allows the user to add a new encounter.
 Variables required:
 - g.user: the current logged in User object
--->
-
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Add New Encounter</title>
-</head>
-<body>
-    <div class="outer-div">
-        <h2>Add New Encounter</h2>
-        {% set editing = False %}
-        <form id="encounter-insert-form" method="post" action="{{ url_for('encounter.encounter_insert') }}">
-        {% include 'encounter/encounter-form-template.html' %}
-        <button id="insert-encounter-button" class="blue" type="submit">Insert</button>
-        </form>
-        <script>
-            ajaxifyForm(document.getElementById('encounter-insert-form', undefined, undefined, undefined, undefined, button = document.getElementById("insert-encounter-button"), message = "Inserting encounter."));
-        </script>
-    </div>
-</body>
-</html>
+#}
+{% block title %}Add New Encounter{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('encounter.encounter') }}">Encounters</a></li>
+<li class="breadcrumb-item active" aria-current="page">New encounter</li>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    <h2>Add New Encounter</h2>
+    {% set editing = False %}
+    <form id="encounter-insert-form" method="post" action="{{ url_for('encounter.encounter_insert') }}">
+    {% include 'encounter/encounter-form-template.html' %}
+    <button id="insert-encounter-button" class="blue" type="submit">Insert</button>
+    </form>
+    <script>
+        ajaxifyForm(document.getElementById('encounter-insert-form', undefined, undefined, undefined, undefined, button = document.getElementById("insert-encounter-button"), message = "Inserting encounter."));
+    </script>
+</div>
+{% endblock %}

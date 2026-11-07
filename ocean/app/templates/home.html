@@ -1,66 +1,59 @@
-<!DOCTYPE html>
-<html>
-  <style>
-    .banner-image {
-      width:100%;
-    }
-    @media only screen and (max-width: 980px) {
-    .banner-image {
-        width: 150%;
-        }
-    }
-  </style>
-<head>
-
-</head>
-{% include 'partials/header.html' %}
+{% extends 'base.html' %}
+{#
+The home page: the current user's assigned recordings.
+Variables required:
+- recordings: a pagination.Page of {'recording': Recording, 'assignment': Assignment}
+#}
+{% from 'partials/ui.html' import status_badge, search_box, sortable_header, pagination %}
+{% block title %}Home{% endblock %}
+{% block content %}
 <section class="hero-section">
-  <div class="hero-section__image-mask">
-    <picture class="hero-section__image">
-      <source srcset="resources/dolphin-image.jpg" media="(min-width: 640px)">
-      <img class="banner-image"  src="resources/dolphin-image.jpg" alt="">
-
-    </picture>
-  </div>
-  <div class="container">
-    <div class="hero-section__content">
-      <h1 class="hero-section__heading ">Welcome to OCEAN</h1>
-    </div>
+  <img src="{{ url_for('general.serve_resource', filename='dolphin-image.jpg') }}" alt="">
+  <div class="hero-section__content">
+    <h1 class="hero-section__heading">Welcome to OCEAN</h1>
   </div>
 </section>
-<body>
-  <div class="outer-div">
-    
-    {% if recordings %}
-    <h1>Current Assignments</h1>
-    <div class="table-responsive">
-    <table class="table-striped">
-        <tr>
-          <th>Assigned On</th>
-          <th>Species</th>
-          <th>Encounter</th>
-          <th>Recording</th>
-          <th>Status</th>
-      </tr>   
-      
-      {% for recording_and_assignment in recordings %}
 
-      <tr>
-        <td>{{ recording_and_assignment['assignment'].created_datetime }}</td>
-        <td>{{ recording_and_assignment['recording'].encounter.species.scientific_name }}</td>
-        <td><a href="{{ url_for('encounter.encounter_view', encounter_id=recording_and_assignment['recording'].encounter.id) }}">{{ recording_and_assignment['recording'].encounter.encounter_name }}</a></td>
-        <td><a href="{{ url_for('recording.recording_view', recording_id=recording_and_assignment['recording'].id, encounter_id= recording_and_assignment['recording'].encounter.id) }}">{{ recording_and_assignment['recording'].start_time_pretty }}</a></td>
-        <td>{% if recording_and_assignment['recording'].is_on_hold() %} ACTION REQUIRED {% else %} {{ recording_and_assignment['recording'].status}} {% endif %}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
-
-    {% else %}
-    <h1>Home</h1>
-    <p>You have no assigned recordings. Please contact your administrator and come back later.</p>
+<div class="card">
+  <div class="card-body">
+    <h2>Your assignments</h2>
+    {% if recordings or recordings.search %}
+    <div class="list-toolbar">{{ search_box(recordings, 'Search encounter, species or status') }}</div>
     {% endif %}
+    {% if recordings %}
+    <div class="table-responsive">
+      <table class="table-striped">
+        <thead>
+          <tr>
+            {{ sortable_header(recordings, 'Assigned on', 'assigned') }}
+            <th>Species</th>
+            {{ sortable_header(recordings, 'Encounter', 'encounter') }}
+            {{ sortable_header(recordings, 'Recording', 'recording') }}
+            {{ sortable_header(recordings, 'Status', 'status') }}
+            <th>Your progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in recordings %}
+          {% set recording = item['recording'] %}
+          <tr>
+            <td>{{ item['assignment'].created_datetime }}</td>
+            <td><em>{{ recording.encounter.species.scientific_name if recording.encounter.species else '' }}</em></td>
+            <td><a href="{{ url_for('encounter.encounter_view', encounter_id=recording.encounter.id) }}">{{ recording.encounter.encounter_name }}</a></td>
+            <td><a href="{{ url_for('recording.recording_view', recording_id=recording.id, encounter_id=recording.encounter.id) }}">{{ recording.start_time_pretty }}</a></td>
+            <td>{% if recording.is_on_hold() %}<span class="badge text-bg-danger">Action required</span>{% else %}{{ status_badge(recording.status) }}{% endif %}</td>
+            <td>{% if item['assignment'].completed_flag %}<span class="badge text-bg-success">Complete</span>{% else %}<span class="text-body-secondary small">In progress</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {{ pagination(recordings, 'assignments') }}
+    {% elif recordings.search %}
+    <p class="empty-state">No assignments match "{{ recordings.search }}".</p>
+    {% else %}
+    <p class="empty-state">You have no assigned recordings. Please contact your administrator and come back later.</p>
+    {% endif %}
+  </div>
 </div>
-
-</body>
-</html>
+{% endblock %}

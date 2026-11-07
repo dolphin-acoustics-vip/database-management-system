@@ -1,222 +1,212 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-
-<head>
-    <title>View Selections</title>
-</head>
-
-<body>
-    <div class="outer-div">
-        <style>
-            .image-container {
-                display: inline-block;
-                justify-content: center;
-            }
-
-            .image-container img {
-                max-width: 50%;
-                margin: 0 10px;
-                height: auto;
-            }
-        </style>
-
-
-
-        <h2>Selection Number: {{ selection.selection_number }}</h1>
-            <hr>
-            <a
-                href="{{url_for('recording.recording_view', encounter_id=selection.recording.encounter_id, recording_id=selection.recording.id)}}">Recording</a>
-            {% if current_user.role_id in [1, 2] %}
-            <hr>
-
-
-            <hr>
-            <section>
-                <div class="audit-history">
-                    <h3>Audit History</h3>
-                    <div class="table-responsive">
-                        <table class="table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Action</th>
-                                    <th>User</th>
-                                    <th>View Snapshot</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for selection in selection_history %}
-                                <tr>
-                                    <td>{{ selection['row_start'] }}</td>
-                                    <td>{{ selection['action'] }}</td>
-                                    <td>{{ selection['updated_by'].name }}</td>
-                                    <td><a
-                                            href="{{ url_for('selection.selection_view', encounter_id=selection['encounter_id'], selection_id=selection['id'], snapshot_date=selection['row_start']) }}">HERE</a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-            <hr>
-            {% endif %}
-            <h3>Spectogram and Contour Plot</h3>
-            <div style="display: flex; margin-top: 20px; margin-bottom: 20px; align-items:center; position: relative;">
-                <img style="width:100%; padding-left:0.5rem; padding-right:0.5rem;" id="plot-image"
-                    src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot" style="width:100%; display:none;">
-            </div>
-
-            <hr>
-            {% if selection.selection_file %}
-            <a class="button small"
-                href="{{url_for('selection.download_selection_file', selection_id = selection.id )}}">Download
-                Selection File</a>
-            <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.unique_name }}&redirect_link={{ request.referrer }}">See
-                Selection File Details</a>
-            {% else %}
-            <p style="margin-right:10px;">This selection has no selection file.</p>
-            {% endif %}
-            {% if selection.contour_file %}
-            <a class="button small"
-                href="{{url_for('selection.download_contour_file', selection_id = selection.id )}}">Download
-                Contour File</a>
-            <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{selection.unique_name}}">See
-                Contour File Details</a>
-            {% if selection.ctr_file %}
-            <a class="button small"
-                href="{{url_for('selection.download_ctr_file', selection_id = selection.id )}}">Download
-                CTR File</a>
-            <a class="button small"
-                href="{{ url_for('general.get_file_details', file_id=selection.ctr_file_id) }}?file_details=Contour File for {{selection.unique_name}}">See
-                CTR File Details</a>
-            {% else %}
-            <p>There was an issue generating the CTR file. Try recalculating the contour statistics.</p>
-            {% endif %}
-            
-            <form id="recalculate-contour-statistics-form" method="post" action="{{url_for('selection.calculate_contour_statistics', selection_id=selection.id)}}">
-                <button id="recalculate-contour-statistics-button" class="link small" type="submit">Recalculate Contour Statistics</button>
-            </form>
-            <script>
-                ajaxifyForm(document.getElementById('recalculate-contour-statistics-form'), undefined, undefined, undefined, undefined, button = document.getElementById("recalculate-contour-statistics-button"), message = "Recalculating contour statistics...");
-            </script>
-
-            {% else %}
-            <p style="margin-right:10px;">This selection has no contour file.</p>
-            {% endif %}
-
-            {% set rocca_classifier = selection.recording.encounter.classifier %}
-            {% if rocca_classifier %}
-            <hr>
-            <h3>ROCCA Classification</h3>
-            {% if classification %}
-            <p>Classified as <b>{{ classification.classified_as }}</b> by {{ classification.classifier.name }}
-                ({{ classification.classifier.threshold_description }}).</p>
-            {% if classification.error %}<p>Error: {{ classification.error }}</p>{% endif %}
-            {% if classification.votes_description %}<p>Votes: {{ classification.votes_description }}</p>{% endif %}
-            {% if not classification_up_to_date %}<p>The contour statistics have changed since this selection was classified.</p>{% endif %}
-            {% else %}
-            <p>This selection has not been classified by {{ rocca_classifier.name }} (the encounter's classifier).</p>
-            {% endif %}
-            {% if selection.contour_file and not session['snapshot_date'] and current_user.role_id in [1, 2, 3] %}
-            <form id="classify-selection-form" method="post" action="{{ url_for('classifier.selection_classify', selection_id=selection.id) }}">
-                <button id="classify-selection-button" class="link small" type="submit">Re-classify</button>
-            </form>
-            <script>
-                ajaxifyForm(document.getElementById('classify-selection-form'), undefined, undefined, undefined, undefined, button = document.getElementById("classify-selection-button"), message = "Classifying...");
-            </script>
-            {% endif %}
-            {% endif %}
-
-            <hr>
-            <h3>Selection Table</h3>
-            {% if selection.recording.selection_table_file %}
-            <p>Selection table excerpt for selection number {{ selection.selection_number }}</p>
-            <table>
-
-                <tr>
-                    <th>Attribute</th>
-                    <th>Value</th>
-                </tr>
-                <tr>
-                    <td>Selection Number</td>
-                    <td>{{ selection.selection_number }}</td>
-                </tr>
-                <tr>
-                    <td>View</td>
-                    <td>{{ selection.view }}</td>
-                </tr>
-                <tr>
-                    <td>Channel</td>
-                    <td>{{ selection.channel }}</td>
-                </tr>
-                <tr>
-                    <td>Begin Time</td>
-                    <td>{{ selection.begin_time }}</td>
-                </tr>
-                <tr>
-                    <td>End Time</td>
-                    <td>{{ selection.end_time }}</td>
-                </tr>
-                <tr>
-                    <td>Low Frequency</td>
-                    <td>{{ selection.low_frequency }}</td>
-                </tr>
-                <tr>
-                    <td>High Frequency</td>
-                    <td>{{ selection.high_frequency }}</td>
-                </tr>
-                <tr>
-                    <td>Delta Time</td>
-                    <td>{{ selection.delta_time }}</td>
-                </tr>
-                <tr>
-                    <td>Delta Frequency</td>
-                    <td>{{ selection.delta_frequency }}</td>
-                </tr>
-                <tr>
-                    <td>Average Power</td>
-                    <td>{{ selection.average_power }}</td>
-                </tr>
-                <tr>
-                    <td>Annotation</td>
-                    <td>{{ selection.annotation }}</td>
-                </tr>
-            </table>
-            {% else %}
-            <p>This selection has no selection table.</p>
-            {% endif %}
-            <hr>
-
-            <table>
-
-                <tr>
-                    <th>Attribute</th>
-                    <th>Value</th>
-                </tr>
-                {% for attr_name, attr_value in selection_dict.items() %}
-                <tr>
-                    <td>{{ attr_name }}</td>
-                    <td>{{ attr_value }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-
+{% extends 'base.html' %}
+{#
+This page shows a selection: its plot, files, ROCCA classification and statistics.
+Variables required:
+- selection: the Selection object being viewed
+- selection_dict: the selection's contour statistics {heading: value}
+- selection_history: a pagination.Page of the selection's audit history
+- classification, classification_up_to_date: the selection's ROCCA result (or None)
+- previous_selection, next_selection: the neighbouring selections in the recording (or None)
+#}
+{% from 'partials/ui.html' import pagination %}
+{% set live = not session['snapshot_date'] %}
+{% set recording = selection.recording %}
+{% set rocca_classifier = recording.encounter.classifier %}
+{% block title %}Selection {{ selection.selection_number }}{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('encounter.encounter') }}">Encounters</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('encounter.encounter_view', encounter_id=recording.encounter_id) }}">{{ recording.encounter.encounter_name }}</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('recording.recording_view', encounter_id=recording.encounter_id, recording_id=recording.id) }}">Recording {{ recording.start_time_pretty }}</a></li>
+<li class="breadcrumb-item active" aria-current="page">Selection {{ selection.selection_number }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Selection {{ selection.selection_number }}
+        {% if selection.deactivated %}<span class="badge text-bg-secondary fs-6 align-middle">Deactivated</span>{% endif %}
+        {% if selection.traced != None %}<span class="badge text-bg-success fs-6 align-middle">Traced</span>{% endif %}
+    </h1>
+    <div class="actions">
+        <div class="btn-group" role="group" aria-label="Other selections">
+            <a class="btn btn-outline-secondary {% if not previous_selection %}disabled{% endif %}" {% if previous_selection %}href="{{ url_for('selection.selection_view', selection_id=previous_selection.id) }}"{% else %}aria-disabled="true"{% endif %}>‹ {{ 'Selection ' ~ previous_selection.selection_number if previous_selection else 'Previous' }}</a>
+            <a class="btn btn-outline-secondary {% if not next_selection %}disabled{% endif %}" {% if next_selection %}href="{{ url_for('selection.selection_view', selection_id=next_selection.id) }}"{% else %}aria-disabled="true"{% endif %}>{{ 'Selection ' ~ next_selection.selection_number if next_selection else 'Next' }} ›</a>
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Download</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% if selection.selection_file %}
+                <li><a class="dropdown-item" href="{{ url_for('selection.download_selection_file', selection_id=selection.id) }}">Selection file</a></li>
+                {% endif %}
+                {% if selection.contour_file %}
+                <li><a class="dropdown-item" href="{{ url_for('selection.download_contour_file', selection_id=selection.id) }}">Contour file</a></li>
+                {% endif %}
+                {% if selection.ctr_file %}
+                <li><a class="dropdown-item" href="{{ url_for('selection.download_ctr_file', selection_id=selection.id) }}">CTR file</a></li>
+                {% endif %}
+                {% if not selection.selection_file and not selection.contour_file %}
+                <li><span class="dropdown-item-text text-body-secondary">No files</span></li>
+                {% endif %}
+            </ul>
+        </div>
+        {% if selection.contour_file and live and current_user.role_id in [1, 2, 3] %}
+        <form id="recalculate-contour-statistics-form" method="post" action="{{ url_for('selection.calculate_contour_statistics', selection_id=selection.id) }}">
+            <button id="recalculate-contour-statistics-button" class="btn btn-outline-primary" type="submit">Recalculate statistics</button>
+        </form>
+        {% endif %}
     </div>
+</div>
 
-</body>
+<div class="row">
+    <div class="col-xl-8">
+        <section class="card">
+            <div class="card-body">
+                <h2>Spectrogram and contour</h2>
+                <img class="img-fluid" id="plot-image" src="{{ url_for('selection.serve_plot', selection_id=selection.id) }}" alt="Spectrogram and contour plot for selection {{ selection.selection_number }}">
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-4">
+        {% if rocca_classifier %}
+        <section class="card" id="rocca-classification">
+            <div class="card-body">
+                <h2>ROCCA classification</h2>
+                {% if classification %}
+                <p class="fs-4 mb-1"><strong>{{ classification.classified_as }}</strong></p>
+                <p class="text-body-secondary small">by {{ classification.classifier.name }} ({{ classification.classifier.threshold_description }})</p>
+                {% if classification.error %}<div class="alert alert-danger py-2">Error: {{ classification.error }}</div>{% endif %}
+                {% if classification.votes_description %}<p class="small mb-2">Votes: {{ classification.votes_description }}</p>{% endif %}
+                {% if not classification_up_to_date %}<div class="alert alert-warning py-2 small">The contour statistics have changed since this selection was classified.</div>{% endif %}
+                {% else %}
+                <p class="empty-state">This selection has not been classified by {{ rocca_classifier.name }} (the encounter's classifier).</p>
+                {% endif %}
+                {% if selection.contour_file and live and current_user.role_id in [1, 2, 3] %}
+                <form id="classify-selection-form" method="post" action="{{ url_for('classifier.selection_classify', selection_id=selection.id) }}">
+                    <button id="classify-selection-button" class="btn btn-sm btn-outline-primary" type="submit">Re-classify</button>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
 
+        <section class="card">
+            <div class="card-body">
+                <h2>Files</h2>
+                <dl class="summary">
+                    <dt>Selection file</dt>
+                    <dd>
+                        {% if selection.selection_file %}
+                        <a href="{{ url_for('selection.download_selection_file', selection_id=selection.id) }}">Download</a> ·
+                        <a href="{{ url_for('general.get_file_details', file_id=selection.selection_file_id) }}?file_details=Selection File for {{ selection.unique_name }}&redirect_link={{ request.url }}">Details</a>
+                        {% else %}<span class="text-body-secondary">None</span>{% endif %}
+                    </dd>
+                    <dt>Contour file</dt>
+                    <dd>
+                        {% if selection.contour_file %}
+                        <a href="{{ url_for('selection.download_contour_file', selection_id=selection.id) }}">Download</a> ·
+                        <a href="{{ url_for('general.get_file_details', file_id=selection.contour_file_id) }}?file_details=Contour File for {{ selection.unique_name }}">Details</a>
+                        {% else %}<span class="text-body-secondary">None</span>{% endif %}
+                    </dd>
+                    {% if selection.contour_file %}
+                    <dt>CTR file</dt>
+                    <dd>
+                        {% if selection.ctr_file %}
+                        <a href="{{ url_for('selection.download_ctr_file', selection_id=selection.id) }}">Download</a> ·
+                        <a href="{{ url_for('general.get_file_details', file_id=selection.ctr_file_id) }}?file_details=CTR File for {{ selection.unique_name }}">Details</a>
+                        {% else %}<span class="text-danger small">There was an issue generating the CTR file. Try recalculating the contour statistics.</span>{% endif %}
+                    </dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-5">
+        <section class="card">
+            <div class="card-body">
+                <h2>Selection table</h2>
+                {% if recording.selection_table_file %}
+                <table class="mb-0">
+                    <tbody>
+                        {% for label, value in [('Selection number', selection.selection_number), ('View', selection.view), ('Channel', selection.channel),
+                            ('Begin time', selection.begin_time), ('End time', selection.end_time), ('Low frequency', selection.low_frequency),
+                            ('High frequency', selection.high_frequency), ('Delta time', selection.delta_time), ('Delta frequency', selection.delta_frequency),
+                            ('Average power', selection.average_power), ('Annotation', selection.annotation)] %}
+                        <tr><th scope="row">{{ label }}</th><td>{{ value }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="empty-state">This recording has no selection table.</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+    <div class="col-lg-7">
+        <section class="card">
+            <div class="card-body">
+                <h2>Contour statistics</h2>
+                {% if selection.contour_file %}
+                <div class="stats-columns">
+                    <table class="mb-0">
+                        <tbody>
+                            {% for attr_name, attr_value in selection_dict.items() %}
+                            <tr><th scope="row">{{ attr_name }}</th><td>{{ attr_value }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="empty-state">This selection has no contour file, so no statistics have been calculated.</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+
+{% if current_user.role_id in [1, 2] %}
+<section class="card border-secondary-subtle">
+    <div class="card-header bg-transparent">
+        <button class="btn btn-link text-decoration-none p-0 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#selection-admin"
+            aria-expanded="{{ 'true' if request.args.get('hist_page') else 'false' }}" aria-controls="selection-admin">Administration: audit history</button>
+    </div>
+    <div id="selection-admin" class="collapse {% if request.args.get('hist_page') %}show{% endif %}">
+        <div class="card-body audit-history">
+            <h3 id="audit-history" class="mt-0">Audit history</h3>
+            <div class="table-responsive">
+                <table class="table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>User</th>
+                            <th>Snapshot</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in selection_history %}
+                        <tr>
+                            <td>{{ history['row_start'] }}</td>
+                            <td>{{ history['action'] }}</td>
+                            <td>{{ history['updated_by'].name }}</td>
+                            <td><a href="{{ url_for('selection.selection_view', encounter_id=history['encounter_id'], selection_id=history['id'], snapshot_date=history['row_start']) }}">View as of this date</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {{ pagination(selection_history, 'changes', anchor='audit-history') }}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
 <script>
-    document.getElementById("plot-form").addEventListener("submit", function (event) {
-        document.getElementById("plot-image").style.display = "none";
-        event.preventDefault();
-        var url = "{{url_for('selection.serve_plot',selection_id=selection.id)}}";
-        document.getElementById("plot-image").src = url;
-        document.getElementById("plot-image").style.display = "block";
-
+    [['recalculate-contour-statistics-form', 'Recalculating contour statistics...'], ['classify-selection-form', 'Classifying...']].forEach(([id, message]) => {
+        const form = document.getElementById(id);
+        if (form) ajaxifyForm(form, undefined, undefined, undefined, undefined, null, message);
     });
 </script>
+{% endblock %}

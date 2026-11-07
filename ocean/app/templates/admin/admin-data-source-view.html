@@ -1,20 +1,18 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Edit Data Source</title>
-</head>
-<body>
-    <div class="outer-div">
-        <h1>Edit Data Source</h1>
-        <form id="data-source-edit-form" action="{{ url_for('admin.admin_data_source_edit', data_source_id=data_source.id) }}" method="post">
-            {% set editing = True %}
-            {% include 'admin/admin-data-source-template.html' %}
-        </form>
-        <script>
-            ajaxifyForm(document.getElementById('data-source-edit-form'), true, true, null, null);
-        </script>
-    </div>
-</body>
-
-</html>
+{% extends 'base.html' %}
+{% block title %}Edit Data Source{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item active" aria-current="page">Data source</li>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    <h1>Edit Data Source</h1>
+    <form id="data-source-edit-form" action="{{ url_for('admin.admin_data_source_edit', data_source_id=data_source.id) }}" method="post">
+        {% set editing = True %}
+        {% include 'admin/admin-data-source-template.html' %}
+    </form>
+    <script>
+        ajaxifyForm(document.getElementById('data-source-edit-form'), true, true, null, null);
+    </script>
+</div>
+{% endblock %}

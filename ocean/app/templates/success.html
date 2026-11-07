@@ -1,13 +1,10 @@
-<!-- success.html -->
-<!DOCTYPE html>
-<html lang="en">
-{% include 'partials/header.html' %}
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success</title>
-    <style>
+{% extends 'base.html' %}
+{#
+success.html
+#}
+{% block title %}Success{% endblock %}
+{% block head %}
+<style>
         .success-body {
             background-color: #f4f4f4;
             text-align: center;
@@ -20,12 +17,11 @@
             color: #6c757d;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block content %}
     <div class="outer-div">
     <h1 class="success-h1">Success</h1>
     <p class="success-p">{{success_message}}</p>
     <a href='{{ continue_link }}'>Continue</a>
 </div>
-</body>
-</html>
+{% endblock %}

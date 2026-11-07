@@ -1,24 +1,23 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-
-</head>
-<body>
-    <div class="outer-div">
-        <h2>Add New Species</h1>
-            <form id="species-insert-form" action="{{ url_for('admin.admin_species_insert') }}" method="post">
-                <label for="scientific_name">Scientific name:</label>
-                <input type="text" id="scientific_name" name="scientific_name" required>
-                <label for="genus_name">Genus:</label>
-                <input type="text" id="genus_name" name="genus_name">
-                <label for="common_name">Common name:</label>
-                <input type="text" id="common_name" name="common_name"><br>
-                <button class="blue" type="submit">Submit</button>
-            </form>
-            <script>
-                ajaxifyForm(document.getElementById('species-insert-form'), true, true, null, null);
-            </script>
-    </div>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}New Species{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item active" aria-current="page">New species</li>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    <h1>Add New Species</h1>
+        <form id="species-insert-form" action="{{ url_for('admin.admin_species_insert') }}" method="post">
+            <label for="scientific_name">Scientific name:</label>
+            <input type="text" id="scientific_name" name="scientific_name" required>
+            <label for="genus_name">Genus:</label>
+            <input type="text" id="genus_name" name="genus_name">
+            <label for="common_name">Common name:</label>
+            <input type="text" id="common_name" name="common_name"><br>
+            <button class="blue" type="submit">Submit</button>
+        </form>
+        <script>
+            ajaxifyForm(document.getElementById('species-insert-form'), true, true, null, null);
+        </script>
+</div>
+{% endblock %}

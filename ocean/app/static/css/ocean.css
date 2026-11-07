@@ -1,0 +1,399 @@
+/*
+OCEAN styles, on top of Bootstrap 5 (bootstrap.min.css).
+
+New markup should use Bootstrap classes (btn, card, table, form-control...). The "legacy"
+sections below give OCEAN's older markup (bare inputs, and the blue/gray/link/small button
+classes) a matching look, so pages that have not been redesigned still fit in.
+*/
+
+:root {
+    --ocean-blue: #0071b3;
+    --ocean-blue-dark: #005a8d;
+    --ocean-bg: #f5f7f9;
+    --bs-primary: var(--ocean-blue);
+    --bs-primary-rgb: 0, 113, 179;
+    --bs-link-color: var(--ocean-blue);
+    --bs-link-color-rgb: 0, 113, 179;
+    --bs-link-hover-color: var(--ocean-blue-dark);
+    --bs-link-hover-color-rgb: 0, 90, 141;
+    --bs-body-font-family: "PT Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --bs-body-font-size: 0.925rem;
+    --bs-body-bg: var(--ocean-bg);
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--ocean-blue);
+    --bs-btn-border-color: var(--ocean-blue);
+    --bs-btn-hover-bg: var(--ocean-blue-dark);
+    --bs-btn-hover-border-color: var(--ocean-blue-dark);
+    --bs-btn-active-bg: var(--ocean-blue-dark);
+    --bs-btn-active-border-color: var(--ocean-blue-dark);
+    --bs-btn-disabled-bg: var(--ocean-blue);
+    --bs-btn-disabled-border-color: var(--ocean-blue);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--ocean-blue);
+    --bs-btn-border-color: var(--ocean-blue);
+    --bs-btn-hover-bg: var(--ocean-blue);
+    --bs-btn-hover-border-color: var(--ocean-blue);
+    --bs-btn-active-bg: var(--ocean-blue);
+    --bs-btn-active-border-color: var(--ocean-blue);
+}
+
+/* Layout */
+
+.ocean-navbar {
+    background-color: var(--ocean-blue);
+}
+
+.ocean-navbar .navbar-brand img {
+    background: #fff;
+    border-radius: 0.3rem;
+    padding: 2px 6px;
+}
+
+.ocean-version {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.ocean-navbar .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.ocean-navbar .nav-link.active,
+.ocean-navbar .nav-link:hover {
+    color: #fff;
+}
+
+.ocean-navbar .nav-link.active {
+    font-weight: bold;
+}
+
+.ocean-main {
+    padding-top: 1rem;
+    padding-bottom: 3rem;
+    max-width: 1500px;
+}
+
+.breadcrumb {
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+h2 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.75rem; }
+h3 { font-size: 1.05rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+.card h2:first-child, .card h3:first-child { margin-top: 0; }
+
+/* A page heading with actions on the right */
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.page-header h1 { margin: 0; }
+
+.card { margin-bottom: 1rem; }
+
+/* Key/value summaries: <dl class="summary"><dt>Key</dt><dd>Value</dd></dl> */
+dl.summary {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.35rem 1.25rem;
+    margin: 0;
+}
+
+dl.summary dt { font-weight: normal; color: var(--bs-secondary-color); }
+dl.summary dd { margin: 0; }
+
+/* Shown in place of an empty table */
+.empty-state {
+    color: var(--bs-secondary-color);
+    font-style: italic;
+    padding: 0.5rem 0;
+}
+
+/* Tables: every table gets Bootstrap's table look, even without class="table" */
+table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+    background-color: #fff;
+}
+
+table > :not(caption) > * > * {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    vertical-align: middle;
+}
+
+table th {
+    font-weight: 600;
+    white-space: nowrap;
+    background-color: #eef2f5;
+}
+
+table.table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: rgba(0, 0, 0, 0.025);
+}
+
+table tbody tr:hover > td {
+    background-color: rgba(0, 113, 179, 0.05);
+}
+
+.table-responsive { margin-bottom: 1rem; }
+.table-responsive > table { margin-bottom: 0; }
+
+/* Sortable column headings (see the sortable_header macro) */
+th a.sort-link { color: inherit; text-decoration: none; }
+th a.sort-link:hover { text-decoration: underline; }
+
+/* Forms: legacy markup (bare inputs, selects and textareas) looks like Bootstrap's form-control */
+
+label {
+    display: block;
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.form-check-label, .btn, label.btn { font-weight: normal; margin: 0; }
+.form-check-label { display: inline; }
+
+/* :where() gives these rules no specificity, so Bootstrap classes (form-control, input-group...) win */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not(.btn-check),
+select,
+textarea) {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--bs-body-color);
+    background-color: #fff;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+:where(select:not([multiple])) {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+}
+
+:where(input, select, textarea):focus {
+    border-color: #80b8d9;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 113, 179, 0.2);
+}
+
+:where(input[type="file"]) {
+    display: block;
+    width: 100%;
+    font-size: 0.9rem;
+    padding: 0.3rem;
+    background-color: #fff;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+}
+
+input[type="checkbox"], input[type="radio"] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    vertical-align: middle;
+    accent-color: var(--ocean-blue);
+}
+
+/*
+A checkbox or radio button with its text on the same line:
+<label class="inline-option"><input type="checkbox" name="x"> Text</label>
+*/
+label.inline-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+}
+
+/* Legacy forms lay their fields out in a column, with the buttons below */
+form > button, form > .btn { margin-top: 0.75rem; }
+
+/* Legacy buttons: class="blue" (primary), "gray" (secondary), "link" or <a class="button"> (light), "small" */
+
+button {
+    cursor: pointer;
+}
+
+button.blue, a.button.blue,
+button.gray,
+button.link, a.button,
+.add-new-button, .delete-button, .back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.375rem 0.85rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    border: 1px solid transparent;
+    border-radius: var(--bs-border-radius);
+    text-decoration: none;
+    width: auto;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+button.blue, a.button.blue {
+    background-color: var(--ocean-blue);
+    border-color: var(--ocean-blue);
+    color: #fff;
+}
+
+button.blue:hover, a.button.blue:hover {
+    background-color: var(--ocean-blue-dark);
+    color: #fff;
+}
+
+button.gray, .back-button {
+    background-color: #fff;
+    border-color: #adb5bd;
+    color: #343a40;
+}
+
+button.gray:hover, .back-button:hover {
+    background-color: #e9ecef;
+}
+
+button.link, a.button, .add-new-button {
+    background-color: #fff;
+    border-color: var(--ocean-blue);
+    color: var(--ocean-blue);
+}
+
+button.link:hover, a.button:hover, .add-new-button:hover {
+    background-color: var(--ocean-blue);
+    color: #fff;
+}
+
+.delete-button {
+    background-color: #fff;
+    border-color: var(--bs-danger);
+    color: var(--bs-danger);
+}
+
+.delete-button:hover {
+    background-color: var(--bs-danger);
+    color: #fff;
+}
+
+button.small, a.button.small {
+    padding: 0.2rem 0.55rem;
+    font-size: 0.8rem;
+}
+
+button:disabled, .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* A row of buttons or forms */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.actions form { display: inline; margin: 0; }
+.actions form > button, .actions form > .btn { margin-top: 0; }
+
+/* Pages that have not been redesigned wrap their content in <div class="outer-div"> */
+.outer-div { padding: 0; }
+
+hr { margin: 1.5rem 0; opacity: 0.15; }
+
+/* Home page banner */
+.hero-section {
+    position: relative;
+    height: 300px;
+    margin: -1rem calc(-0.5 * var(--bs-gutter-x)) 1.5rem;
+    overflow: hidden;
+}
+
+.hero-section img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    max-width: none;
+    min-height: 100%;
+    min-width: 100%;
+}
+
+.hero-section .hero-section__content {
+    position: absolute;
+    bottom: calc(1.5vw + 1rem);
+    left: 15px;
+    max-width: 620px;
+}
+
+.hero-section .hero-section__heading {
+    background: rgba(0, 83, 155, 0.9);
+    color: #fff;
+    margin: 0;
+    padding: 0.25rem 1.5rem;
+    font-size: clamp(1.75rem, 4vw, 3rem);
+}
+
+/* Buttons and forms inside table cells sit side by side */
+td form { display: inline-block; margin: 0; vertical-align: middle; }
+td form > button, td form > .btn { margin-top: 0; }
+td > a.button, td > button, td > form, td > .btn { margin: 0.1rem 0.25rem 0.1rem 0; }
+td > br { display: none; }
+
+.ocean-navbar .navbar-text { color: rgba(255, 255, 255, 0.85); }
+
+/* Lists: search box, page links and page size (see partials/ui.html) */
+.list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.ocean-search { max-width: 420px; flex: 1 1 260px; }
+.ocean-search .input-group > input { flex: 1 1 auto; width: 1%; min-width: 0; }
+
+.ocean-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.ocean-per-page { display: flex; align-items: center; gap: 0.4rem; }
+.ocean-per-page select { width: auto; padding-top: 0.15rem; padding-bottom: 0.15rem; }
+.sort-hint { opacity: 0.35; font-size: 0.8em; }
+
+/* Links in tables are not underlined until hovered */
+table a:not(.btn) { text-decoration: none; }
+table a:not(.btn):hover { text-decoration: underline; }
+
+/* The selection page's long list of contour statistics scrolls within its card */
+.stats-columns { max-height: 34rem; overflow-y: auto; }
+table th[scope="row"] { font-weight: normal; color: var(--bs-secondary-color); background: none; white-space: nowrap; }

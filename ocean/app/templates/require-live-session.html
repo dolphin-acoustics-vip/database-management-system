@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-    <!DOCTYPE html>
-    <html>
-    {% include 'partials/header.html' %}
-    
-    <head>
-        <title>Error 404</title>
-    </head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Unable to Continue{% endblock %}
+{% block content %}
     <div class="outer-div">
     <h1>Unable to continue</h1>
     <p>You are unable to complete this action in archive mode.</p>
@@ -34,5 +27,4 @@
 {% endif %}
 
 </div>
-</body>
-</html>
+{% endblock %}

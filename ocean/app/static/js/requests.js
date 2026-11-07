@@ -25,8 +25,8 @@
  * 4. If a successCallback is provided and the request is successful AND no errors are returned in the response, the successCallback is called.
  * 5. If a redirect link is returned in the response, the page is refreshed with that link.
  *
- * NOTE: for the error and message popups, the default JS alert() method is used if a redirect link is provided. Otherwise the method assumes the
- * page will not be refreshed making it safe to use the JQuery toast library.
+ * NOTE: if a redirect link is provided, the error and message popups are kept and shown as toasts on the next page
+ * (oceanToastAfterRedirect in ocean.js); otherwise they are shown as toasts straight away.
  */
 async function makeAjaxRequest(url, method, data, contentType = "application/x-www-form-urlencoded; charset=UTF-8", error_popups = true, message_popups = true, successCallback = null, errorCallback = null, button = null, message = null) {
   if (message != null) {
@@ -59,7 +59,7 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
      */
     success: async function(response) {
       var error = false;
-      if (button != null) button.disabled = false;
+      if (button != null) setButtonLoading(button, false);
       // Ensure response is in the form of a JSON object with 'messages', 'errors', and 'redirect' keys
       if (!(response instanceof Object) || !response.hasOwnProperty('messages') || !response.hasOwnProperty('errors') || !response.hasOwnProperty('redirect')) {
         await $.toast({
@@ -81,7 +81,7 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
           // If there is a redirect link in the response show the error
           // popup as an alert
           if (response.redirect) {
-            alert( "The following issue(s) ocurred: " + errorMessage);
+            oceanToastAfterRedirect(response.errors.length === 1 ? response.errors[0] : "The following issue(s) occurred:", 'error', response.errors.length > 1 ? response.errors.slice(1).join('<br>') : "");
           }
           // If there is no redirect link in the response show the error
           // popup as a toast
@@ -105,7 +105,7 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
           // If there is a redirect link in the response show the error
           // popup as an alert
           if (response.redirect) {
-            alert( "Info: " + messages);
+            response.messages.forEach(message => oceanToastAfterRedirect(message, 'info'));
           }
           // If there is no redirect link in the response show the error
           // popup as a toast
@@ -138,7 +138,8 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
   // Handle any errors that may occur during the request
   // and alert the user with a message containing the error
     error: function(xhr, status, error) {
-      alert('An error occurred: ' + error);
+      if (button != null) setButtonLoading(button, false);
+      oceanToast('The request failed', 'error', error || 'Unable to reach the server. Please check your connection and try again.');
     }
   };
 
@@ -160,10 +161,18 @@ async function makeAjaxRequest(url, method, data, contentType = "application/x-w
     makeAjaxRequest(url=url, method=method, data=data, contentType=undefined, error_popups=error_popups, message_popups=message_popups, successCallback=successCallback, errorCallback=errorCallback, button = button, message = message);
   }
 
+  /**
+   * Submit the form with makeAjaxRequestForm instead of loading a new page. While the request
+   * runs the submit button shows a spinner and is disabled. If the form has a data-confirm
+   * attribute, the user is asked to confirm first (oceanConfirm in ocean.js).
+   */
   function ajaxifyForm(form, error_popups = true, message_popups = true, successCallback = null, errorCallback = null, button = null, message = null) {
-    form.addEventListener('submit', function(event) {
+    form.dataset.ajaxified = 'true';
+    form.addEventListener('submit', async function(event) {
       event.preventDefault();
-      if (button != null) button.disabled = true;
-      makeAjaxRequestForm(form, error_popups, message_popups, successCallback, errorCallback, button, message);
+      if (form.dataset.confirm && !(await oceanConfirm(form.dataset.confirm, { confirmText: form.dataset.confirmText }))) return;
+      const submitButton = button || event.submitter || form.querySelector('button[type="submit"], button:not([type])');
+      setButtonLoading(submitButton, true);
+      makeAjaxRequestForm(form, error_popups, message_popups, successCallback, errorCallback, submitButton, message);
     });
   }
