@@ -1,0 +1,102 @@
+{#
+Base template for every OCEAN page. Pages extend it and fill in these blocks:
+- title: the page title (shown in the browser tab, followed by " - OCEAN")
+- breadcrumbs: <li class="breadcrumb-item"> elements shown above the page (optional)
+- head: extra <head> content, e.g. page-specific <style> (optional)
+- content: the page itself
+- scripts: page-specific scripts, run after the page has loaded (optional)
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}OCEAN{% endblock %} - OCEAN</title>
+  <link rel="icon" href="{{ url_for('general.favicon') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='jquery.toast.css') }}">
+  <link rel="stylesheet" href="{{ url_for('general.serve_style', filename='ocean.css') }}">
+  <script src="{{ url_for('general.serve_script', filename='jquery-3.7.1.js') }}"></script>
+  <script src="{{ url_for('general.serve_script', filename='bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('general.serve_script', filename='jquery.toast.min.js') }}"></script>
+  <script src="{{ url_for('general.serve_script', filename='requests.js') }}"></script>
+  <script src="{{ url_for('general.serve_script', filename='ocean.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <nav class="navbar navbar-expand-md navbar-dark ocean-navbar">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('general.home') }}">
+          <img src="{{ url_for('general.serve_resource', filename='OCEAN-banner.png') }}" alt="OCEAN" height="36">
+          <span class="ocean-version">v1.2.1</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ocean-nav"
+          aria-controls="ocean-nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="ocean-nav">
+          {% set section = request.blueprint %}
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item"><a class="nav-link {% if section == 'general' %}active{% endif %}" href="{{ url_for('general.home') }}">Home</a></li>
+            {% if current_user.is_authenticated %}
+            <li class="nav-item"><a class="nav-link {% if section in ['encounter', 'recording', 'selection'] %}active{% endif %}" href="{{ url_for('encounter.encounter') }}">Encounters</a></li>
+            {% if current_user.role_id in [1, 2] %}
+            <li class="nav-item"><a class="nav-link {% if section == 'datahub' %}active{% endif %}" href="{{ url_for('datahub.datahub_view') }}">Data Hub</a></li>
+            <li class="nav-item"><a class="nav-link {% if section == 'healthcentre' %}active{% endif %}" href="{{ url_for('healthcentre.healthcentre_view') }}">Health Centre</a></li>
+            <li class="nav-item"><a class="nav-link {% if section in ['admin', 'classifier', 'filespace'] %}active{% endif %}" href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+            {% endif %}
+            {% endif %}
+          </ul>
+          <span class="navbar-text small">
+            {% if current_user.is_authenticated %}
+            Signed in as {{ current_user.name }} ({{ current_user.role.name }})
+            {% else %}
+            Not signed in
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </nav>
+    {% if session['snapshot_date'] %}
+    <div id="warning-bar" class="alert alert-danger rounded-0 mb-0 py-2 text-center">
+      <strong>Archive mode:</strong> viewing the database as it was on {{ session['snapshot_date'] }}. Changes are disabled.
+      <a class="alert-link" href="{{ url_for('general.reset_snapshot_in_session') }}">Exit archive mode</a>
+    </div>
+    {% endif %}
+  </header>
+
+  <main class="container-fluid ocean-main">
+    {% set breadcrumbs %}{% block breadcrumbs %}{% endblock %}{% endset %}
+    {% if breadcrumbs | trim %}
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('general.home') }}">Home</a></li>
+        {{ breadcrumbs }}
+      </ol>
+    </nav>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {# Used by oceanConfirm() in ocean.js instead of the browser's confirm() dialog #}
+  <div class="modal fade" id="ocean-confirm-modal" tabindex="-1" aria-labelledby="ocean-confirm-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="ocean-confirm-title">Are you sure?</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="ocean-confirm-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="ocean-confirm-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="flash-messages" hidden>{{ get_flashed_messages(with_categories=true) | tojson }}</div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

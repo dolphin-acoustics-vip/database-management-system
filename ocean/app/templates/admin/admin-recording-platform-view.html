@@ -1,19 +1,18 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Edit Recording Platform</title>
-</head>
-<body>
-    <div class="outer-div">
-    <h1>Edit Recording Platform</h1>
-    <form id="recording-platform-update-form" action="{{ url_for('admin.admin_recording_platform_edit', recording_platform_id=recording_platform.id) }}" method="post">
-        {% set editing = True %}
-        {% include 'admin/admin-recording-platform-template.html' %}
-    </form>
-    <script>
-        ajaxifyForm(document.getElementById('recording-platform-update-form'), true, true, null, null);
-    </script>
-    </div>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Edit Recording Platform{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item active" aria-current="page">Recording platform</li>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+<h1>Edit Recording Platform</h1>
+<form id="recording-platform-update-form" action="{{ url_for('admin.admin_recording_platform_edit', recording_platform_id=recording_platform.id) }}" method="post">
+    {% set editing = True %}
+    {% include 'admin/admin-recording-platform-template.html' %}
+</form>
+<script>
+    ajaxifyForm(document.getElementById('recording-platform-update-form'), true, true, null, null);
+</script>
+</div>
+{% endblock %}

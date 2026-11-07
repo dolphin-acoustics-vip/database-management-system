@@ -30,7 +30,7 @@
 <input type="hidden" id="recording-file-id-store" name="upload_recording_file_id" value="">
 <input type="hidden" id="recording-file-name-store" name="upload_recording_file_name" value="">
 
-<button id="recording-form-submit-button" class="blue" type="submit" title="Update encounter with changed data.">Update</button>
+<button id="recording-form-submit-button" class="blue" type="submit">{% if editing %}Save changes{% else %}Add recording{% endif %}</button>
 
 
 <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
@@ -76,7 +76,10 @@
         if ('{{editing}}' == 'True') {
             calculateTimeOffsets('start-time', 'gmt-offset-label', 'local-offset-label', 'file-time-label', '{{ file_timezone }}', '{{ local_timezone }}')
         }
-        fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-form-submit-button'));
+        // The file input (and html-utils.js) are only on the page if the recording has no file yet
+        if (document.getElementById('recording-file-input')) {
+            fileUploadHandler(document.getElementById('recording-file-input'),document.getElementById('recording-insert-progress-bar'), document.getElementById('recording-file-id-store'), document.getElementById('recording-file-name-store'), document.getElementById('recording-form-submit-button'));
+        }
 
     });
 

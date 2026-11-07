@@ -1,10 +1,6 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Administration Portal</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Sign In{% endblock %}
+{% block content %}
   <div class="outer-div">
       <div class="box">
         <h3 class="title">Login with Access Code</h3>
@@ -30,13 +26,13 @@
             <div style="color: #777;">OR</div>
             <hr style="flex: 1; margin-left: 10px;">
         </div>
-        
+
         <a class="button blue" href="{{ url_for('auth.login', next=next_destination) }}">Login With Email</a>
 
       </div>
   </div>
-</body>
-</html>
+
+
 
 <style>
     .outer-div {
@@ -45,30 +41,30 @@
         align-items: center;
         height: 60vh;
     }
-    
+
     .title {
         text-align: center;
         margin-bottom: 20px;
     }
-    
+
     .box {
         width: 300px;
         padding: 20px;
         border: 1px solid #ccc;
         border-radius: 5px;
     }
-    
+
     .field {
         margin-bottom: 10px;
     }
-    
+
     .input {
         width: 100%;
         padding: 10px;
         border: 1px solid #ccc;
         border-radius: 5px;
     }
-    
+
     .button {
         width: 100%;
         padding: 10px;
@@ -78,8 +74,9 @@
         border-radius: 5px;
         cursor: pointer;
     }
-    
+
     .button:hover {
         background-color: #0056b3;
     }
         </style>
+{% endblock %}

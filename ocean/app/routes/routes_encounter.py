@@ -28,6 +28,7 @@ from .. import utils
 from .. import response_handler
 from .. import transaction_handler
 from .. import classifier
+from .. import pagination
 from ..logger import logger
 
 routes_encounter = Blueprint('encounter', __name__)
@@ -42,7 +43,11 @@ def encounter():
         File.get_abandoned_files(session)
         try:
             encounter_list = database_handler.create_system_time_request(session, models.Encounter, {}, order_by="row_start DESC")
-            return render_template('encounter/encounter.html', encounter_list=encounter_list)
+            species_name = lambda e: e.species.scientific_name if e.species else None
+            encounters = pagination.paginate(encounter_list, request.args, per_page=50,
+                search=[lambda e: e.encounter_name, lambda e: e.location, lambda e: e.project, species_name],
+                sort={'name': lambda e: e.encounter_name, 'location': lambda e: e.location, 'project': lambda e: e.project, 'species': species_name})
+            return render_template('encounter/encounter.html', encounters=encounters)
         except Exception as e:
             exception_handler.handle_exception(exception=e, session=session)
             return redirect(url_for('general.home'))
@@ -89,9 +94,17 @@ def encounter_view(encounter_id):
             encounter_history = database_handler.create_all_time_request(session, models.Encounter, {"id":encounter_id}, "row_start")
             assignments = database_handler.create_system_time_request(session, models.Assignment, {"user_id":current_user.id})
             assignment_recording_ids = [assignment.recording_id for assignment in assignments if assignment.recording_id]
-            assigned_recordings = [recording for recording in recordings if recording.id in assignment_recording_ids]
-            unassigned_recordings = [recording for recording in recordings if recording.id not in assignment_recording_ids]
-            return render_template('encounter/encounter-view.html', encounter=encounter, encounter_history=encounter_history, assignment_recording_ids=assignment_recording_ids,assigned_recordings=assigned_recordings,unassigned_recordings=unassigned_recordings)
+            only_mine = request.args.get('rec_mine') == '1'
+            mine_count = len([recording for recording in recordings if recording.id in assignment_recording_ids])
+            if only_mine: recordings = [recording for recording in recordings if recording.id in assignment_recording_ids]
+            recordings = pagination.paginate(recordings, request.args, prefix='rec_', per_page=50,
+                search=[lambda r: r.start_time_pretty, lambda r: r.status],
+                sort={'start': lambda r: r.start_time, 'status': lambda r: r.status,
+                      'mine': lambda r: r.id not in assignment_recording_ids},
+                default_sort='start')
+            encounter_history = pagination.paginate(encounter_history, request.args, prefix='hist_', per_page=25)
+            return render_template('encounter/encounter-view.html', encounter=encounter, encounter_history=encounter_history,
+                                   assignment_recording_ids=assignment_recording_ids, recordings=recordings, only_mine=only_mine, mine_count=mine_count)
         except Exception as e:
             exception_handler.handle_exception(exception=e, prefix="Error viewing encounter", session=session)
             return redirect(url_for('encounter.encounter'))

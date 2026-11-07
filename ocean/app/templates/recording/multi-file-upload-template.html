@@ -366,7 +366,7 @@
                         successCounter = successCounter + 1
                         await updateProgress(Math.round((counter / numberOfFilesToSubmit) * 100));
                         if (counter == numberOfFilesToSubmit && counter == successCounter) {
-                            alert(successCounter + " files uploaded successfully.")
+                            oceanToastAfterRedirect(successCounter + " files uploaded successfully.", 'success');
                             window.location.reload();
                         }
                     },

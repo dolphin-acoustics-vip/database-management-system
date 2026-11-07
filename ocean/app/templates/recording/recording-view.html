@@ -1,807 +1,559 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
+{% extends 'base.html' %}
+{% from 'partials/ui.html' import status_badge, search_box, sortable_header, pagination %}
+{% set live = not session['snapshot_date'] %}
+{% set can_edit = live and current_user.role_id in [1, 2, 3] %}
+{% set is_admin = current_user.role_id in [1, 2] %}
+{% set rocca_classifier = recording.encounter.classifier.name if recording.encounter.classifier else None %}
 
-<head>
-    <title>View Selections</title>
-</head>
+{% block title %}Recording {{ recording.start_time_pretty }}{% endblock %}
 
-<body>
-    <div class="outer-div">
-        
-        <h1>View Recording {{ recording.unique_name }}</h1>
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('encounter.encounter') }}">Encounters</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('encounter.encounter_view', encounter_id=recording.encounter_id) }}">{{ recording.encounter.encounter_name }}</a></li>
+<li class="breadcrumb-item active" aria-current="page">Recording {{ recording.start_time_pretty }}</li>
+{% endblock %}
 
-        {% if current_user.role_id in [1, 2] %}
-        <h2>Administration Actions</h3>
-            {% if not session['snapshot_date'] %}
-            <h3>Edit Recording Metadata</h3>
-            <form id="recording-form" action="{{ url_for('recording.recording_update', recording_id=recording.id)}}" method="post"
-                    enctype="multipart/form-data">
-                {% from 'recording/recording-form-template.html' import recording_form %}
-                {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
-                                    local_timezone=recording.encounter.local_timezone, recording=recording) }}
-            </form>
-            {% if recording.recording_file %}
-            <form id="recording-file-delete-form" action="{{ url_for('recording.recording_file_delete', recording_id=recording.id) }}" method="post">
-                <button id="recording-file-delete-button" style="margin-top: 0.25rem" class="gray small">Delete Recording File</button>
-            </form>
-            <script>
-                $("#recording-file-delete-form").submit(function (event) {
-                    event.preventDefault();
-                    if (confirm("Are you sure you want to delete the recording file?")) {
-                        makeAjaxRequestForm(event.target);
-                    }
-                });
-            </script>
-            {% endif %}
-            <script>
-                ajaxifyForm(document.getElementById('recording-form'), undefined, undefined, undefined, undefined, button = document.getElementById("recording-form-submit-button"), message="Updating recording.");
-            </script>
-
-            <h3>Review</h3>
-            <label>Status: {{recording.status}} {% if recording.status_change_datetime %}
-                ({{recording.status_change_datetime}}) {% endif %}</label>
-            <div stype="display: flex;">
-                {% if recording.is_reviewed() == False %}
-                <form action="{{url_for('recording.mark_as_complete', recording_id=recording.id)}}" method="get">
-                    <button style="margin-bottom:0.5rem;" class="gray" type="submit" id="mark-as-complete-button">Mark as Complete</button>
-                </form>
+{% block content %}
+<div class="page-header">
+    <h1>Recording {{ recording.start_time_pretty }} {{ status_badge(recording.status) }}</h1>
+    <div class="actions">
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Download</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% if recording.recording_file %}
+                <li><a class="dropdown-item" href="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}">Recording file</a></li>
                 {% endif %}
-                {% if recording.is_on_hold() == False %}
-                <form action="{{url_for('recording.mark_as_on_hold', recording_id=recording.id)}}" method="get">
-                    <button class="gray" type="submit" id="mark-as-on-hold-button">Reject</button>
-                </form>
+                <li><a class="dropdown-item" href="{{ url_for('selection.extract_contour_stats', recording_id=recording.id) }}">Contour statistics</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('recording.download_ctr_files', recording_id=recording.id) }}">CTR files</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('recording.download_contour_files', recording_id=recording.id) }}">Contour files</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('recording.download_selection_files', recording_id=recording.id) }}">Selection files</a></li>
+            </ul>
+        </div>
+        {% if can_edit %}
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <form id="calculate-contour-statistics-form" method="post" action="{{ url_for('recording.calculate_contour_statistics_for_recording', recording_id=recording.id) }}">
+                        <button id="calculate-contour-statistics-button" class="dropdown-item" type="submit">Recalculate contour statistics</button>
+                    </form>
+                </li>
+                {% if rocca_classifier %}
+                <li>
+                    <form id="classify-recording-form" method="post" action="{{ url_for('classifier.recording_classify', recording_id=recording.id) }}">
+                        <button id="classify-recording-button" class="dropdown-item" type="submit">Re-classify selections (ROCCA)</button>
+                    </form>
+                </li>
                 {% endif %}
-            </div>
-            {% endif %}
-            {% if not session['snapshot_date'] %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
 
-            <h3 style="margin-top: 20px;">Assign Users</h3>
-            {% from 'partials/user-search.html' import user_search %}
-            {{ user_search(show_message=true) }}
-            {% endif %}
-            <div class="table-responsive">
-                <table class="table-striped">
-                    {% for assignment in assigned_users %}
-                    <tr>
-                        <td style="color: gray;">{{assignment.user.name}} ({{assignment.user.login_id}})</td>
-                        <td>
-                            {% if assignment.completed_flag %} 
-                                <form id="assignment-flag-as-incomplete-{{assignment.user_id}}" method="POST" action="{{ url_for('recording.assignment_flag_as_incomplete') }}">
-                                    <button class="gray small user-row" id="user-row" style="width:100%;">Remove Completed Flag</button> 
-                                    <input type="hidden" name="user_id" value="{{assignment.user_id}}">
-                                    <input type="hidden" name="recording_id" value="{{assignment.recording_id}}">
-                                </form>
-                                <script>
-                                    ajaxifyForm(document.getElementById('assignment-flag-as-incomplete-{{assignment.user_id}}'));
-                                </script>
-                            {% else %} 
-                                <form id="assignment-flag-as-complete-{{assignment.user_id}}" method="POST" action="{{ url_for('recording.assignment_flag_as_complete') }}">
-                                    <button class="gray small user-row" id="user-row" style="width:100%;">Flag as Completed</button> 
-                                    <input type="hidden" name="user_id" value="{{assignment.user_id}}">
-                                    <input type="hidden" name="recording_id" value="{{assignment.recording_id}}">
-                                </form>
-                                <script>
-                                    ajaxifyForm(document.getElementById('assignment-flag-as-complete-{{assignment.user_id}}'));
-                                </script>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <form id="assignment-delete-{{assignment.user_id}}" action="{{ url_for('recording.assignment_delete') }}" method="POST">
-                                <button class="gray small user-row" id="user-row" style="width:100%;">Unassign User</button>
-                                <input type="hidden" name="user_id" value="{{assignment.user_id}}">
-                                <input type="hidden" name="recording_id" value="{{assignment.recording_id}}">
-                            </form>
-                            <script>
-                                ajaxifyForm(document.getElementById('assignment-delete-{{assignment.user_id}}'));
-                            </script>
-                        </td>
-                            
-                    </tr>
-                    {% endfor %}
-                </table>
-            </div>
-            <section>
-                <div class="audit-history">
-                    <h3>Audit History</h3>
-                    <div class="table-responsive">
-                        <table class="table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Action</th>
-                                    <th>User</th>
-                                    <th>View Snapshot</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for recording in recording_history %}
-                                <tr>
-                                    <td>{{ recording['row_start'] }}</td>
-                                    <td>{{ recording['action'] }}</td>
-                                    <td>{{ recording['updated_by'].name }}</td>
-                                    <td><a
-                                            href="{{ url_for('general.enter_snapshot_date_in_session', snapshot_date=recording['row_start'], redirect_link=url_for('recording.recording_view', recording_id=recording['id']))}}">HERE</a>
-                                    </td>
-
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            {% endif %}
-            <h2>Recording Summary</h2>
-            {% if recording.is_reviewed() == True %}
-
-            <label>Assignment Status: REVIEWED {% if recording.status_change_datetime %}
-                ({{recording.status_change_datetime}}) {% endif %}</label>
-            {% else %}
-            {% if logged_in_user_assigned %}
-
-            {% if logged_in_user_assigned.completed_flag == True %}
-
-            <label>Assignment Status: COMPLETE (Awaiting Review)</label>
-            <form id="flag-as-incomplete-form" action="{{url_for('recording.assignment_flag_as_incomplete', recording_id=recording.id)}}" method="post">
-                <button class="gray" type="submit" id="unflag-as-complete-button">Unflag as Complete</button>
-                <input type="hidden" id="recording_id" name="recording_id" value={{recording.id}}></hidden>
-            </form>
-            <script>
-                ajaxifyForm(document.getElementById('flag-as-incomplete-form'));
-            </script>
-            {% else %}
-            <label>Assignment Status: IN PROGRESS </label>
-
-            <form id="flag-as-complete-form" action="{{url_for('recording.assignment_flag_as_complete', recording_id=recording.id)}}" method="post">
-                <button class="gray" type="submit" id="flag-as-complete-button">Flag as Complete</button>
-                <input type="hidden" id="recording_id" name="recording_id" value={{recording.id}}></hidden>
-            </form>
-            <script>
-                ajaxifyForm(document.getElementById('flag-as-complete-form'));
-            </script>
-
-            {% endif %}
-            {% else %}
-            <label>Assignment Status: NOT ASSIGNED TO CURRENT USER</label>
-            {% endif %}
-            {% endif %}
-            <label>Start date: {{ recording.start_time_pretty }}</label>
-            <a href="{{url_for('encounter.encounter_view', encounter_id=recording.encounter_id)}}">Encounter: {{
-                recording.encounter.encounter_name }} ({{recording.encounter.location}})</a><br>
-            <label>Number of selections: {{ recording.selections_count }}</label>
-            <label>Number of contours: {{ recording.contour_file_count }}</label>
-
-            <form id="update-notes-form" action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
-                <label for="notes">Notes:</label>
-                <textarea id="notes" name="notes" rows="4" cols="50" {% if session['snapshot_date'] or current_user.role_id == 4 %}disabled{% endif
-                    %}>{% if recording.notes %} {{ recording.notes }} {% endif %}</textarea>
-                {% if not session['snapshot_date'] %}
-                {% if current_user.role_id in [1, 2, 3] %}
-                <button class="gray small" type="submit">Update Notes</button>
-                {% endif %}
-                {% endif %}
-            </form><br>
-            <script>
-                ajaxifyForm(document.getElementById('update-notes-form'));
-            </script>
-
-
-
-
-            <h3>Download Options</h3>                
-                <form action="{{ url_for('recording.download_recording_file', recording_id=recording.id) }}" method="get">
-                    <button class="link small" type="submit">Download Recording File</button>
-                </form>
-                <form action="{{url_for('selection.extract_contour_stats', recording_id=recording.id)}}" method="get">
-                    <button class="link small" type="submit">Download Contour Stats</button>
-                </form>
-                <form id="calculate-contour-statistics-form" method="post" action="{{url_for('recording.calculate_contour_statistics_for_recording', recording_id=recording.id)}}">
-                    <button id="calculate-contour-statistics-button" class="link small" type="submit">Recalculate Contour Statistics</button>
-                </form>
-                <script>
-                    ajaxifyForm(document.getElementById('calculate-contour-statistics-form'), undefined, undefined, undefined, undefined, button = document.getElementById('calculate-contour-statistics-button'), message = "Recalculating contour statistics... This may take some time, depending on the number of selections.");
-                </script>
-                {% set rocca_classifier = recording.encounter.classifier.name if recording.encounter.classifier else None %}
-                {% if rocca_classifier and not session['snapshot_date'] and current_user.role_id in [1, 2, 3] %}
-                <form id="classify-recording-form" method="post" action="{{url_for('classifier.recording_classify', recording_id=recording.id)}}">
-                    <button id="classify-recording-button" class="link small" type="submit">Re-classify Selections (ROCCA)</button>
-                </form>
-                <script>
-                    ajaxifyForm(document.getElementById('classify-recording-form'), undefined, undefined, undefined, undefined, button = document.getElementById('classify-recording-button'), message = "Classifying selections...");
-                </script>
-                {% endif %}
-
-                <form action="{{url_for('recording.download_ctr_files', recording_id=recording.id)}}" method="get">
-                    <button class="link small" type="submit">Download CTR Files</button>
-                </form>
-
-                <form action="{{url_for('recording.download_contour_files', recording_id=recording.id)}}" method="get">
-                    <button class="link small" type="submit">Download Contour Files</button>
-                </form>
-
-                <form action="{{url_for('recording.download_selection_files', recording_id=recording.id)}}"
-                    method="get">
-                    <button class="link small" type="submit">Download Selection Files</button>
-                </form>
-
-
-
-
-
-                
-                
-                {% if not session['snapshot_date'] %}
-                    {% if current_user.role_id in [1, 2, 3] %}
-                    <div style="padding-top:1.5rem">
-                        <button id="add-selections-button" style="margin-bottom:0.5rem;" class="gray" onclick="addSelectionsButtonClock()">Add Selections</button>
-                        <div id="add-selections-container" style="display:none;">
-                            <h3>Add selections</h3>
-                                {% set identifier_heading = "Selection Number" %}
-                                {% set unique_id = "selection-number"%}
-                                {% set process_route = url_for('selection.process_selection') %}
-                                {% set insert_route = "selection.selection_file_insert" %}
-                                {% set accepted_extensions = ".wav" %}
-                                {% include 'recording/multi-file-upload-template.html' %}
-                        </div>
-                        <button id="add-contours-button" style="margin-top:0.5rem;" class="gray" onclick="addContoursButtonClick()">Add Contours</button>
-                        <div id="add-contours-container" style="display:none;">
-                            <h3>Add contours</h3>
-                                {% set identifier_heading = "Contour Number" %}
-                                {% set unique_id = "contour-number"%}
-                                {% set process_route = url_for('selection.process_contour') %}
-                                {% set insert_route = "selection.contour_file_insert" %}
-                                {% set accepted_extensions = ".csv" %}
-                                {% include 'recording/multi-file-upload-template.html' %}
-                        </div>
-                    </div>
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body">
+                <h2>Summary</h2>
+                <dl class="summary">
+                    <dt>Encounter</dt>
+                    <dd><a href="{{ url_for('encounter.encounter_view', encounter_id=recording.encounter_id) }}">{{ recording.encounter.encounter_name }} ({{ recording.encounter.location }})</a></dd>
+                    <dt>Start time</dt>
+                    <dd>{{ recording.start_time_pretty }}</dd>
+                    <dt>Status</dt>
+                    <dd>{{ status_badge(recording.status) }}{% if recording.status_change_datetime %} <span class="text-body-secondary small">since {{ recording.status_change_datetime }}</span>{% endif %}</dd>
+                    <dt>Selections</dt>
+                    <dd>{{ recording.selections_count }}</dd>
+                    <dt>Contours</dt>
+                    <dd>{{ recording.contour_file_count }}</dd>
+                    {% if rocca_classifier %}
+                    <dt>ROCCA classifier</dt>
+                    <dd>{{ rocca_classifier }}</dd>
                     {% endif %}
-                {% endif %}
+                    <dt>Your assignment</dt>
+                    <dd>
+                        {% if recording.is_reviewed() == True %}
+                        Reviewed
+                        {% elif logged_in_user_assigned %}
+                        {% if logged_in_user_assigned.completed_flag == True %}
+                        <span class="badge text-bg-success">Complete</span> awaiting review
+                        <form id="flag-as-incomplete-form" class="d-inline ms-2" action="{{ url_for('recording.assignment_flag_as_incomplete', recording_id=recording.id) }}" method="post">
+                            <input type="hidden" name="recording_id" value="{{ recording.id }}">
+                            <button class="btn btn-sm btn-outline-secondary" type="submit" id="unflag-as-complete-button">Unflag as complete</button>
+                        </form>
+                        {% else %}
+                        <span class="badge text-bg-primary">In progress</span>
+                        <form id="flag-as-complete-form" class="d-inline ms-2" action="{{ url_for('recording.assignment_flag_as_complete', recording_id=recording.id) }}" method="post">
+                            <input type="hidden" name="recording_id" value="{{ recording.id }}">
+                            <button class="btn btn-sm btn-primary" type="submit" id="flag-as-complete-button">Flag as complete</button>
+                        </form>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-body-secondary">Not assigned to you</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
 
-
-                <script>
-                    function addSelectionsButtonClock() {
-                        document.getElementById('add-contours-container').style.display = 'none';
-                        document.getElementById('add-selections-container').style.display = 'block';
-                        document.getElementById('add-selections-button').style.display = 'none';
-                        document.getElementById('add-contours-button').style.display = 'block';
-                    }
-
-
-                    function addContoursButtonClick() {
-                        document.getElementById('add-contours-container').style.display = 'block';
-                        document.getElementById('add-selections-container').style.display = 'none';
-                        document.getElementById('add-selections-button').style.display = 'block';
-                        document.getElementById('add-contours-button').style.display = 'none';
-                    }
-                </script>
-
-                <h3>Selection table</h3>
-                <label style="display:flex; align-items:center; gap:0.35rem; width:fit-content; white-space:nowrap;">
-                    <input type="checkbox" id="selection-table-coerce-annotations-checkbox"> Store annotations verbatim
-                </label>
-                {% if recording.selection_table_file %}
-                <div style="display:flex;">
-                    <a class="button small"
-                        href="{{ url_for('recording.selection_table_export', recording_id=recording.id, export_format='txt') }}">Download
-                        TXT</a>
-                    <a style="margin-left: 0.25rem" class="button small"
-                        href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{recording.unique_name}}">File
-                        Details</a>
-                    <a style="margin-left: 0.25rem;" class="button small"
-                        href="{{ url_for('recording.selection_table_export', recording_id=recording.id, export_format='csv') }}">Download
-                        CSV</a>
-                </div>
-                {% if not session['snapshot_date'] %}
-                {% if current_user.role_id in [1, 2, 3] %}
-                
-                <div style="display:flex;" >
-                <form id="delete-selection-table-form" encounter-id="{{recording.encounter_id}}"
-                    selection-table-id="{{recording.selection_table_id}}"
-                    action="{{ url_for('recording.selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id)}}"
-                    method="POST" style="flex : 1;">
-                    <button class="gray small" style="margin-top:0.5rem; margin-right:0.25rem;"  type="submit">Delete Selection Table</button>
+        <div class="card">
+            <div class="card-body">
+                <form id="update-notes-form" action="{{ url_for('recording.update_notes', recording_id=recording.id) }}" method="post">
+                    <label for="notes" class="mt-0">Notes</label>
+                    <textarea id="notes" name="notes" rows="3" {% if not live or current_user.role_id == 4 %}disabled{% endif %}>{% if recording.notes %} {{ recording.notes }} {% endif %}</textarea>
+                    {% if can_edit %}
+                    <div><button class="btn btn-sm btn-outline-primary mt-2" type="submit">Save notes</button></div>
+                    {% endif %}
                 </form>
-                <script>
-                    $("#delete-selection-table-form").submit(function (event) {
-                        event.preventDefault();
-                        if (confirm("Are you sure you want to delete the selection table?")) {
-                            makeAjaxRequestForm(event.target);
-                        }
-                    });
-                </script>
-                <form id="refresh-selection-table-form" action="{{ url_for('recording.selection_table_refresh', recording_id=recording.id)}}" method="post" style="flex : 1;">
-                    <input type="hidden" name="coerce_annotations" id="refresh-coerce-annotations-input" value="true">
-                    <button id="refresh-selection-table-button" class="gray small" style="margin-top:0.5rem; margin-left:0.25rem;" type="submit">Refresh Selection Table Values</button>
-                </form>
-
-                </div>
-
-                {% endif %}
-
-                {% endif %}
-
-                {% else %}
-                {% if not session['snapshot_date'] %}
-                {% if current_user.role_id in [1, 2, 3] %}
-                <form
-                id="upload-selection-table-form"
-                action="{{ url_for('recording.selection_table_insert', recording_id=recording.id)}}"
-                    method="post" enctype="multipart/form-data">
-                    <input type="hidden" name="coerce_annotations" id="upload-coerce-annotations-input" value="true">
-                    <div style="display:flex;">
-                        <input class="small" type="file" name="selection-table-file" id="selection-table-file" accept=".xlsx, .csv, .txt">
-                        <button class="gray small" type="submit">Upload</button>
-                    </div>
-                </form>
-                <script>
-                    ajaxifyForm(document.getElementById('upload-selection-table-form'));
-                </script>
-                {% endif %}
-
-                {% endif %}
-
-                {% endif %}
-
-                <h2>Selections for recording {{ recording.start_time_pretty }}</h2>
-                <button style="margin-bottom:1rem;" id="show-plots-button" class="gray small" style="width: 100%; margin-top: 1rem;">Show Plots</button>
-                {% if selections|length > 0 %}
-                <div class="table-responsive">
-                    <table class="table-striped" id="selections-table">
-                        <tr>
-                            <th><input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()"></th>
-                            <th></th>
-                            <th>Selection</th>
-                            <th>Selection File</th>
-                            <th>Annotation</th>
-                            <th>Contour</th>
-                            {% if rocca_classifier %}<th>ROCCA ({{ rocca_classifier }})</th>{% endif %}
-                            <th>Confirmation</th>
-                        </tr>
-                        {% for selection in selections %}
-                        <tr id="row-{{ selection.id }}" {% if selection.deactivated %} style="color: red;" {% endif %}>
-                            <input type="hidden" class="serve-plot-route" value="{{ url_for('selection.serve_plot', selection_id=selection.id) }}">
-                            <td><input class="rowCheckbox" type="checkbox" name="selections-checkboxes"
-                                    value="{{ selection.id }}">
-                            </td>
-                            <td><a class="button"
-                                    href="{{ url_for('selection.selection_view', selection_id=selection.id)}}">View</a>
-                            </td>
-                            <td>
-                                <label style="float:left; margin-right:15px;">{{ selection.selection_number }}{% if
-                                    selection.deactivated %} (Deactivated){% endif %}</label>
-
-                            </td>
-                            <td>
-                                {% if selection.selection_file %}
-                                <a class="button" style="float:left;"
-                                    href="{{ url_for('selection.download_selection_file', selection_id = selection.id) }}">Download</a>
-                                {% else %}
-                                <section id="encounter-summary"> No selection file available</section>
-                                {% endif %}
-
-                            </td>
-                            {% if selection.deactivated %}
-
-                            {% else %}
-                            <td>
-                                <label>{{ selection.annotation }}</label>
-                            </td>
-                            <td>
-                                {% if selection.contour_file %}
-                                <a class="button"
-                                    href="{{ url_for('selection.download_contour_file', selection_id = selection.id) }}">Download</a><br>
-                                {% endif %}
-                                {% if not session['snapshot_date'] %}
-                                {% if selection.contour_file %}
-                                {% if current_user.role_id in [1, 2, 3] %}
-
-                                <form action="{{url_for('selection.contour_file_delete', selection_id=selection.id)}}"
-                                    class="contour-delete-form" id="contour-delete-form-{{selection.id}}" method="POST">
-                                    <button class="link" type="submit">Delete</button>
-                                </form>
-                                <script>
-                                    $("#contour-delete-form-{{selection.id}}").submit(function (event) {
-                                        event.preventDefault();
-                                        if (confirm("Are you sure you want to delete the contour file?")) {
-                                            makeAjaxRequestForm(event.target);
-                                        }
-                                    });
-                                </script>
-                                {% endif %}
-                                {% endif %}
-
-
-                                {% endif %}
-                            </td>
-                            {% if rocca_classifier %}<td>{{ classifications[selection.id].classified_as if selection.id in classifications else '' }}</td>{% endif %}
-                            <td>
-                                <div class="selection-row" data-selection-id="{{selection.id}}">
-
-                                    {% if selection.traced == None %}
-                                        {% if selection.contour_file %}
-                                        
-                                        {% else %}
-                                        
-                                            {% if not session['snapshot_date'] and current_user.role_id in [1,2,3] %}
-                                                <button class="gray small confirm-no-file-upload" style="width: 100%">Confirm No File Upload</button>
-                                            {% endif %}
-                                        
-                                            {% endif %}
-                                        <p id="traced-status-label" hidden>Confirmed</label>
-                                    {% else %}
-                                        <p id="traced-status-label">Confirmed</label>
-                                    {% endif %}
-                                </div>
-
-
-
-                            </td>
-                            {% endif %}
-                        </tr>
-                        <!-- <tr>
-                            <td>
-                            <div style="display: flex; margin-top: 20px; margin-bottom: 20px; align-items:center; position: relative;">
-                                <img style="width:100%; padding-left:0.5rem; padding-right:0.5rem;" id="plot-image"
-                                    src="{{url_for('selection.serve_plot',selection_id=selection.id)}}" alt="Plot" style="width:100%; display:none;">
-                            </div>
-                        </td>
-                        </tr> -->
-                        {% endfor %}
-                    </table>
-                </div>
-                {% if not session['snapshot_date'] %}
-                {% if current_user.role_id in [1, 2, 3] %}
-
-                <button class="gray small" style="width: 25%; margin-top: 0.3rem;" onclick="deleteSelectedRows()">Delete
-                    Selected</button>
-                <button class="gray small" style="width: 25%; margin-top: 0.3rem;"
-                    onclick="deactivateSelectedRows()">Deactivate Selected</button>
-                <button class="gray small" style="width: 25%; margin-top: 0.3rem;"
-                    onclick="reactivateSelectedRows()">Reactivate Selected</button>
-                {% endif %}
-                {% endif %}
-                {% else %}
-                <label>This recording has no selections. Please use the form above to add selections.</label>
-                {% endif %}
-                {% if not session['snapshot_date'] %}
-                {% if current_user.role_id in [1, 2] %}
-
-                <form type="hidden" id="recording-delete-form_{{ recording.id }}" method="POST"
-                    action="{{ url_for('recording.recording_delete', encounter_id=recording.encounter_id, recording_id=recording.id) }}">
-                    <input type="hidden" name="_method" value="POST">
-                    <button class="link small" id="delete-recording-button" title="Delete the entire recording."
-                        type="submit" style="margin-top: 1rem;" data-recording-id="{{ recording.id }}"
-                        delete-info="{{recording.start_time_pretty}}">Delete Recording</button>
-                </form>
-                {% endif %}
-                {% endif %}
+            </div>
+        </div>
     </div>
 
-</body>
+    <div class="col-lg-5">
+        {% if is_admin and live %}
+        <div class="card">
+            <div class="card-body">
+                <h2>Review</h2>
+                <div class="actions">
+                    {% if recording.is_reviewed() == False %}
+                    <form action="{{ url_for('recording.mark_as_complete', recording_id=recording.id) }}" method="post">
+                        <button class="btn btn-success" type="submit" id="mark-as-complete-button">Mark as reviewed</button>
+                    </form>
+                    {% endif %}
+                    {% if recording.is_on_hold() == False %}
+                    <form action="{{ url_for('recording.mark_as_on_hold', recording_id=recording.id) }}" method="post">
+                        <button class="btn btn-outline-danger" type="submit" id="mark-as-on-hold-button">Reject (put on hold)</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
+        {% if is_admin %}
+        <div class="card">
+            <div class="card-body">
+                <h2>Assigned users</h2>
+                {% if assigned_users %}
+                <table class="mb-2">
+                    <tbody>
+                        {% for assignment in assigned_users %}
+                        <tr>
+                            <td>{{ assignment.user.name }} <span class="text-body-secondary small">{{ assignment.user.login_id }}</span>
+                                {% if assignment.completed_flag %}<span class="badge text-bg-success">Complete</span>{% endif %}</td>
+                            <td class="text-end">
+                                {% if live %}
+                                {% if assignment.completed_flag %}
+                                <form id="assignment-flag-as-incomplete-{{ assignment.user_id }}" method="POST" action="{{ url_for('recording.assignment_flag_as_incomplete') }}">
+                                    <input type="hidden" name="user_id" value="{{ assignment.user_id }}">
+                                    <input type="hidden" name="recording_id" value="{{ assignment.recording_id }}">
+                                    <button class="btn btn-sm btn-outline-secondary user-row" type="submit">Remove complete flag</button>
+                                </form>
+                                {% else %}
+                                <form id="assignment-flag-as-complete-{{ assignment.user_id }}" method="POST" action="{{ url_for('recording.assignment_flag_as_complete') }}">
+                                    <input type="hidden" name="user_id" value="{{ assignment.user_id }}">
+                                    <input type="hidden" name="recording_id" value="{{ assignment.recording_id }}">
+                                    <button class="btn btn-sm btn-outline-secondary user-row" type="submit">Flag as complete</button>
+                                </form>
+                                {% endif %}
+                                <form id="assignment-delete-{{ assignment.user_id }}" action="{{ url_for('recording.assignment_delete') }}" method="POST"
+                                    data-confirm="Unassign {{ assignment.user.name }} from this recording?" data-confirm-text="Unassign">
+                                    <input type="hidden" name="user_id" value="{{ assignment.user_id }}">
+                                    <input type="hidden" name="recording_id" value="{{ assignment.recording_id }}">
+                                    <button class="btn btn-sm btn-outline-danger user-row" type="submit">Unassign</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="empty-state">No users are assigned to this recording.</p>
+                {% endif %}
+                {% if live %}
+                {% from 'partials/user-search.html' import user_search %}
+                <label for="search-input">Assign a user</label>
+                {{ user_search(show_message=false) }}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h2>Selection table</h2>
+        {% if recording.selection_table_file %}
+        <div class="actions">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('recording.selection_table_export', recording_id=recording.id, export_format='txt') }}">Download TXT</a>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('recording.selection_table_export', recording_id=recording.id, export_format='csv') }}">Download CSV</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('general.get_file_details', file_id=recording.selection_table_file.id) }}?file_details=Selection File for {{ recording.unique_name }}">File details</a>
+            {% if can_edit %}
+            <form id="refresh-selection-table-form" action="{{ url_for('recording.selection_table_refresh', recording_id=recording.id) }}" method="post"
+                data-confirm="This will reset the traced status of all selections. Are you sure you want to do this?" data-confirm-text="Refresh">
+                <input type="hidden" name="coerce_annotations" id="refresh-coerce-annotations-input" value="true">
+                <button id="refresh-selection-table-button" class="btn btn-sm btn-outline-secondary" type="submit">Refresh selection table values</button>
+            </form>
+            <form id="delete-selection-table-form" encounter-id="{{ recording.encounter_id }}" selection-table-id="{{ recording.selection_table_id }}"
+                action="{{ url_for('recording.selection_table_delete', encounter_id=recording.encounter_id, recording_id=recording.id) }}" method="POST"
+                data-confirm="Are you sure you want to delete the selection table?" data-confirm-text="Delete">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Delete selection table</button>
+            </form>
+            {% endif %}
+        </div>
+        {% elif can_edit %}
+        <form id="upload-selection-table-form" action="{{ url_for('recording.selection_table_insert', recording_id=recording.id) }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="coerce_annotations" id="upload-coerce-annotations-input" value="true">
+            <div class="input-group">
+                <input type="file" class="form-control" name="selection-table-file" id="selection-table-file" accept=".xlsx, .csv, .txt">
+                <button class="btn btn-primary" type="submit">Upload</button>
+            </div>
+        </form>
+        {% else %}
+        <p class="empty-state">No selection table has been uploaded.</p>
+        {% endif %}
+        {% if can_edit %}
+        <label class="inline-option mt-2">
+            <input type="checkbox" id="selection-table-coerce-annotations-checkbox"> Store annotations verbatim
+        </label>
+        {% endif %}
+    </div>
+</div>
+
+{% if can_edit %}
+<div class="card">
+    <div class="card-body">
+        <h2>Add selections and contours</h2>
+        <div class="actions mb-2">
+            <button id="add-selections-button" class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#add-selections-container" aria-expanded="false" aria-controls="add-selections-container">Add selections (.wav)</button>
+            <button id="add-contours-button" class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#add-contours-container" aria-expanded="false" aria-controls="add-contours-container">Add contours (.csv)</button>
+        </div>
+        <div id="add-upload-panels">
+            <div id="add-selections-container" class="collapse" data-bs-parent="#add-upload-panels">
+                <h3>Add selections</h3>
+                {% set identifier_heading = "Selection Number" %}
+                {% set unique_id = "selection-number" %}
+                {% set process_route = url_for('selection.process_selection') %}
+                {% set insert_route = "selection.selection_file_insert" %}
+                {% set accepted_extensions = ".wav" %}
+                {% include 'recording/multi-file-upload-template.html' %}
+            </div>
+            <div id="add-contours-container" class="collapse" data-bs-parent="#add-upload-panels">
+                <h3>Add contours</h3>
+                {% set identifier_heading = "Contour Number" %}
+                {% set unique_id = "contour-number" %}
+                {% set process_route = url_for('selection.process_contour') %}
+                {% set insert_route = "selection.contour_file_insert" %}
+                {% set accepted_extensions = ".csv" %}
+                {% include 'recording/multi-file-upload-template.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card" id="selections">
+    <div class="card-body">
+        <div class="page-header mb-2">
+            <h2 class="m-0">Selections</h2>
+            {{ search_box(selections, 'Search number, annotation or ROCCA label', anchor='selections') }}
+            {% if selections %}
+            <div class="actions">
+                {% if can_edit %}
+                <span class="text-body-secondary small" id="selected-count">0 selected</span>
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="deactivateSelectedRows()">Deactivate</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="reactivateSelectedRows()">Reactivate</button>
+                <button class="btn btn-sm btn-outline-danger" type="button" onclick="deleteSelectedRows()">Delete</button>
+                {% endif %}
+                <button id="show-plots-button" class="btn btn-sm btn-outline-primary" type="button">Show plots</button>
+            </div>
+            {% endif %}
+        </div>
+        {% if selections %}
+        <div class="table-responsive">
+            <table class="table-striped" id="selections-table">
+                <thead>
+                    <tr>
+                        <th>{% if can_edit %}<input type="checkbox" id="selectAllCheckBox" onchange="selectAllRows()" aria-label="Select all selections">{% endif %}</th>
+                        {{ sortable_header(selections, 'Selection', 'number', anchor='selections') }}
+                        {{ sortable_header(selections, 'Annotation', 'annotation', anchor='selections') }}
+                        <th>Selection file</th>
+                        {{ sortable_header(selections, 'Contour', 'contour', anchor='selections') }}
+                        {% if rocca_classifier %}{{ sortable_header(selections, 'ROCCA (' ~ rocca_classifier ~ ')', 'rocca', anchor='selections') }}{% endif %}
+                        {{ sortable_header(selections, 'Traced', 'traced', anchor='selections') }}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for selection in selections %}
+                    <tr id="row-{{ selection.id }}" data-plot-url="{{ url_for('selection.serve_plot', selection_id=selection.id) }}" {% if selection.deactivated %}class="text-body-secondary"{% endif %}>
+                        <td>{% if can_edit %}<input class="rowCheckbox" type="checkbox" name="selections-checkboxes" value="{{ selection.id }}" aria-label="Select selection {{ selection.selection_number }}">{% endif %}</td>
+                        <td>
+                            <a href="{{ url_for('selection.selection_view', selection_id=selection.id) }}">Selection {{ selection.selection_number }}</a>
+                            {% if selection.deactivated %}<span class="badge text-bg-secondary">Deactivated</span>{% endif %}
+                        </td>
+                        <td>{% if not selection.deactivated %}{{ selection.annotation }}{% endif %}</td>
+                        <td>
+                            {% if selection.selection_file %}
+                            <a href="{{ url_for('selection.download_selection_file', selection_id=selection.id) }}">Download</a>
+                            {% else %}
+                            <span class="text-body-secondary">None</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not selection.deactivated and selection.contour_file %}
+                            <a href="{{ url_for('selection.download_contour_file', selection_id=selection.id) }}">Download</a>
+                            {% if can_edit %}
+                            <form action="{{ url_for('selection.contour_file_delete', selection_id=selection.id) }}" class="contour-delete-form ms-2" id="contour-delete-form-{{ selection.id }}" method="POST"
+                                data-confirm="Delete the contour file for selection {{ selection.selection_number }}?" data-confirm-text="Delete">
+                                <button class="btn btn-sm btn-link link-danger p-0" type="submit">Delete</button>
+                            </form>
+                            {% endif %}
+                            {% elif not selection.deactivated %}
+                            <span class="text-body-secondary">None</span>
+                            {% endif %}
+                        </td>
+                        {% if rocca_classifier %}<td>{% if not selection.deactivated %}{{ classifications[selection.id].classified_as if selection.id in classifications else '' }}{% endif %}</td>{% endif %}
+                        <td>
+                            {% if not selection.deactivated %}
+                            <div class="selection-row" data-selection-id="{{ selection.id }}">
+                                {% if selection.traced == None %}
+                                {% if not selection.contour_file and can_edit %}
+                                <button class="btn btn-sm btn-outline-secondary confirm-no-file-upload" type="button">Confirm no contour</button>
+                                {% endif %}
+                                <span class="traced-status-label badge text-bg-success" hidden>Confirmed</span>
+                                {% else %}
+                                <span class="traced-status-label badge text-bg-success">Confirmed</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ pagination(selections, 'selections', anchor='selections') }}
+        {% elif selections.search %}
+        <p class="empty-state">No selections match "{{ selections.search }}".</p>
+        {% else %}
+        <p class="empty-state">This recording has no selections yet.{% if can_edit %} Use "Add selections and contours" above to add them.{% endif %}</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if is_admin %}
+<div class="card border-secondary-subtle">
+    <div class="card-header bg-transparent">
+        <button class="btn btn-link text-decoration-none p-0 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#recording-admin" aria-expanded="false" aria-controls="recording-admin">
+            Administration: edit recording, audit history{% if live %}, delete{% endif %}
+        </button>
+    </div>
+    <div id="recording-admin" class="collapse {% if request.args.get('hist_page') %}show{% endif %}">
+        <div class="card-body">
+            {% if live %}
+            <h3>Edit recording</h3>
+            <form id="recording-form" action="{{ url_for('recording.recording_update', recording_id=recording.id) }}" method="post" enctype="multipart/form-data">
+                {% from 'recording/recording-form-template.html' import recording_form %}
+                {{ recording_form(editing=True, file_timezone=recording.encounter.file_timezone,
+                local_timezone=recording.encounter.local_timezone, recording=recording) }}
+            </form>
+            {% if recording.recording_file %}
+            <form id="recording-file-delete-form" class="mt-2" action="{{ url_for('recording.recording_file_delete', recording_id=recording.id) }}" method="post"
+                data-confirm="Are you sure you want to delete the recording file?" data-confirm-text="Delete">
+                <button id="recording-file-delete-button" class="btn btn-sm btn-outline-danger" type="submit">Delete recording file</button>
+            </form>
+            {% endif %}
+            {% endif %}
+
+            <h3 class="audit-history" id="audit-history">Audit history</h3>
+            <div class="table-responsive">
+                <table class="table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>User</th>
+                            <th>Snapshot</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in recording_history %}
+                        <tr>
+                            <td>{{ history['row_start'] }}</td>
+                            <td>{{ history['action'] }}</td>
+                            <td>{{ history['updated_by'].name }}</td>
+                            <td><a href="{{ url_for('general.enter_snapshot_date_in_session', snapshot_date=history['row_start'], redirect_link=url_for('recording.recording_view', recording_id=history['id'])) }}">View as of this date</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {{ pagination(recording_history, 'changes', anchor='audit-history') }}
+
+            {% if live %}
+            <h3 class="text-danger">Delete recording</h3>
+            <p>Deletes the recording and all of its selections. This cannot be undone.</p>
+            <form id="recording-delete-form_{{ recording.id }}" method="POST"
+                action="{{ url_for('recording.recording_delete', encounter_id=recording.encounter_id, recording_id=recording.id) }}"
+                data-confirm="Are you sure you want to delete recording: {{ recording.start_time_pretty }}?&#10;This will delete ALL selections and CANNOT be undone." data-confirm-text="Delete recording">
+                <input type="hidden" name="_method" value="POST">
+                <button class="btn btn-danger" id="delete-recording-button" title="Delete the entire recording." type="submit"
+                    data-recording-id="{{ recording.id }}" delete-info="{{ recording.start_time_pretty }}">Delete recording</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
 <script>
-
-    // Get the table element
-    var table = document.getElementById('selections-table');
-
-    // Get the button element
-    var button = document.getElementById('show-plots-button');
-    var generatedRowClass = 'generated-row';
-
-    var generatedRowCount = 0;
-    var totalTows = 0
-
-    // Add an event listener to the button
-    button.addEventListener('click', async function() {
-        var loadNextRow = function(rowIndex) {
-            return new Promise(resolve => {
-                // Get the current row
-                var row = table.rows[rowIndex];
-                // Get the plot route from the hidden input element
-                // Get the nearest element with class serve-plot-route
-                if (!row) {
-                    resolve();
-                    return;
-                }
-                var plotRouteInput = row.querySelector('.serve-plot-route');
-                if (!plotRouteInput) {
-                    loadNextRow(rowIndex+1).then(resolve);
-                    return;
-                }
-                // Create a new row underneath the current row
-                var newRow = table.insertRow(rowIndex+1);
-                newRow.className = generatedRowClass;
-
-                // Create a new cell in the new row
-                var newCell = newRow.insertCell(0);
-                newCell.colSpan = table.rows[0].cells.length; // Set colSpan to the number of columns in the table
-
-                // Create an image element to display the plot
-                var plotImage = new Image();
-                plotImage.onload = function() {
-                    newCell.appendChild(plotImage);
-                    button.innerHTML = 'Loading... Depending on your network this will take some time. (' + generatedRowCount++ + '/' + totalRows + ')';
-                    loadNextRow(rowIndex+1).then(resolve);
-                };
-                plotImage.src = plotRouteInput.value;
-                plotImage.alt = 'Plot';
-            });
-        }
-        var generatedRows = table.getElementsByClassName(generatedRowClass);
-        while (generatedRows.length > 0) {
-            table.deleteRow(generatedRows[0].rowIndex);
-        }
-        button.disabled = true;
-        totalRows = table.rows.length
-        await loadNextRow(1);
-        button.hidden = true;
+    // Forms submitted in the background (see ajaxifyForm in requests.js). Forms with a
+    // data-confirm attribute ask the user to confirm first.
+    [['recording-form', 'Updating recording.'], ['recording-file-delete-form'], ['flag-as-incomplete-form'], ['flag-as-complete-form'],
+     ['update-notes-form'], ['delete-selection-table-form'], ['upload-selection-table-form'],
+     ['refresh-selection-table-form', 'Refreshing selection table.'], ['recording-delete-form_{{ recording.id }}'],
+     ['calculate-contour-statistics-form', 'Recalculating contour statistics... This may take some time, depending on the number of selections.'],
+     ['classify-recording-form', 'Classifying selections...']].forEach(([id, message]) => {
+        const form = document.getElementById(id);
+        if (form) ajaxifyForm(form, undefined, undefined, undefined, undefined, null, message || null);
     });
-</script>
+    document.querySelectorAll('form[id^="assignment-"], form.contour-delete-form').forEach(form => ajaxifyForm(form));
 
-<script>
-    $("#delete-recording-button").on("click", function (event) {
-        event.preventDefault();
-        // Get the recording ID from the button's data attribute
-        var recordingId = $(this).data("recording-id");
-        var deleteInfo = $(this).attr('delete-info');
-        var form = document.getElementById("recording-delete-form_" + recordingId);
-
-        // Confirm deletion with the user
-        if (confirm("Are you sure you want to delete recording: " + deleteInfo + "?\nThis will delete ALL selections and CANNOT be undone.")) {
-            // If confirmed, submit the delete form
-            makeAjaxRequestForm(form)
-        } else {
-            // If not confirmed, prevent the default form submission
-            event.preventDefault();
-        }
-    });
-
-    document.getElementById('selection-table-coerce-annotations-checkbox').addEventListener('change', function () {
-        var value = this.checked ? 'false' : 'true';
-        var upload = document.getElementById('upload-coerce-annotations-input');
-        var refresh = document.getElementById('refresh-coerce-annotations-input');
+    const coerceCheckbox = document.getElementById('selection-table-coerce-annotations-checkbox');
+    if (coerceCheckbox) coerceCheckbox.addEventListener('change', function () {
+        const value = this.checked ? 'false' : 'true';
+        const upload = document.getElementById('upload-coerce-annotations-input');
+        const refresh = document.getElementById('refresh-coerce-annotations-input');
         if (upload) upload.value = value;
         if (refresh) refresh.value = value;
     });
 
-    $("#refresh-selection-table-form").submit(function (event) {
-        event.preventDefault();
-        form = event.target;
-        if (confirm("This will reset the traced status of all selections. Are you sure you want to do this?")) {
-            makeAjaxRequestForm(form, undefined, undefined, undefined, undefined, button = document.getElementById('refresh-selection-table-button'), message="Refreshing selection table.")
-        }
-    });
-
-
     /**
-     * Removes a user assignment for a recording. The user and recording IDs are obtained
-     * from the closest .user-row element.
-     *
-     * @listens click
-     * @this {HTMLElement} The element that was clicked
+     * Show each selection's plot in a row underneath it, loading them one at a time.
      */
-    // removeAssignment = function () {
-    //     var xhr = new XMLHttpRequest();
-    //     var userId = event.target.closest('.user-row').dataset.userId
-    //     var recordingId = event.target.closest('.user-row').dataset.recordingId
-    //     xhr.open('GET', "{{ url_for('recording.unassign_recording') }}" + "?recording_id=" + encodeURIComponent(recordingId) + "&user_id=" + encodeURIComponent(userId), true);
-    //     xhr.setRequestHeader('Content-Type', 'application/json');
-    //     xhr.onload = function () {
-    //         window.location.href = window.location.href;
-    //     }
-    //     xhr.send();
-    // }
+    const showPlotsButton = document.getElementById('show-plots-button');
+    if (showPlotsButton) showPlotsButton.addEventListener('click', async function () {
+        const table = document.getElementById('selections-table');
+        const rows = Array.from(table.tBodies[0].rows).filter(row => row.dataset.plotUrl);
+        const columns = table.tHead.rows[0].cells.length;
+        table.querySelectorAll('tr.generated-row').forEach(row => row.remove());
+        setButtonLoading(showPlotsButton, true);
+        for (let i = 0; i < rows.length; i++) {
+            showPlotsButton.lastChild.textContent = ` Loading plots (${i + 1}/${rows.length})`;
+            await new Promise(resolve => {
+                const plotRow = document.createElement('tr');
+                plotRow.className = 'generated-row';
+                const cell = plotRow.insertCell(0);
+                cell.colSpan = columns;
+                const plotImage = new Image();
+                plotImage.alt = 'Plot';
+                plotImage.className = 'img-fluid';
+                plotImage.onload = plotImage.onerror = () => { cell.appendChild(plotImage); resolve(); };
+                plotImage.src = rows[i].dataset.plotUrl;
+                rows[i].after(plotRow);
+            });
+        }
+        showPlotsButton.hidden = true;
+    });
 
     /**
      * Assigns a user to the recording and reloads the page.
-     * @param {number} user_id - The ID of the user to assign.
-     * @param {Object} user - The user object from the user selection dropdown.
+     * Called by the user search box (partials/user-search.html).
      */
     function onUserSelectionDropdownComplete(userId, user) {
-        var recordingId = "{{ recording.id }}"
-        var jsonData = JSON.stringify({recording_id:recordingId, user_id:userId})
-        makeAjaxRequest(url="{{ url_for('recording.assign_recording') }}", method="POST", data=jsonData, contentType="application/json", error_popups=true, success_popups=true);
-
-        // var xhr = new XMLHttpRequest();
-
-        // xhr.open('GET', "{{ url_for('recording.assign_recording') }}" + "?user_id=" + encodeURIComponent(user_id) + "&recording_id=" + encodeURIComponent("{{recording.id}}"), true);
-
-        // xhr.setRequestHeader('Content-Type', 'application/json');
-        // xhr.onload = function () {
-        //     window.location.href = window.location.href;
-        // }
-        // xhr.send();
+        const jsonData = JSON.stringify({ recording_id: "{{ recording.id }}", user_id: userId });
+        makeAjaxRequest(url = "{{ url_for('recording.assign_recording') }}", method = "POST", data = jsonData, contentType = "application/json", error_popups = true, success_popups = true);
     }
 
-    const selectionRows = document.querySelectorAll('.selection-row');
-
-    selectionRows.forEach(row => {
+    // "Confirm no contour" buttons: confirm that a selection has no contour to upload
+    document.querySelectorAll('.selection-row').forEach(row => {
         row.addEventListener('click', event => {
-            if (event.target.classList.contains('confirm-no-file-upload')) {
-                event.target.innerHTML = "Loading..."
-                event.target.disabled = true
-                const label = event.target.closest('.selection-row').querySelector('#traced-status-label');
-
-                makeAjaxRequest(
-                    url="{{ url_for('selection.confirm_no_file_upload') }}",
-                    method="POST", 
-                    data=JSON.stringify({selection_id:event.target.closest('.selection-row').dataset.selectionId}),
-                    contentType="application/json",
-                    error_popups=true,
-                    success_popups=true,
-                    successCallback=() => {
-                        label.hidden = false;
-                        event.target.hidden = true
-                    },
-                    errorCallback=() => {
-                        event.target.disabled = false
-                        event.target.innerHTML = "Unable to Confirm"
-                        event.target.disabled = true
-                        label.hidden = true
-                        event.target.hidden = false
-                        
-                    }
-                );
-            }
+            const button = event.target.closest('.confirm-no-file-upload');
+            if (!button) return;
+            const label = row.querySelector('.traced-status-label');
+            setButtonLoading(button, true);
+            makeAjaxRequest(
+                url = "{{ url_for('selection.confirm_no_file_upload') }}",
+                method = "POST",
+                data = JSON.stringify({ selection_id: row.dataset.selectionId }),
+                contentType = "application/json",
+                error_popups = true,
+                success_popups = true,
+                successCallback = () => {
+                    label.hidden = false;
+                    button.hidden = true;
+                },
+                errorCallback = () => {
+                    setButtonLoading(button, false);
+                    button.textContent = "Unable to confirm";
+                    button.disabled = true;
+                }
+            );
         });
     });
 
-    /**
-     * Toggles the selection of all rows based on the state of the "Select All" checkbox.
-     */
-    function selectAllRows() {
-        // Get references to the "Select All" checkbox and all row checkboxes
-        const selectAllCheckBox = document.getElementById('selectAllCheckBox');
-        const rowCheckboxes = document.querySelectorAll('.rowCheckbox');
-
-        // Check the state of the "Select All" checkbox
-        if (selectAllCheckBox.checked) {
-            // If the "Select All" checkbox is checked, select all rows
-            rowCheckboxes.forEach(checkbox => {
-                checkbox.checked = true;
-            });
-        } else {
-            // If the "Select All" checkbox is unchecked, deselect all rows
-            rowCheckboxes.forEach(checkbox => {
-                checkbox.checked = false;
-            });
-        }
-    }
-
-
-    /**
-     * The following code concerns the dynamic action of activating or deactivating selections. 
-    **/
-
-    /**
-     * Returns an array of IDs of the currently selected Selections.
-     * The selected Selections are determined by the checkboxes with name "selections-checkboxes".
-     * @return {Array<number>} An array of IDs of the selected Selections.
-     */
+    /** The IDs of the selections whose checkboxes are ticked. */
     function getSelectedSelectionIds() {
-        // Get the IDs of the selected Selections (based on checkboxes)
-        var selectedCheckboxes = document.querySelectorAll('input[name="selections-checkboxes"]:checked');
-        var selectedIds = [];
-        for (var i = 0; i < selectedCheckboxes.length; i++) {
-            selectedIds.push(selectedCheckboxes[i].value);
-        }
-        return selectedIds
+        return Array.from(document.querySelectorAll('input[name="selections-checkboxes"]:checked')).map(checkbox => checkbox.value);
     }
 
-    /**
-     * Reactivates the selected Selections. If override_selection_id is provided, reactivates that selection instead of the selected ones.
-     * @param {string} [override_selection_id] - The ID of the selection to reactivate.
-     * 
-     * @returns {Promise<void>} - A promise that resolves when reactivation is complete.
-     * 
-     * @throws {Error} - If there was an error reactivating the selection.
-     */
-
-    async function reactivateSelectedRows(override_selection_id = null) {
-        var selectionIds = getSelectedSelectionIds();
-        makeAjaxRequest("{{url_for('selection.reactivate_selections')}}", "POST", JSON.stringify({ selection_ids: selectionIds }), contentType="application/json");
+    function updateSelectedCount() {
+        const label = document.getElementById('selected-count');
+        if (label) label.textContent = getSelectedSelectionIds().length + ' selected';
     }
 
-
-    /**
-     * Reactivates the selection with the given ID.
-     * 
-     * Calls {@link reactivateSelectedRows} with the given selection ID.
-     * 
-     * @param {string} selectionId - The ID of the selection to reactivate.
-     * @param {boolean} [ignore_reload=false] - If true, the page will not be reloaded after reactivation.
-     * 
-     * @throws {Error} - If there was an error reactivating the selection.
-     */
-    async function reactivateSelection(selectionId, ignore_reload = false) {
-        reactivateSelectedRows(selectionId);
-
+    /** Ticks or unticks every selection, following the "select all" checkbox. */
+    function selectAllRows() {
+        const checked = document.getElementById('selectAllCheckBox').checked;
+        document.querySelectorAll('.rowCheckbox').forEach(checkbox => checkbox.checked = checked);
+        updateSelectedCount();
     }
 
-    /**
-     * Sends a POST request to deactivate a selection with the given ID.
-     * 
-     * This function sends a request to the server using jQuery's `$.ajax` method,
-     * and upon receiving a response, disables the corresponding table row.
-     * 
-     * @async
-     * @function deactivateSelection
-     * @param {number} selectionId - The ID of the selection to be deactivated.
-     * @return {Promise} A Promise that resolves when the request is complete.
-     */
-    async function deactivateSelection(selectionId, ignore_reload = false) {
-        deactivateSelectedRows(selectionId);
+    /** Tells the user to tick some selections first. Returns true if there are none. */
+    function noSelectionsTicked(selectionIds) {
+        if (selectionIds.length > 0) return false;
+        oceanToast('Tick the selections first', 'info', 'Use the checkboxes in the first column (shift-click to tick a range).');
+        return true;
     }
 
-    /**
-     * Sends a POST request to deactivate the selected selections or a single selection specified by `override_selection_id`.
-     * 
-     * This function sends a request to the server using jQuery's `$.ajax` method,
-     * and upon receiving a response, reloads the page with the updated selection status.
-     * 
-     * @async
-     * @function deactivateSelectedRows
-     * @param {number} [override_selection_id] - The ID of the selection to be deactivated.
-     * @return {Promise} A Promise that resolves when the request is complete.
-     */
-    async function deactivateSelectedRows(override_selection_id = null) {
-        var selectionIds = getSelectedSelectionIds();
-        makeAjaxRequest("{{url_for('selection.deactivate_selections')}}", "POST", JSON.stringify({ selection_ids: selectionIds }), contentType="application/json");
+    async function reactivateSelectedRows() {
+        const selectionIds = getSelectedSelectionIds();
+        if (noSelectionsTicked(selectionIds)) return;
+        makeAjaxRequest("{{ url_for('selection.reactivate_selections') }}", "POST", JSON.stringify({ selection_ids: selectionIds }), contentType = "application/json");
     }
 
+    async function deactivateSelectedRows() {
+        const selectionIds = getSelectedSelectionIds();
+        if (noSelectionsTicked(selectionIds)) return;
+        makeAjaxRequest("{{ url_for('selection.deactivate_selections') }}", "POST", JSON.stringify({ selection_ids: selectionIds }), contentType = "application/json");
+    }
 
-    /**
-     * Deletes the selected selections from the recording.
-     * 
-     * This function first prompts the user to confirm the deletion of the selected selections.
-     * If confirmed, it sends a DELETE request to the server with the selected selection IDs, 
-     * and upon receiving a response, reloads the page with the updated selection list.
-     * 
-     * @async
-     * @function deleteSelectedRows
-     * @return {Promise} A Promise that resolves when the request is complete.
-     */
     async function deleteSelectedRows() {
-        var selectionIds = getSelectedSelectionIds();
-        if (confirm('Are you sure you want to delete ' + selectionIds.length + ' selection(s)? This CANNOT be undone.')) {
-            makeAjaxRequest("{{url_for('recording.recording_delete_selections')}}", "DELETE", JSON.stringify({ selectionIds: selectionIds }), contentType="application/json");
+        const selectionIds = getSelectedSelectionIds();
+        if (noSelectionsTicked(selectionIds)) return;
+        if (await oceanConfirm('Are you sure you want to delete ' + selectionIds.length + ' selection(s)? This CANNOT be undone.', { confirmText: 'Delete' })) {
+            makeAjaxRequest("{{ url_for('recording.recording_delete_selections') }}", "DELETE", JSON.stringify({ selectionIds: selectionIds }), contentType = "application/json");
         }
     }
 
-
-
-    /**
-     * Selects or deselects all checkboxes based on the state of the Shift key and the last checked checkbox.
-     */
-
-    var lastChecked;
-    var checkboxes = document.querySelectorAll('input[name="selections-checkboxes"]');
-
-    // Add a click event listener to each checkbox
-    checkboxes.forEach(function (checkbox) {
-        checkbox.addEventListener('click', function (event) {
-            // Check if the Shift key is pressed and there is a lastChecked checkbox
+    // Shift-click a checkbox to tick or untick every checkbox between it and the last one clicked
+    let lastChecked;
+    const checkboxes = Array.from(document.querySelectorAll('input[name="selections-checkboxes"]'));
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('click', event => {
             if (event.shiftKey && lastChecked) {
-                // Calculate the start and end positions of the range of checkboxes to be selected
-                var start = checkboxes.indexOf(lastChecked);
-                var end = checkboxes.indexOf(event.target);
-
-                // Select the checkboxes within the calculated range
-                checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
-                    .forEach(function (checkbox) {
-                        checkbox.checked = event.target.checked;
-                    });
+                const start = checkboxes.indexOf(lastChecked);
+                const end = checkboxes.indexOf(event.target);
+                checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1).forEach(c => c.checked = event.target.checked);
             }
-
-            // Update the lastChecked variable to the currently clicked checkbox
             lastChecked = event.target;
+            updateSelectedCount();
         });
     });
-
-
-
 </script>
-
-</html>
+{% endblock %}

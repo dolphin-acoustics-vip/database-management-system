@@ -54,8 +54,8 @@ function addShiftClickFunctionality(checkboxes) {
         // Set the file IDs in the hidden input field
         input.value = selectedValues.join(',');
 
-        // Submit the form
-        form.submit();
+        // Submit the form (requestSubmit runs its submit handlers, e.g. a data-confirm dialog)
+        form.requestSubmit ? form.requestSubmit() : form.submit();
     });
   }
 

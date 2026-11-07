@@ -253,6 +253,15 @@ OCEAN can classify whistles with PAMGuard ROCCA whistle classifiers (`.model` fi
 * **Thresholds**: the helper returns the raw votes of every classifier stage, and OCEAN applies the threshold (a contour is `Ambig` below it). Changing a classifier's threshold re-labels its results immediately, without running the model again.
 
 
+### User Interface
+
+The pages are Jinja templates. Every page extends [base.html](/ocean/app/templates/base.html), which provides the navigation bar, breadcrumbs, the archive-mode banner, a confirmation dialog and the flashed messages. Pages fill in the `title`, `breadcrumbs`, `head`, `content` and `scripts` blocks.
+
+* **Styles and scripts**: [Bootstrap 5.3.3](https://getbootstrap.com/docs/5.3/) (`static/css/bootstrap.min.css` and `static/js/bootstrap.bundle.min.js`), jQuery and jquery.toast are kept in the repository, so no CDN or build step is needed. OCEAN's own styles are in [ocean.css](/ocean/app/static/css/ocean.css) and its helpers in [ocean.js](/ocean/app/static/js/ocean.js).
+* **Confirmation**: add `data-confirm="Question?"` (and optionally `data-confirm-text="Delete"`) to a form to ask before it is submitted; in JavaScript, `await oceanConfirm(message)`. Use `oceanToast` instead of `alert()`, and `oceanToastAfterRedirect` for a message that should appear after the page reloads.
+* **Changes use POST**: actions that change data (marking a recording complete or on hold, deleting data sources, recording platforms and files in the trash) are POST forms, not links.
+* **Lists**: lists are paged, sorted and searched on the server with [pagination.py](/ocean/app/pagination.py) and the `search_box`, `sortable_header` and `pagination` macros in [partials/ui.html](/ocean/app/templates/partials/ui.html). The settings are in the URL, so a paged, sorted or filtered list can be bookmarked; when a page has several lists each uses its own prefix (for example `sel_page`, `hist_page`). Paging is done in Python after the rows are loaded, because the archive-mode queries are built as SQL text. Tables that JavaScript fills in (the Data Hub, Health Centre and Filespace) are paged in the browser: put them inside an element with `data-paginate-tables`.
+
 # Data Model
 
 ## Overview

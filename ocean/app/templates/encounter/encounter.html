@@ -1,75 +1,54 @@
-<!--
-This page allows the user to see all encounters.
+{% extends 'base.html' %}
+{#
+This page lists all encounters.
 Variables required:
-- g.user: current logged in User object
-- encounters: array of Encounter objects
--->
+- encounters: a pagination.Page of Encounter objects
+#}
+{% from 'partials/ui.html' import search_box, sortable_header, pagination %}
+{% block title %}Encounters{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active" aria-current="page">Encounters</li>{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Encounters</h1>
+    {% if current_user.role_id in [1, 2] and not session['snapshot_date'] %}
+    <a href="{{ url_for('encounter.encounter_new') }}" class="btn btn-primary" title="Add new encounter">Add encounter</a>
+    {% endif %}
+</div>
 
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Encounters</title>
-</head>
-<body>
-    <div class="outer-div">
-        <h1>Encounters</h2>
-        {% if current_user.role_id in [1, 2] %}
-        {% if not session['snapshot_date'] %}
-        <a href="{{ url_for('encounter.encounter_new') }}" class="button" style=" margin-bottom: 10px" title="Add new encounter">Add New Encounter</a><br>
-        {% endif %}
-        {% endif %}
-        {% if encounter_list %}
-        <div style="margin-top: 10px; margin-bottom: 5px;">
-            <label for="sort-select">Filter (any column):</label>
+<div class="card">
+    <div class="card-body">
+        <div class="list-toolbar">
+            {{ search_box(encounters, 'Search name, location, project or species') }}
         </div>
-        <input style="margin-bottom: 10px;" type="text" class="text-input small" id="filter-input" placeholder="No filter">
-        <table style="margin-top: 10px" id="encounter-table">
-            <thead>
-                <tr>
-                    <th>Encounter</th>
-                    <th>Location</th>
-                    <th>Project</th>
-                    <th>Species</th>
-
-                </tr>
-            </thead>
-            <tbody>
-                {% for encounter in encounter_list %}
+        {% if encounters %}
+        <div class="table-responsive">
+            <table class="table-striped" id="encounter-table">
+                <thead>
                     <tr>
-                        <td><a style="width:100%" data-encounter-id="{{ encounter.id }}" href="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">{{ encounter.encounter_name }}</a></td>
+                        {{ sortable_header(encounters, 'Encounter', 'name') }}
+                        {{ sortable_header(encounters, 'Location', 'location') }}
+                        {{ sortable_header(encounters, 'Project', 'project') }}
+                        {{ sortable_header(encounters, 'Species', 'species') }}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for encounter in encounters %}
+                    <tr>
+                        <td><a data-encounter-id="{{ encounter.id }}" href="{{ url_for('encounter.encounter_view', encounter_id=encounter.id) }}">{{ encounter.encounter_name }}</a></td>
                         <td>{{ encounter.location }}</td>
                         <td>{{ encounter.project }}</td>
-                        <td>{{ encounter.species.scientific_name }}</td>
-
-
+                        <td><em>{{ encounter.species.scientific_name if encounter.species else '' }}</em></td>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ pagination(encounters, 'encounters') }}
+        {% elif encounters.search %}
+        <p class="empty-state">No encounters match "{{ encounters.search }}".</p>
         {% else %}
-            <div class="no-species-message" style="margin-top:15px;">
-                No encounters found. Please add new encounters using the button above.
-            </div>
+        <p class="empty-state">No encounters yet.{% if current_user.role_id in [1, 2] and not session['snapshot_date'] %} Use "Add encounter" to add one.{% endif %}</p>
         {% endif %}
     </div>
-</body>
-<script>
-    $(document).ready(function() {
-        $('#filter-input').on('input', function() {
-                var filterValue = $(this).val().toLowerCase();
-                $('#encounter-table tbody tr').each(function() {
-                    var name = $(this).find('td:nth-child(1)').text().toLowerCase();
-                    var location = $(this).find('td:nth-child(2)').text().toLowerCase();
-                    var species = $(this).find('td:nth-child(3)').text().toLowerCase();
-                    var project = $(this).find('td:nth-child(4)').text().toLowerCase();
-                    if (!(name.includes(filterValue) || location.includes(filterValue) || species.includes(filterValue) || project.includes(filterValue))) {
-                    $(this).hide();
-                    } else {
-                    $(this).show();
-                    }
-                });
-            });
-    });
-</script>
-</html>
+</div>
+{% endblock %}

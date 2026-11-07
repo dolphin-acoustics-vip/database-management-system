@@ -1,10 +1,10 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-
-<head>
-    <title>Health Centre</title>
-    <style>
+{% extends 'base.html' %}
+{% block title %}Health Centre{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Health Centre</li>
+{% endblock %}
+{% block head %}
+<style>
         .statistic-box {
             border: 2px solid #ccc;
             padding: 10px;
@@ -66,10 +66,8 @@
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-</head>
-
-<body>
+{% endblock %}
+{% block content %}
     <div class="outer-div">
         <h1>Health Centre</h1>
         {% from 'partials/days-ago-selector.html' import days_ago_selector %}
@@ -81,15 +79,15 @@
         {{ user_search() }}
         <button id="clear-user-filter-button" hidden onclick="clearUserFilter()">Clear User Filter</button>
         <h2 id="health-score-title">Health Score</h2>
-        <div id="health-score-container">
+        <div id="health-score-container" data-paginate-tables>
             <label id="health-score-value"></label>
         </div>
 
         <h3 id="warnings-title-text">
-            </h2>
+            </h3>
             <div id="warnings-table"></div>
     </div>
-</body>
+
 
 <script>
     var userFilterId = null
@@ -228,3 +226,4 @@
     }
 
 </script>
+{% endblock %}

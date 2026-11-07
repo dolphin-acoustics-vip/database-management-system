@@ -25,6 +25,7 @@ from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 
 # Local application imports
+from .. import pagination
 from .. import database_handler
 from .. import models
 from .. import exception_handler
@@ -55,9 +56,14 @@ def admin_dashboard():
     """
     # TODO: split the data source, recording platform, and species editing, into different subpages
     with database_handler.get_session() as session:
-        data_source_list = session.query(models.DataSource).all()
-        recording_platform_list = session.query(models.RecordingPlatform).all()
-        species_list = session.query(models.Species).all()
+        data_source_list = pagination.paginate(session.query(models.DataSource).all(), request.args, prefix='ds_', per_page=25,
+            search=[lambda d: d.name, lambda d: d.email1, lambda d: d.type],
+            sort={'name': lambda d: d.name, 'email': lambda d: d.email1, 'type': lambda d: d.type}, default_sort='name')
+        recording_platform_list = pagination.paginate(session.query(models.RecordingPlatform).all(), request.args, prefix='rp_', per_page=25,
+            search=[lambda r: r.name], sort={'name': lambda r: r.name}, default_sort='name')
+        species_list = pagination.paginate(session.query(models.Species).all(), request.args, prefix='sp_', per_page=25,
+            search=[lambda s: s.scientific_name, lambda s: s.genus_name, lambda s: s.common_name],
+            sort={'scientific': lambda s: s.scientific_name, 'genus': lambda s: s.genus_name, 'common': lambda s: s.common_name}, default_sort='scientific')
         return render_template('admin/admin-dashboard.html', data_source_list=data_source_list, recording_platform_list=recording_platform_list, species_list=species_list)
 
 @routes_admin.route('/admin/logger', methods=['GET'])
@@ -65,9 +71,9 @@ def admin_dashboard():
 @database_handler.exclude_role_3
 @database_handler.exclude_role_2
 def admin_logger():
-    log_string = logger.get_log(200)
-    log_string_html = log_string.strip().replace('\n', '<br>')
-    return render_template('admin/admin-logger.html', log_string=log_string_html)
+    # The template escapes the log text (it can contain user input) and keeps its line breaks
+    log_string = logger.get_log(200).strip()
+    return render_template('admin/admin-logger.html', log_string=log_string)
 
 @routes_admin.route('/admin/logger/download', methods=['GET'])
 @database_handler.exclude_role_4
@@ -131,7 +137,7 @@ def admin_data_source_insert():
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
         return response.to_json()
 
-@routes_admin.route('/admin/data-source/<data_source_id>/delete', methods=['GET'])
+@routes_admin.route('/admin/data-source/<data_source_id>/delete', methods=['POST'])
 @database_handler.exclude_role_4
 @database_handler.exclude_role_3
 @database_handler.require_live_session
@@ -208,7 +214,7 @@ def admin_recording_platform_insert():
             response.add_error(exception_handler.handle_exception(exception=e, session=session, show_flash=False))
     return response.to_json()
 
-@routes_admin.route('/admin/recording-platform/<recording_platform_id>/delete', methods=['GET'])
+@routes_admin.route('/admin/recording-platform/<recording_platform_id>/delete', methods=['POST'])
 @database_handler.exclude_role_4
 @database_handler.exclude_role_3
 @database_handler.require_live_session
@@ -216,7 +222,7 @@ def admin_recording_platform_delete(recording_platform_id):
     """
     Route to delete a RecordingPlatform object from the database, given its ID.
     PERMISSIONS: Role 1, Role 2.
-    METHODS: GET.
+    METHODS: POST.
     """
     with database_handler.get_session() as session:
         try:
@@ -325,6 +331,10 @@ def admin_user():
     """
     with database_handler.get_session() as session:
         users = session.query(models.User).order_by(models.User.is_active.desc()).all()
+        users = pagination.paginate(users, request.args, per_page=50,
+            search=[lambda u: u.name, lambda u: u.login_id, lambda u: u.role.name if u.role else None],
+            sort={'name': lambda u: u.name, 'login': lambda u: u.login_id, 'role': lambda u: u.role_id,
+                  'active': lambda u: not u.is_active, 'expiry': lambda u: u.expiry})
         return render_template('admin/admin-user.html', users=users)
   
 @routes_admin.route('/admin/user/<user_id>/view', methods=['GET'])

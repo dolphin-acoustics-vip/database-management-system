@@ -34,6 +34,7 @@ from .. import contour_statistics
 from .. import response_handler
 from .. import transaction_handler
 from .. import classifier
+from .. import pagination
 
 routes_recording = Blueprint('recording', __name__)
 
@@ -191,6 +192,13 @@ def recording_view(recording_id: str) -> Response:
         logged_in_user_assigned = logged_in_user_assigned[0] if len(logged_in_user_assigned) > 0 else None
         recording_history = database_handler.create_all_time_request(session, models.Recording, filters={"id":recording_id}, order_by="row_start")
         classifications = classifier.get_results(session, [selection.id for selection in selections])
+        rocca_label = lambda s: classifications[s.id].classified_as if s.id in classifications else None
+        selections = pagination.paginate(selections, request.args, prefix='sel_', per_page=100,
+            search=[lambda s: s.selection_number, lambda s: s.annotation, rocca_label],
+            sort={'number': lambda s: s.selection_number, 'annotation': lambda s: s.annotation, 'rocca': rocca_label,
+                  'traced': lambda s: s.traced is None, 'contour': lambda s: s.contour_file_id is None},
+            default_sort='number')
+        recording_history = pagination.paginate(recording_history, request.args, prefix='hist_', per_page=25)
         return render_template('recording/recording-view.html', recording=recording, selections=selections, user=current_user,recording_history=recording_history, assigned_users=assigned_users, logged_in_user_assigned=logged_in_user_assigned, classifications=classifications)
 
 @routes_recording.route('/recording/<recording_id>/update_notes', methods=['POST'])
@@ -411,7 +419,7 @@ def assign_recording():
             exception_handler.handle_exception(exception=e, session=session, show_flash=False)
     return response.to_json()
 
-@routes_recording.route('/unassign_recording', methods=['GET'])
+@routes_recording.route('/unassign_recording', methods=['POST'])
 @database_handler.require_live_session
 @database_handler.exclude_role_3
 @database_handler.exclude_role_4
@@ -516,7 +524,7 @@ def download_recording_file(recording_id):
         return utils.download_file(recording.recording_file, filename = recording.recording_file_name)
 
     
-@routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/mark_as_complete', methods=['POST'])
 @database_handler.require_live_session
 @login_required
 @database_handler.exclude_role_3
@@ -538,7 +546,7 @@ def mark_as_complete(recording_id):
         session.commit()
         return redirect(url_for('recording.recording_view', recording_id=recording_id))
 
-@routes_recording.route('/recording/<recording_id>/mark_as_on_hold', methods=['GET'])
+@routes_recording.route('/recording/<recording_id>/mark_as_on_hold', methods=['POST'])
 @database_handler.require_live_session
 @login_required
 @database_handler.exclude_role_3

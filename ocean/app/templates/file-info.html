@@ -1,7 +1,6 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<body>
+{% extends 'base.html' %}
+{% block title %}File Details{% endblock %}
+{% block content %}
 <div class="outer-div">
     <h2>File Details for {{ file_details }} </h2>
     <a href="{{redirect_link}}">Go Back</a>
@@ -13,4 +12,4 @@
     <p>Hash (SHA-256): {{ file.hash_hex }}</p>
     <p>Hash matching: {{ file.verify_hash() }}</p>
   </div>
-</body>
+{% endblock %}
