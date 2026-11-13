@@ -40,6 +40,7 @@ from .routes.routes_encounter import routes_encounter
 from .routes.routes_datahub import routes_datahub
 from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
+from .routes.routes_results import routes_results
 
 CONFIG = None
 
@@ -58,6 +59,7 @@ def check_interfaces():
     selection = models.Selection(recording)
     file = models.File()
     role = models.Role()
+    job = models.Job()
     
 
 def check_file_space():
@@ -249,6 +251,7 @@ def create_app(config_class):
     app.register_blueprint(routes_datahub, url_prefix=CONFIG.URL_PREFIX)
     app.register_blueprint(routes_healthcentre, url_prefix=CONFIG.URL_PREFIX)
     app.register_blueprint(routes_filespace, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_results, url_prefix=CONFIG.URL_PREFIX)
     
     app.register_blueprint(api, url_prefix=CONFIG.URL_PREFIX + "/api/")
 

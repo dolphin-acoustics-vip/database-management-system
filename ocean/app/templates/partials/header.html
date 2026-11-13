@@ -51,6 +51,8 @@
       {% if current_user.is_authenticated %}
       <a href="{{url_for('encounter.encounter')}}" title="Go to encounters page"
         class="menu-item dynamic">Encounters</a>
+      <a href="{{url_for('results.results')}}" title="Go to results page"
+        class="menu-item dynamic">Results</a>
       {% if current_user.role_id in [1,2] %}
       <a href="{{url_for('datahub.datahub_view')}}" title="Go to data hub page" class="menu-item dynamic">Data Hub</a>
       <a href="{{ url_for('healthcentre.healthcentre_view') }}" title="Go to health centre page"

@@ -1,0 +1,26 @@
+<!--
+This page allows the user to add a new encounter.
+Variables required:
+- g.user: the current logged in User object
+-->
+
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Add New Result</title>
+</head>
+<body>
+    <div class="outer-div">
+        <h2>Add New Result</h2>
+        {% set editing = False %}
+        <form id="result-insert-form" method="post" action="{{ url_for('results.results_insert') }}">
+        {% include 'results/result-form-template.html' %}
+        <button id="insert-result-button" class="blue" type="submit">Insert</button>
+        </form>
+        <script>
+            ajaxifyForm(document.getElementById('result-insert-form', undefined, undefined, undefined, undefined, button = document.getElementById("insert-result-button"), message = "Inserting result."));
+        </script>
+    </div>
+</body>
+</html>
