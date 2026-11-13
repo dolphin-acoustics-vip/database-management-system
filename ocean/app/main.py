@@ -40,6 +40,7 @@ from .routes.routes_encounter import routes_encounter
 from .routes.routes_datahub import routes_datahub
 from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
+from .routes.routes_classifier import routes_classifier
 
 CONFIG = None
 
@@ -228,12 +229,6 @@ def create_app(config_class):
         else:
             return "Unable to access single-sign-on service", 403  # Redirect if no SSO email is found
 
-    # create_database_script = ''
-    # if config_class.__name__ == 'TestingConfig':
-    #     create_database_script = 'create_database.sql'
-    # else:
-    #     create_database_script = 'script_run.sql'
-
     # check_file_space()
     from .routes.api import blueprint as api
     db = database_handler.init_db(app)
@@ -249,6 +244,7 @@ def create_app(config_class):
     app.register_blueprint(routes_datahub, url_prefix=CONFIG.URL_PREFIX)
     app.register_blueprint(routes_healthcentre, url_prefix=CONFIG.URL_PREFIX)
     app.register_blueprint(routes_filespace, url_prefix=CONFIG.URL_PREFIX)
+    app.register_blueprint(routes_classifier, url_prefix=CONFIG.URL_PREFIX)
     
     app.register_blueprint(api, url_prefix=CONFIG.URL_PREFIX + "/api/")
 
