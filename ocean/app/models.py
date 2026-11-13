@@ -1113,3 +1113,71 @@ class SelectionClassification(imodels.AbstractModelBase):
         pairs = sorted(zip(stage["classes"], stage["votes"]), key=lambda p: -p[1])
         return ", ".join(f"{c} {round(v * 100)}%" for c, v in pairs if v > 0)
 
+class Job(imodels.IJob):
+    def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+    def _insert_or_update(self, form, new):
+        form = utils.parse_form(form, self._form_dict())
+        if new:
+            for key, value in form.items():
+                setattr(self, key, value)
+        else:
+            exception_handler.CriticalException("Jobs do not accept updates.")
+
+    @property
+    def unique_name(self):
+        return f"Job-{self.id} (User: {self.user.name})"
+
+    def _get_filespace_children(self):
+        return [self.complete_output, self.discovery_curve]
+
+    def _update_filespace(self):
+        raise NotImplementedError()
+
+class Category(imodels.ICategory):
+    def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+    def _insert_or_update(self, form, new):
+        form = utils.parse_form(form, self._form_dict())
+        if new:
+            self.selection_number = form['selection_number']
+        else:
+            raise exception_handler.CriticalException("Cannot update selections.")
+
+    @property
+    def unique_name(self):
+        return f"Category-{self.id}" + f"(Name: {self.name})" if (self.name != None) else ""
+
+class Reference_Contour(imodels.IReference_Contour):
+    def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+    # def _insert_or_update(self, form, new):
+    #     form = utils.parse_form(form, self._form_dict())
+    #     if new:
+    #         for key, value in form.items():
+    #             setattr(self, key, value)
+    #     else:
+    #         exception_handler.CriticalException("Jobs do not accept updates.")
+
+    @property
+    def unique_name(self):
+        return f"Reference_Contour-{self.id} (Category: {self.category_id})"
+
+class Contour(imodels.IContour):
+    def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+    # def _insert_or_update(self, form, new):
+    #     form = utils.parse_form(form, self._form_dict())
+    #     if new:
+    #         for key, value in form.items():
+    #             setattr(self, key, value)
+    #     else:
+    #         exception_handler.CriticalException("Jobs do not accept updates.")
+
+    @property
+    def unique_name(self):
+        return f"Contour-{self.id} (Category: {self.category_id})"

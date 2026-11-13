@@ -1,0 +1,44 @@
+<label class="bold" for="warpFactorLevel" style="margin-bottom:5px;">Warp Factor Level</label>
+<input type="text" id="warpFactorLevel" name="warpFactorLevel" {% if editing %}value="{{ job.warpFactorLevel }}"{% endif %}>
+
+<label class="bold" for="vigilance" style="margin-bottom:5px;">Vigilance</label>
+<input type="text" id="vigilance" name="vigilance" {% if editing %}value="{{ job.vigilance }}"{% endif %}>
+
+<label class="bold" for="maxNumCategories" style="margin-bottom:5px;">Max Number of Categories*</label>
+<input type="number" id="maxNumCategories" name="maxNumCategories" {% if editing %}value="{{ job.maxNumCategories }}"{% endif %}>
+
+<label class="bold" for="maxNumIterations" style="margin-bottom:5px;">Max Number of Iterations*</label>
+<input type="number" id="maxNumIterations" name="maxNumIterations" {% if editing %}value="{{ job.maxNumIterations }}"{% endif %}>
+
+<label class="bold" for="bias" style="margin-bottom:5px;">Bias</label>
+<input type="number" step="any" id="bias" name="bias" {% if editing %}value="{{ job.bias }}"{% endif %}>
+
+<label class="bold" for="learningRate" style="margin-bottom:5px;">Learning Rate</label>
+<input type="number" step="any" id="learningRate" name="learningRate" {% if editing %}value="{{ job.learningRate }}"{% endif %}>
+
+<label class="bold" for="resample" style="margin-bottom:5px;">Resample</label>
+<input type="number" id="resample" name="resample" {% if editing %}value="{{ job.resample }}"{% endif %}>
+
+<label class="bold" for="sampleInterval" style="margin-bottom:5px;">Sample Interval</label>
+<input type="number" step="any" id="sampleInterval" name="sampleInterval" {% if editing %}value="{{ job.sampleInterval }}"{% endif %}>
+
+<label class="bold" for="compareWarped" style="margin-bottom:5px;">Compare Warped</label>
+<input type="number" id="compareWarped" name="compareWarped" {% if editing %}value="{{ job.compareWarped }}"{% endif %}>
+
+<label class="bold" style="margin-top:10px; display:block;">Complete Output File (.zip)</label>
+<input class="file-input small" type="file" id="complete-output-file-input" name="complete-output-file-input" onchange="extractDate(this.value);" accept=".zip">
+<div>
+    <span style="display: none; padding-right: 0.5rem;" id="complete-output-insert-progress-text">0%</span>
+    <progress style="display: none;" id="complete-output-insert-progress-bar" value="0" max="100"></progress>
+</div>
+<input type="hidden" id="complete-output-file-id-store" name="complete_output_recording_file_id" value="">
+<input type="hidden" id="complete-output-file-name-store" name="complete_output_recording_file_name" value="">
+
+<label class="bold" style="margin-top:10px; display:block;">Discovery Curve File (.png, .csv, .pdf)</label>
+<input class="file-input small" type="file" id="discovery-curve-file-input" name="discovery-curve-file-input" accept=".png,.csv,.pdf">
+<div>
+    <span style="display: none; padding-right: 0.5rem;" id="discovery-curve-insert-progress-text">0%</span>
+    <progress style="display: none;" id="discovery-curve-insert-progress-bar" value="0" max="100"></progress>
+</div>
+<input type="hidden" id="discovery-curve-file-id-store" name="discovery_curve_file_id" value="">
+<input type="hidden" id="discovery-curve-file-name-store" name="discovery_curve_file_name" value="">

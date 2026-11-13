@@ -1,0 +1,71 @@
+<!--
+This page allows the user to see all results.
+Variables required:
+- g.user: current logged in User object
+- results: array of Job objects
+-->
+
+<!DOCTYPE html>
+<html>
+{% include 'partials/header.html' %}
+<head>
+    <title>Results</title>
+</head>
+<body>
+    <div class="outer-div">
+        <h1>Results</h2>
+        {% if current_user.role_id in [1, 2] %}
+        {% if not session['snapshot_date'] %}
+        <a href="{{ url_for('results.results_new') }}" class="button" style=" margin-bottom: 10px" title="Add new result">Add New Result</a><br>
+        {% endif %}
+        {% endif %}
+        {% if results_list %}
+        <div style="margin-top: 10px; margin-bottom: 5px;">
+            <label for="sort-select">Filter (any column):</label>
+        </div>
+        <input style="margin-bottom: 10px;" type="text" class="text-input small" id="filter-input" placeholder="No filter">
+        <table style="margin-top: 10px" id="results-table">
+            <thead>
+                <tr>
+                    <th>Result</th>
+                    <th>User</th>
+                    <th>Upload Date</th>
+                    <th>Number of Categories</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in results_list %}
+                    <tr>
+                        <td><a style="width:100%" data-job-id="{{ job.id }}" href="{{ url_for('results.results_view', job=job) }}">{{ job.id }}</a></td>
+                        <td>{{ job.user.name }}</td>
+                        <td>{{ job.upload_datetime }}</td>
+                        <td>{{ job.num_categories }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div class="no-results-message" style="margin-top:15px;">
+                No results found. Please add new results using the button above.
+            </div>
+        {% endif %}
+    </div>
+</body>
+<script>
+    $(document).ready(function() {
+        $('#filter-input').on('input', function() {
+                var filterValue = $(this).val().toLowerCase();
+                $('#results-table tbody tr').each(function() {
+                    var job_id = $(this).find('td:nth-child(1)').text().toLowerCase();
+                    var upload_datetime = $(this).find('td:nth-child(2)').text().toLowerCase();
+                    var num_categories = $(this).find('td:nth-child(3)').text().toLowerCase();
+                    if (!(job_id.includes(filterValue) || upload_datetime.includes(filterValue) || num_categories.includes(filterValue))) {
+                    $(this).hide();
+                    } else {
+                    $(this).show();
+                    }
+                });
+            });
+    });
+</script>
+</html>
