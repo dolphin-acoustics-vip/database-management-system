@@ -1513,3 +1513,191 @@ class IAssignment(AbstractModelBase, Serialisable, TableOperations):
     def incomplete(self):
         """Mark the assignment as incomplete."""
         raise NotImplementedError()
+
+class IJob(AbstractModelBase, Serialisable, TableOperations, FileSpaceDependency):
+    """Stores ARTwarp outputs"""
+
+    __tablename__ = 'job'
+    __table_args__ = (PrimaryKeyConstraint('id'),)
+    
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+
+    user_id = Column(String(36), ForeignKey('user.id'), nullable=False)
+    user = database_handler.db.relationship("User", foreign_keys=[user_id])
+
+    upload_datetime = Column(DateTime(timezone=True), server_default="current_timestamp()")
+
+    complete_output_id = Column(String(36), ForeignKey('file.id'))
+    complete_output = database_handler.db.relationship("File", foreign_keys=[complete_output_id])
+
+    discovery_curve_id = Column(String(36), ForeignKey('file.id'))
+    discovery_curve = database_handler.db.relationship("File", foreign_keys=[discovery_curve_id])
+
+    warpFactorLevel = Column(Integer, nullable=False, default=3)
+    vigilance = Column(Integer, nullable=False, default=95)
+    maxNumCategories = Column(Integer)
+    maxNumIterations = Column(Integer)
+    
+    bias = Column(Float, nullable=False, default=1e-6)
+    learningRate = Column(Float, nullable=False, default=0.1)
+    resample = Column(Integer, nullable=False, default=1)
+    sampleInterval = Column(Float, nullable=False, default=0.01)
+    compareWarped = Column(Integer, nullable=False, default=0)
+
+    def _to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "user": self.user,
+            "upload_time": self.upload_time,
+            "complete_output_id": self.complete_output_id,
+            "complete_output": self.complete_output,
+            "discovery_curve_id": self.discovery_curve_id,
+            "discovery_curve": self.discovery_curve,
+            "warp_factor_level": self.warpFactorLevel,
+            "vigilance": self.vigilance,
+            "maxNumCategories": self.maxNumCategories,
+            "maxNumIterations": self.maxNumIterations,
+            "bias": self.bias,
+            "learningRate": self.learningRate,
+            "resample": self.resample,
+            "sampleInterval": self.sampleInterval,
+            "compareWarped": self.compareWarped
+        }
+
+    def _form_dict(self):
+        return {
+            "warpFactorLevel": False,
+            "vigilance": False,
+            "maxNumCategories": True,
+            "maxNumIterations": True,
+            "bias": False,
+            "learningRate": False,
+            "resample": False,
+            "sampleInterval": False,
+            "compareWarped": False
+        }
+
+    @validates("id", "user_id", "complete_output_id", "discovery_curve_id")
+    def _validate_ids(self, key, value):
+        return utils.validate_id(value=value, field=key, allow_none=(key in ["complete_output_id", "discovery_curve_id"]))
+
+    @validates("complete_output")
+    def _validate_complete_output(self, key, value):
+        return self._set_file(key, value, nullable=True, overridable=True, dtypes=["zip"])
+
+    @validates("discovery_curve")
+    def _validate_discovery_curve(self, key, value):
+        return self._set_file(key, value, nullable=True, overridable=True, dtypes=["png", "csv", "pdf"])
+
+    @validates("warpFactorLevel", "vigilance", "maxNumCategories", "maxNumIterations", "resample", "compareWarped")
+    def _validate_integers(self, key, value):
+        return utils.validate_int(value=value, field=key, allow_none=False)
+
+    @validates("bias", "learningRate", "sampleInterval")
+    def _validate_floats(self, key, value):
+        return utils.validate_float(value=value, field=key, allow_none=False)
+
+    @validates("upload_time")
+    def _validate_datetime(self, key, value):
+        return utils.validate_datetime(value=value, field=key, allow_none=False)
+
+class ICategory(AbstractModelBase, Serialisable, TableOperations):
+    """Stores Category data"""
+
+    __tablename__ = 'category'
+    __table_args__ = (PrimaryKeyConstraint('id'),)
+    
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+
+    job_id = Column(String(36), ForeignKey('job.id'), nullable=False)
+    job = database_handler.db.relationship("Job", foreign_keys=[job_id])
+
+    name = Column(String(36), nullable=True)
+
+    def _to_dict(self):
+        return {
+            "id": self.id,
+            "job_id": self.job_id,
+            "job": self.job,
+            "name": self.name,
+        }
+
+    def _form_dict(self):
+        return {
+            "name": False
+        }
+
+    @validates("id", "job_id")
+    def _validate_ids(self, key, value):
+        return utils.validate_id(value=value, field=key)
+
+    @validates("name")
+    def _validate_name(self, key, value):
+        return utils.validate_string(value=value, field=key)
+
+class IReference_Contour(AbstractModelBase, Serialisable, TableOperations, FileSpaceDependency):
+    """Stores Reference Contours"""
+
+    __tablename__ = 'reference_contour'
+    __table_args__ = (PrimaryKeyConstraint('id'),)
+    
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+
+    category_id = Column(String(36), ForeignKey('category.id'), nullable=False)
+    category = database_handler.db.relationship("Category", foreign_keys=[category_id])
+
+    contour_file_csv_id = Column(String(36), ForeignKey('file.id'))
+    contour_file_csv = database_handler.db.relationship("File", foreign_keys=[contour_file_csv_id])
+
+    contour_file_ctr_id = Column(String(36), ForeignKey('file.id'))
+    contour_file_ctr = database_handler.db.relationship("File", foreign_keys=[contour_file_ctr_id])
+
+
+    def _to_dict(self):
+        return {
+            "id": self.id,
+            "category_id": self.category_id,
+            "category": self.category,
+            "contour_file_csv_id": self.contour_file_csv_id,
+            "contour_file_csv": self.contour_file_csv,
+            "contour_file_ctr_id": self.contour_file_ctr_id,
+            "contour_file_ctr": self.contour_file_ctr
+        }
+
+    @validates("id", "category_id", "contour_file_csv_id", "contour_file_ctr_id")
+    def _validate_ids(self, key, value):
+        return utils.validate_id(value=value, field=key)
+
+class IContour(AbstractModelBase, Serialisable, TableOperations):
+    """Links a contour to either a selection or reference contour id"""
+
+    __tablename__ = 'contour'
+    __table_args__ = (PrimaryKeyConstraint('id'),)
+    
+    id = Column(String(36), primary_key=True, nullable=False, server_default="UUID()")
+
+    category_id = Column(String(36), ForeignKey('category.id'), nullable=False)
+    category = database_handler.db.relationship("Category", foreign_keys=[category_id])
+
+    selection_id = Column(String(36), ForeignKey('selection.id'))
+    selection = database_handler.db.relationship("Selection", foreign_keys=[selection_id])
+
+    reference_contour_id = Column(String(36), ForeignKey('reference_contour.id'))
+    reference_contour = database_handler.db.relationship("Reference_Contour", foreign_keys=[reference_contour_id])
+
+
+    def _to_dict(self):
+        return {
+            "id": self.id,
+            "category_id": self.category_id,
+            "category": self.category,
+            "selection_id": self.selection_id,
+            "selection": self.selection,
+            "reference_contour_id": self.reference_contour_id,
+            "reference_contour": self.reference_contour
+        }
+
+    @validates("id", "category_id", "selection_id", "reference_contour_id")
+    def _validate_ids(self, key, value):
+        return utils.validate_id(value=value, field=key)
