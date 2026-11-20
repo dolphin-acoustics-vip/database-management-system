@@ -43,6 +43,7 @@ from .routes.routes_healthcentre import routes_healthcentre
 from .routes.routes_filespace import routes_filespace 
 from .routes.routes_classifier import routes_classifier
 from .routes.routes_results import routes_results
+from .routes.routes_category import routes_category
 
 CONFIG = None
 
@@ -264,7 +265,8 @@ def create_app(config_class):
     app.register_blueprint(routes_filespace, url_prefix=CONFIG.URL_PREFIX)
     app.register_blueprint(routes_classifier, url_prefix=CONFIG.URL_PREFIX)
     app.register_blueprint(routes_results, url_prefix=CONFIG.URL_PREFIX)
-    
+    app.register_blueprint(routes_category, url_prefix=CONFIG.URL_PREFIX)
+
     app.register_blueprint(api, url_prefix=CONFIG.URL_PREFIX + "/api/")
 
     env = Environment()

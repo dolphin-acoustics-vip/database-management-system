@@ -1125,9 +1125,43 @@ class Job(imodels.IJob):
         else:
             exception_handler.CriticalException("Jobs do not accept updates.")
 
+    def complete_output_file_insert(self, complete_output_file):
+        if self.complete_output or self.complete_output_id: raise exception_handler.WarningException(f"Job (Id: {self.id} already has output file.")
+        self.complete_output = complete_output_file
+
+    def parse_network_paremeters(self, net_param):
+        self.vigilance = net_param.get("vigilance") or 95
+        self.warpFactorLevel = net_param.get("warp_factor_level") or 3
+        self.maxNumCategories = net_param.get("max_num_categories")
+        self.maxNumIterations = net_param.get("max_num_iterations")
+        
+        self.bias = net_param.get("bias") or 1e-6
+        self.learningRate = net_param.get("learning_rate") or 0.1
+        self.resample = net_param.get("resample") or 1
+        self.sampleInterval = net_param.get("sample_interval") or 0.01
+        self.compareWarped = net_param.get("compare_warped") or 0
+
+
+    @property
+    def folder_name(self):
+        return utils.secure_fname(self.unique_name)
+
     @property
     def unique_name(self):
-        return f"Job-{self.id} (User: {self.user.name})"
+        user_name = self.user.name if self.user else "Unknown"
+        return f"Job-{self.id} (User: {user_name})"
+
+    @property
+    def relative_directory(self):
+        return self.folder_name
+
+    @property
+    def complete_output_filename(self):
+        return utils.secure_fname(f"CompleteOutput-{self.id}")
+
+    @property
+    def discovery_curve_filename(self):
+        return utils.secure_fname(f"DiscoveryCurve-{self.id}")
 
     def _get_filespace_children(self):
         return [self.complete_output, self.discovery_curve]
@@ -1140,43 +1174,154 @@ class Category(imodels.ICategory):
             super().__init__(*args, **kwargs)
 
     def _insert_or_update(self, form, new):
-        form = utils.parse_form(form, self._form_dict())
         if new:
-            self.selection_number = form['selection_number']
+            self.job = form["job"]
+            self.category_number = form["category_number"]
         else:
-            raise exception_handler.CriticalException("Cannot update selections.")
+            # TODO ability to change category name
+            raise exception_handler.CriticalException("Cannot update Category.")
 
     @property
     def unique_name(self):
-        return f"Category-{self.id}" + f"(Name: {self.name})" if (self.name != None) else ""
+        return f"Job-{self.job_id} Number: {self.category_number}"
 
 class Reference_Contour(imodels.IReference_Contour):
     def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-    # def _insert_or_update(self, form, new):
-    #     form = utils.parse_form(form, self._form_dict())
-    #     if new:
-    #         for key, value in form.items():
-    #             setattr(self, key, value)
-    #     else:
-    #         exception_handler.CriticalException("Jobs do not accept updates.")
+    def _insert_or_update(self, form, new):
+        if new:
+            self.category = form["category"]
+        else:
+            exception_handler.CriticalException("Reference Contours do not accept updates.")
 
     @property
     def unique_name(self):
         return f"Reference_Contour-{self.id} (Category: {self.category_id})"
 
+    def create_temp_plot(self):
+            if not self.contour_file_csv_id:
+                raise exception_handler.DoesNotExistError("Category does not have reference contour file.")
+            # Sampling rate defaults to 44100 from the selection default
+            sampling_rate = 44100
+            
+            # Adjustable: 20–50 ms (time between frequency bins)
+            bin_width = 25  
+            window_size = 2 ** int(round(np.log2((bin_width / 1000) * sampling_rate)))
+            hop_size = window_size // 4  # 75% overlap
+    
+            # Set x-axis labels in milliseconds
+            def format_ms(x, pos):
+                """Convert x axis labels from seconds to milliseconds"""
+                return f"{x*1000:.0f}"
+
+            fig, axs = plt.subplots(1, 1, figsize=(30, 5))
+            contour_axs = axs
+
+    
+            # Plot the contour
+            contour_file_handler = self.get_contour_file_handler()
+            contour_rows = contour_file_handler.contour_rows
+            contour_domain = [(unit.time_milliseconds - contour_rows[0].time_milliseconds) for unit in contour_rows]
+            contour_range = [unit.peak_frequency for unit in contour_rows]
+            contour_axs.plot(contour_domain, contour_range)
+            contour_axs.set_xlabel('Time (ms)', fontsize=20)
+            contour_axs.set_ylabel('Frequency (Hz)', fontsize=20)
+            contour_axs.tick_params(axis='both', labelsize=14)
+            # contour_axs.set_ylim(spectrogram_y_min, sprectrogram_y_max)
+            # contour_axs.set_xlim(spectrogram_x_min, spectrogram_x_max)
+            
+            fig.suptitle(f'{self.unique_name} reference contour plot', fontsize=26)
+            
+            # Layout so plots do not overlap
+            fig.tight_layout()
+    
+            # Create a BytesIO object to store the plot
+            buf = io.BytesIO()
+    
+            # Save the plot to the BytesIO object
+            plt.savefig(buf, format='png', bbox_inches='tight')
+    
+            # Seek back to the beginning of the buffer
+            buf.seek(0)
+    
+            # Return the bytestream of the plot
+            return buf.getvalue()
+
+    def get_contour_file_handler(self) -> contour_statistics.ContourFileHandler:
+            if not self.contour_file_csv: return None
+            # Get contour file dataframe
+            df = self.__contour_file_load_dataframe()
+            if not df.empty:
+                # Populate contour file handler with values from the dataframe
+                handler = contour_statistics.ContourFileHandler()
+                handler.insert_dataframe(df)
+                return handler
+            else:
+                raise exception_handler.WarningException(f"Reference Contour file for category {self.category_id} unable to be parsed.")
+
+    def __contour_file_load_dataframe(self) -> pd.DataFrame:
+            """Read the `contour_file` into a pandas dataframe, validating columns and their types."""
+            if self.contour_file_csv:
+                try:
+                    self.contour_file_csv.get_binary()
+                    if self.contour_file_csv.extension.lower() == "csv":
+                        df = pd.read_csv(self.contour_file_csv._path_with_root)
+                    else:
+                        raise exception_handler.WarningException(f"Unable to parse reference contour file as it is in the wrong format. Require CSV")
+                    return df
+                except FileNotFoundError as e:
+                    raise exception_handler.WarningException(f"Reference Contour file for category {self.category_id} no longer exists.")
+            else:
+                raise exception_handler.WarningException(f"Reference Contour file for category {self.category_id} does not exist.")
+
+    def ctr_file_generate(self, ctr_file: File):
+        contour_file_handler = self.get_contour_file_handler()
+        if contour_file_handler:
+            mat_data = contour_file_handler.get_ctr_data()
+            mat_data["id"] = self.id
+            if mat_data:
+                with io.BytesIO() as f:
+                    scipy.io.savemat(f, mat_data)
+                    f.seek(0)
+                    ctr_file.insert(file = f, directory = self.relative_directory, filename = f"{self.unique_name} (ctr)", extension="ctr")
+                self.contour_file_ctr = ctr_file
+        else:
+            raise exception_handler.WarningException(f"Contour file for reference contour {self.id} does not exist.")
+
+    def parse_contour_data(self, data, contour_file, ctr_file):
+        contour_csv = utils.convert_reference_contour_data_to_csv(data)
+        contour_file.insert(contour_csv, self.relative_directory, self.unique_name, None, "csv")
+        self.contour_file_csv = contour_file
+        self.ctr_file_generate(ctr_file)
+
+    @property
+    def relative_directory(self):
+        return os.path.join(utils.secure_fname(self.category.job.folder_name),utils.secure_fname(self.folder_name))
+    
+    @property
+    def folder_name(self):
+        return f"Reference Contour {self.category_id}"
+
+    def _get_filespace_children(self):
+        return [self.contour_file_csv, self.contour_file_ctr]
+    
+    def _update_filespace(self):
+        raise NotImplementedError()
+
 class Contour(imodels.IContour):
     def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
 
-    # def _insert_or_update(self, form, new):
-    #     form = utils.parse_form(form, self._form_dict())
-    #     if new:
-    #         for key, value in form.items():
-    #             setattr(self, key, value)
-    #     else:
-    #         exception_handler.CriticalException("Jobs do not accept updates.")
+    def _insert_or_update(self, form, new):
+        if new:
+            self.category = form["category"]
+            if form.get("selection"):
+                self.selection = form["selection"]
+            else:
+                self.reference_contour = form["reference_contour"]
+        else:
+            exception_handler.CriticalException("Contours do not accept updates.")
 
     @property
     def unique_name(self):

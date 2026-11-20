@@ -29,56 +29,24 @@ Variables required:
                 <p>Max Number of Iterations: {% if job.maxNumIterations %}{{ job.maxNumIterations }}{% else %}Not specified{% endif %}</p>
                 <p>Bias: {{ job.bias }}</p>
                 <p>Learning Rate: {{ job.learningRate }}</p>
-                <p>Resample: {{ job.resample }}</p>
+                <p>Resample: {% if job.resample == 0 %}False{% else %}True{% endif %}</p>
                 <p>Sample Interval: {{ job.sampleInterval }}</p>
-                <p>Compare Warped: {{ job.compareWarped }}</p>
+                <p>Compare Warped: {% if job.compareWarped == 0 %}False{% else %}True{% endif %}</p>
             </div>
 
             <h3>Download Options</h3>
             {% if job.complete_output %}
-            <form action="{{ url_for('job.download_complete_output', job_id=job.id) }}" method="get">
-                <button class="link small" type="submit">Download Complete Output (.zip)</button>
+            <form action="{{ url_for('results.download_complete_output', job_id=job.id) }}" method="get">
+                <button class="link small" type="submit">Download Complete Output (.json)</button>
             </form>
             {% endif %}
             {% if job.discovery_curve %}
-            <form action="{{ url_for('job.download_discovery_curve', job_id=job.id) }}" method="get">
+            <form action="{{ url_for('results.download_discovery_curve', job_id=job.id) }}" method="get">
                 <button class="link small" type="submit">Download Discovery Curve</button>
             </form>
             {% endif %}
         </section>
         <hr>
-
-        {% if current_user.role_id in [1, 2] %}
-        <section id="administration">
-            <h2>Administration Actions</h2>
-
-            <div class="audit-history" style="margin-top: 20px;">
-                <h3>Audit History</h3>
-                <div class="table-responsive">
-                    <table class="table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Action</th>
-                                <th>User</th>
-                                <th>View Snapshot</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for history_item in job_history %}
-                            <tr>
-                                <td>{{ history_item['row_start'] }}</td>
-                                <td>{{ history_item['action'] }}</td>
-                                <td>{{ history_item['updated_by'].name }}</td>
-                                <td><a href="{{ url_for('general.enter_snapshot_date_in_session', snapshot_date=history_item['row_start'], redirect_link=url_for('job.job_view', job_id=job['id']))}}">HERE</a></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-        {% endif %}
 
         <section id="categories" style="margin-top: 30px;">
             <h2>Categories for Job</h2>
@@ -109,28 +77,6 @@ Variables required:
             <p>This job has no categories.</p>
             {% endif %}
         </section>
-
-        {% if not session['snapshot_date'] %}
-            {% if current_user.role_id in [1, 2] %}
-            <form id="job-delete-form_{{ job.id }}" method="POST" action="{{ url_for('job.job_delete', job_id=job.id) }}" style="margin-top: 2rem;">
-                <input type="hidden" name="_method" value="DELETE">
-                <button class="link small" id="delete-job-button" title="Delete the entire job." type="submit" data-job-id="{{ job.id }}" delete-info="{{ job.id }}">Delete Job</button>
-            </form>
-            <script>
-                $("#delete-job-button").on("click", function (event) {
-                    event.preventDefault();
-                    var jobId = $(this).data("job-id");
-                    var deleteInfo = $(this).attr('delete-info');
-                    var form = document.getElementById("job-delete-form_" + jobId);
-
-                    if (confirm("Are you sure you want to delete job: " + deleteInfo + "?\nThis will delete all associated categories and cannot be undone.")) {
-                        makeAjaxRequestForm(form);
-                    }
-                });
-            </script>
-            {% endif %}
-        {% endif %}
-
     </div>
 </body>
 </html>

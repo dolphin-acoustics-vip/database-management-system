@@ -1530,7 +1530,7 @@ class IJob(AbstractModelBase, Serialisable, TableOperations, FileSpaceDependency
     user_id = Column(String(36), ForeignKey('user.id'), nullable=False)
     user = database_handler.db.relationship("User", foreign_keys=[user_id])
 
-    upload_datetime = Column(DateTime(timezone=True), server_default="current_timestamp()")
+    upload_datetime = Column(DateTime(timezone=True), nullable=False, server_default="current_timestamp()")
 
     complete_output_id = Column(String(36), ForeignKey('file.id'))
     complete_output = database_handler.db.relationship("File", foreign_keys=[complete_output_id])
@@ -1538,23 +1538,23 @@ class IJob(AbstractModelBase, Serialisable, TableOperations, FileSpaceDependency
     discovery_curve_id = Column(String(36), ForeignKey('file.id'))
     discovery_curve = database_handler.db.relationship("File", foreign_keys=[discovery_curve_id])
 
-    warpFactorLevel = Column(Integer, nullable=False, default=3)
-    vigilance = Column(Integer, nullable=False, default=95)
-    maxNumCategories = Column(Integer)
-    maxNumIterations = Column(Integer)
-    
-    bias = Column(Float, nullable=False, default=1e-6)
-    learningRate = Column(Float, nullable=False, default=0.1)
-    resample = Column(Integer, nullable=False, default=1)
-    sampleInterval = Column(Float, nullable=False, default=0.01)
-    compareWarped = Column(Integer, nullable=False, default=0)
+    warpFactorLevel = Column(Integer, nullable=False, server_default="3")
+    vigilance       = Column(Integer, nullable=False, server_default="95")
+    learningRate    = Column(Float,   nullable=False, server_default="0.1")
+    bias            = Column(Float,   nullable=False, server_default="0.000001")
+    resample        = Column(Integer, nullable=False, server_default="1")
+    sampleInterval  = Column(Float,   nullable=False, server_default="0.01")
+    compareWarped   = Column(Integer, nullable=False, server_default="0")
+
+    maxNumCategories = Column(Integer, nullable=True)
+    maxNumIterations = Column(Integer, nullable=True)
 
     def _to_dict(self):
         return {
             "id": self.id,
             "user_id": self.user_id,
             "user": self.user,
-            "upload_time": self.upload_time,
+            "upload_datetime": self.upload_datetime,
             "complete_output_id": self.complete_output_id,
             "complete_output": self.complete_output,
             "discovery_curve_id": self.discovery_curve_id,
@@ -1574,8 +1574,8 @@ class IJob(AbstractModelBase, Serialisable, TableOperations, FileSpaceDependency
         return {
             "warpFactorLevel": False,
             "vigilance": False,
-            "maxNumCategories": True,
-            "maxNumIterations": True,
+            "maxNumCategories": False,
+            "maxNumIterations": False,
             "bias": False,
             "learningRate": False,
             "resample": False,
@@ -1589,7 +1589,7 @@ class IJob(AbstractModelBase, Serialisable, TableOperations, FileSpaceDependency
 
     @validates("complete_output")
     def _validate_complete_output(self, key, value):
-        return self._set_file(key, value, nullable=True, overridable=True, dtypes=["zip"])
+        return self._set_file(key, value, nullable=True, overridable=True, dtypes=["json"])
 
     @validates("discovery_curve")
     def _validate_discovery_curve(self, key, value):
@@ -1597,11 +1597,11 @@ class IJob(AbstractModelBase, Serialisable, TableOperations, FileSpaceDependency
 
     @validates("warpFactorLevel", "vigilance", "maxNumCategories", "maxNumIterations", "resample", "compareWarped")
     def _validate_integers(self, key, value):
-        return utils.validate_int(value=value, field=key, allow_none=False)
+        return utils.validate_int(value=value, field=key, allow_none=True)
 
     @validates("bias", "learningRate", "sampleInterval")
     def _validate_floats(self, key, value):
-        return utils.validate_float(value=value, field=key, allow_none=False)
+        return utils.validate_float(value=value, field=key, allow_none=True)
 
     @validates("upload_time")
     def _validate_datetime(self, key, value):
@@ -1618,6 +1618,8 @@ class ICategory(AbstractModelBase, Serialisable, TableOperations):
     job_id = Column(String(36), ForeignKey('job.id'), nullable=False)
     job = database_handler.db.relationship("Job", foreign_keys=[job_id])
 
+    category_number = Column(Integer, nullable=False)
+
     name = Column(String(36), nullable=True)
 
     def _to_dict(self):
@@ -1625,11 +1627,13 @@ class ICategory(AbstractModelBase, Serialisable, TableOperations):
             "id": self.id,
             "job_id": self.job_id,
             "job": self.job,
-            "name": self.name,
+            "category_number": self.category_number,
+            "name": self.name
         }
 
     def _form_dict(self):
         return {
+            "category_number": True,
             "name": False
         }
 
@@ -1670,6 +1674,9 @@ class IReference_Contour(AbstractModelBase, Serialisable, TableOperations, FileS
             "contour_file_ctr": self.contour_file_ctr
         }
 
+    def _form_dict(self):
+        return {}
+
     @validates("id", "category_id", "contour_file_csv_id", "contour_file_ctr_id")
     def _validate_ids(self, key, value):
         return utils.validate_id(value=value, field=key)
@@ -1702,6 +1709,9 @@ class IContour(AbstractModelBase, Serialisable, TableOperations):
             "reference_contour_id": self.reference_contour_id,
             "reference_contour": self.reference_contour
         }
+
+    def _form_dict(self):
+        return {}
 
     @validates("id", "category_id", "selection_id", "reference_contour_id")
     def _validate_ids(self, key, value):

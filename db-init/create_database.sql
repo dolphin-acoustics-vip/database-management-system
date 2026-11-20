@@ -141,6 +141,7 @@ CREATE TABLE `category` (
   `id` varchar(36) NOT NULL DEFAULT uuid(),
   `job_id` varchar(36) NOT NULL,
   `name` varchar(100) DEFAULT NULL,
+  `category_number` int NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_category_job` (`job_id`),
   CONSTRAINT `fk_category_job` FOREIGN KEY (`job_id`) REFERENCES `job` (`id`)
@@ -165,7 +166,7 @@ CREATE TABLE `reference_contour` (
   KEY `fk_ref_contour_csv_file` (`contour_file_csv_id`),
   KEY `fk_ref_contour_ctr_file` (`contour_file_ctr_id`),
   CONSTRAINT `fk_ref_contour_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`),
-  CONSTRAINT `fk_ref_contour_csv_file` FOREIGN KEY (`contour_file_csv_id`) REFERENCES `file` (`id`)
+  CONSTRAINT `fk_ref_contour_csv_file` FOREIGN KEY (`contour_file_csv_id`) REFERENCES `file` (`id`),
   CONSTRAINT `fk_ref_contour_ctr_file` FOREIGN KEY (`contour_file_ctr_id`) REFERENCES `file` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 

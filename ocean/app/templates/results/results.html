@@ -36,7 +36,7 @@ Variables required:
             <tbody>
                 {% for job in results_list %}
                     <tr>
-                        <td><a style="width:100%" data-job-id="{{ job.id }}" href="{{ url_for('results.results_view', job=job) }}">{{ job.id }}</a></td>
+                        <td><a style="width:100%" data-job-id="{{ job.id }}" href="{{ url_for('results.results_view', job_id=job.id) }}">{{ job.id }}</a></td>
                         <td>{{ job.user.name }}</td>
                         <td>{{ job.upload_datetime }}</td>
                         <td>{{ job.num_categories }}</td>

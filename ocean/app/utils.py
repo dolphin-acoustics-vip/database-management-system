@@ -357,6 +357,125 @@ def parse_form(form: typing.Dict[str, typing.Any], schema: typing.Dict[str, bool
     if len(missing) > 0: raise AttributeError(f"The submitted form does not contain the required fields: {', '.join(missing)}")
     return data
 
+import scipy.io as sio
+import numpy as np
+import json
+
+def parse_mat_struct(element):
+    if isinstance(element, np.ndarray):
+        if element.dtype == np.object_ and element.size > 0:
+            return [parse_mat_struct(entry) for entry in element]
+        else:
+            return element.tolist()
+    if hasattr(element, "_fieldnames"):
+        return {field: parse_mat_struct(getattr(element, field)) for field in element._fieldnames}
+    return element
+
+def mat_to_json(mat_file):
+    mat_data = sio.loadmat(mat_file.stream, struct_as_record=False, squeeze_me=True)
+    
+    parsed_data = {
+        key: parse_mat_struct(val) 
+        for key, val in mat_data.items() 
+        if not key.startswith('_')
+    }
+
+    return parsed_data
+
+def parse_mat(file):
+    parsed_data = mat_to_json(file)
+
+    output = {}
+    
+    net_config = parsed_data.get("NET", {})
+    net_config = net_config if isinstance(net_config, dict) else {}
+    output["network_parameters"] = {
+        "vigilance": net_config.get("vigilance"),
+        "learning_rate": net_config.get("learningRate"),
+        "bias": net_config.get("bias"),
+        "max_num_categories": net_config.get("maxNumCategories"),
+        "max_num_iterations": net_config.get("maxNumIterations"),
+        "warp_factor_level": parsed_data.get("warpFactorLevel"),
+        "random_seed": None,
+        "randomise_sample_order": parsed_data.get("randomiseSortOrder"),
+        "compare_warped": parsed_data.get("compareWarped"),
+        "recat_single_whistle_categories": None, # CHECK Maybe new matlab ARTWarp has this
+        "deprioritise_lone_categories_search": None,
+        "purge_empty_categories": None,
+        "tempres": None, # Need to parse from contours and not sure if this is consistent for the whole run
+        "resample": parsed_data.get("resample"),
+        "sample_interval": parsed_data.get("sampleInterval"),
+        "max_contour_length": None # Not stored
+    }
+
+    output["summary"] = {
+        "num_categories": net_config.get("numCategories"),
+        "num_iterations": net_config.get("iterationNumber"),
+        "converged": None, # CHECK not sure if stored or needs to be calculated
+        "training_time": None
+    }
+
+    output["iteration_history"] = None
+
+    output["categories"] = {
+        str(i): {"contour_names": [], "reference_contour": None} for i in range(int(net_config.get("numCategories", 0)))
+    }
+
+    output["contours"] = {}
+
+    for i in parsed_data.get("DATA", {}):
+        name = str(i["name"]).removesuffix(".ctr")
+        output["contours"][name] = {
+            "name": name,
+            "contour_data": i["contour"], #CHECK is this needed
+            "tempres": i["tempres"],
+            "category_num": i["category"]-1,
+            "match": i["match"]
+            }
+
+        # As MATLAB is 1 indexed
+        output["categories"][str(int(i["category"])-1)]["contour_names"].append(name)
+
+    return output
+
+def parse_json(file):
+    output = {}
+
+    parsed_data = json.load(file.stream)
+
+    return parsed_data
+
+def parse_ARTWarp_Output(file):
+    output = {}
+    if (file.filename.endswith(".mat")):
+        output = parse_mat(file)
+    elif file.filename.endswith(".json"):
+        output = parse_json(file)
+    else:
+        raise exception_handler.WarningException("Cannot parse file (must be .json or .mat).")
+
+    return output
+
+def toJSON(data):
+    json_string = json.dumps(data, indent=4, ensure_ascii=False)
+    
+    stream = io.BytesIO(json_string.encode('utf-8'))
+    
+    stream.seek(0)
+    
+    return stream
+
+import csv
+
+def convert_reference_contour_data_to_csv(rows):
+    stream = io.StringIO()
+    # newline="" prevents csv.writer from adding extra blank lines
+    writer = csv.writer(stream, lineterminator="\n")
+    writer.writerow(["Time [ms]", "Peak Frequency [Hz]", "Duty Cycle", "Energy", "WindowRMS"])
+    writer.writerows([[i*5, rows[i], 0.0, 0.0, 0.0] for i in range(len(rows))])
+    stream.seek(0)
+    return io.BytesIO(stream.getvalue().encode("utf-8"))
+
 # Characters which need to be replaced by an underscore in paths
 INVALID_CHARACTERS = ["/","\\","*","?","\"","<",">","|"," ", ":"]
 
