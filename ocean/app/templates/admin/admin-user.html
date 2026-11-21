@@ -1,47 +1,57 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Edit Species</title>
-</head>
-<body>
-    <div class="outer-div">
+{% extends 'base.html' %}
+{#
+Lists all users.
+Variables required:
+- users: a pagination.Page of User objects
+#}
+{% from 'partials/ui.html' import search_box, sortable_header, pagination %}
+{% block title %}Users{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item active" aria-current="page">Users</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Users</h1>
+    <a href="{{ url_for('admin.admin_user_new') }}" class="btn btn-primary">Add user</a>
+</div>
 
-        <h1>Users</h1>
-        <a href="{{ url_for('admin.admin_user_new') }}" class="add-new-button"><button class="gray">Add New User</button></a>
-
-        <div class="table-responsive" style="margin-top: 10px">
-            <table class="table-striped"  id="data-source-table">
-            <tr>
-                <th>Email</th>
-                <th>Status</th> 
-                <th>Name</th>
-                <th>Expiry</th>
-                <th>Role</th>
-                <th>Actions</th>
-            </tr>
-            {% for user in users %}
-            <tr {% if not user.is_active %}style="background-color: red;"{% endif %}>
-                <td>{{ user.login_id }}</td>
-                <td>{% if user.is_active %}Active{% else %}Inactive{% endif %}</td>
-                <td>{{ user.name }}</td>
-                <td>{{user.pretty_expiry}}</td>
-                <td>{{user.role.name}}</td>
-                <td>
-                    <a class="button" href="{{ url_for('admin.admin_user_view', user_id=user.id) }}">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-
-
-
+<div class="card">
+    <div class="card-body">
+        <div class="list-toolbar">
+            {{ search_box(users, 'Search name, email or role') }}
+        </div>
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table-striped" id="data-source-table">
+                <thead>
+                    <tr>
+                        {{ sortable_header(users, 'Email', 'login') }}
+                        {{ sortable_header(users, 'Status', 'active') }}
+                        {{ sortable_header(users, 'Name', 'name') }}
+                        {{ sortable_header(users, 'Expiry', 'expiry') }}
+                        {{ sortable_header(users, 'Role', 'role') }}
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr {% if not user.is_active %}class="text-body-secondary"{% endif %}>
+                        <td>{{ user.login_id }}</td>
+                        <td>{% if user.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+                        <td>{{ user.name }}</td>
+                        <td>{{ user.pretty_expiry }}</td>
+                        <td>{{ user.role.name }}</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.admin_user_view', user_id=user.id) }}">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ pagination(users, 'users') }}
+        {% else %}
+        <p class="empty-state">No users match "{{ users.search }}".</p>
+        {% endif %}
     </div>
-
-    <script>
-        function copyToClipboard(link) {
-            navigator.clipboard.writeText(link)
-        }
-    </script>
-    
-</body>
+</div>
+{% endblock %}

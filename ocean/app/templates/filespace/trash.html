@@ -1,48 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'base.html' %}
+{% from 'partials/ui.html' import search_box, sortable_header, pagination %}
+{% block title %}Trash{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('filespace.filespace_view') }}">Filespace</a></li>
+<li class="breadcrumb-item active" aria-current="page">Trash</li>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    <h1>Trash</h1>
+    <p>Size of trash directory: {{trash_dir_size}}</p>
+    {% if trash_files or trash_files.search %}<div class="list-toolbar">{{ search_box(trash_files, 'Search file names') }}</div>{% endif %}
+    {% if trash_files %}
+    <button class="btn btn-outline-danger mb-3" id="delete-selected-files">Delete selected files</button>
 
-{% include 'partials/header.html' %}
+    <form id="delete-files-form" method="post" action="{{ url_for('filespace.trash_delete_files') }}" data-confirm="Permanently delete the selected files? This cannot be undone." data-confirm-text="Delete">
+        <input type="hidden" id="file-ids" name="file_ids[]">
+    </form>
+    <table>
+        <tr>
+            <th><input type="checkbox" name="selections-checkboxes" class="select-all"></th>
+            {{ sortable_header(trash_files, 'File name', 'name') }}
+            <th>Download</th>
+            <th>Delete</th>
+        </tr>
+        {% for file in trash_files %}
+            <tr>
+                <td>
+                    <input type="checkbox" name="selections-checkboxes" value="{{ file.id }}">
+                </td>
+                <td><label>{{ file.filename }}</label></td>
+                <td><a href="{{url_for('filespace.trash_send_file', file_id=file.id)}}">Download</a></td>
+                <td>
+                    <form method="post" action="{{ url_for('filespace.trash_delete_file') }}" data-confirm="Permanently delete {{ file.filename }}? This cannot be undone." data-confirm-text="Delete">
+                        <input type="hidden" name="file_id" value="{{ file.id }}">
+                        <button class="btn btn-sm btn-link link-danger p-0" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+    </table>
+    {{ pagination(trash_files, 'files') }}
+    {% elif trash_files.search %}
+    <p class="empty-state">No files match "{{ trash_files.search }}".</p>
+    {% else %}
+    <p class="empty-state">The trash is empty.</p>
+    {% endif %}
 
-<head>
-    <title>Filespace</title>
-</head>
-    <body>
-        <div class="outer-div">
-            <a class="link" href="{{ url_for('filespace.filespace_view') }}">Back to filespace</a>
-            <h1>Trash Files</h1>
-            <p>Size of trash directory: {{trash_dir_size}}</p>
-            {% if trash_files %}
-            <button class="gray" style="width:50%; margin-top:0.5rem; margin-bottom: 1rem" id="delete-selected-files">Delete Selected Files</button>
+<script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
+<script>
+    addShiftClickFunctionality(document.querySelectorAll('input[name="selections-checkboxes"]'));
+    addCheckboxFormSubmission(document.querySelectorAll('input[name="selections-checkboxes"]'), document.getElementById('delete-selected-files'), document.getElementById('file-ids'), document.getElementById('delete-files-form'));
+</script>
 
-            <form id="delete-files-form" method="post" action="{{ url_for('filespace.trash_delete_files') }}">
-                <input type="hidden" id="file-ids" name="file_ids[]">
-            </form>
-            <table>
-                <tr>
-                    <th><input type="checkbox" name="selections-checkboxes" class="select-all"></th>
-                    <th>File Name</th>
-                    <th>Download</th>
-                    <th>Delete</th>
-                </tr>
-                {% for file in trash_files %}
-                    <tr>
-                        <td>
-                            <input type="checkbox" name="selections-checkboxes" value="{{ file.id }}">
-                        </td>
-                        <td><label>{{ file.filename }}</label></td>
-                        <td><a href="{{url_for('filespace.trash_send_file', file_id=file.id)}}">Download</a></td>
-                        <td><a href="{{url_for('filespace.trash_delete_file', file_id=file.id)}}">Delete</a></td>
-                    </tr>
-                    {% endfor %}
-            </table>
-            {% endif %}
-
-        <script src="{{ url_for('general.serve_script', filename='html-utils.js') }}"></script>
-        <script>
-            addShiftClickFunctionality(document.querySelectorAll('input[name="selections-checkboxes"]'));
-            addCheckboxFormSubmission(document.querySelectorAll('input[name="selections-checkboxes"]'), document.getElementById('delete-selected-files'), document.getElementById('file-ids'), document.getElementById('delete-files-form'));
-        </script>
-
-        </div>
-    </body>
-</html>
+</div>
+{% endblock %}

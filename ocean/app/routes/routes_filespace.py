@@ -25,6 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask_login import login_required
 
 # Local application imports
+from .. import pagination
 from .. import database_handler
 from .. import exception_handler
 from .. import models
@@ -219,7 +220,7 @@ def trash_delete_files():
     flash(f"Deleted {success_counter} files permanently from the trash.", "success")
     return redirect(url_for('filespace.trash_view'))
 
-@routes_filespace.route('/filespace/trash/delete', methods=['GET'])
+@routes_filespace.route('/filespace/trash/delete', methods=['POST'])
 @login_required
 @database_handler.exclude_role_2
 @database_handler.exclude_role_3
@@ -231,10 +232,10 @@ def trash_delete_file():
     The route takes a single file ID from the request arguments and attempts to delete it from the trash.
     It then redirects the user to the trash view.
 
-    :param file_id: The ID of the file to delete from the trash (passed as an argument to the route)
+    :param file_id: The ID of the file to delete from the trash (passed in the form)
     :return: A redirect to the trash view
     """
-    file_id = request.args.get('file_id')
+    file_id = request.form.get('file_id')
     trash_delete_file_helper(file_id)
     return redirect(url_for('filespace.trash_view'))
 
@@ -257,4 +258,6 @@ def trash_view():
     trash_dir_size = get_directory_size(trash_dir)
     formatted_trash_dir_size = format_bytes(trash_dir_size)
     if len(trash_files) == 0 and trash_dir_size != 0: formatted_trash_dir_size += " (Expected the trash directory to be empty! The trash directory probably has orphaned files which are not shown in the table below. Consult the manual on how to fix this."
+    trash_files = pagination.paginate(trash_files, request.args, per_page=100, search=[lambda f: f.filename],
+                                      sort={'name': lambda f: f.filename}, default_sort='name')
     return render_template('filespace/trash.html', trash_files=trash_files, trash_dir_size=formatted_trash_dir_size)

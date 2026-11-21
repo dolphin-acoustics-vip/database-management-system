@@ -1,9 +1,11 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-<head>
-    <title>Logger</title>
-    <style>
+{% extends 'base.html' %}
+{% block title %}Logger{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item active" aria-current="page">Logger</li>
+{% endblock %}
+{% block head %}
+<style>
         .console-output {
             font-family: monospace;
             white-space: pre-wrap;
@@ -16,16 +18,13 @@
             font-size: 14px;
         }
     </style>
-</head>
-<body>
-
-    <div class="outer-div">
-        <h1>Logger</h1>
-        <a href="{{ url_for('admin.admin_logger_download_log') }}">Download</a>
-        <div class="console-output">
-            <code>{{ log_string | safe }}</code>
-        </div>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    <h1>Logger</h1>
+    <a href="{{ url_for('admin.admin_logger_download_log') }}">Download</a>
+    <div class="console-output">
+        <code>{{ log_string }}</code>
     </div>
-
-
-</body>
+</div>
+{% endblock %}

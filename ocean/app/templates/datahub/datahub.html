@@ -1,10 +1,10 @@
-<!DOCTYPE html>
-<html>
-{% include 'partials/header.html' %}
-
-<head>
-    <title>Data Hub</title>
-    <style>
+{% extends 'base.html' %}
+{% block title %}Data Hub{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item active" aria-current="page">Data Hub</li>
+{% endblock %}
+{% block head %}
+<style>
         .statistic-box {
             border: 2px solid #ccc;
             padding: 10px;
@@ -13,9 +13,8 @@
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</head>
-
-<body>
+{% endblock %}
+{% block content %}
     <div class="outer-div">
 
         <h1>Data Hub</h1>
@@ -36,7 +35,7 @@
         <section style="padding-bottom: 20px; display: none;" id="user-statistics-section">
             <h2 id="user-statistics-title">User Statistics</h2>
 
-            <div class="statistic-box" id="user-statistics-box">
+            <div data-paginate-tables class="statistic-box" id="user-statistics-box">
             </div>
             <div class="statistic-box" id="user-graph1-box">
                 <h3>Number of Uploaded Recording Contributions</h3>
@@ -69,14 +68,14 @@
             <div class="statistic-box table-responsive" style="margin-right: 1%; width: 49%; height: auto;"
                 id="selection-graph2-box">
                 <h3>Selection File Contributions by User</h3>
-                <div id="selection-file-contributions-table-box">
+                <div data-paginate-tables id="selection-file-contributions-table-box">
                 </div>
             </div>
 
             <div class="statistic-box table-responsive" style="margin-left: 1%; width: 49%; height: auto;"
                 id="selection-graph3-box">
                 <h3>Contour File Contributions by User</h3>
-                <div id="contour-file-contributions-table-box">
+                <div data-paginate-tables id="contour-file-contributions-table-box">
                 </div>
             </div>
         </div>
@@ -85,17 +84,17 @@
         <button class="blue small" id="clear-all-filters" class="btn btn-primary" style="margin-bottom: 10px"
             onclick="refreshPage()">Refresh</button>
 
-        <div class="statistic-box table-responsive" id="recording-statistics-box">
+        <div data-paginate-tables class="statistic-box table-responsive" id="recording-statistics-box">
             <h3>Species Statistics</h3>
         </div>
-        <div class="statistic-box table-responsive" id="assignment-statistics-box">
+        <div data-paginate-tables class="statistic-box table-responsive" id="assignment-statistics-box">
             <h3>Recording List</h3>
         </div>
 
     </div>
 
 
-</body>
+
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -611,3 +610,4 @@
 
     }
 </script>
+{% endblock %}
