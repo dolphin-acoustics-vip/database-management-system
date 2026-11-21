@@ -29,7 +29,7 @@ Base template for every OCEAN page. Pages extend it and fill in these blocks:
       <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('general.home') }}">
           <img src="{{ url_for('general.serve_resource', filename='OCEAN-banner.png') }}" alt="OCEAN" height="36">
-          <span class="ocean-version">v1.2.1</span>
+          <span class="ocean-version">{{ ocean_version }}</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ocean-nav"
           aria-controls="ocean-nav" aria-expanded="false" aria-label="Toggle navigation">
