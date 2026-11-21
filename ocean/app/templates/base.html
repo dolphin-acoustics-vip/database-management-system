@@ -41,6 +41,7 @@ Base template for every OCEAN page. Pages extend it and fill in these blocks:
             <li class="nav-item"><a class="nav-link {% if section == 'general' %}active{% endif %}" href="{{ url_for('general.home') }}">Home</a></li>
             {% if current_user.is_authenticated %}
             <li class="nav-item"><a class="nav-link {% if section in ['encounter', 'recording', 'selection'] %}active{% endif %}" href="{{ url_for('encounter.encounter') }}">Encounters</a></li>
+            <li class="nav-item"><a class="nav-link {% if section in ['results', 'category'] %}active{% endif %}" href="{{ url_for('results.results') }}">Results</a></li>
             {% if current_user.role_id in [1, 2] %}
             <li class="nav-item"><a class="nav-link {% if section == 'datahub' %}active{% endif %}" href="{{ url_for('datahub.datahub_view') }}">Data Hub</a></li>
             <li class="nav-item"><a class="nav-link {% if section == 'healthcentre' %}active{% endif %}" href="{{ url_for('healthcentre.healthcentre_view') }}">Health Centre</a></li>
