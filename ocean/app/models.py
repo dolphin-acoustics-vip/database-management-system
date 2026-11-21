@@ -730,7 +730,7 @@ class Selection(imodels.ISelection):
     def generate_ctr_binary(self):
         contour_file_handler = self.get_contour_file_handler()
         if contour_file_handler:
-            mat_data = contour_file_handler.get_ctr_data()
+            mat_data = contour_file_handler.get_ctr_data(self.id)
             if mat_data:
                 f = io.BytesIO()
                 scipy.io.savemat(f, mat_data)
@@ -740,8 +740,7 @@ class Selection(imodels.ISelection):
     def ctr_file_generate(self, ctr_file: File):
         contour_file_handler = self.get_contour_file_handler()
         if contour_file_handler:
-            mat_data = contour_file_handler.get_ctr_data()
-            mat_data["id"] = self.id
+            mat_data = contour_file_handler.get_ctr_data(self.id)
             if mat_data:
                 with io.BytesIO() as f:
                     scipy.io.savemat(f, mat_data)

@@ -106,7 +106,8 @@ class ContourFileHandler:
             contour_data_unit = ContourDataUnit(row['Time [ms]'], row['Peak Frequency [Hz]'], row['Duty Cycle'], row['Energy'], row['WindowRMS'])
             self.add_contour_data_unit(contour_data_unit)
 
-    def get_ctr_data(self):
+    def get_ctr_data(self, selection_id):
+        """The contour in the .ctr (MATLAB) format, with `id` set to the ID of its selection."""
 
         def find_most_common_difference(arr):
             differences = []
@@ -118,7 +119,7 @@ class ContourFileHandler:
         temp_res = find_most_common_difference([unit.time_milliseconds for unit in self.contour_rows])/1000
         ctr_length = temp_res*len(self.contour_rows)
         # Create a dictionary to store the data in the .ctr format
-        mat_data = {'tempres':temp_res,'freqContour': np.array([unit.peak_frequency for unit in self.contour_rows]),'ctrlength':ctr_length}
+        mat_data = {'tempres':temp_res,'freqContour': np.array([unit.peak_frequency for unit in self.contour_rows]),'ctrlength':ctr_length, 'id':selection_id}
         return mat_data
 
     def add_contour_data_unit(self, unit: ContourDataUnit):
@@ -138,7 +139,6 @@ class ContourFileHandler:
         Args:
             selection (Selection): The selection object to store the contour statistics in.
         """
-
         # Sort all CSV rows by the time in the first column
         # Note the rows should already be sorted on the inputted data
         self.contour_rows.sort(key=lambda row: row.time_milliseconds)
