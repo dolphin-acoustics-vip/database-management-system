@@ -185,10 +185,10 @@ CREATE TABLE `role` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 INSERT INTO `role` (id, name) VALUES
-  (1, 'View Only'),
-  (2, 'General User'),
-  (3, 'Database Administrator'),
-  (4, 'System Administrator');
+  (1, 'System Administrator'),
+  (2, 'Database Administrator'),
+  (3, 'General User'),
+  (4, 'View Only');
 
 --
 -- Table structure for table `selection`

@@ -31,6 +31,7 @@ from . import exception_handler
 from .logger import logger
 from . import database_handler
 from . import filespace_handler
+from . import version
 from .routes.routes_general import routes_general
 from .routes.routes_admin import routes_admin
 from .routes.routes_selection import routes_selection
@@ -182,6 +183,21 @@ def create_app(config_class):
     login_manager.init_app(app)
 
     app.config.from_object(config_class)
+
+    # Show the OCEAN version on every page (see version.py)
+    ocean_version = version.get_version()
+    logger.info(f"OCEAN version {ocean_version}")
+
+    @app.context_processor
+    def inject_version():
+        return {'ocean_version': ocean_version}
+
+    # Add the version to the URLs of stylesheets, scripts and images, so browsers fetch them
+    # again after a deploy instead of using copies cached from the previous version
+    @app.url_defaults
+    def add_version_to_static_urls(endpoint, values):
+        if endpoint in ('general.serve_style', 'general.serve_script', 'general.serve_resource'):
+            values.setdefault('v', ocean_version)
 
     # Set up user loader for the login manager
     @login_manager.user_loader
