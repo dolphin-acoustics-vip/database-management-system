@@ -35,6 +35,14 @@ Variables required:
       </div>
       <form action="{{url_for('selection.extract_contour_stats_for_encounter', encounter_id=encounter.id)}}" method="get">
         <button class="link small" type="submit">Download Contour Stats For Encounter</button></form>
+      <p>ROCCA classifier: {{ encounter.classifier.name if encounter.classifier else 'None (selections are not classified)' }}</p>
+      {% if encounter.classifier and not session['snapshot_date'] and current_user.role_id in [1, 2, 3] %}
+      <form id="classify-encounter-form" method="post" action="{{url_for('classifier.encounter_classify', encounter_id=encounter.id)}}">
+        <button id="classify-encounter-button" class="link small" type="submit">Re-classify Selections (ROCCA)</button></form>
+      <script>
+        ajaxifyForm(document.getElementById('classify-encounter-form'), undefined, undefined, undefined, undefined, button = document.getElementById('classify-encounter-button'), message = "Classifying selections...");
+      </script>
+      {% endif %}
       
       <form action="{{url_for('encounter.download_ctr_files', encounter_id=encounter.id)}}" method="get">
         <button class="link small" type="submit">Download CTR Files</button></form>

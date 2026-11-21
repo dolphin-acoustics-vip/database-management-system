@@ -34,6 +34,13 @@
         <option value="{{recording_platform.id}}" {% if editing and recording_platform.id == encounter.recording_platform.id %}selected{% endif %}>{{ recording_platform.name }}</option>
     {% endfor %}
 </select>
+<label class="bold" for="classifier" style="margin-bottom:5px;">ROCCA classifier</label>
+<select id="classifier" name="classifier_id">
+    <option value="">None (selections are not classified)</option>
+    {% for classifier in classifiers %}
+        <option value="{{ classifier.id }}" {% if editing and classifier.id == encounter.classifier_id %}selected{% endif %}>{{ classifier.name }} ({{ classifier.species | join(', ') }})</option>
+    {% endfor %}
+</select>
 <label class="bold" for="coordinates-start" style="margin-bottom:5px;">Initial coordinates</label>
 <div id="coordinates-start">
     <input type="number" placeholder="Latitude" id="latitude-start" name="latitude" min="-90" max="90" step="0.00000001" {% if editing %}value="{{ encounter.latitude }}"{% endif %}>

@@ -46,6 +46,23 @@ input[type="checkbox"] {
 }
 
 /*
+A checkbox or radio button with its text on the same line:
+<label class="inline-option"><input type="checkbox" name="x"> Text</label>
+*/
+label.inline-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+}
+
+label.inline-option input {
+    width: auto;
+    height: auto;
+    margin: 0;
+}
+
+/*
 Classes for all datetime-local inputs
 */
 input[type="datetime-local"]:focus, input[type="date"]:focus, input[type="time"]:focus  {

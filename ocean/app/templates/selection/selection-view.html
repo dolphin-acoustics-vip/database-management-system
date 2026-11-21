@@ -109,6 +109,29 @@
             <p style="margin-right:10px;">This selection has no contour file.</p>
             {% endif %}
 
+            {% set rocca_classifier = selection.recording.encounter.classifier %}
+            {% if rocca_classifier %}
+            <hr>
+            <h3>ROCCA Classification</h3>
+            {% if classification %}
+            <p>Classified as <b>{{ classification.classified_as }}</b> by {{ classification.classifier.name }}
+                ({{ classification.classifier.threshold_description }}).</p>
+            {% if classification.error %}<p>Error: {{ classification.error }}</p>{% endif %}
+            {% if classification.votes_description %}<p>Votes: {{ classification.votes_description }}</p>{% endif %}
+            {% if not classification_up_to_date %}<p>The contour statistics have changed since this selection was classified.</p>{% endif %}
+            {% else %}
+            <p>This selection has not been classified by {{ rocca_classifier.name }} (the encounter's classifier).</p>
+            {% endif %}
+            {% if selection.contour_file and not session['snapshot_date'] and current_user.role_id in [1, 2, 3] %}
+            <form id="classify-selection-form" method="post" action="{{ url_for('classifier.selection_classify', selection_id=selection.id) }}">
+                <button id="classify-selection-button" class="link small" type="submit">Re-classify</button>
+            </form>
+            <script>
+                ajaxifyForm(document.getElementById('classify-selection-form'), undefined, undefined, undefined, undefined, button = document.getElementById("classify-selection-button"), message = "Classifying...");
+            </script>
+            {% endif %}
+            {% endif %}
+
             <hr>
             <h3>Selection Table</h3>
             {% if selection.recording.selection_table_file %}
