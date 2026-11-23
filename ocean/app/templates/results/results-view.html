@@ -1,0 +1,80 @@
+{#
+This page allows the user to view a job
+Variables required:
+- job: the Job object being viewed
+- categories: an array of Category objects associated with the job
+#}
+{% extends 'base.html' %}
+{% block title %}Job {{ job.id }}{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('results.results') }}">Results</a></li>
+<li class="breadcrumb-item active" aria-current="page">Job {{ job.id }}</li>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    
+    <h1>View Job {{ job.id }}</h1>
+
+    <!-- Job Summary -->
+    <section id="job-summary">
+        <div id="summary">
+            <h2>Job Summary</h2>
+            <p>Job ID: {{ job.id }}</p>
+            <p>User: {{ job.user.name }} ({{ job.user.login_id }})</p>
+            <p>Upload Date: {{ job.upload_datetime }}</p>
+            <p>Warp Factor Level: {{ job.warpFactorLevel }}</p>
+            <p>Vigilance: {{ job.vigilance }}</p>
+            <p>Max Number of Categories: {% if job.maxNumCategories %}{{ job.maxNumCategories }}{% else %}Not specified{% endif %}</p>
+            <p>Max Number of Iterations: {% if job.maxNumIterations %}{{ job.maxNumIterations }}{% else %}Not specified{% endif %}</p>
+            <p>Bias: {{ job.bias }}</p>
+            <p>Learning Rate: {{ job.learningRate }}</p>
+            <p>Resample: {% if job.resample == 0 %}False{% else %}True{% endif %}</p>
+            <p>Sample Interval: {{ job.sampleInterval }}</p>
+            <p>Compare Warped: {% if job.compareWarped == 0 %}False{% else %}True{% endif %}</p>
+        </div>
+
+        <h3>Download Options</h3>
+        {% if job.complete_output %}
+        <form action="{{ url_for('results.download_complete_output', job_id=job.id) }}" method="get">
+            <button class="link small" type="submit">Download Complete Output (.json)</button>
+        </form>
+        {% endif %}
+        {% if job.discovery_curve %}
+        <form action="{{ url_for('results.download_discovery_curve', job_id=job.id) }}" method="get">
+            <button class="link small" type="submit">Download Discovery Curve</button>
+        </form>
+        {% endif %}
+    </section>
+    <hr>
+
+    <section id="categories" style="margin-top: 30px;">
+        <h2>Categories for Job</h2>
+        {% if categories|length > 0 %}
+        <div class="table-responsive">
+            <table class="table-striped" id="categories-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Category ID</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr id="row-{{ category.id }}">
+                        <td>
+                            <a class="button small" href="{{ url_for('category.category_view', category_id=category.id) }}">View</a>
+                        </td>
+                        <td>{{ category.id }}</td>
+                        <td>{% if category.name %}{{ category.name }}{% else %}Unnamed{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>This job has no categories.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

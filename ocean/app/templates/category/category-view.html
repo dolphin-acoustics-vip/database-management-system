@@ -1,0 +1,86 @@
+{#
+This page allows the user to view a category of a job
+Variables required:
+- category: the Category object being viewed
+- reference_contour: the category's ReferenceContour, if any
+- contours: an array of Contour objects in the category
+#}
+{% extends 'base.html' %}
+{% block title %}Category {{ category.id }}{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{{ url_for('results.results') }}">Results</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('results.results_view', job_id=category.job_id) }}">Job {{ category.job_id }}</a></li>
+<li class="breadcrumb-item active" aria-current="page">Category {{ category.id }}</li>
+{% endblock %}
+{% block head %}
+<style>
+    .image-container {
+        display: inline-block;
+        justify-content: center;
+    }
+
+    .image-container img {
+        max-width: 50%;
+        margin: 0 10px;
+        height: auto;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="outer-div">
+    
+
+
+
+    <h2>Category Id: {{ category.id }}</h2>
+        <h3>Reference Contour Plot</h3>
+        <div style="display: flex; margin-top: 20px; margin-bottom: 20px; align-items:center; position: relative;">
+            <img style="width:100%; padding-left:0.5rem; padding-right:0.5rem;" id="plot-image"
+                src="{{ url_for('category.serve_reference_contour_plot',category_id=category.id) }}" alt="Plot" style="width:100%; display:none;">
+        </div>
+
+        <hr>
+        {% if reference_contour %}
+        <a class="button small"
+            href="{{ url_for('category.download_reference_contour_file_csv', category_id = category.id ) }}">Download
+            Reference Contour File (csv)</a>
+        
+        <a class="button small"
+            href="{{ url_for('category.download_reference_contour_file_ctr', category_id = category.id ) }}">Download
+            Reference Contour File (ctr)</a>
+        {% else %}
+        <p style="margin-right:10px;">This category has no reference contour file.</p>
+        {% endif %}
+
+        <hr>
+        <h3>Contour Table</h3>
+        {% if contours|length > 0 %}
+        <p>Table of contours associated with category</p>
+
+        <table class="table-striped" id="selections-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Selection Id</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contour in contours %}
+                        {% if contour.selection_id %}
+                            <tr id="row-{{ contour.id }}">
+                                <td>
+                                    <a class="button small" href="{{ url_for('selection.selection_view', selection_id=contour.selection_id) }}">View</a>
+                                </td>
+                                <td>{{ contour.id }}</td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+        <p>This category has no associated contours.</p>
+        {% endif %}
+        <hr>
+
+</div>
+{% endblock %}
